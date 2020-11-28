@@ -1,7 +1,12 @@
 [package]
 name = "plrust"
 version = "0.0.0"
+authors = ["ZomboDB, LLC <zombodb@gmail.com>"]
 edition = "2018"
+license = "PostgreSQL Open Source License"
+description = "A Rust procedural language for PostgreSQL"
+homepage = "https://github.com/zombodb/plrust/"
+repository = "https://github.com/zombodb/plrust/"
 
 [lib]
 crate-type = ["cdylib"]
@@ -14,6 +19,7 @@ pg12 = ["pgx/pg12", "pgx-tests/pg12"]
 pg13 = ["pgx/pg13", "pgx-tests/pg13"]
 pg_test = []
 
+## TODO:  fix these paths for pgx once a new version is released
 [dependencies]
 pgx = { path = "../pgx/pgx", version = "*" }
 pgx-macros = { path = "../pgx/pgx-macros", version = "*" }

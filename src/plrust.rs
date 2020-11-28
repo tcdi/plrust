@@ -1,3 +1,4 @@
+// Copyright (c) 2020, ZomboDB, LLC
 use crate::gucs;
 use libloading::{Library, Symbol};
 use pgx::pg_sys::heap_tuple_get_struct;

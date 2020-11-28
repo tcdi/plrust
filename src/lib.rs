@@ -1,3 +1,4 @@
+// Copyright (c) 2020, ZomboDB, LLC
 use pgx::*;
 
 mod gucs;

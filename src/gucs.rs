@@ -1,3 +1,4 @@
+// Copyright (c) 2020, ZomboDB, LLC
 use pgx::*;
 use std::path::PathBuf;
 use std::str::FromStr;
