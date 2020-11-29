@@ -67,7 +67,7 @@ pub(crate) fn compile_function(fn_oid: u32) -> Result<(PathBuf, String), String>
         .current_dir(&crate_dir)
         .arg("build")
         .arg("--release")
-        .env("PGX_HOME", gucs::pgx_dir())
+        .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
         .env(
             "RUSTFLAGS",

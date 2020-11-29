@@ -41,36 +41,7 @@ pub(crate) fn work_dir() -> PathBuf {
     work_dir
 }
 
-pub(crate) fn pgx_dir() -> PathBuf {
-    let mut pgx_dir = work_dir();
-    pgx_dir.push(".pgx");
-
-    if !pgx_dir.exists() {
-        std::fs::create_dir_all(&pgx_dir)
-            .expect("failed to create `.pgx` directory in plrust.work_dir");
-    }
-
-    let mut config_toml = pgx_dir.clone();
-    config_toml.push("config.toml");
-    if !config_toml.exists() {
-        std::fs::write(
-            config_toml,
-            &format!(
-                r#"
-[configs]
-pg{}="{}"
-"#,
-                pg_sys::get_pg_major_version_string(),
-                pg_config()
-            ),
-        )
-        .expect("failed to write config.toml in plrust.work_dir/.pgx");
-    }
-
-    pgx_dir
-}
-
-fn pg_config() -> String {
+pub(crate) fn pg_config() -> String {
     PLRUST_PG_CONFIG
         .get()
         .expect("plrust.pg_config is not set in postgresql.conf")
