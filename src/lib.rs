@@ -79,6 +79,8 @@ extension_sql!(
 CREATE LANGUAGE plrust
     HANDLER plrust.plrust_call_handler
     VALIDATOR plrust.plrust_validator;
+    
+COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';    
 "#
 );
 
