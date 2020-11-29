@@ -108,8 +108,12 @@ pub(crate) fn compile_function(fn_oid: u32) -> Result<(PathBuf, String), String>
 }
 
 fn create_function_crate(fn_oid: u32, crate_dir: &PathBuf, crate_name: &str) {
+    let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
+        extract_code_and_args(fn_oid);
+    let source_code =
+        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
+
     // cargo.toml first
-    // TODO:  how to add external dependencies too?
     let mut cargo_toml = crate_dir.clone();
     cargo_toml.push("Cargo.toml");
     std::fs::write(
@@ -129,6 +133,7 @@ default = ["pgx/pg{major_version}"]
 [dependencies]
 pgx = {{ path = "/Users/e_ridge/_work/pgx/pgx", version = "*" }}
 pgx-macros = {{ path = "/Users/e_ridge/_work/pgx/pgx-macros", version = "*" }}
+{dependencies}
 
 [profile.release]
 panic = "unwind"
@@ -137,7 +142,8 @@ lto = "fat"
 codegen-units = 1
 "#,
             crate_name = crate_name,
-            major_version = pg_sys::get_pg_major_version_num()
+            major_version = pg_sys::get_pg_major_version_num(),
+            dependencies = deps
         ),
     )
     .expect("failed to write Cargo.toml");
@@ -150,9 +156,6 @@ codegen-units = 1
     // the actual source code in src/lib.rs
     let mut lib_rs = src.clone();
     lib_rs.push("lib.rs");
-    let (fn_oid, code, args, (return_type, is_set), is_strict) = extract_code_and_args(fn_oid);
-    let source_code =
-        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
 }
 
@@ -267,6 +270,7 @@ fn extract_code_and_args(
 ) -> (
     pg_sys::Oid,
     String,
+    String,
     Vec<(PgOid, Option<String>)>,
     (PgOid, bool),
     bool,
@@ -303,8 +307,10 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_prosrc as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let source_code = String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
-            .expect("source code was null");
+        let (deps, source_code) = parse_source_and_deps(
+            &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
+                .expect("source code was null"),
+        );
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             proc_tuple,
@@ -349,8 +355,40 @@ fn extract_code_and_args(
         let return_type = (PgOid::from(proc_entry.prorettype), proc_entry.proretset);
 
         pg_sys::ReleaseSysCache(proc_tuple);
-        (fn_oid, source_code, args, return_type, is_strict)
+
+        (fn_oid, deps, source_code, args, return_type, is_strict)
     }
+}
+
+fn parse_source_and_deps(code: &str) -> (String, String) {
+    let mut deps_block = String::new();
+    let mut code_block = String::new();
+    let mut in_deps = false;
+    let mut in_code = true;
+
+    for line in code.trim().lines() {
+        if line == "[dependencies]" {
+            // parsing deps
+            in_deps = true;
+            in_code = false;
+        } else if line == "[code]" {
+            // parsing code
+            in_deps = false;
+            in_code = true;
+        } else if in_deps {
+            // track our dependencies
+            deps_block.push_str(line);
+            deps_block.push_str("\n");
+        } else if in_code {
+            // track our code
+            code_block.push_str(line);
+            code_block.push_str("\n");
+        } else {
+            panic!("unexpected pl/rust code state")
+        }
+    }
+
+    (deps_block, code_block)
 }
 
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
