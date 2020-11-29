@@ -298,7 +298,7 @@ fn extract_code_and_args(
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
         let plrust = std::ffi::CString::new("plrust").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
-            panic!("function {:?} is not a plrust function", lang_oid);
+            panic!("function {} is not a plrust function", fn_oid);
         }
 
         let prosrc_datum = pg_sys::SysCacheGetAttr(

@@ -62,7 +62,7 @@ fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
 }
 
 #[pg_extern]
-fn recompile_plrust_function(
+fn recompile_function(
     fn_oid: pg_sys::Oid,
 ) -> (
     name!(library_path, Option<String>),
