@@ -432,7 +432,7 @@ fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
     .to_string();
 
     if array && owned {
-        rust_type = format!("Vec<{}>", rust_type);
+        rust_type = format!("Vec<Option<{}>>", rust_type);
     } else if array {
         rust_type = format!("Array<{}>", rust_type);
     }
