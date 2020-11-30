@@ -7,57 +7,68 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 
-static mut LOADED_LIBRARIES: Option<HashMap<pg_sys::Oid, Library>> = None;
 static mut LOADED_SYMBOLS: Option<
-    HashMap<pg_sys::Oid, Symbol<unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>>,
+    HashMap<
+        pg_sys::Oid,
+        (
+            Library,
+            Option<
+                Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
+            >,
+        ),
+    >,
 > = None;
 
 pub(crate) fn init() {
     unsafe {
-        LOADED_LIBRARIES = Some(HashMap::new());
         LOADED_SYMBOLS = Some(HashMap::new());
     }
 }
 
+pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
+    LOADED_SYMBOLS.as_mut().unwrap().remove(&fn_oid);
+}
+
 pub(crate) unsafe fn lookup_function(
-    fn_oid: u32,
-) -> &'static mut Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> usize> {
-    LOADED_SYMBOLS
+    fn_oid: pg_sys::Oid,
+) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
+    let (library, symbol) = LOADED_SYMBOLS
         .as_mut()
         .unwrap()
         .entry(fn_oid)
         .or_insert_with(|| {
-            let lib = LOADED_LIBRARIES
-                .as_mut()
-                .unwrap()
-                .entry(fn_oid)
-                .or_insert_with(|| {
-                    let mut shared_library = gucs::work_dir();
-                    let (crate_name, _) = crate_name(fn_oid);
+            let mut shared_library = gucs::work_dir();
+            let crate_name = crate_name(fn_oid);
 
-                    shared_library.push(&format!("{}.so", crate_name));
-                    if shared_library.exists() {
-                        Library::new(&shared_library).unwrap_or_else(|e| {
-                            panic!(
-                                "failed to open shared library at `{}`: {}",
-                                shared_library.display(),
-                                e
-                            )
-                        })
-                    } else {
-                        panic!("unable to located shared library for function");
-                    }
-                });
+            shared_library.push(&format!("{}.so", crate_name));
+            let library = Library::new(&shared_library).unwrap_or_else(|e| {
+                panic!(
+                    "failed to open shared library at `{}`: {}",
+                    shared_library.display(),
+                    e
+                )
+            });
 
+            (library, None)
+        });
+
+    match symbol {
+        Some(symbol) => symbol,
+        None => {
             let symbol_name = format!("plrust_fn_{}_wrapper", fn_oid);
-            lib.get(&symbol_name.as_bytes())
-                .expect("failed to find function")
-        })
+            symbol.replace(
+                library
+                    .get(&symbol_name.as_bytes())
+                    .expect("failed to find function"),
+            );
+            symbol.as_ref().unwrap()
+        }
+    }
 }
 
-pub(crate) fn compile_function(fn_oid: u32) -> Result<(PathBuf, String), String> {
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
-    let (crate_name, crate_dir) = crate_name(fn_oid);
+    let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
     std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
 
@@ -107,7 +118,7 @@ pub(crate) fn compile_function(fn_oid: u32) -> Result<(PathBuf, String), String>
     result
 }
 
-fn create_function_crate(fn_oid: u32, crate_dir: &PathBuf, crate_name: &str) {
+fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) {
     let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid);
     let source_code =
@@ -159,12 +170,15 @@ codegen-units = 1
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
 }
 
-fn crate_name(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
+fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let db_oid = unsafe { pg_sys::MyDatabaseId };
     let ns_oid = unsafe { pg_sys::get_func_namespace(fn_oid) };
-    let crate_name = format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid);
-    let mut crate_dir = gucs::work_dir();
+    format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
+}
 
+fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
+    let mut crate_dir = gucs::work_dir();
+    let crate_name = crate_name(fn_oid);
     crate_dir.push(&crate_name);
 
     (crate_name, crate_dir)

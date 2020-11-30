@@ -19,40 +19,33 @@ fn _PG_init() {
 /// CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
 ///     LANGUAGE c AS 'MODULE_PATHNAME', 'plrust_call_handler_wrapper';
 /// ```
-#[pg_extern(raw)]
-fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let fn_oid = unsafe { fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid };
+#[pg_extern]
+unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    let fn_oid = fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid;
+    let func = plrust::lookup_function(fn_oid);
 
-    unsafe {
-        let func = plrust::lookup_function(fn_oid);
-        func(fcinfo)
-    }
+    func(fcinfo)
 }
 
 #[pg_extern]
-fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
+unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     let fcinfo = PgBox::from_pg(fcinfo);
-    unsafe {
-        let flinfo = PgBox::from_pg(fcinfo.flinfo);
-        if !pg_sys::CheckFunctionValidatorAccess(
-            flinfo.fn_oid,
-            pg_getarg(fcinfo.as_ptr(), 0).unwrap(),
-        ) {
-            return;
-        }
+    let flinfo = PgBox::from_pg(fcinfo.flinfo);
+    if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
+    {
+        return;
     }
 
+    plrust::unload_function(fn_oid);
     // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
     // compile the function when it's created to avoid locking during function execution
     let (_, output) =
         plrust::compile_function(fn_oid).unwrap_or_else(|e| panic!("compilation failed\n{}", e));
 
     // however, we'll use it to decide if we should go ahead and dynamically load our function
-    unsafe {
-        if pg_sys::check_function_bodies {
-            // it's on, so lets go ahead and load our function
-            plrust::lookup_function(fn_oid);
-        }
+    if pg_sys::check_function_bodies {
+        // it's on, so lets go ahead and load our function
+        // plrust::lookup_function(fn_oid);
     }
 
     // if the compilation had warnings we'll display them
@@ -68,6 +61,9 @@ fn recompile_function(
     name!(library_path, Option<String>),
     name!(cargo_output, String),
 ) {
+    unsafe {
+        plrust::unload_function(fn_oid);
+    }
     match plrust::compile_function(fn_oid) {
         Ok((work_dir, output)) => (Some(work_dir.display().to_string()), output),
         Err(e) => (None, e),
