@@ -72,7 +72,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
     std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
 
-    create_function_crate(fn_oid, &crate_dir, &crate_name);
+    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -94,6 +94,8 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     }
 
     let result = if !cargo_output.status.success() {
+        output_string.push_str("-----------------\n");
+        output_string.push_str(&source_code);
         Err(output_string)
     } else {
         match find_shared_library(&crate_name).0 {
@@ -118,7 +120,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     result
 }
 
-fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) {
+fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> String {
     let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid);
     let source_code =
@@ -168,6 +170,8 @@ codegen-units = 1
     let mut lib_rs = src.clone();
     lib_rs.push("lib.rs");
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
+
+    source_code
 }
 
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
@@ -256,7 +260,7 @@ fn plrust_fn_{}"#,
 
         match name {
             Some(name) if name.len() > 0 => source.push_str(&format!("{}: {}", name, rust_type)),
-            _ => source.push_str(&format!("arg{}: {}", idx, rust_type)),
+            _ => source.push_str(&format!("arg{}: {}", idx+1, rust_type)),
         }
     }
     source.push(')');
@@ -420,7 +424,7 @@ fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
             PgBuiltInOids::ANYELEMENTOID => "AnyElement",
             PgBuiltInOids::BOOLOID => "bool",
             PgBuiltInOids::BYTEAOID if owned => "Vec<Option<[u8]]>>",
-            PgBuiltInOids::BYTEAOID => "&'static [u8]",
+            PgBuiltInOids::BYTEAOID => "&[u8]",
             PgBuiltInOids::CHAROID => "u8",
             PgBuiltInOids::CSTRINGOID => "std::ffi::CStr",
             PgBuiltInOids::FLOAT4OID => "f32",
@@ -434,10 +438,10 @@ fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
             PgBuiltInOids::NUMERICOID => "Numeric",
             PgBuiltInOids::OIDOID => "pg_sys::Oid",
             PgBuiltInOids::TEXTOID if owned => "String",
-            PgBuiltInOids::TEXTOID => "&'static str",
+            PgBuiltInOids::TEXTOID => "&str",
             PgBuiltInOids::TIDOID => "pg_sys::ItemPointer",
             PgBuiltInOids::VARCHAROID if owned => "String",
-            PgBuiltInOids::VARCHAROID => "&'static str",
+            PgBuiltInOids::VARCHAROID => "&str",
             PgBuiltInOids::VOIDOID => "()",
             _ => panic!("unsupported argument type: {:?}", type_oid),
         },
