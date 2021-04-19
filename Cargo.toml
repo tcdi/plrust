@@ -19,14 +19,13 @@ pg12 = ["pgx/pg12", "pgx-tests/pg12"]
 pg13 = ["pgx/pg13", "pgx-tests/pg13"]
 pg_test = []
 
-## TODO:  fix these paths for pgx once a new version is released
 [dependencies]
-pgx = { path = "../pgx/pgx", version = "*" }
-pgx-macros = { path = "../pgx/pgx-macros", version = "*" }
+pgx = "0.1.20"
+pgx-macros = "0.1.20"
 libloading = "0.6.4"
 
 [dev-dependencies]
-pgx-tests = { path = "../pgx/pgx-tests", version = "*" }
+pgx-tests = "0.1.20"
 
 [profile.dev]
 panic = "unwind"

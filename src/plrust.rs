@@ -144,8 +144,8 @@ crate-type = ["cdylib"]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = {{ path = "/Users/e_ridge/_work/pgx/pgx", version = "*" }}
-pgx-macros = {{ path = "/Users/e_ridge/_work/pgx/pgx-macros", version = "*" }}
+pgx = "0.1.20"
+pgx-macros = "0.1.20"
 {dependencies}
 
 [profile.release]
