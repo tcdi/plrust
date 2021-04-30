@@ -260,7 +260,7 @@ fn plrust_fn_{}"#,
 
         match name {
             Some(name) if name.len() > 0 => source.push_str(&format!("{}: {}", name, rust_type)),
-            _ => source.push_str(&format!("arg{}: {}", idx+1, rust_type)),
+            _ => source.push_str(&format!("arg{}: {}", idx + 1, rust_type)),
         }
     }
     source.push(')');
@@ -385,11 +385,12 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     let mut in_code = true;
 
     for line in code.trim().lines() {
-        if line == "[dependencies]" {
+        let trimmed_line = line.trim();
+        if trimmed_line == "[dependencies]" {
             // parsing deps
             in_deps = true;
             in_code = false;
-        } else if line == "[code]" {
+        } else if trimmed_line == "[code]" {
             // parsing code
             in_deps = false;
             in_code = true;
