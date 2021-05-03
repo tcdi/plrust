@@ -1,0 +1,62 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1619973265,
+        "narHash": "sha256-EgdfNdqrv/r1s70KGti4r6Bkdg3hs1BuqzQzxraq9JU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "9775b39fd45a61c2a53aa6a90485fac8f87ce7c6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1619894881,
+        "narHash": "sha256-9Dq/c+ewZxGkjpapY/zJ0GTmKvPjK6mnyziZyNjPsRg=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "4226837368068600e6afd11b5cbc6d586c7b5fa9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "pgx": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1620071433,
+        "narHash": "sha256-thinHDdE5AqWwQiBysGTuH3pc0XiKZIodm77b8UmcBc=",
+        "owner": "zombodb",
+        "repo": "pgx",
+        "rev": "108d603ebc12a707f98b1acbc35fc74fd68c50f3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "zombodb",
+        "ref": "develop",
+        "repo": "pgx",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "pgx": "pgx"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
