@@ -81,16 +81,90 @@ COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
 );
 
 #[cfg(any(test, feature = "pg_test"))]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn test_basic() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Some(a.into_iter().map(|v| v.unwrap_or_default()).sum())
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one_with_args(
+            r#"
+            SELECT sum_array($1);
+        "#,
+            vec![(
+                PgBuiltInOids::INT8ARRAYOID.oid(),
+                vec![1, 2, 3].into_datum(),
+            )],
+        );
+        assert_eq!(retval, Some(6));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn test_deps() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION zalgo(input TEXT) RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+            [dependencies]
+                zalgo = "0.2.0"
+            [code]
+                use zalgo::{Generator, GeneratorArgs, ZalgoSize};
+
+                let mut generator = Generator::new();
+                let mut out = String::new();
+                let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
+                let result = generator.gen(input, &mut out, &args);
+
+                Some(out)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT zalgo($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+    }
+}
 
 #[cfg(test)]
 pub mod pg_test {
+    use once_cell::sync::Lazy;
+    use pgx_utils::pg_config::Pgx;
+    use tempdir::TempDir;
+
+    static WORK_DIR: Lazy<String> = Lazy::new(|| {
+        let work_dir = TempDir::new("plrust-tests").expect("Couldn't create tempdir");
+        format!("plrust.work_dir='{}'", work_dir.path().display())
+    });
+    static PG_CONFIG: Lazy<String> = Lazy::new(|| {
+        let pgx_config = Pgx::from_config().unwrap();
+        let version = format!("pg{}", pgx_pg_sys::get_pg_major_version_num());
+        let pg_config = pgx_config.get(&version).unwrap();
+        let path = pg_config.path().unwrap();
+        format!("plrust.pg_config='{}'", path.as_path().display())
+    });
+
     pub fn setup(_options: Vec<&str>) {
         // perform one-off initialization when the pg_test framework starts
     }
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
-        // return any postgresql.conf settings that are required for your tests
-        vec![]
+        vec![&*WORK_DIR, &*PG_CONFIG]
     }
 }
