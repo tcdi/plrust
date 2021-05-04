@@ -102,7 +102,7 @@ mod tests {
             SELECT sum_array($1);
         "#,
             vec![(
-                PgBuiltInOids::INT8ARRAYOID.oid(),
+                PgBuiltInOids::INT4ARRAYOID.oid(),
                 vec![1, 2, 3].into_datum(),
             )],
         );
@@ -110,6 +110,7 @@ mod tests {
     }
 
     #[pg_test]
+    #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
     fn test_deps() {
         let definition = r#"
