@@ -22,17 +22,17 @@ pg_test = []
 sandboxed = []
 
 [dependencies]
-pgx = { git = "https://github.com/hoverbear/pgx", branch = "omni" }
-pgx-macros = { git = "https://github.com/hoverbear/pgx", branch = "omni" }
+pgx = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 libloading = "0.6.4"
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/hoverbear/pgx", branch = "omni" }
+pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
-pgx-utils = { git = "https://github.com/hoverbear/pgx", branch = "omni" }
-pgx-pg-sys = { git = "https://github.com/hoverbear/pgx", branch = "omni" }
+pgx-utils = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-pg-sys = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 
 [profile.dev]
 panic = "unwind"

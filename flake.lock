@@ -88,16 +88,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1620827866,
+        "lastModified": 1620929869,
         "narHash": "sha256-qpeUH+/UfQ3E2j/QEVPTyE+cQUhxxpn26Dpn8+439Xg=",
-        "owner": "hoverbear",
+        "owner": "zombodb",
         "repo": "pgx",
-        "rev": "2604aff010e348fff4386c24dfbab3862e45176d",
+        "rev": "413ca8f639d90d6fcc05dbdb370f484bbae8e6f2",
         "type": "github"
       },
       "original": {
-        "owner": "hoverbear",
-        "ref": "omni",
+        "owner": "zombodb",
+        "ref": "develop",
         "repo": "pgx",
         "type": "github"
       }

@@ -863,7 +863,7 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 [[package]]
 name = "pgx"
 version = "0.1.21"
-source = "git+https://github.com/hoverbear/pgx?branch=omni#2604aff010e348fff4386c24dfbab3862e45176d"
+source = "git+https://github.com/zombodb/pgx?branch=develop#413ca8f639d90d6fcc05dbdb370f484bbae8e6f2"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -885,7 +885,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.1.21"
-source = "git+https://github.com/hoverbear/pgx?branch=omni#2604aff010e348fff4386c24dfbab3862e45176d"
+source = "git+https://github.com/zombodb/pgx?branch=develop#413ca8f639d90d6fcc05dbdb370f484bbae8e6f2"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -897,7 +897,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.1.21"
-source = "git+https://github.com/hoverbear/pgx?branch=omni#2604aff010e348fff4386c24dfbab3862e45176d"
+source = "git+https://github.com/zombodb/pgx?branch=develop#413ca8f639d90d6fcc05dbdb370f484bbae8e6f2"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -916,7 +916,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.1.21"
-source = "git+https://github.com/hoverbear/pgx?branch=omni#2604aff010e348fff4386c24dfbab3862e45176d"
+source = "git+https://github.com/zombodb/pgx?branch=develop#413ca8f639d90d6fcc05dbdb370f484bbae8e6f2"
 dependencies = [
  "colored",
  "lazy_static",
@@ -935,7 +935,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.1.21"
-source = "git+https://github.com/hoverbear/pgx?branch=omni#2604aff010e348fff4386c24dfbab3862e45176d"
+source = "git+https://github.com/zombodb/pgx?branch=develop#413ca8f639d90d6fcc05dbdb370f484bbae8e6f2"
 dependencies = [
  "colored",
  "dirs",
