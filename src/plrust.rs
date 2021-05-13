@@ -25,6 +25,58 @@ pub(crate) fn init() {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod generation {
+    use super::*;
+    use std::{fs, io};
+
+    pub(crate) fn all_generations(
+        prefix: &str,
+    ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, io::Error> {
+        let work_dir = gucs::work_dir();
+        let filtered = fs::read_dir(work_dir)?
+            .flat_map(|entry| {
+                let path = entry.ok()?.path();
+                let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
+                Some((stem, path))
+            })
+            .filter(move |(stem, _path)| stem.starts_with(prefix))
+            .flat_map(|(stem, path)| {
+                let generation = stem.split('_').last()?;
+                let generation = generation.parse::<usize>().ok()?;
+                Some((generation, path))
+            });
+
+        Ok(Box::from(filtered))
+    }
+
+    pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, std::io::Error> {
+        let latest = latest_generation(prefix, vacuum);
+        Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
+    }
+
+    pub(crate) fn latest_generation(
+        prefix: &str,
+        vacuum: bool,
+    ) -> Result<(usize, PathBuf), std::io::Error> {
+        let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
+        // We could use max_by, but might need to vacuum.
+        generations.sort_by_key(|(generation, _path)| *generation);
+        let latest = generations.pop();
+
+        if vacuum {
+            for (_index, old_path) in generations {
+                pgx::info!("Vacuuming {:?}", old_path);
+                std::fs::remove_file(old_path)?;
+            }
+        }
+
+        latest.ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "No generations found.")
+        })
+    }
+}
+
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.as_mut().unwrap().remove(&fn_oid);
 }
@@ -39,6 +91,16 @@ pub(crate) unsafe fn lookup_function(
         .or_insert_with(|| {
             let mut shared_library = gucs::work_dir();
             let crate_name = crate_name(fn_oid);
+            #[cfg(target_os = "macos")]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let latest = generation::latest_generation(&crate_name, true)
+                    .expect("Could not find latest generation.")
+                    .0;
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
 
             shared_library.push(&format!("{}.so", crate_name));
             let library = Library::new(&shared_library).unwrap_or_else(|e| {
@@ -69,6 +131,14 @@ pub(crate) unsafe fn lookup_function(
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
+    #[cfg(target_os = "macos")]
+    let crate_name = {
+        let mut crate_name = crate_name;
+        let latest = generation::next_generation(&crate_name, true)
+            .expect("Could not find latest generation.");
+        crate_name.push_str(&format!("_{}", latest));
+        crate_name
+    };
 
     std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
 
@@ -144,8 +214,8 @@ crate-type = ["cdylib"]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = "0.1.20"
-pgx-macros = "0.1.20"
+pgx = "0.1.21"
+pgx-macros = "0.1.21"
 {dependencies}
 
 [profile.release]

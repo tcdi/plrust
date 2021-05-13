@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     naersk.url = "github:nmattia/naersk";
-    pgx.url = "github:zombodb/pgx/develop";
+    pgx.url = "github:zombodb/pgx/no-thread-locals";
     pgx.inputs.nixpkgs.follows = "nixpkgs";
   };
 

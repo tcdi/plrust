@@ -22,17 +22,18 @@ pg_test = []
 sandboxed = []
 
 [dependencies]
-pgx = { git = "https://github.com/zombodb/pgx", branch = "develop" }
-pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx = { git = "https://github.com/zombodb/pgx", branch = "no-thread-locals" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "no-thread-locals" }
 libloading = "0.6.4"
+cfg-if = "1"
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "no-thread-locals" }
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
-pgx-utils = { git = "https://github.com/zombodb/pgx", branch = "develop" }
-pgx-pg-sys = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-utils = { git = "https://github.com/zombodb/pgx", branch = "no-thread-locals" }
+pgx-pg-sys = { git = "https://github.com/zombodb/pgx", branch = "no-thread-locals" }
 
 [profile.dev]
 panic = "unwind"
