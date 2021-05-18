@@ -3,5 +3,5 @@
 /target
 *.iml
 **/*.rs.bk
-Cargo.lock
 sql/*.generated.sql
+.direnv

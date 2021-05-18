@@ -1,5 +1,7 @@
 # `plrust` Extension for PostgreSQL
 
+![CI status](https://github.com/zombodb/plrust/actions/workflows/ci.yml/badge.svg)
+
 Support for `plrust` in PostgreSQL functions.
 
 ```SQL
