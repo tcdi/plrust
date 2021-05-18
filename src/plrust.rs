@@ -25,11 +25,29 @@ pub(crate) fn init() {
     }
 }
 
+/*!
+Darwin is a peculiar platform for `dlclose`, this exists for a workaround to support
+`CREATE OR REPLACE FUNCTION`.
+
+If we unload something from `LOADED_SYMBOLS`, then load a recreated `so`, Darwin will have never
+properly unloaded it, and will load the old shared object (and the old symbol). This is surprising
+behavior to the user, and does not offer a good experience.
+
+Instead, we create a 'generation' for each build, and always load the largest numbered `so`. Since
+these `so`s are unique, Darwin loads the new one correctly. This technically 'leaks', but only
+because Darwin's `dlclose` 'leaks'.
+
+**This behavior is not required on other operating systems.**
+
+See https://github.com/rust-lang/rust/issues/28794#issuecomment-368693049 which cites
+https://developer.apple.com/videos/play/wwdc2017/413/?time=1776.
+!*/
 #[cfg(target_os = "macos")]
 mod generation {
     use super::*;
     use std::{fs, io};
 
+    /// Find existing generations of a given prefix.
     pub(crate) fn all_generations(
         prefix: &str,
     ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, io::Error> {
@@ -50,11 +68,17 @@ mod generation {
         Ok(Box::from(filtered))
     }
 
+    /// Get the next generation number to be created.
+    ///
+    /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
     pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, std::io::Error> {
         let latest = latest_generation(prefix, vacuum);
         Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
     }
 
+    /// Get the latest created generation night.
+    ///
+    /// If `vacuum` is set, this garbage collect old `so` files.
     pub(crate) fn latest_generation(
         prefix: &str,
         vacuum: bool,
@@ -91,6 +115,7 @@ pub(crate) unsafe fn lookup_function(
         .or_insert_with(|| {
             let mut shared_library = gucs::work_dir();
             let crate_name = crate_name(fn_oid);
+
             #[cfg(target_os = "macos")]
             let crate_name = {
                 let mut crate_name = crate_name;
@@ -131,6 +156,7 @@ pub(crate) unsafe fn lookup_function(
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
+
     #[cfg(target_os = "macos")]
     let crate_name = {
         let mut crate_name = crate_name;
