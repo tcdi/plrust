@@ -8,7 +8,7 @@ Support for `plrust` in PostgreSQL functions.
 CREATE EXTENSION IF NOT EXISTS plrust;
 CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
     IMMUTABLE STRICT
-    LANGUAGE PLRUST AS
+    LANGUAGE PLRUSTU AS
 $$
 [dependencies]
     # Add Cargo.toml dependencies here.

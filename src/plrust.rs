@@ -314,7 +314,7 @@ fn extract_code_and_args(
             &mut is_null,
         );
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
-        let plrust = std::ffi::CString::new("plrust").unwrap();
+        let plrust = std::ffi::CString::new("plrustu").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
             panic!("function {} is not a plrust function", fn_oid);
         }

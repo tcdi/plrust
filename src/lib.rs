@@ -16,11 +16,11 @@ fn _PG_init() {
 /// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
 ///
 /// ```sql
-/// CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
-///     LANGUAGE c AS 'MODULE_PATHNAME', 'plrust_call_handler_wrapper';
+/// CREATE OR REPLACE FUNCTION plrustu_call_handler() RETURNS language_handler
+///     LANGUAGE c AS 'MODULE_PATHNAME', 'plrustu_call_handler_wrapper';
 /// ```
 #[pg_extern]
-unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+unsafe fn plrustu_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let fn_oid = fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid;
     let func = plrust::lookup_function(fn_oid);
 
@@ -28,7 +28,7 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
 }
 
 #[pg_extern]
-unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
+unsafe fn plrustu_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     let fcinfo = PgBox::from_pg(fcinfo);
     let flinfo = PgBox::from_pg(fcinfo.flinfo);
     if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
@@ -72,11 +72,11 @@ fn recompile_function(
 
 extension_sql!(
     r#"
-CREATE LANGUAGE plrust
-    HANDLER plrust.plrust_call_handler
-    VALIDATOR plrust.plrust_validator;
+CREATE LANGUAGE plrustu
+    HANDLER plrust.plrustu_call_handler
+    VALIDATOR plrust.plrustu_validator;
     
-COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';    
+COMMENT ON LANGUAGE plrustu IS 'PL/rustu untrusted procedural language';
 "#
 );
 
@@ -90,7 +90,7 @@ mod tests {
         let definition = r#"
             CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
                 IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
+                LANGUAGE PLRUSTU AS
             $$
                 Some(a.into_iter().map(|v| v.unwrap_or_default()).sum())
             $$;
@@ -116,7 +116,7 @@ mod tests {
         let definition = r#"
             CREATE OR REPLACE FUNCTION zalgo(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
+                LANGUAGE PLRUSTU AS
             $$
             [dependencies]
                 zalgo = "0.2.0"
