@@ -15,7 +15,7 @@ fn _PG_init() {
 /// `pgx` doesn't know how to declare a CREATE FUNCTION statement for a function
 /// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
 ///
-/// ```sql
+/// ```pgxsql
 /// CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
 ///     LANGUAGE c AS 'MODULE_PATHNAME', 'plrust_call_handler_wrapper';
 /// ```
@@ -78,7 +78,7 @@ CREATE LANGUAGE plrust
     
 COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';    
 "#
-);
+, name = "language_handler", requires = [ plrust_call_handler, plrust_validator]);
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
