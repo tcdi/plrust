@@ -138,14 +138,14 @@ version = "0.0.0"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = "0.1.20"
-pgx-macros = "0.1.20"
+pgx = "*"
+pgx-macros = "*"
 {dependencies}
 
 [profile.release]
