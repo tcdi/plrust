@@ -1,5 +1,5 @@
 {
-  description = "A PostgreSQL extension built by pgx.";
+  description = "A pl/Rust extension for PostgreSQ.";
 
   inputs = {
     nixpkgs.url = "nixpkgs";
@@ -95,15 +95,15 @@
               description = "The `plrust.work_dir` setting.";
               default = "";
             };
-            config = mkIf cfg.enable {
-              nixpkgs.overlays = [ self.overlay pgx.overlay ];
-              services.postgresql.extraPlugins = with pkgs; [
-                "${cargoToml.package.name}"
-              ];
-              services.postgresql.settings = {
-                "plrust.work_dir" = assert (assertMsg (cfg.workDir != "") "workDir must exist if enabled.");  cfg.workDir;
-                "plrust.pg_config" = with pkgs; "${postgresql}/bin/pg_config";
-              };
+          };
+          config = mkIf cfg.enable {
+            nixpkgs.overlays = [ self.overlay pgx.overlay ];
+            services.postgresql.extraPlugins = with pkgs; [
+              "${cargoToml.package.name}"
+            ];
+            services.postgresql.settings = {
+              "plrust.work_dir" = assert (assertMsg (cfg.workDir != "") "workDir must exist if enabled.");  cfg.workDir;
+              "plrust.pg_config" = with pkgs; "${postgresql}/bin/pg_config";
             };
           };
         };
