@@ -89,7 +89,7 @@
         with lib;
         {
           options = {
-            services.postgresql.plrust.enable = mkEnableOption "Enable ${cargoToml.package.name}.";
+            services.postgresql.plrust.enable = mkEnableOption "Enable pl/Rust.";
             services.postgresql.plrust.workDir = mkOption {
               type = types.str;
               description = "The `plrust.work_dir` setting.";
@@ -99,7 +99,7 @@
           config = mkIf cfg.enable {
             nixpkgs.overlays = [ self.overlay pgx.overlay ];
             services.postgresql.extraPlugins = with pkgs; [
-              "${cargoToml.package.name}"
+              plrust
             ];
             services.postgresql.settings = {
               "plrust.work_dir" = assert (assertMsg (cfg.workDir != "") "workDir must exist if enabled.");  cfg.workDir;
