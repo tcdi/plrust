@@ -84,12 +84,12 @@
 
       nixosModule = { config, pkgs, lib, ... }:
         let
-          cfg = config.services.postgresql."${cargoToml.package.name}";
+          cfg = config.services.postgresql.plrust;
         in
         with lib;
         {
           options = {
-            services.postgresql."${cargoToml.package.name}".enable = mkEnableOption "Enable ${cargoToml.package.name}.";
+            services.postgresql.plrust.enable = mkEnableOption "Enable ${cargoToml.package.name}.";
             services.postgresql.plrust.workDir = mkOption {
               type = types.str;
               description = "The `plrust.work_dir` setting.";
