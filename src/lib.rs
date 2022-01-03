@@ -77,8 +77,10 @@ CREATE LANGUAGE plrust
     VALIDATOR plrust.plrust_validator;
     
 COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';    
-"#
-, name = "language_handler", requires = [ plrust_call_handler, plrust_validator]);
+"#,
+    name = "language_handler",
+    requires = [plrust_call_handler, plrust_validator]
+);
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
