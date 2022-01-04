@@ -70,7 +70,7 @@ jobs:
           image: tonistiigi/binfmt:latest
           platforms: arm64
       - run: |
-          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '' || '--daemon' }}
+          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '&& true' || '--daemon' }}
           ${{ matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh' || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
           
           mkdir -p ~/.config/nix/
