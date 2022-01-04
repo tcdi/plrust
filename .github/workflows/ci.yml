@@ -44,7 +44,7 @@ jobs:
           image: tonistiigi/binfmt:latest
           platforms: arm64
       - run: |
-          sh <(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume
+          sh <(curl -L https://nixos.org/nix/install) --daemon
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           
           mkdir -p ~/.config/nixpkgs/
