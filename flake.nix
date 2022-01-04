@@ -126,12 +126,6 @@
           #   ${pkgs.cargo-audit}/bin/cargo-audit audit --no-fetch
           #   # it worked!
           # '';
-          "${cargoToml.package.name}_debug" = pkgs."${cargoToml.package.name}_debug";
-          "${cargoToml.package.name}_10_debug" = pkgs."${cargoToml.package.name}_10_debug";
-          "${cargoToml.package.name}_11_debug" = pkgs."${cargoToml.package.name}_11_debug";
-          "${cargoToml.package.name}_12_debug" = pkgs."${cargoToml.package.name}_12_debug";
-          "${cargoToml.package.name}_13_debug" = pkgs."${cargoToml.package.name}_13_debug";
-          "${cargoToml.package.name}_14_debug" = pkgs."${cargoToml.package.name}_14_debug";
         });
     };
 }

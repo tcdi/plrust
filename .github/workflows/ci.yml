@@ -59,13 +59,13 @@ jobs:
           nix build \
             --option system ${{ matrix.target.platform }} \
             .#${EXTENSION}_${{ matrix.pg_version }} \
-            --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }} \
+            --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
             --verbose
           
-          mkdir -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}
-          cp -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}/
+          mkdir -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
+          cp -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}
-          path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}
+          name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
+          path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
