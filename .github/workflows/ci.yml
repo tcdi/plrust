@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v2
       # Fix cache permissions
       - if: ${{ matrix.target.os == 'ubuntu-latest' }} 
-        run:
+        run: |
           sudo mkdir -p /nix
           sudo chown -R $USER /nix
       - name: Cache nix store
@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v2
       # Fix cache permissions
       - if: ${{ matrix.target.os == 'ubuntu-latest' }} 
-        run:
+        run: |
           sudo mkdir -p /nix
           sudo chown -R $USER /nix
       - name: Cache nix store
