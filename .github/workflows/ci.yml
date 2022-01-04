@@ -45,7 +45,7 @@ jobs:
           platforms: arm64
       - run: |
           sh <(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume
-          . ~/.nix-profile/etc/profile.d/nix.sh
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
