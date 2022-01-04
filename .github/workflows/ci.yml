@@ -91,7 +91,7 @@ jobs:
             --verbose
           
           mkdir -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
-          cp -L -r out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
+          rsync -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
