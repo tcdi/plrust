@@ -10,6 +10,11 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
+      # Fix cache permissions
+      - if: ${{ matrix.target.os == 'aarch64-linux' }} 
+        run:
+          sudo mkdir -p /nix
+          sudo chown -R $USER /nix
       - name: Cache nix store
         uses: actions/cache@v2
         with:
@@ -48,6 +53,11 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
+      # Fix cache permissions
+      - if: ${{ matrix.target.os == 'aarch64-linux' }} 
+        run:
+          sudo mkdir -p /nix
+          sudo chown -R $USER /nix
       - name: Cache nix store
         uses: actions/cache@v2
         with:
@@ -60,8 +70,8 @@ jobs:
           image: tonistiigi/binfmt:latest
           platforms: arm64
       - run: |
-          sh <(curl -L https://nixos.org/nix/install) ${{ (matrix.target.platform == 'aarch64-linux' && '') || '--daemon' }}
-          ${{ (matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh') || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
+          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '' || '--daemon' }}
+          ${{ matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh' || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
           
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
