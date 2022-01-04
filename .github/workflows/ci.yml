@@ -10,6 +10,11 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
+      - name: Cache nix store
+        uses: actions/cache@v2
+        with:
+          path: /nix/store
+          key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - run: |
           sh <(curl -L https://nixos.org/nix/install) --daemon
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -23,11 +28,6 @@ jobs:
 
           nix flake show
           nix flake check --print-build-logs --no-build --verbose
-      - name: Cache nix store
-        uses: actions/cache@v2
-        with:
-          path: /nix/store
-          key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           
   build:
     needs: check
@@ -48,6 +48,11 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
+      - name: Cache nix store
+        uses: actions/cache@v2
+        with:
+          path: /nix/store
+          key: build-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
         uses: docker/setup-qemu-action@v1
         with:
@@ -81,8 +86,3 @@ jobs:
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
-      - name: Cache nix store
-        uses: actions/cache@v2
-        with:
-          path: /nix/store
-          key: build-${{ runner.os }}-${{ hashFiles('flake.lock') }}
