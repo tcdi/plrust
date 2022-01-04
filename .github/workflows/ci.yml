@@ -47,6 +47,9 @@ jobs:
           sh <(curl -L https://nixos.org/nix/install) --daemon
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           
+          mkdir -p ~/.config/nix/
+          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
