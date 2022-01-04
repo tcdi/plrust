@@ -61,11 +61,7 @@ jobs:
           platforms: arm64
       - run: |
           sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '--daemon' || '' }}
-          ${{ if matrix.target.platform == 'aarch64-linux' }}
-            . ~/.nix-profile/etc/profile.d/nix.sh
-          ${{ else }}
-            . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          ${{ endif }}
+          ${{ matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh' || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
           
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
