@@ -43,8 +43,8 @@ jobs:
             platform: x86_64-linux
           - os: macos-latest
             platform: x86_64-darwin
-          - os: ubuntu-latest
-            platform: aarch64-linux
+          #- os: ubuntu-latest
+          #  platform: aarch64-linux
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
@@ -69,7 +69,7 @@ jobs:
 
           nix build \
             --option system ${{ matrix.target.platform }} \
-            .#${EXTENSION}_${{ matrix.pg_version }} \
+            .#${EXTENSION}_${{ matrix.pg_version }}_debug \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
             --verbose
