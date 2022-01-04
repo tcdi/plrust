@@ -11,13 +11,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: |
-          sh <(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume
-          . ~/.nix-profile/etc/profile.d/nix.sh
-          nix-env -iA nixpkgs.nixUnstable
+          sh <(curl -L https://nixos.org/nix/install) --daemon
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+          mkdir -p ~/.config/nixpkgs/
+          echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
+          export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
+
           nix flake show
           nix flake check --print-build-logs --no-build --verbose
+      - name: Cache nix store
+        uses: actions/cache@v2
+        with:
+          path: /nix/store
+          key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           
   build:
     needs: check
@@ -70,3 +80,8 @@ jobs:
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
+      - name: Cache nix store
+        uses: actions/cache@v2
+        with:
+          path: /nix/store
+          key: build-${{ runner.os }}-${{ hashFiles('flake.lock') }}
