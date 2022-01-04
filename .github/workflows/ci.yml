@@ -43,8 +43,8 @@ jobs:
             platform: x86_64-linux
           - os: macos-latest
             platform: x86_64-darwin
-          #- os: ubuntu-latest
-          # platform: aarch64-linux
+          - os: ubuntu-latest
+            platform: aarch64-linux
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
@@ -78,10 +78,11 @@ jobs:
             .#${EXTENSION}_${{ matrix.pg_version }}_debug \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
+            ${{ matrix.target.platform == 'aarch64-linux' && '--impure' || '' }} \
             --verbose
           
           mkdir -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
-          cp -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
+          cp -L -r out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
