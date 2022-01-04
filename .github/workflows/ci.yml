@@ -52,15 +52,20 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /nix/store
-          key: build-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          key: build-${{ matrix.target.platform }}-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+      # On aarch64 we install binfmt and use an impure nix to get it building.
       - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
         uses: docker/setup-qemu-action@v1
         with:
           image: tonistiigi/binfmt:latest
           platforms: arm64
       - run: |
-          sh <(curl -L https://nixos.org/nix/install) --daemon
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == "aarch64-linux" && "--daemon" || "" }}
+          ${{ if matrix.target.platform == 'aarch64-linux' }}
+            . ~/.nix-profile/etc/profile.d/nix.sh
+          ${{ else }}
+            . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          ${{ endif }}
           
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
@@ -74,11 +79,9 @@ jobs:
 
           nix build \
             --option system ${{ matrix.target.platform }} \
-            --extra-platforms ${{ matrix.target.platform }} \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
-            ${{ matrix.target.platform == 'aarch64-linux' && '--impure' || '' }} \
             --verbose
           
           mkdir -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
