@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       # Fix cache permissions
-      - if: ${{ matrix.target.os == 'aarch64-linux' }} 
+      - if: ${{ matrix.target.os == 'ubuntu-latest' }} 
         run:
           sudo mkdir -p /nix
           sudo chown -R $USER /nix
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       # Fix cache permissions
-      - if: ${{ matrix.target.os == 'aarch64-linux' }} 
+      - if: ${{ matrix.target.os == 'ubuntu-latest' }} 
         run:
           sudo mkdir -p /nix
           sudo chown -R $USER /nix
