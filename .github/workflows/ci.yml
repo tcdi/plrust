@@ -27,7 +27,7 @@ jobs:
           path: /nix/store
           key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - run:
-          sudo chown -R ${{ env.EXTENSION }} /nix/store
+          sudo chown -R ${{ env.STORE_USER }} /nix/store
       - run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
@@ -71,7 +71,7 @@ jobs:
           path: /nix/store
           key: build-${{ matrix.target.platform }}-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - run:
-          sudo chown -R ${{ env.EXTENSION }} /nix/store
+          sudo chown -R ${{ env.STORE_USER }} /nix/store
       # On aarch64 we install binfmt and use an impure nix to get it building.
       - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
         uses: docker/setup-qemu-action@v1
