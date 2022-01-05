@@ -21,6 +21,7 @@ jobs:
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
+          ls -lah /nix/
           sudo chown $USER -R /nix/store
       - name: Cache /nix/store
         uses: actions/cache@v2
@@ -69,6 +70,7 @@ jobs:
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
+          ls -lah /nix/
           sudo chown $USER -R /nix/store
       - name: Cache /nix/store
         uses: actions/cache@v2
