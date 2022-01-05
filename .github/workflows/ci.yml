@@ -10,25 +10,21 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
-      # Fix cache permissions
-      - if: ${{ matrix.target.os == 'ubuntu-latest' }} 
-        run: |
-          sudo mkdir -p /nix
-          sudo chown -R $USER /nix
-      - name: Cache nix store
-        uses: actions/cache@v2
-        with:
-          path: /nix/store
-          key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - run: |
           sh <(curl -L https://nixos.org/nix/install) --daemon
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
+      - name: Cache nix store
+        uses: actions/cache@v2
+        with:
+          path: /nix/store
+          key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+      - run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
 
           nix flake show
@@ -53,11 +49,14 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
-      # Fix cache permissions
-      - if: ${{ matrix.target.os == 'ubuntu-latest' }} 
-        run: |
-          sudo mkdir -p /nix
-          sudo chown -R $USER /nix
+      - run: |
+          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '&& true' || '--daemon' }}
+          
+          mkdir -p ~/.config/nix/
+          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+          mkdir -p ~/.config/nixpkgs/
+          echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
       - name: Cache nix store
         uses: actions/cache@v2
         with:
@@ -70,19 +69,13 @@ jobs:
           image: tonistiigi/binfmt:latest
           platforms: arm64
       - run: |
-          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '&& true' || '--daemon' }}
           ${{ matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh' || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
-          
-          mkdir -p ~/.config/nix/
-          echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
-
-          mkdir -p ~/.config/nixpkgs/
-          echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
           
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
           echo "EXTENSION=${EXTENSION}" >> $GITHUB_ENV
 
+          nix flake show
           nix build \
             --option system ${{ matrix.target.platform }} \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug \
@@ -90,8 +83,8 @@ jobs:
             --print-build-logs \
             --verbose
           
-          mkdir -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
-          rsync -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
+          mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
+          rsync -v -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
