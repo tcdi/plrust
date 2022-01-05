@@ -10,7 +10,9 @@ jobs:
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v2
-      - run: |
+        name: Checkout
+      - name: Install Nix
+        run: |
           sh <(curl -L https://nixos.org/nix/install) --daemon
           
           mkdir -p ~/.config/nix/
@@ -21,12 +23,13 @@ jobs:
 
           echo "STORE_USER=$(stat -c %U /nix/store)" >> $GITHUB_ENV
           sudo chown $USER -R /nix/store
-      - name: Cache nix store
+      - name: Cache /nix/store
         uses: actions/cache@v2
         with:
           path: /nix/store
           key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-      - run:
+      - name: Restore /nix/store ownership
+        run:
           sudo chown -R ${{ env.STORE_USER }} /nix/store
       - run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -53,8 +56,10 @@ jobs:
             platform: aarch64-linux
     runs-on: ${{ matrix.target.os }}
     steps:
-      - uses: actions/checkout@v2
-      - run: |
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Nix
+        run: |
           sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '&& true' || '--daemon' }}
           
           mkdir -p ~/.config/nix/
@@ -64,21 +69,24 @@ jobs:
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
           echo "STORE_USER=$(stat -c %U /nix/store)" >> $GITHUB_ENV
-          sudo chown -R $USER /nix/store
-      - name: Cache nix store
+          sudo chown $USER -R /nix/store
+      - name: Cache /nix/store
         uses: actions/cache@v2
         with:
           path: /nix/store
           key: build-${{ matrix.target.platform }}-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-      - run:
+      - name: Restore /nix/store ownership
+        run:
           sudo chown -R ${{ env.STORE_USER }} /nix/store
       # On aarch64 we install binfmt and use an impure nix to get it building.
       - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
+        name: Install aarch64 binfmt
         uses: docker/setup-qemu-action@v1
         with:
           image: tonistiigi/binfmt:latest
           platforms: arm64
-      - run: |
+      - name: Build extension
+        run: |
           ${{ matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh' || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
           
@@ -96,6 +104,7 @@ jobs:
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
           rsync -v -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
       - uses: actions/upload-artifact@v2
+        name: Upload artifact
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
