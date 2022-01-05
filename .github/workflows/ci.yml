@@ -21,16 +21,17 @@ jobs:
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
-          echo "STORE_USER=$(stat -c %U /nix/store)" >> $GITHUB_ENV
           sudo chown $USER -R /nix/store
       - name: Cache /nix/store
         uses: actions/cache@v2
         with:
-          path: /nix/store
+          path: |
+            /nix/store
+            !/nix/store/*-nixpkgs-*
           key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - name: Restore /nix/store ownership
         run:
-          sudo chown -R ${{ env.STORE_USER }} /nix/store
+          sudo chown -R root /nix/store
       - run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
@@ -68,16 +69,17 @@ jobs:
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
-          echo "STORE_USER=$(stat -c %U /nix/store)" >> $GITHUB_ENV
           sudo chown $USER -R /nix/store
       - name: Cache /nix/store
         uses: actions/cache@v2
         with:
-          path: /nix/store
+          path: |
+            /nix/store
+            !/nix/store/*-nixpkgs-*
           key: build-${{ matrix.target.platform }}-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - name: Restore /nix/store ownership
         run:
-          sudo chown -R ${{ env.STORE_USER }} /nix/store
+          sudo chown -R root /nix/store
       # On aarch64 we install binfmt and use an impure nix to get it building.
       - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
         name: Install aarch64 binfmt
