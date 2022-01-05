@@ -22,7 +22,7 @@ jobs:
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
           ls -lah /nix/
-          sudo chown $USER -R /nix/store
+          sudo chown runner -R /nix/store
       - name: Cache /nix/store
         uses: actions/cache@v2
         with:
@@ -71,7 +71,7 @@ jobs:
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
           ls -lah /nix/
-          sudo chown $USER -R /nix/store
+          sudo chown runner -R /nix/store
       - name: Cache /nix/store
         uses: actions/cache@v2
         with:
