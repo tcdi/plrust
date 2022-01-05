@@ -19,12 +19,14 @@ jobs:
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
-          sudo chmod 777 -R /nix/store
+          sudo chown $USER -R /nix/store
       - name: Cache nix store
         uses: actions/cache@v2
         with:
           path: /nix/store
           key: check-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+      - run:
+          sudo chown -R nixbld /nix/store
       - run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
@@ -60,12 +62,14 @@ jobs:
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
 
-          sudo chmod 777 -R /nix/store
+          sudo chown -R $USER /nix/store
       - name: Cache nix store
         uses: actions/cache@v2
         with:
           path: /nix/store
           key: build-${{ matrix.target.platform }}-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+      - run:
+          sudo chown -R nixbld /nix/store
       # On aarch64 we install binfmt and use an impure nix to get it building.
       - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
         uses: docker/setup-qemu-action@v1
