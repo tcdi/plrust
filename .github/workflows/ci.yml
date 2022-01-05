@@ -18,6 +18,8 @@ jobs:
 
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
+
+          chmod o+w -R /nix/store
       - name: Cache nix store
         uses: actions/cache@v2
         with:
@@ -57,6 +59,8 @@ jobs:
 
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
+
+          chmod o+w -R /nix/store
       - name: Cache nix store
         uses: actions/cache@v2
         with:
