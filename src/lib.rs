@@ -113,6 +113,44 @@ mod tests {
     }
 
     #[pg_test]
+    #[search_path(@extschema@)]
+    fn test_update() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                String::from("booper").into()
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT update_me();
+        "#,
+        );
+        assert_eq!(retval, Some("booper"));
+
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                String::from("swooper").into()
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT update_me();
+        "#,
+        );
+        assert_eq!(retval, Some("swooper"));
+    }
+
+    #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
     fn test_deps() {
