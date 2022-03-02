@@ -135,17 +135,16 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
             r#"[package]
 name = "{crate_name}"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [features]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = "*"
-pgx-macros = "*"
+pgx = "0.4.0-beta.0"
 {dependencies}
 
 [profile.release]

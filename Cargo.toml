@@ -9,7 +9,7 @@ homepage = "https://github.com/zombodb/plrust/"
 repository = "https://github.com/zombodb/plrust/"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [features]
 default = ["pg12"]
@@ -23,14 +23,11 @@ pg_test = []
 sandboxed = []
 
 [dependencies]
-pgx = "0.2.6"
-pgx-macros = "0.2.6"
+pgx = "0.4.0-beta.0"
 libloading = "0.7.2"
 
 [dev-dependencies]
-pgx-tests = "0.2.6"
-pgx-utils = "0.2.6"
-pgx-pg-sys = "0.2.6"
+pgx-tests = "0.4.0-beta.0"
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
