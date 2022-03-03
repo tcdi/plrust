@@ -14,9 +14,9 @@ jobs:
       - name: Install Nix
         run: |
           mkdir --parents ~/nix/store
-          chmod 777 -R ~/nix/store
+          chmod 777 -R ~/nix
           sudo mkdir --parents /nix/store
-          sudo chmod 777 -R /nix/store
+          sudo chmod 777 -R /nix
           sudo mount --options bind ~/nix/store /nix/store
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
@@ -57,9 +57,9 @@ jobs:
       - name: Install Nix
         run: |
           mkdir --parents ~/nix/store
-          chmod 777 -R ~/nix/store
+          chmod 777 -R ~/nix
           sudo mkdir --parents /nix/store
-          sudo chmod 777 -R /nix/store
+          sudo chmod 777 -R /nix
           sudo mount --options bind ~/nix/store /nix/store
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
