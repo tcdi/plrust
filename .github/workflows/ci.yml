@@ -13,9 +13,9 @@ jobs:
         name: Checkout
       - name: Install Nix
         run: |
-          mkdir -p ~/nix/store
-          sudo mkdir -p /nix/store
-          sudo mount -o bind ~/nix/store /nix/store
+          mkdir --parents --mode=777 ~/nix/store
+          sudo mkdir --parents --mode=777 /nix/store
+          sudo mount --options bind ~/nix/store /nix/store
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
           
@@ -54,9 +54,9 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Nix
         run: |
-          mkdir -p ~/nix/store
-          sudo mkdir -p /nix/store
-          sudo mount -o bind ~/nix/store /nix/store
+          mkdir --parents --mode=777 ~/nix/store
+          sudo mkdir --parents --mode=777 /nix/store
+          sudo mount --options bind ~/nix/store /nix/store
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
 
