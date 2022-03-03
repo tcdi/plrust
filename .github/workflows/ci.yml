@@ -14,7 +14,7 @@ jobs:
       - name: Install Nix
         run: |
           mkdir -p ~/nix/store
-          mount -o bind ~/nix/store /nix/store
+          sudo mount -o bind ~/nix/store /nix/store
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
           
@@ -54,7 +54,7 @@ jobs:
       - name: Install Nix
         run: |
           mkdir -p ~/nix/store
-          mount -o bind ~/nix/store /nix/store
+          sudo mount -o bind ~/nix/store /nix/store
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
 
