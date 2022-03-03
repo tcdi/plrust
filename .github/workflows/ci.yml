@@ -15,11 +15,11 @@ jobs:
         run: |
           mkdir -p ~/nix/store
           chmod -R 777 ~/nix
-          ${{ matrix.target.os == 'macos-latest' && "echo \"/nix	$HOME/nix\" >> /etc/synthetic.conf" || 'true' }}
+          ${{ matrix.target.os == 'macos-latest' && 'echo "/nix	$HOME/nix" >> /etc/synthetic.conf' || 'true' }}
           ${{ matrix.target.os == 'macos-latest' && '/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util -t' || 'true' }}
           sudo mkdir -p /nix/store
-          ${{ matrix.target.os == 'ubuntu-latest' && "sudo chmod -R 777 /nix" || 'true' }}
-          ${{ matrix.target.os == 'ubuntu-latest' && "sudo mount --options bind ~/nix/store /nix/store" || 'true' }}
+          ${{ matrix.target.os == 'ubuntu-latest' && 'sudo chmod -R 777 /nix' || 'true' }}
+          ${{ matrix.target.os == 'ubuntu-latest' && 'sudo mount --options bind ~/nix/store /nix/store' || 'true' }}
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
           
@@ -60,11 +60,11 @@ jobs:
         run: |
           mkdir -p ~/nix/store
           chmod -R 777 ~/nix
-          ${{ matrix.target.os == 'macos-latest' && "echo \"/nix	$HOME/nix\" >> /etc/synthetic.conf" || 'true' }}
+          ${{ matrix.target.os == 'macos-latest' && 'echo "/nix	$HOME/nix" >> /etc/synthetic.conf' || 'true' }}
           ${{ matrix.target.os == 'macos-latest' && '/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util -t' || 'true' }}
           sudo mkdir -p /nix/store
-          ${{ matrix.target.os == 'ubuntu-latest' && "sudo chmod -R 777 /nix" || 'true' }}
-          ${{ matrix.target.os == 'ubuntu-latest' && "sudo mount --options bind ~/nix/store /nix/store" || 'true' }}
+          ${{ matrix.target.os == 'ubuntu-latest' && 'sudo chmod -R 777 /nix' || 'true' }}
+          ${{ matrix.target.os == 'ubuntu-latest' && 'sudo mount --options bind ~/nix/store /nix/store' || 'true' }}
 
           sh <(curl -L https://nixos.org/nix/install) --no-daemon
 
