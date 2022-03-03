@@ -13,9 +13,9 @@ jobs:
         name: Checkout
       - name: Install Nix
         run: |
-          mkdir --parents ~/nix/store
+          mkdir -p ~/nix/store
           chmod 777 -R ~/nix
-          sudo mkdir --parents /nix/store
+          sudo mkdir -p /nix/store
           sudo chmod 777 -R /nix
           sudo mount --options bind ~/nix/store /nix/store
 
@@ -56,9 +56,9 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Nix
         run: |
-          mkdir --parents ~/nix/store
+          mkdir -p ~/nix/store
           chmod 777 -R ~/nix
-          sudo mkdir --parents /nix/store
+          sudo mkdir -p /nix/store
           sudo chmod 777 -R /nix
           sudo mount --options bind ~/nix/store /nix/store
 
