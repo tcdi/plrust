@@ -13,7 +13,10 @@ jobs:
         name: Checkout
       - name: Install Nix
         run: |
-          sh <(curl -L https://nixos.org/nix/install) --daemon
+          mkdir -p ~/nix/store
+          mount -o bind ~/nix/store /nix/store
+
+          sh <(curl -L https://nixos.org/nix/install) --no-daemon
           
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
@@ -22,7 +25,7 @@ jobs:
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
       - name: Check extension
         run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          . ~/.nix-profile/etc/profile.d/nix.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
 
           nix flake show
@@ -50,8 +53,11 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Nix
         run: |
-          sh <(curl -L https://nixos.org/nix/install) ${{ matrix.target.platform == 'aarch64-linux' && '&& true' || '--daemon' }}
-          
+          mkdir -p ~/nix/store
+          mount -o bind ~/nix/store /nix/store
+
+          sh <(curl -L https://nixos.org/nix/install) --no-daemon
+
           mkdir -p ~/.config/nix/
           echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 
@@ -66,7 +72,7 @@ jobs:
           platforms: arm64
       - name: Build extension
         run: |
-          ${{ matrix.target.platform == 'aarch64-linux' && '. ~/.nix-profile/etc/profile.d/nix.sh' || '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' }}
+          . ~/.nix-profile/etc/profile.d/nix.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
           
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
@@ -81,7 +87,7 @@ jobs:
             --verbose
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
-          rsync -v -L out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
+          rsync -v -L -a out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
       - uses: actions/upload-artifact@v2
         name: Upload artifact
         with:
