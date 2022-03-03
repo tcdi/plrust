@@ -62,7 +62,7 @@ jobs:
           chmod -R 777 ~/nix
           ${{ matrix.target.os == 'macos-latest' && 'echo "/nix	$HOME/nix" | sudo tee -a /etc/synthetic.conf' || 'true' }}
           ${{ matrix.target.os == 'macos-latest' && 'sudo /System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util -t || true' || 'true' }}
-          sudo mkdir -p /nix/store
+          ${{ matrix.target.os == 'ubuntu-latest' && 'sudo mkdir -p /nix/store' || 'true' }}
           ${{ matrix.target.os == 'ubuntu-latest' && 'sudo chmod -R 777 /nix' || 'true' }}
           ${{ matrix.target.os == 'ubuntu-latest' && 'sudo mount --options bind ~/nix/store /nix/store' || 'true' }}
 
