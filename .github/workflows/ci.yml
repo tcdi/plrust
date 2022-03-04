@@ -76,19 +76,22 @@ jobs:
             ~/.config/nix
             ~/.config/nixpkgs
           key: ${{ matrix.target.platform }}-nix-v0
+      - name: Get extension name
+        run: |
+          export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
+          echo "EXTENSION=${EXTENSION}" >> $GITHUB_ENV
       - name: Restore nix store cache
         if: hashFiles('~/nix-store-cache') != ''
         run: |
+          sudo systemctl start nix-daemon
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
           nix copy --eval-store local --from file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
+          sudo systemctl start nix-daemon
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
-          
-          export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
-          echo "EXTENSION=${EXTENSION}" >> $GITHUB_ENV
 
           nix flake show
           nix build \
@@ -110,8 +113,8 @@ jobs:
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
       - name: Create nix store cache
         run: |
+          sudo systemctl start nix-daemon
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
           
           nix copy --eval-store local --to file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
