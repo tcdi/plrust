@@ -92,8 +92,9 @@ jobs:
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
-          OUT_PATH=$HOME/nix-store-cache/$(readlink out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug)
-          rsync -v -L -a out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* $OUT_PATH
+          rsync -v -L -a \
+            out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* \
+            out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
       - uses: actions/upload-artifact@v2
         name: Upload artifact
         with:
