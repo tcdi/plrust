@@ -84,15 +84,18 @@ jobs:
 
           nix flake show
           nix build \
-             ${{ matrix.target.os == 'ubuntu-latest' && '--store local?root=$HOME/nix-store-cache' || '' }} \
+            ${{ matrix.target.os == 'ubuntu-latest' && '--store local?root=$HOME/nix-store-cache' || '' }} \
+            ${{ matrix.target.os == 'ubuntu-latest' && '--eval-store local' || '' }} \
             --option system ${{ matrix.target.platform }} \
-            .#${EXTENSION}_${{ matrix.pg_version }}_debug \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
-            --verbose
+            --verbose \
+            --jobs 2 \
+            .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
-          rsync -v -L -a out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
+          OUT_PATH=$HOME/nix-store-cache/$(readlink out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug)
+          rsync -v -L -a out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* $OUT_PATH
       - uses: actions/upload-artifact@v2
         name: Upload artifact
         with:
