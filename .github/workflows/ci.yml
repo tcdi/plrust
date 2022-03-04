@@ -101,6 +101,11 @@ jobs:
             --verbose \
             -j2 \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
+          nix copy \
+            --eval-store local \
+            --to file://$HOME/nix-store-cache \
+            --derivation \
+            .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
           sudo rsync -v -L -a \
@@ -111,10 +116,3 @@ jobs:
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
-      - name: Create nix store cache
-        run: |
-          sudo nix-daemon &
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          
-          nix copy --eval-store local --to file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
-          
