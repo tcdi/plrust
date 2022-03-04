@@ -90,7 +90,7 @@ jobs:
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
             --verbose \
-            --jobs 2 \
+            -j2 \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
