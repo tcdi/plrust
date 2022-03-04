@@ -110,6 +110,8 @@ jobs:
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
       - name: Create nix store cache
         run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
+          
           nix copy --eval-store local --to file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
