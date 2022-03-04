@@ -83,13 +83,13 @@ jobs:
       - name: Restore nix store cache
         if: hashFiles('~/nix-store-cache') != ''
         run: |
-          sudo systemctl start nix-daemon
+          sudo nix-daemon &
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
           nix copy --eval-store local --from file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
-          sudo systemctl start nix-daemon
+          sudo nix-daemon &
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
 
@@ -113,7 +113,7 @@ jobs:
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
       - name: Create nix store cache
         run: |
-          sudo systemctl start nix-daemon
+          sudo nix-daemon &
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           
           nix copy --eval-store local --to file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
