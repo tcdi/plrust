@@ -77,8 +77,10 @@ jobs:
             ~/.config/nixpkgs
           key: ${{ matrix.target.platform }}-nix-v0
       - name: Restore nix store cache
-        if: hashFiles('~/nix-store-cache') == ''
+        if: hashFiles('~/nix-store-cache') != ''
         run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+
           nix copy --eval-store local --from file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
