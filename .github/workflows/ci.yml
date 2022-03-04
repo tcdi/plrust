@@ -61,12 +61,12 @@ jobs:
 
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
-    - name: Nix Store Cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/nix-store-cache
-        key: ${{ matrix.target.platform }}-nix-store-cache-v0
+      - name: Nix Store Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/nix-store-cache
+          key: ${{ matrix.target.platform }}-nix-store-cache-v0
       # # On aarch64 we install binfmt and use an impure nix to get it building.
       # - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
       #   name: Install aarch64 binfmt
