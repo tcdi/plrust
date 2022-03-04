@@ -84,8 +84,6 @@ jobs:
 
           nix flake show
           nix build \
-            ${{ matrix.target.os == 'ubuntu-latest' && '--store local?root=$HOME/nix-store-cache' || '' }} \
-            ${{ matrix.target.os == 'ubuntu-latest' && '--eval-store local' || '' }} \
             --option system ${{ matrix.target.platform }} \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
