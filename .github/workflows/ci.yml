@@ -26,7 +26,11 @@ jobs:
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
 
           nix flake show
-          nix flake check --print-build-logs --no-build --verbose
+          nix flake check \
+            --store local?root=~/nix-store/cache \
+            --print-build-logs \
+            --no-build \
+            --verbose
           
   build:
     needs: check
@@ -57,6 +61,12 @@ jobs:
 
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
+    - name: Nix Store Cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/nix-store-cache
+        key: ${{ matrix.target.platform }}-nix-store-cache-v0
       # # On aarch64 we install binfmt and use an impure nix to get it building.
       # - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
       #   name: Install aarch64 binfmt
@@ -74,6 +84,7 @@ jobs:
 
           nix flake show
           nix build \
+            --store local?root=~/nix-store/cache \
             --option system ${{ matrix.target.platform }} \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
@@ -87,3 +98,6 @@ jobs:
         with:
           name: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
           path: ${{ matrix.target.platform }}.${{ env.EXTENSION }}_${{ matrix.pg_version }}_debug
+      - name: Prepare cache
+        run: |
+          rsync -v -L -a out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/
