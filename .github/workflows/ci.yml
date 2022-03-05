@@ -86,8 +86,9 @@ jobs:
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
           nix copy \
-            --from $HOME/nix-store-cache \
             -j2 \
+            --no-check-sigs \
+            --from $HOME/nix-store-cache \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
@@ -104,6 +105,7 @@ jobs:
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           nix copy \
             -j2 \
+            --no-check-sigs \
             --to $HOME/nix-store-cache \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
