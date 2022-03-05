@@ -85,7 +85,10 @@ jobs:
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
-          nix copy --eval-store local --from file://$HOME/nix-store-cache --derivation .#${EXTENSION}_${{ matrix.pg_version }}_debug
+          nix copy \
+            --from $HOME/nix-store-cache \
+            -j2 \
+            .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -100,9 +103,8 @@ jobs:
             -j2 \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           nix copy \
-            --eval-store local \
+            -j2 \
             --to file://$HOME/nix-store-cache \
-            --derivation \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
