@@ -104,7 +104,7 @@ jobs:
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           nix copy \
             -j2 \
-            --to file://$HOME/nix-store-cache \
+            --to $HOME/nix-store-cache \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
