@@ -69,7 +69,7 @@ jobs:
       #     image: tonistiigi/binfmt:latest
       #     platforms: arm64
       - name: Fetch nix store cache
-        id: fetch-nix-store-cache
+        if: ${{ matrix.target.os == 'ubuntu-latest' }} 
         uses: actions/cache@v2
         with:
           path: |
@@ -81,19 +81,6 @@ jobs:
         run: |
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
           echo "EXTENSION=${EXTENSION}" >> $GITHUB_ENV
-      - name: Restore nix store cache
-        if: steps.fetch-nix-store-cache.outputs.cache-hit == 'true'
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-
-          nix copy \
-            -j2 \
-            --no-check-sigs \
-            --print-build-logs \
-            --store local?root=$HOME/nix-store-cache \
-            --eval-store local?root=$HOME/nix-store-cache \
-            --from file://$HOME/nix-store-cache \
-            .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -101,17 +88,13 @@ jobs:
 
           nix flake show
           nix build \
+            ${{ matrix.target.os == 'ubuntu-latest' && '--eval-store local?root=$HOME/nix-store-cache' || '' }} \ \
+            ${{ matrix.target.os == 'ubuntu-latest' && '--store local?root=$HOME/nix-store-cache' || '' }} \
             --option system ${{ matrix.target.platform }} \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
             --verbose \
             -j2 \
-            .#${EXTENSION}_${{ matrix.pg_version }}_debug
-          nix copy \
-            -j2 \
-            --no-check-sigs \
-            --print-build-logs \
-            --to file://$HOME/nix-store-cache \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
