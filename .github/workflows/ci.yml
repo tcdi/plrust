@@ -88,7 +88,10 @@ jobs:
           nix copy \
             -j2 \
             --no-check-sigs \
-            --from $HOME/nix-store-cache \
+            --print-build-logs \
+            --store local?root=$HOME/nix-store-cache \
+            --eval-store local?root=$HOME/nix-store-cache \
+            --from file://$HOME/nix-store-cache \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
       - name: Build extension
         run: |
@@ -106,7 +109,8 @@ jobs:
           nix copy \
             -j2 \
             --no-check-sigs \
-            --to $HOME/nix-store-cache \
+            --print-build-logs \
+            --to file://$HOME/nix-store-cache \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
