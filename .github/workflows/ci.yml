@@ -97,9 +97,10 @@ jobs:
             -j2 \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
+          EXTENSION_OUT_DIR=$(readlink out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug)
           mkdir -v -p ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
           sudo rsync -v -L -a \
-            out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug/* \
+            ${{ matrix.target.os == 'ubuntu-latest' && '$HOME/nix-store-cache' || '' }}$EXTENSION_OUT_DIR/* \
             ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
       - uses: actions/upload-artifact@v2
         name: Upload artifact
