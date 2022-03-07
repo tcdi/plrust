@@ -69,6 +69,7 @@ jobs:
       #     image: tonistiigi/binfmt:latest
       #     platforms: arm64
       - name: Fetch nix store cache
+        id: fetch-nix-store-cache
         uses: actions/cache@v2
         with:
           path: |
@@ -81,7 +82,7 @@ jobs:
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
           echo "EXTENSION=${EXTENSION}" >> $GITHUB_ENV
       - name: Restore nix store cache
-        if: hashFiles('~/nix-store-cache') != ''
+        if: steps.fetch-nix-store-cache.outputs.cache-hit == 'true'
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
