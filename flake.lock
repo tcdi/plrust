@@ -117,11 +117,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1646689776,
-        "narHash": "sha256-j5BxLGwpPX5xfSlLimr8FZsNd3vCbcX/N5kpS3SVFpI=",
+        "lastModified": 1646690864,
+        "narHash": "sha256-lggSkompOYk2Rses9/0DiMag1sqC9a3xgJEnm2JWem0=",
         "owner": "zombodb",
         "repo": "pgx",
-        "rev": "25fb4915b18e956c3e4d8ac45881f6acd7ca1038",
+        "rev": "f83c0fec2b96f669b8375f8609bea85fa0958194",
         "type": "github"
       },
       "original": {
