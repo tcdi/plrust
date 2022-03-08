@@ -3,9 +3,7 @@ use crate::gucs;
 use libloading::{Library, Symbol};
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::process::Command;
+use std::{collections::HashMap, path::PathBuf, process::Command};
 
 static mut LOADED_SYMBOLS: Option<
     HashMap<
