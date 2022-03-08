@@ -30,7 +30,8 @@
       packages = pgx.lib.forAllSystems (system:
         let
           pkgs = pgx.lib.nixpkgsWithOverlays { inherit system nixpkgs; extraOverlays = [ self.overlay ]; };
-        in {
+        in
+        {
           "${cargoToml.package.name}_10" = pkgs."${cargoToml.package.name}_10";
           "${cargoToml.package.name}_10_debug" = pkgs."${cargoToml.package.name}_10_debug";
           "${cargoToml.package.name}_11" = pkgs."${cargoToml.package.name}_11";
@@ -109,7 +110,7 @@
           release = false;
           additionalFeatures = [ "sandboxed" ];
         };
-        
+
       };
 
       nixosModule = { config, pkgs, lib, ... }:
