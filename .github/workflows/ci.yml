@@ -69,6 +69,7 @@ jobs:
       #     image: tonistiigi/binfmt:latest
       #     platforms: arm64
       - name: Fetch nix store cache
+        id: nix-store-cache
         if: ${{ matrix.target.os == 'ubuntu-latest' }} 
         uses: actions/cache@v2
         with:
@@ -76,7 +77,7 @@ jobs:
             ~/nix-store-cache
             ~/.config/nix
             ~/.config/nixpkgs
-          key: ${{ matrix.target.platform }}-${{ matrix.pg_version }}-nix-v4
+          key: ${{ matrix.target.platform }}-${{ matrix.pg_version }}-nix-v5
       - name: Get extension name
         run: |
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
@@ -102,6 +103,8 @@ jobs:
           sudo rsync -v -L -a \
             ${{ matrix.target.os == 'ubuntu-latest' && '$HOME/nix-store-cache' || '' }}$EXTENSION_OUT_DIR/* \
             ${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug
+
+          ${{ matrix.target.os == 'ubuntu-latest' && steps.nix-store-cache.outputs.cache-hit != 'true' && 'nix store optimise --store local?root=$HOME/nix-store-cache' || '' }} \
       - uses: actions/upload-artifact@v2
         name: Upload artifact
         with:
