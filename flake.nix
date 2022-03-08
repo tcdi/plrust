@@ -25,7 +25,7 @@
         let
           pkgs = pgx.lib.nixpkgsWithOverlays { inherit system nixpkgs; extraOverlays = [ self.overlay ]; };
         in
-        pkgs."${cargoToml.package.name}");
+        pkgs."${cargoToml.package.name}_11");
 
       packages = pgx.lib.forAllSystems (system:
         let
