@@ -117,17 +117,18 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1646693281,
-        "narHash": "sha256-nsFV84YTiu9RPclHZ25KV8mE5Y2SvBmtz0cas99F/Hs=",
-        "ref": "nix-non-singlestep",
-        "rev": "dde451ac7f9b184a3eca3105cd4a9c07eb94f954",
-        "revCount": 1051,
-        "type": "git",
-        "url": "file:///home/ana/git/zombodb/pgx"
+        "lastModified": 1646699395,
+        "narHash": "sha256-dmadjFy+IOWInYNFQ/LuYScSPC+aGiPsBYNVRvtFmkQ=",
+        "owner": "zombodb",
+        "repo": "pgx",
+        "rev": "dd406c6121aff5947e031c9e5d4dc9cd5adbdd05",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/ana/git/zombodb/pgx"
+        "owner": "zombodb",
+        "ref": "nix-non-singlestep",
+        "repo": "pgx",
+        "type": "github"
       }
     },
     "root": {
