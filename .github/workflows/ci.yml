@@ -76,7 +76,7 @@ jobs:
             ~/nix-store-cache
             ~/.config/nix
             ~/.config/nixpkgs
-          key: ${{ matrix.target.platform }}-${{ matrix.pg_version }}-nix-v3
+          key: ${{ matrix.target.platform }}-${{ matrix.pg_version }}-nix-v4
       - name: Get extension name
         run: |
           export EXTENSION=$(grep 'name = ".*"' Cargo.toml | sed 's/name = "\(.*\)"$/\1/')
