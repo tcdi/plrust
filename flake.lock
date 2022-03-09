@@ -118,17 +118,13 @@
       },
       "locked": {
         "lastModified": 1646763204,
-        "narHash": "sha256-QPYlVS0vLJ+DkhUUfEdoxTMBS0CEHTBfKHCWnlOBVPc=",
-        "owner": "zombodb",
-        "repo": "pgx",
-        "rev": "779b328f7d09a1aa438884afbd357e84b9e3a495",
-        "type": "github"
+        "narHash": "sha256-aEyh/0R9rzv7oUcSZ8dD99d6P79jyLwFchPNZwOvICE=",
+        "type": "git",
+        "url": "file:///Users/hoverbear/git/pgx"
       },
       "original": {
-        "owner": "zombodb",
-        "ref": "nix-non-singlestep",
-        "repo": "pgx",
-        "type": "github"
+        "type": "git",
+        "url": "file:///Users/hoverbear/git/pgx"
       }
     },
     "root": {
