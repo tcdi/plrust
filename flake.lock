@@ -117,14 +117,18 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1646763204,
+        "lastModified": 1646839761,
         "narHash": "sha256-aEyh/0R9rzv7oUcSZ8dD99d6P79jyLwFchPNZwOvICE=",
-        "type": "git",
-        "url": "file:///Users/hoverbear/git/pgx"
+        "owner": "zombodb",
+        "repo": "pgx",
+        "rev": "e6855661fc500a9dcf511c652d09d3d02934667a",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///Users/hoverbear/git/pgx"
+        "owner": "zombodb",
+        "ref": "nix-non-singlestep",
+        "repo": "pgx",
+        "type": "github"
       }
     },
     "root": {
