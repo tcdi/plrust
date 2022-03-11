@@ -37,17 +37,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1635165013,
-        "narHash": "sha256-o/BdVjNwcB6jOmzZjOH703BesSkkS5O7ej3xhyO8hAY=",
-        "owner": "hercules-ci",
-        "repo": "gitignore.nix",
-        "rev": "5b9e0ff9d3b551234b4f3eb3983744fa354b17f1",
-        "type": "github"
+        "lastModified": 1646480205,
+        "narHash": "sha256-kekOlTlu45vuK2L9nq8iVN17V3sB0WWPqTTW3a2SQG0=",
+        "ref": "master",
+        "rev": "bff2832ec341cf30acb3a4d3e2e7f1f7b590116a",
+        "revCount": 78,
+        "type": "git",
+        "url": "https://github.com/hercules-ci/gitignore.nix"
       },
       "original": {
-        "owner": "hercules-ci",
-        "repo": "gitignore.nix",
-        "type": "github"
+        "type": "git",
+        "url": "https://github.com/hercules-ci/gitignore.nix"
       }
     },
     "gitignore_2": {
@@ -80,24 +80,24 @@
       "locked": {
         "lastModified": 1639947939,
         "narHash": "sha256-pGsM8haJadVP80GFq4xhnSpNitYNQpaXk4cnA796Cso=",
-        "owner": "nix-community",
-        "repo": "naersk",
+        "ref": "master",
         "rev": "2fc8ce9d3c025d59fee349c1f80be9785049d653",
-        "type": "github"
+        "revCount": 282,
+        "type": "git",
+        "url": "https://github.com/nix-community/naersk"
       },
       "original": {
-        "owner": "nix-community",
-        "repo": "naersk",
-        "type": "github"
+        "type": "git",
+        "url": "https://github.com/nix-community/naersk"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1646091577,
-        "narHash": "sha256-o3R0i84B6LmZtbo3k2T4lwuPIVB2ZjTw+MqV2r2dnAU=",
+        "lastModified": 1646506091,
+        "narHash": "sha256-sWNAJE2m+HOh1jtXlHcnhxsj6/sXrHgbqVNcVRlveK4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6cb23bdec767caa938c3c17bfd2a1dbddce4427f",
+        "rev": "3e644bd62489b516292c816f70bf0052c693b3c7",
         "type": "github"
       },
       "original": {
@@ -117,14 +117,18 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1646763204,
+        "lastModified": 1646839761,
         "narHash": "sha256-aEyh/0R9rzv7oUcSZ8dD99d6P79jyLwFchPNZwOvICE=",
+        "ref": "nix-non-singlestep",
+        "rev": "e6855661fc500a9dcf511c652d09d3d02934667a",
+        "revCount": 1062,
         "type": "git",
-        "url": "file:///Users/hoverbear/git/pgx"
+        "url": "https://github.com/zombodb/pgx"
       },
       "original": {
+        "ref": "nix-non-singlestep",
         "type": "git",
-        "url": "file:///Users/hoverbear/git/pgx"
+        "url": "https://github.com/zombodb/pgx"
       }
     },
     "root": {
@@ -166,17 +170,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1646187864,
-        "narHash": "sha256-mGO/X5IHUNdh50aw/2zuPDiXEFbf+HHryK8bIODPpyo=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "90a7228c33be0ef7f8a10fafa83ced9aaa09afa4",
-        "type": "github"
+        "lastModified": 1646965545,
+        "narHash": "sha256-TnOdd6d+5QeF2JkCvpEi7JbRampCZXCBUraukJI743U=",
+        "ref": "master",
+        "rev": "f540e0001088700f72a3b2a178c9d8e70616a4a9",
+        "revCount": 545,
+        "type": "git",
+        "url": "https://github.com/oxalica/rust-overlay"
       },
       "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
+        "type": "git",
+        "url": "https://github.com/oxalica/rust-overlay"
       }
     }
   },
