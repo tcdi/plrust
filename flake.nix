@@ -3,13 +3,13 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.url = "git+https://github.com/oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-    naersk.url = "github:nix-community/naersk";
+    naersk.url = "git+https://github.com/nix-community/naersk";
     naersk.inputs.nixpkgs.follows = "nixpkgs";
-    gitignore.url = "github:hercules-ci/gitignore.nix";
+    gitignore.url = "git+https://github.com/hercules-ci/gitignore.nix";
     gitignore.inputs.nixpkgs.follows = "nixpkgs";
-    pgx.url = "github:zombodb/pgx/nix-non-singlestep";
+    pgx.url = "git+https://github.com/zombodb/pgx?ref=nix-non-singlestep";
     pgx.inputs.nixpkgs.follows = "nixpkgs";
     pgx.inputs.naersk.follows = "naersk";
   };
