@@ -35,8 +35,8 @@ jobs:
   build:
     # needs: check
     strategy:
+      fail-fast: false
       matrix:
-        fail-fast: false
         pg_version:
           - 10
           - 11
