@@ -9,8 +9,7 @@
     naersk.inputs.nixpkgs.follows = "nixpkgs";
     gitignore.url = "git+https://github.com/hercules-ci/gitignore.nix";
     gitignore.inputs.nixpkgs.follows = "nixpkgs";
-    #pgx.url = "git+https://github.com/zombodb/pgx?ref=nix-non-singlestep";
-    pgx.url = "/home/ana/git/zombodb/pgx";
+    pgx.url = "git+https://github.com/zombodb/pgx?ref=nix-non-singlestep";
     pgx.inputs.nixpkgs.follows = "nixpkgs";
     pgx.inputs.naersk.follows = "naersk";
   };
