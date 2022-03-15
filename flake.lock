@@ -118,17 +118,13 @@
       },
       "locked": {
         "lastModified": 1647365574,
-        "narHash": "sha256-aB0PDcPLYe/VHAJSwMFbDiw1o70nYn0mqdKGK2J1Xbg=",
-        "ref": "nix-non-singlestep",
-        "rev": "1cadb389c6367bc63afd3baee178efb60270cfd4",
-        "revCount": 1078,
+        "narHash": "sha256-gUKF9ABHm49P5Wk8FVY9AOkUXXkFuOqD/IooNqSx6xU=",
         "type": "git",
-        "url": "https://github.com/zombodb/pgx"
+        "url": "file:///home/ana/git/zombodb/pgx"
       },
       "original": {
-        "ref": "nix-non-singlestep",
         "type": "git",
-        "url": "https://github.com/zombodb/pgx"
+        "url": "file:///home/ana/git/zombodb/pgx"
       }
     },
     "root": {
