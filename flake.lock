@@ -117,11 +117,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1647364890,
-        "narHash": "sha256-eWmpAZyz1Vr7sKX8L4LYIaAuxFibx5/rwSl+cyLIJGA=",
+        "lastModified": 1647365574,
+        "narHash": "sha256-aB0PDcPLYe/VHAJSwMFbDiw1o70nYn0mqdKGK2J1Xbg=",
         "ref": "nix-non-singlestep",
-        "rev": "6765d7bd0c92304203456cbc98bcab122a890bd5",
-        "revCount": 1077,
+        "rev": "1cadb389c6367bc63afd3baee178efb60270cfd4",
+        "revCount": 1078,
         "type": "git",
         "url": "https://github.com/zombodb/pgx"
       },
