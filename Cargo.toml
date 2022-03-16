@@ -23,11 +23,11 @@ pg_test = []
 sandboxed = []
 
 [dependencies]
-pgx = "0.4.0-beta.0"
+pgx = "0.4.0"
 libloading = "0.7.2"
 
 [dev-dependencies]
-pgx-tests = "0.4.0-beta.0"
+pgx-tests = "0.4.0"
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
