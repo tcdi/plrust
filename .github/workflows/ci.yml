@@ -1,39 +1,7 @@
 on: [push]
 
 jobs:
-  # check:
-  #   strategy:
-  #     matrix:
-  #       target:
-  #         - os: ubuntu-latest
-  #           target: x86_64-linux
-  #   runs-on: ${{ matrix.target.os }}
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       name: Checkout
-  #     - name: Install Nix
-  #       run: |
-  #         sh <(curl -L https://nixos.org/nix/install) --daemon
-          
-  #         mkdir -p ~/.config/nix/
-  #         echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
-
-  #         mkdir -p ~/.config/nixpkgs/
-  #         echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
-  #     - name: Check extension
-  #       run: |
-  #         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-  #         export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
-
-  #         nix flake show
-  #         nix flake check \
-  #           --store local?root=~/nix-store-cache \
-  #           --print-build-logs \
-  #           --no-build \
-  #           --verbose
-          
   build:
-    # needs: check
     strategy:
       fail-fast: false
       matrix:
@@ -42,13 +10,12 @@ jobs:
           - 11
           - 12
           - 13
+          - 14
         target:
           - os: ubuntu-latest
             platform: x86_64-linux
           - os: macos-latest
             platform: x86_64-darwin
-          # - os: ubuntu-latest
-          #   platform: aarch64-linux
     runs-on: ${{ matrix.target.os }}
     steps:
       - name: Checkout
@@ -62,13 +29,6 @@ jobs:
 
           mkdir -p ~/.config/nixpkgs/
           echo "{ allowUnsupportedSystem = true; }" > ~/.config/nixpkgs/config.nix
-      # # On aarch64 we install binfmt and use an impure nix to get it building.
-      # - if: ${{ matrix.target.platform == 'aarch64-linux' }} 
-      #   name: Install aarch64 binfmt
-      #   uses: docker/setup-qemu-action@v1
-      #   with:
-      #     image: tonistiigi/binfmt:latest
-      #     platforms: arm64
       - name: Fetch nix store cache
         id: nix-store-cache
         if: ${{ matrix.target.os == 'ubuntu-latest' }} 
