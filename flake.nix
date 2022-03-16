@@ -3,13 +3,13 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.url = "git+https://github.com/oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-    naersk.url = "github:nix-community/naersk";
+    naersk.url = "git+https://github.com/nix-community/naersk";
     naersk.inputs.nixpkgs.follows = "nixpkgs";
-    gitignore.url = "github:hercules-ci/gitignore.nix";
+    gitignore.url = "git+https://github.com/hercules-ci/gitignore.nix";
     gitignore.inputs.nixpkgs.follows = "nixpkgs";
-    pgx.url = "github:zombodb/pgx/example-paths-inside-sandbox";
+    pgx.url = "git+https://github.com/zombodb/pgx?ref=develop";
     pgx.inputs.nixpkgs.follows = "nixpkgs";
     pgx.inputs.naersk.follows = "naersk";
   };
@@ -25,62 +25,93 @@
         let
           pkgs = pgx.lib.nixpkgsWithOverlays { inherit system nixpkgs; extraOverlays = [ self.overlay ]; };
         in
-        pkgs."${cargoToml.package.name}");
+        pkgs."${cargoToml.package.name}_11");
 
       packages = pgx.lib.forAllSystems (system:
         let
           pkgs = pgx.lib.nixpkgsWithOverlays { inherit system nixpkgs; extraOverlays = [ self.overlay ]; };
         in
-        (nixpkgs.lib.foldl'
-          (x: y: x // y)
-          { }
-          (map
-            (version:
-              let versionString = builtins.toString version; in
-              {
-                "${cargoToml.package.name}_${versionString}" = pkgs."${cargoToml.package.name}_${versionString}";
-                "${cargoToml.package.name}_${versionString}_debug" = pkgs."${cargoToml.package.name}_${versionString}_debug";
-              })
-            pgx.lib.supportedPostgresVersions)
-        ));
+        {
+          "${cargoToml.package.name}_10" = pkgs."${cargoToml.package.name}_10";
+          "${cargoToml.package.name}_10_debug" = pkgs."${cargoToml.package.name}_10_debug";
+          "${cargoToml.package.name}_11" = pkgs."${cargoToml.package.name}_11";
+          "${cargoToml.package.name}_11_debug" = pkgs."${cargoToml.package.name}_11_debug";
+          "${cargoToml.package.name}_12" = pkgs."${cargoToml.package.name}_12";
+          "${cargoToml.package.name}_12_debug" = pkgs."${cargoToml.package.name}_12_debug";
+          "${cargoToml.package.name}_13" = pkgs."${cargoToml.package.name}_13";
+          "${cargoToml.package.name}_13_debug" = pkgs."${cargoToml.package.name}_13_debug";
+          "${cargoToml.package.name}_14" = pkgs."${cargoToml.package.name}_14";
+          "${cargoToml.package.name}_14_debug" = pkgs."${cargoToml.package.name}_14_debug";
+        });
 
       overlay = final: prev: {
-        "${cargoToml.package.name}" = pgx.lib.buildPgxExtension {
+        "${cargoToml.package.name}_10" = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
-          pgxPostgresVersion = 11;
+          targetPostgres = final.postgresql_10;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_debug" = pgx.lib.buildPgxExtension {
+        "${cargoToml.package.name}_10_debug" = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
-          pgxPostgresVersion = 11;
+          targetPostgres = final.postgresql_10;
           release = false;
           additionalFeatures = [ "sandboxed" ];
         };
-      } // (nixpkgs.lib.foldl'
-        (x: y: x // y)
-        { }
-        (map
-          (version:
-            let versionString = builtins.toString version; in
-            {
-              "${cargoToml.package.name}_${versionString}" = pgx.lib.buildPgxExtension {
-                pkgs = final;
-                source = ./.;
-                pgxPostgresVersion = version;
-                additionalFeatures = [ "sandboxed" ];
-              };
-              "${cargoToml.package.name}_${versionString}_debug" = pgx.lib.buildPgxExtension {
-                pkgs = final;
-                source = ./.;
-                pgxPostgresVersion = version;
-                release = false;
-                additionalFeatures = [ "sandboxed" ];
-              };
-            })
-          pgx.lib.supportedPostgresVersions)
-      );
+        "${cargoToml.package.name}_11" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_11;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_11_debug" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_11;
+          release = false;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_12" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_12;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_12_debug" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_12;
+          release = false;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_13" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_13;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_13_debug" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_13;
+          release = false;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_14" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_14;
+          additionalFeatures = [ "sandboxed" ];
+        };
+        "${cargoToml.package.name}_14_debug" = pgx.lib.buildPgxExtension {
+          pkgs = final;
+          source = ./.;
+          targetPostgres = final.postgresql_14;
+          release = false;
+          additionalFeatures = [ "sandboxed" ];
+        };
+
+      };
 
       nixosModule = { config, pkgs, lib, ... }:
         let
