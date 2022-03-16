@@ -5,3 +5,4 @@
 **/*.rs.bk
 sql/*.generated.sql
 .direnv
+scratch
