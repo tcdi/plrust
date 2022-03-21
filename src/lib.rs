@@ -88,7 +88,8 @@ mod tests {
     use super::*;
 
     // Bootstrap a testing table for non-immutable functions
-    extension_sql!(r#"   
+    extension_sql!(
+        r#"   
         CREATE TABLE contributors_pets (
             id serial8 not null primary key,
             name text
@@ -163,7 +164,7 @@ mod tests {
         );
         assert_eq!(retval, Some("swooper"));
     }
-    
+
     #[pg_test]
     #[search_path(@extschema@)]
     fn test_spi() {
@@ -181,7 +182,8 @@ mod tests {
         let retval: Option<String> = Spi::get_one(
             r#"
             SELECT random_contributor_pet();
-        "#);
+        "#,
+        );
         assert!(retval.is_some());
 
         let specific_definition = r#"
@@ -201,7 +203,8 @@ mod tests {
         let retval: Option<i32> = Spi::get_one(
             r#"
             SELECT contributor_pet('Nami');
-        "#);
+        "#,
+        );
         assert_eq!(retval, Some(2));
     }
 
