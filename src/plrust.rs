@@ -4,23 +4,20 @@ use libloading::{Library, Symbol};
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
 use std::{collections::HashMap, path::PathBuf, process::Command};
+use once_cell::unsync::Lazy;
 
-static mut LOADED_SYMBOLS: Option<
-    HashMap<
-        pg_sys::Oid,
-        (
-            Library,
-            Option<
-                Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
-            >,
-        ),
-    >,
-> = None;
+static mut LOADED_SYMBOLS: Lazy<HashMap<
+    pg_sys::Oid,
+    (
+        Library,
+        Option<
+            Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
+        >,
+    ),
+>> = Lazy::new(|| Default::default());
 
 pub(crate) fn init() {
-    unsafe {
-        LOADED_SYMBOLS = Some(HashMap::new());
-    }
+    ()
 }
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -103,15 +100,13 @@ mod generation {
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    LOADED_SYMBOLS.as_mut().unwrap().remove(&fn_oid);
+    LOADED_SYMBOLS.remove(&fn_oid);
 }
 
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
 ) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
     let (library, symbol) = LOADED_SYMBOLS
-        .as_mut()
-        .unwrap()
         .entry(fn_oid)
         .or_insert_with(|| {
             let mut shared_library = gucs::work_dir();
