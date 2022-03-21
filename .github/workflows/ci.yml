@@ -49,13 +49,16 @@ jobs:
           export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
 
           nix flake show
+          nix flake check \
+            ${{ matrix.target.os == 'ubuntu-latest' && '--eval-store local?root=$HOME/nix-store-cache' || '' }} \
+            ${{ matrix.target.os == 'ubuntu-latest' && '--store local?root=$HOME/nix-store-cache' || '' }} \
+            --option system ${{ matrix.target.platform }}
           nix build \
             ${{ matrix.target.os == 'ubuntu-latest' && '--eval-store local?root=$HOME/nix-store-cache' || '' }} \
             ${{ matrix.target.os == 'ubuntu-latest' && '--store local?root=$HOME/nix-store-cache' || '' }} \
             --option system ${{ matrix.target.platform }} \
             --out-link out-${{ matrix.target.platform }}.${EXTENSION}_${{ matrix.pg_version }}_debug \
             --print-build-logs \
-            --verbose \
             -j2 \
             .#${EXTENSION}_${{ matrix.pg_version }}_debug
           
