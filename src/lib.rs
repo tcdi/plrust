@@ -87,6 +87,20 @@ COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
 mod tests {
     use super::*;
 
+    // Bootstrap a testing table for non-immutable functions
+    extension_sql!(r#"   
+        CREATE TABLE contributors_pets (
+            id serial8 not null primary key,
+            name text
+        );
+        INSERT INTO contributors_pets (name) VALUES ('Brandy');
+        INSERT INTO contributors_pets (name) VALUES ('Nami');
+        INSERT INTO contributors_pets (name) VALUES ('Sally');
+        INSERT INTO contributors_pets (name) VALUES ('Anchovy');
+    "#,
+        name = "create_contributors_pets",
+    );
+
     #[pg_test]
     #[search_path(@extschema@)]
     fn test_basic() {
@@ -148,6 +162,47 @@ mod tests {
         "#,
         );
         assert_eq!(retval, Some("swooper"));
+    }
+    
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn test_spi() {
+        let random_definition = r#"
+            CREATE OR REPLACE FUNCTION random_contributor_pet() RETURNS TEXT
+                STRICT
+                LANGUAGE PLRUST AS
+            $$
+                let name = Spi::get_one("SELECT name FROM contributors_pets ORDER BY random() LIMIT 1");
+                name
+            $$;
+        "#;
+        Spi::run(random_definition);
+
+        let retval: Option<String> = Spi::get_one(
+            r#"
+            SELECT random_contributor_pet();
+        "#);
+        assert!(retval.is_some());
+
+        let specific_definition = r#"
+            CREATE OR REPLACE FUNCTION contributor_pet(name TEXT) RETURNS INT
+                STRICT
+                LANGUAGE PLRUST AS
+            $$
+                let id = Spi::get_one_with_args(
+                    "SELECT id FROM contributors_pets WHERE name = $1",
+                    vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
+                );
+                id
+            $$;
+        "#;
+        Spi::run(specific_definition);
+
+        let retval: Option<i32> = Spi::get_one(
+            r#"
+            SELECT contributor_pet('Nami');
+        "#);
+        assert_eq!(retval, Some(2));
     }
 
     #[pg_test]
