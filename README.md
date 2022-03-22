@@ -2,6 +2,12 @@
 
 ![CI status](https://github.com/zombodb/plrust/actions/workflows/ci.yml/badge.svg)
 
+# 🚨 NOTICE 🚨 
+
+This repo has relocated from `https://github.com/zombodb/pgx` to this location (`https://github.com/tcdi/pgx`).  You may need to update your remote in `.git/config` to reflect this change.
+
+---
+
 Support for `plrust` in PostgreSQL functions.
 
 ```SQL
