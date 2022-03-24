@@ -1,11 +1,12 @@
 // Copyright (c) 2020, ZomboDB, LLC
 use crate::gucs;
 use libloading::{Library, Symbol};
+use once_cell::unsync::Lazy;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
 use std::{collections::HashMap, path::PathBuf, process::Command};
 
-static mut LOADED_SYMBOLS: Option<
+static mut LOADED_SYMBOLS: Lazy<
     HashMap<
         pg_sys::Oid,
         (
@@ -15,12 +16,10 @@ static mut LOADED_SYMBOLS: Option<
             >,
         ),
     >,
-> = None;
+> = Lazy::new(|| Default::default());
 
 pub(crate) fn init() {
-    unsafe {
-        LOADED_SYMBOLS = Some(HashMap::new());
-    }
+    ()
 }
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -103,42 +102,38 @@ mod generation {
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    LOADED_SYMBOLS.as_mut().unwrap().remove(&fn_oid);
+    LOADED_SYMBOLS.remove(&fn_oid);
 }
 
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
 ) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
-    let (library, symbol) = LOADED_SYMBOLS
-        .as_mut()
-        .unwrap()
-        .entry(fn_oid)
-        .or_insert_with(|| {
-            let mut shared_library = gucs::work_dir();
-            let crate_name = crate_name(fn_oid);
+    let (library, symbol) = LOADED_SYMBOLS.entry(fn_oid).or_insert_with(|| {
+        let mut shared_library = gucs::work_dir();
+        let crate_name = crate_name(fn_oid);
 
-            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let latest = generation::latest_generation(&crate_name, true)
-                    .expect("Could not find latest generation.")
-                    .0;
+        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+        let crate_name = {
+            let mut crate_name = crate_name;
+            let latest = generation::latest_generation(&crate_name, true)
+                .expect("Could not find latest generation.")
+                .0;
 
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
+            crate_name.push_str(&format!("_{}", latest));
+            crate_name
+        };
 
-            shared_library.push(&format!("{}.so", crate_name));
-            let library = Library::new(&shared_library).unwrap_or_else(|e| {
-                panic!(
-                    "failed to open shared library at `{}`: {}",
-                    shared_library.display(),
-                    e
-                )
-            });
-
-            (library, None)
+        shared_library.push(&format!("{}.so", crate_name));
+        let library = Library::new(&shared_library).unwrap_or_else(|e| {
+            panic!(
+                "failed to open shared library at `{}`: {}",
+                shared_library.display(),
+                e
+            )
         });
+
+        (library, None)
+    });
 
     match symbol {
         Some(symbol) => symbol,
