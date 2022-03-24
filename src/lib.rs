@@ -42,12 +42,6 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
     let (_, output) =
         plrust::compile_function(fn_oid).unwrap_or_else(|e| panic!("compilation failed\n{}", e));
 
-    // however, we'll use it to decide if we should go ahead and dynamically load our function
-    if pg_sys::check_function_bodies {
-        // it's on, so lets go ahead and load our function
-        plrust::lookup_function(fn_oid);
-    }
-
     // if the compilation had warnings we'll display them
     if output.contains("warning: ") {
         pgx::warning!("\n{}", output);
