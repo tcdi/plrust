@@ -43,8 +43,8 @@ Then, add some configuration to the `postgresql.conf` and ensure there is a
 writable `work_dir`:
 
 ```bash
-cat <<-EOF >> ~/.pgx/data-12/postgresql.conf
-  plrust.pg_config = '/home/${USER}/.pgx/12.6/pgx-install/bin/pg_config'
+cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
+  plrust.pg_config = '/home/${USER}/.pgx/14.2/pgx-install/bin/pg_config'
   plrust.work_dir = '/home/${USER}/git/zombodb/plrust/scratch'
 EOF
 mkdir -p scratch
