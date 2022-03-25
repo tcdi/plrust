@@ -1,0 +1,12 @@
+DROP EXTENSION IF EXISTS plrust CASCADE;
+CREATE EXTENSION IF NOT EXISTS plrust;
+CREATE OR REPLACE FUNCTION spi_poc() RETURNS INTEGER
+    IMMUTABLE STRICT
+    LANGUAGE PLRUST AS
+$$
+[dependencies]
+[code]
+    spi::spi_exec_select_num(100)
+$$;
+
+SELECT spi_poc();

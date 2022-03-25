@@ -6,6 +6,9 @@ use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
 use std::{collections::HashMap, path::PathBuf, process::Command};
 
+use wasmtime::*;
+use wasmtime_wasi::sync::WasiCtxBuilder;
+
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
         pg_sys::Oid,
@@ -101,6 +104,66 @@ mod generation {
     }
 }
 
+
+pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum {
+    let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
+    let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
+    let wasm = format!("{}_{}.wasm", crate_dir.to_str().unwrap(), 0);
+
+    let engine = Engine::default();
+    let mut linker = Linker::new(&engine);
+    match wasmtime_wasi::add_to_linker(&mut linker, |cx| cx) {
+        Ok(_) => {}
+        Err(_) => panic!("failed to call add_to_linker"),
+    };
+
+    // func_wrap needs to be called before instantiating module
+    match linker.func_wrap("spi", "spi_exec_select_num", |i: i32| -> i32 {
+        // spi_exec_select_num simply does a SELECT i, so i'll hardcode it for the purpose of POC
+        match Spi::get_one(format!("SELECT {}", i).as_str()) {
+            Some(res) => {
+                return res;
+            }
+            None => {
+                pgx::warning!("Spi::get_one returned nothing, returning default value");
+                return -1;
+            }
+        }
+    }) {
+        Ok(_) => (),
+        Err(_) => panic!("Could not wrap function spi::spi_exec in wasm module"),
+    };
+
+    let module = match Module::from_file(&engine, wasm) {
+        Ok(m) => m,
+        Err(e) => panic!(
+            "Could not set up module {}.wasm from directory {:#?}: {}",
+            crate_name, crate_dir, e
+        ),
+    };
+
+    let wasi_ctx = WasiCtxBuilder::new().inherit_stdio().build();
+    let mut store = Store::new(&engine, wasi_ctx);
+
+    let instance = match linker.instantiate(&mut store, &module) {
+        Ok(i) => i,
+        Err(e) => panic!(
+            "Could not instantiate instance from module {}.wasm: {}",
+            crate_name, e
+        ),
+    };
+    let wasm_fn = match instance.get_typed_func::<(), i32, _>(&mut store, &wasm_fn_name) {
+        Ok(f) => f,
+        Err(e) => panic!("Could not find function {}: {}", wasm_fn_name, e),
+    };
+
+    let res = match wasm_fn.call(&mut store, ()) {
+        Ok(res) => res,
+        Err(e) => panic!("Got an error: {:?}", e),
+    };
+    res as pg_sys::Datum
+}
+
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.remove(&fn_oid);
 }
@@ -149,6 +212,17 @@ pub(crate) unsafe fn lookup_function(
     }
 }
 
+fn generate_spi_extern_code() -> &'static str {
+    r#"#![allow(dead_code)]
+
+#[link(wasm_import_module = "spi")]
+extern "C" {
+    pub fn spi_exec_select_num(i: i32) -> i32; // This simply does "SELECT i"
+    pub fn spi_exec(ptr: *const u8, length: i32);
+}
+"#
+}
+
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -166,48 +240,41 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
     let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
 
-    let cargo_output = Command::new("cargo")
+    let wasm_build_output = Command::new("cargo")
         .current_dir(&crate_dir)
+        .arg("wasi")
         .arg("build")
-        .arg("--release")
-        .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
-        .env("CARGO_TARGET_DIR", &work_dir)
-        .env(
-            "RUSTFLAGS",
-            "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
-        )
         .output()
-        .expect("failed to build function shared library");
+        .expect("failed to build function wasm module");
 
-    let mut output_string = String::new();
+    let mut wasm_build_output_string = String::new();
     unsafe {
-        output_string.push_str(&String::from_utf8_unchecked(cargo_output.stdout));
-        output_string.push_str(&String::from_utf8_unchecked(cargo_output.stderr));
+        wasm_build_output_string.push_str(&String::from_utf8_unchecked(wasm_build_output.stdout));
+        wasm_build_output_string.push_str(&String::from_utf8_unchecked(wasm_build_output.stderr));
     }
 
-    let result = if !cargo_output.status.success() {
-        output_string.push_str("-----------------\n");
-        output_string.push_str(&source_code);
-        Err(output_string)
+    let result = if !wasm_build_output.status.success() {
+        wasm_build_output_string.push_str("-----------------\n");
+        wasm_build_output_string.push_str(&source_code);
+        Err(wasm_build_output_string)
     } else {
-        match find_shared_library(&crate_name).0 {
-            Some(shared_library) => {
+        match find_wasm_module(&crate_name).0 {
+            Some(wasm_module) => {
                 let mut final_path = work_dir.clone();
-                final_path.push(&format!("{}.so", crate_name));
+                final_path.push(&format!("{}.wasm", crate_name));
 
-                // move the shared_library into its final location, which is
+                // move the wasm module into its final location, which is
                 // at the root of the configured `work_dir`
-                std::fs::rename(&shared_library, &final_path)
-                    .expect("unable to rename shared_library");
+                std::fs::rename(&wasm_module, &final_path).expect("unable to rename wasm module");
 
-                Ok((final_path, output_string))
+                Ok((final_path, wasm_build_output_string))
             }
-            None => Err(output_string),
+            None => Err(wasm_build_output_string),
         }
     };
 
-    // no matter what happened, remove our crate directory, ignoring any error that might generate
-    std::fs::remove_dir_all(&crate_dir).ok();
+    // Let's keep the crate for debugging purpose
+    // std::fs::remove_dir_all(&crate_dir).ok(); 
 
     result
 }
@@ -218,6 +285,8 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
     let source_code =
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
 
+    let spi_extern_code = generate_spi_extern_code();
+
     // cargo.toml first
     let mut cargo_toml = crate_dir.clone();
     cargo_toml.push("Cargo.toml");
@@ -227,27 +296,13 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
             r#"[package]
 name = "{crate_name}"
 version = "0.0.0"
-edition = "2021"
+edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
-[features]
-default = ["pgx/pg{major_version}"]
-
-[dependencies]
-pgx = "0.4.0-beta.0"
-{dependencies}
-
-[profile.release]
-panic = "unwind"
-opt-level = 3
-lto = "fat"
-codegen-units = 1
 "#,
             crate_name = crate_name,
-            major_version = pg_sys::get_pg_major_version_num(),
-            dependencies = deps
         ),
     )
     .expect("failed to write Cargo.toml");
@@ -261,6 +316,12 @@ codegen-units = 1
     let mut lib_rs = src.clone();
     lib_rs.push("lib.rs");
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
+
+    // some extern SPI functions
+    let mut spi_rs = src.clone();
+    spi_rs.push("spi.rs");
+    std::fs::write(&spi_rs, &spi_extern_code)
+        .expect("failed to write spi extern code to spi.rs");
 
     source_code
 }
@@ -310,6 +371,23 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     (None, crate_name)
 }
 
+fn find_wasm_module(crate_name: &str) -> (Option<PathBuf>, &str) {
+    let work_dir = gucs::work_dir();
+    let mut debug_dir = work_dir.clone();
+    debug_dir.push(&crate_name[..crate_name.len() - 2]);
+    debug_dir.push("target");
+    debug_dir.push("wasm32-wasi");
+    debug_dir.push("debug");
+
+    let mut wasm = debug_dir.clone();
+    wasm.push(&format!("{}.wasm", crate_name));
+    if wasm.exists() {
+        return (Some(wasm), crate_name);
+    }
+
+    (None, crate_name)
+}
+
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     code: &str,
@@ -320,18 +398,19 @@ fn generate_function_source(
 ) -> String {
     let mut source = String::new();
 
-    // source header
+    // macro to avoid warning
     source.push_str(
-        r#"
-use pgx::*;
+        r#"#![allow(dead_code)]
+
+mod spi;
 "#,
     );
 
     // function name
     source.push_str(&format!(
         r#"
-#[pg_extern]
-fn plrust_fn_{}"#,
+#[no_mangle]
+unsafe fn plrust_fn_{}"#,
         fn_oid
     ));
 
@@ -364,7 +443,8 @@ fn plrust_fn_{}"#,
             make_rust_type(return_type, true)
         ));
     } else {
-        source.push_str(&format!("Option<{}>", make_rust_type(return_type, true)));
+        // wasmtime does not handle option type quite well, so we'll assume everything without option
+        source.push_str(make_rust_type(return_type, true).as_str());
     }
 
     // body
