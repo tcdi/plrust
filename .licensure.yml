@@ -22,8 +22,10 @@ licenses:
       - name: ZomboDB, LLC and Technology Concepts & Design, Inc.
         email: support@tcdi.com
     template: |
-      Copyright 2020-[year] [name of author]. All rights reserved. 
-      Use of this source code is governed by the [ident] license that can be found in the LICENSE.md file.
+      Portions Copyright 2020-2021 ZomboDB, LLC. 
+      Portions Copyright 2021-[year] Technology Concepts & Design, Inc. <support@tcdi.com>.
+      All rights reserved. 
+      Use of this source code is governed by the [ident] license that can be found in the LICENSE file.
 comments:
   - columns: 80
     extensions:

@@ -1,6 +1,7 @@
-// Copyright 2020-2022 ZomboDB, LLC and Technology Concepts & Design, Inc.
-// <support@tcdi.com>. All rights reserved.  Use of this source code is governed
-// by the PostgreSQL license that can be found in the LICENSE.md file.
+// Portions Copyright 2020-2021 ZomboDB, LLC.  Portions Copyright 2021-2022
+// Technology Concepts & Design, Inc. <support@tcdi.com>. All rights reserved.
+// Use of this source code is governed by the PostgreSQL license that can be
+// found in the LICENSE file.
 
 use pgx::*;
 use std::path::PathBuf;
