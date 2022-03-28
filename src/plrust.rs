@@ -10,9 +10,9 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{path::PathBuf, collections::HashMap, process::Command};
+use std::{path::PathBuf, collections::HashMap, process::Command, io::Write};
 
-use wasmtime::{Engine, Linker, Store, Module, };
+use wasmtime::{Engine, Linker, Store, Module};
 use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
 use once_cell::sync::Lazy;
@@ -26,29 +26,38 @@ static LINKER: Lazy<Linker<WasiCtx>> = Lazy::new(|| {
         Err(_) => panic!("failed to call add_to_linker"),
     };
 
-    // func_wrap needs to be called before instantiating module
-    match linker.func_wrap("spi", "spi_exec_select_num", |i: i32| -> i32 {
-        // spi_exec_select_num simply does a SELECT i, so i'll hardcode it for the purpose of POC
-        match Spi::get_one(format!("SELECT {}", i).as_str()) {
-            Some(res) => {
-                return res;
-            }
-            None => {
-                pgx::warning!("Spi::get_one returned nothing, returning default value");
-                return -1;
-            }
-        }
-    }) {
-        Ok(_) => (),
-        Err(_) => panic!("Could not wrap function spi::spi_exec in wasm module"),
-    };
+    plrust_interface::create_linker_functions(&mut linker)
+        .expect("Could not create linker functions");
 
     linker
 });
 static mut MODULES: Lazy<HashMap<pg_sys::Oid, Module>> = Lazy::new(|| Default::default());
 
+static INTERFACE_CRATE_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let mut interface_crate = gucs::work_dir();
+    interface_crate.push("plrust_interface");
+    interface_crate
+});
+static INTERFACE_CRATE: include_dir::Dir<'_> = include_dir::include_dir!("$CARGO_MANIFEST_DIR/components/plrust_interface");
+
 pub(crate) fn init() {
-    ()
+    provision_interface_crate(&INTERFACE_CRATE)
+}
+
+fn provision_interface_crate(dir: &include_dir::Dir) {
+    for entry in dir.entries() {
+        match entry {
+            include_dir::DirEntry::File(entry_file) => {
+                let mut file_destination = INTERFACE_CRATE_PATH.clone();
+                file_destination.push(entry_file.path());
+
+                std::fs::create_dir_all(file_destination.parent().unwrap()).unwrap();
+                let mut destination = std::fs::File::create(file_destination).unwrap();
+                destination.write_all(entry_file.contents()).unwrap();
+            }
+            include_dir::DirEntry::Dir(dir) => provision_interface_crate(dir),
+        }
+    }
 }
 
 pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum {
@@ -89,17 +98,6 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     MODULES.remove(&fn_oid);
-}
-
-fn generate_spi_extern_code() -> &'static str {
-    r#"#![allow(dead_code)]
-
-#[link(wasm_import_module = "spi")]
-extern "C" {
-    pub fn spi_exec_select_num(i: i32) -> i32; // This simply does "SELECT i"
-    pub fn spi_exec(ptr: *const u8, length: i32);
-}
-"#
 }
 
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
@@ -158,8 +156,6 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
     let source_code =
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
 
-    let spi_extern_code = generate_spi_extern_code();
-
     // cargo.toml first
     let mut cargo_toml = crate_dir.clone();
     cargo_toml.push("Cargo.toml");
@@ -175,10 +171,12 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+plrust_interface = {{ path = "{plrust_interface_crate_path}" }}
 {dependencies}
 "#,
             crate_name = crate_name,
             dependencies = dependencies,
+            plrust_interface_crate_path = INTERFACE_CRATE_PATH.display(),
         ),
     )
     .expect("failed to write Cargo.toml");
@@ -192,12 +190,6 @@ crate-type = ["cdylib"]
     let mut lib_rs = src.clone();
     lib_rs.push("lib.rs");
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
-
-    // some extern SPI functions
-    let mut spi_rs = src.clone();
-    spi_rs.push("spi.rs");
-    std::fs::write(&spi_rs, &spi_extern_code)
-        .expect("failed to write spi extern code to spi.rs");
 
     source_code
 }
@@ -242,14 +234,6 @@ fn generate_function_source(
     is_strict: bool,
 ) -> String {
     let mut source = String::new();
-
-    // macro to avoid warning
-    source.push_str(
-        r#"#![allow(dead_code)]
-
-mod spi;
-"#,
-    );
 
     // function name
     source.push_str(&format!(
