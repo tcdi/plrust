@@ -80,7 +80,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    ()
+    MODULES.remove(&fn_oid);
 }
 
 fn generate_spi_extern_code() -> &'static str {
