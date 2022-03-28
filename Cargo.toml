@@ -23,14 +23,14 @@ pg_test = []
 sandboxed = []
 
 [dependencies]
-pgx = "0.4.0"
+pgx = "0.4.1"
 libloading = "0.7.2"
 # wasm dependencies
-wasmtime = "*"
-wasmtime-wasi = "*"
+wasmtime = "0.35"
+wasmtime-wasi = "0.35"
 
 [dev-dependencies]
-pgx-tests = "0.4.0"
+pgx-tests = "0.4.1"
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"

@@ -1489,9 +1489,9 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b641546126244084bae6d3d78966130d22afd431eb10492f6e20c07f1a86e1ca"
+checksum = "f82b396f63ef20b01a995e01a9e784c9d4ba199348bb670749b5cd5ce3876a0d"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1518,9 +1518,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14e7554c6eeee6d17eb45c96250b93ca32ce821a1f19dc3cd99e610771e356ef"
+checksum = "05ea2b645ccc7217b9d80645ae3b9d3a9c7166371ce6ce3af7485cdac8e99c9d"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1532,9 +1532,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36c9d31a08addbf11b60929f02c3a150d298bb4b4709a4a5d641736cc81d1ee0"
+checksum = "140188ba69651be5d2752d6373d0c9c836d1007a50533bb0b112a3661a6a1bad"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1554,9 +1554,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-tests"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4756736f65d7c496262c93171ca1cc7e36fe21911a682e9659dcbd9b13021512"
+checksum = "354738555904efab76da2c5e43923e45c2c8552ef74698bfe7d9ef6f67fde0b9"
 dependencies = [
  "eyre",
  "libc",
@@ -1575,9 +1575,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-utils"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcf3e5b202b2ddbb35729457103493053e2e8fd3ef96ad727f6b6a96653a92de"
+checksum = "e3bb5ea278bf1e752d4391b0df8347f4a422a8799bbc9afa4f5f6c0894284dec"
 dependencies = [
  "atty",
  "convert_case",

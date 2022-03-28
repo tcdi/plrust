@@ -1,114 +1,20 @@
 // Copyright (c) 2020, ZomboDB, LLC
 use crate::gucs;
-use libloading::{Library, Symbol};
-use once_cell::unsync::Lazy;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use std::{path::PathBuf, process::Command};
 
 use wasmtime::*;
 use wasmtime_wasi::sync::WasiCtxBuilder;
-
-static mut LOADED_SYMBOLS: Lazy<
-    HashMap<
-        pg_sys::Oid,
-        (
-            Library,
-            Option<
-                Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
-            >,
-        ),
-    >,
-> = Lazy::new(|| Default::default());
 
 pub(crate) fn init() {
     ()
 }
 
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-mod generation {
-    /*!
-        Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
-        `CREATE OR REPLACE FUNCTION`.
-
-        If we unload something from `LOADED_SYMBOLS`, then load a recreated `so`, Darwin will have never
-        properly unloaded it, and will load the old shared object (and the old symbol). This is surprising
-        behavior to the user, and does not offer a good experience.
-
-        Instead, we create a 'generation' for each build, and always load the largest numbered `so`. Since
-        these `so`s are unique, Darwin loads the new one correctly. This technically 'leaks', but only
-        because Darwin's `dlclose` 'leaks'.
-
-        **This behavior is not required on other operating systems or architectures.**
-
-        We expected this to also be required on Darwin aarch64, but testing on hardware has proven otherwise.
-
-        See https://github.com/rust-lang/rust/issues/28794#issuecomment-368693049 which cites
-        https://developer.apple.com/videos/play/wwdc2017/413/?time=1776.
-    !*/
-
-    use super::*;
-    use std::{fs, io};
-
-    /// Find existing generations of a given prefix.
-    pub(crate) fn all_generations(
-        prefix: &str,
-    ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, io::Error> {
-        let work_dir = gucs::work_dir();
-        let filtered = fs::read_dir(work_dir)?
-            .flat_map(|entry| {
-                let path = entry.ok()?.path();
-                let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
-                Some((stem, path))
-            })
-            .filter(move |(stem, _path)| stem.starts_with(prefix))
-            .flat_map(|(stem, path)| {
-                let generation = stem.split('_').last()?;
-                let generation = generation.parse::<usize>().ok()?;
-                Some((generation, path))
-            });
-
-        Ok(Box::from(filtered))
-    }
-
-    /// Get the next generation number to be created.
-    ///
-    /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
-    pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, std::io::Error> {
-        let latest = latest_generation(prefix, vacuum);
-        Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
-    }
-
-    /// Get the latest created generation night.
-    ///
-    /// If `vacuum` is set, this garbage collect old `so` files.
-    pub(crate) fn latest_generation(
-        prefix: &str,
-        vacuum: bool,
-    ) -> Result<(usize, PathBuf), std::io::Error> {
-        let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
-        // We could use max_by, but might need to vacuum.
-        generations.sort_by_key(|(generation, _path)| *generation);
-        let latest = generations.pop();
-
-        if vacuum {
-            for (_index, old_path) in generations {
-                pgx::info!("Vacuuming {:?}", old_path);
-                std::fs::remove_file(old_path)?;
-            }
-        }
-
-        latest.ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "No generations found.")
-        })
-    }
-}
-
-
 pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum {
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
-    let wasm = format!("{}_{}.wasm", crate_dir.to_str().unwrap(), 0);
+    let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
 
     let engine = Engine::default();
     let mut linker = Linker::new(&engine);
@@ -165,51 +71,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    LOADED_SYMBOLS.remove(&fn_oid);
-}
-
-pub(crate) unsafe fn lookup_function(
-    fn_oid: pg_sys::Oid,
-) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
-    let (library, symbol) = LOADED_SYMBOLS.entry(fn_oid).or_insert_with(|| {
-        let mut shared_library = gucs::work_dir();
-        let crate_name = crate_name(fn_oid);
-
-        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let latest = generation::latest_generation(&crate_name, true)
-                .expect("Could not find latest generation.")
-                .0;
-
-            crate_name.push_str(&format!("_{}", latest));
-            crate_name
-        };
-
-        shared_library.push(&format!("{}.so", crate_name));
-        let library = Library::new(&shared_library).unwrap_or_else(|e| {
-            panic!(
-                "failed to open shared library at `{}`: {}",
-                shared_library.display(),
-                e
-            )
-        });
-
-        (library, None)
-    });
-
-    match symbol {
-        Some(symbol) => symbol,
-        None => {
-            let symbol_name = format!("plrust_fn_{}_wrapper", fn_oid);
-            symbol.replace(
-                library
-                    .get(&symbol_name.as_bytes())
-                    .expect("failed to find function"),
-            );
-            symbol.as_ref().unwrap()
-        }
-    }
+    ()
 }
 
 fn generate_spi_extern_code() -> &'static str {
@@ -227,23 +89,16 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
-    #[cfg(target_os = "macos")]
-    let crate_name = {
-        let mut crate_name = crate_name;
-        let latest = generation::next_generation(&crate_name, true)
-            .expect("Could not find latest generation.");
-        crate_name.push_str(&format!("_{}", latest));
-        crate_name
-    };
-
     std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
 
     let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
 
     let wasm_build_output = Command::new("cargo")
         .current_dir(&crate_dir)
-        .arg("wasi")
         .arg("build")
+        .arg("--target")
+        .arg("wasm32-wasi")
+        .arg("--release")
         .output()
         .expect("failed to build function wasm module");
 
@@ -258,8 +113,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         wasm_build_output_string.push_str(&source_code);
         Err(wasm_build_output_string)
     } else {
-        match find_wasm_module(&crate_name).0 {
+        match find_wasm_module(&crate_name) {
             Some(wasm_module) => {
+                pgx::info!("{}", crate_name);
                 let mut final_path = work_dir.clone();
                 final_path.push(&format!("{}.wasm", crate_name));
 
@@ -280,7 +136,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 }
 
 fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> String {
-    let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
+    let (fn_oid, dependencies, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid);
     let source_code =
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
@@ -296,13 +152,16 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
             r#"[package]
 name = "{crate_name}"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
+[dependencies]
+{dependencies}
 "#,
             crate_name = crate_name,
+            dependencies = dependencies,
         ),
     )
     .expect("failed to write Cargo.toml");
@@ -340,52 +199,21 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     (crate_name, crate_dir)
 }
 
-fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
-    let work_dir = gucs::work_dir();
-    let mut target_dir = work_dir.clone();
-    target_dir.push("release");
-
-    // TODO:  we could probably do a conditional compile #[cfg()] thing here
-
-    // linux
-    let mut so = target_dir.clone();
-    so.push(&format!("lib{}.so", crate_name));
-    if so.exists() {
-        return (Some(so), crate_name);
-    } else {
-        // macos
-        let mut dylib = target_dir.clone();
-        dylib.push(&format!("lib{}.dylib", crate_name));
-        if dylib.exists() {
-            return (Some(dylib), crate_name);
-        } else {
-            // windows?
-            let mut dll = target_dir.clone();
-            dll.push(&format!("lib{}.dll", crate_name));
-            if dll.exists() {
-                return (Some(dll), crate_name);
-            }
-        }
-    }
-
-    (None, crate_name)
-}
-
-fn find_wasm_module(crate_name: &str) -> (Option<PathBuf>, &str) {
+fn find_wasm_module(crate_name: &str) -> Option<PathBuf> {
     let work_dir = gucs::work_dir();
     let mut debug_dir = work_dir.clone();
-    debug_dir.push(&crate_name[..crate_name.len() - 2]);
+    debug_dir.push(&crate_name);
     debug_dir.push("target");
     debug_dir.push("wasm32-wasi");
-    debug_dir.push("debug");
+    debug_dir.push("release");
 
     let mut wasm = debug_dir.clone();
     wasm.push(&format!("{}.wasm", crate_name));
     if wasm.exists() {
-        return (Some(wasm), crate_name);
+        return Some(wasm);
     }
 
-    (None, crate_name)
+    None
 }
 
 fn generate_function_source(
