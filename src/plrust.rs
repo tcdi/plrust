@@ -2,22 +2,17 @@
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{path::PathBuf, process::Command};
+use std::{path::PathBuf, collections::HashMap, process::Command};
 
-use wasmtime::*;
-use wasmtime_wasi::sync::WasiCtxBuilder;
+use wasmtime::{Engine, Linker, Store, Module, };
+use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
-pub(crate) fn init() {
-    ()
-}
+use once_cell::sync::Lazy;
 
-pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum {
-    let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
-    let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
-    let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
+static ENGINE: Lazy<Engine> = Lazy::new(|| Engine::default());
+static LINKER: Lazy<Linker<WasiCtx>> = Lazy::new(|| {
+    let mut linker = Linker::new(&ENGINE);
 
-    let engine = Engine::default();
-    let mut linker = Linker::new(&engine);
     match wasmtime_wasi::add_to_linker(&mut linker, |cx| cx) {
         Ok(_) => {}
         Err(_) => panic!("failed to call add_to_linker"),
@@ -40,18 +35,32 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum
         Err(_) => panic!("Could not wrap function spi::spi_exec in wasm module"),
     };
 
-    let module = match Module::from_file(&engine, wasm) {
-        Ok(m) => m,
-        Err(e) => panic!(
-            "Could not set up module {}.wasm from directory {:#?}: {}",
-            crate_name, crate_dir, e
-        ),
-    };
+    linker
+});
+static mut MODULES: Lazy<HashMap<pg_sys::Oid, Module>> = Lazy::new(|| Default::default());
 
-    let wasi_ctx = WasiCtxBuilder::new().inherit_stdio().build();
-    let mut store = Store::new(&engine, wasi_ctx);
+pub(crate) fn init() {
+    ()
+}
 
-    let instance = match linker.instantiate(&mut store, &module) {
+pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum {
+    let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
+    let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
+    let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
+
+   let module = MODULES.entry(fn_oid).or_insert_with(|| {
+        match Module::from_file(&ENGINE, wasm) {
+            Ok(m) => m,
+            Err(e) => panic!(
+                "Could not set up module {}.wasm from directory {:#?}: {}",
+                crate_name, crate_dir, e
+            ),
+        }
+    });
+
+    let mut store = Store::new(&ENGINE, WasiCtxBuilder::new().inherit_stdio().build());
+
+    let instance = match LINKER.instantiate(&mut store, &module) {
         Ok(i) => i,
         Err(e) => panic!(
             "Could not instantiate instance from module {}.wasm: {}",
