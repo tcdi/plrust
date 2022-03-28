@@ -1,4 +1,12 @@
-// Copyright (c) 2020, ZomboDB, LLC
+/*
+Portions Copyright 2020-2021 ZomboDB, LLC.
+Portions Copyright 2021-2022 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
