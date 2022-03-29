@@ -60,9 +60,12 @@ fn provision_interface_crate(dir: &include_dir::Dir) {
     }
 }
 
-pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum {
+pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
+
+    let arg = pg_getarg(fcinfo, 0).unwrap();
+
     let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
 
    let module = MODULES.entry(fn_oid).or_insert_with(|| {
@@ -84,16 +87,24 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid) -> pg_sys::Datum
             crate_name, e
         ),
     };
-    let wasm_fn = match instance.get_typed_func::<(), i32, _>(&mut store, &wasm_fn_name) {
-        Ok(f) => f,
-        Err(e) => panic!("Could not find function {}: {}", wasm_fn_name, e),
+    let wasm_fn = match instance.get_func(&mut store, &wasm_fn_name) {
+        Some(f) => f,
+        None => panic!("Could not find function {}", wasm_fn_name),
     };
 
-    let res = match wasm_fn.call(&mut store, ()) {
+    let args: Vec<wasmtime::Val> = vec![ wasmtime::Val::I32(arg) ];
+    let mut returns: Vec<wasmtime::Val> = vec![ wasmtime::Val::I32(0) ];
+
+    match wasm_fn.call(&mut store, args.as_slice(), returns.as_mut_slice()) {
         Ok(res) => res,
         Err(e) => panic!("Got an error: {:?}", e),
     };
-    res as pg_sys::Datum
+
+    let res = match &returns[0] {
+        wasmtime::Val::I32(val) => val,
+        other => unimplemented!("Cannot handle {:?}", other),
+    };
+    *res as pg_sys::Datum
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
@@ -239,7 +250,7 @@ fn generate_function_source(
     source.push_str(&format!(
         r#"
 #[no_mangle]
-unsafe fn plrust_fn_{}"#,
+fn plrust_fn_{}"#,
         fn_oid
     ));
 

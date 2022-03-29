@@ -28,7 +28,7 @@ CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
 ")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let fn_oid = fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid;
-    plrust::execute_wasm_function(fn_oid)
+    plrust::execute_wasm_function(fn_oid, fcinfo)
 }
 
 #[pg_extern]
