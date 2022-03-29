@@ -31,7 +31,10 @@ static LINKER: Lazy<Linker<WasiCtx>> = Lazy::new(|| {
 
     linker
 });
-static mut MODULES: Lazy<HashMap<pg_sys::Oid, Module>> = Lazy::new(|| Default::default());
+static mut CACHE: Lazy<HashMap<
+    pg_sys::Oid,
+    (Module, i64, i64),
+>> = Lazy::new(|| Default::default());
 
 static INTERFACE_CRATE_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let mut interface_crate = gucs::work_dir();
@@ -64,18 +67,37 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
-    let arg = pg_getarg(fcinfo, 0).unwrap();
-
     let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
 
-   let module = MODULES.entry(fn_oid).or_insert_with(|| {
-        match Module::from_file(&ENGINE, wasm) {
+   let (module, n_args, n_retvals) = CACHE.entry(fn_oid).or_insert_with(|| {
+        let module = match Module::from_file(&ENGINE, wasm) {
             Ok(m) => m,
             Err(e) => panic!(
                 "Could not set up module {}.wasm from directory {:#?}: {}",
                 crate_name, crate_dir, e
             ),
-        }
+        };
+        let n_args = unsafe {
+            let proc_tuple = pg_sys::SearchSysCache(
+                pg_sys::SysCacheIdentifier_PROCOID as i32,
+                fn_oid.into_datum().unwrap(),
+                0,
+                0,
+                0,
+            );
+            if proc_tuple.is_null() {
+                panic!("cache lookup failed for function oid {}", fn_oid);
+            }
+    
+            let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
+                proc_tuple,
+            ));
+    
+            let n_args = proc_entry.pronargs as i64;
+            pg_sys::ReleaseSysCache(proc_tuple);
+            n_args
+        };
+        (module, n_args, 1)
     });
 
     let mut store = Store::new(&ENGINE, WasiCtxBuilder::new().inherit_stdio().build());
@@ -92,8 +114,14 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
         None => panic!("Could not find function {}", wasm_fn_name),
     };
 
-    let args: Vec<wasmtime::Val> = vec![ wasmtime::Val::I32(arg) ];
-    let mut returns: Vec<wasmtime::Val> = vec![ wasmtime::Val::I32(0) ];
+    let mut args: Vec<wasmtime::Val> = vec![ ];
+    for idx in 0..(*n_args) {
+        args.push(wasmtime::Val::I32(pg_getarg(fcinfo, idx as usize).unwrap()));
+    }
+    let mut returns: Vec<wasmtime::Val> = vec![ ];
+    for idx in 0..(*n_retvals) {
+        returns.push(wasmtime::Val::I32(0));
+    }
 
     match wasm_fn.call(&mut store, args.as_slice(), returns.as_mut_slice()) {
         Ok(res) => res,
@@ -108,7 +136,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    MODULES.remove(&fn_oid);
+    CACHE.remove(&fn_oid);
 }
 
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
