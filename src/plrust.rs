@@ -189,7 +189,8 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
                 pgx::info!("Wrote {} bytes at offset {}", bincoded.len(), guest_ptr);
                 instance.get_memory(&mut store, "memory").unwrap().write(&mut store, guest_ptr as usize, bincoded.as_slice()).unwrap();
 
-                Val::I64(guest_ptr as i64)
+                let packed = plrust_interface::pack_and_leak_into_wasm_u128(bincoded);
+                Val::V128(packed)
             },
         };
 
@@ -197,7 +198,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     }
     let mut instance_ret = [ rets.clone() ];
 
-    let wasm_fn = match instance.get_func(&mut store, &wasm_fn_name) {
+    let wasm_fn = match instance.get_func(&mut store, &"entry") {
         Some(f) => f,
         None => panic!("Could not find function {}", wasm_fn_name),
     };
@@ -208,7 +209,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     };
 
     let res = match &instance_ret[0] {
-        wasmtime::Val::I32(val) => val,
+        wasmtime::Val::V128(val) => val,
         other => unimplemented!("Cannot handle {:?}", other),
     };
     *res as pg_sys::Datum
@@ -365,7 +366,7 @@ fn generate_function_source(
     let mut user_fn_arg_idents: Vec<syn::Ident> = Vec::default(); 
     let mut user_fn_arg_types: Vec<syn::Type> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
-        let arg_ty = oid_to_syn_type(arg_type_oid, false);
+        let arg_ty = oid_to_syn_type(arg_type_oid, false).unwrap();
         let arg_name = match arg_name {
             Some(name) if name.len() > 0 => name.clone(),
             _ => format!("arg{}", arg_idx),
@@ -386,39 +387,52 @@ fn generate_function_source(
     };
     source.items.push(syn::Item::Fn(user_fn_tokens));
 
-    let entry_fn_arg_idents = Vec::default();
-    let entry_fn_arg_types = Vec::default();
+    let entry_fn_arg_idents = user_fn_arg_idents.clone();
+    let mut entry_fn_arg_types: Vec<syn::Type> = Vec::default();
+    let mut entry_fn_transform_tokens: Vec<syn::Expr> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
-        match oid_to_valtype(arg_type_oid) {
+        let (mapped, is_u128_ptr) = match oid_to_valtype(arg_type_oid) {
             Some(valtype) => {
                 // It's a primitive, we pass directly.
-                valtype_to_syn_type(valtype)
+                let ty = valtype_to_syn_type(valtype).unwrap();
+                (syn::parse_quote! { #ty }, false)
             },
             None => {
                 // It's an encoded value. This expands to (ptr, len)
-                
+                (syn::parse_quote! { u128 }, true)
             },
-        }
+        };
+        entry_fn_arg_types.push(mapped);
+
+        let ident = &user_fn_arg_idents[arg_idx];
+        entry_fn_transform_tokens.push(match is_u128_ptr {
+            true => syn::parse_quote! { unsafe { ::plrust_interface::unpack_and_own_from_wasm_u128(#ident).unwrap() } },
+            false => syn::parse_quote! { #ident },
+        })
     }
+    let entry_fn_return_tokens = match oid_to_valtype(return_type) {
+        Some(valtype) => {
+            // It's a primitive, we pass directly.
+            valtype_to_syn_type(valtype).unwrap()
+        },
+        None => {
+            // It's an encoded value. This expands to (ptr, len)
+            syn::parse_quote! { u128 }
+        },
+    };
 
     let entry_fn: syn::ItemFn = syn::parse_quote! {
         #[no_mangle]
-        fn entry(
+        extern "C" fn entry(
             #( #entry_fn_arg_idents: #entry_fn_arg_types ),*
         ) -> #entry_fn_return_tokens {
             let retval = #user_fn_ident(
-                #( 
-                    bincode::deserialize(
-                        std::slice::from_raw_parts(#(entry_fn_pairs),*), 
-                    ).unwrap()
-                ),*
+                #(#entry_fn_transform_tokens),*
             );
-            let encoded = bincode::bincode::serialize(retval);
-            let (encoded_ptr, encoded_len, _encoded_cap) = encoded.into_raw_parts();
-            (encoded_ptr, encoded_len)
+            unsafe { plrust_interface::serialize_and_leak_into_wasm_u128(&retval).unwrap() }
         }
     };
-
+    source.items.push(syn::Item::Fn(entry_fn));
     source
 }
 

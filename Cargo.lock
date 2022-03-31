@@ -1691,7 +1691,9 @@ dependencies = [
 name = "plrust_interface"
 version = "0.0.0"
 dependencies = [
+ "bincode",
  "pgx",
+ "serde",
  "wasmtime",
  "wasmtime-wasi",
 ]
