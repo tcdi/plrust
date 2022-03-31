@@ -1672,11 +1672,15 @@ dependencies = [
 name = "plrust"
 version = "0.0.0"
 dependencies = [
+ "bincode",
  "include_dir",
  "once_cell",
  "pgx",
  "pgx-tests",
  "plrust_interface",
+ "prettyplease",
+ "proc-macro2",
+ "syn",
  "tempdir",
  "toml",
  "wasmtime",

@@ -29,6 +29,10 @@ include_dir = "0.7"
 plrust_interface = { path = "components/plrust_interface", default-features = false, features = [ "host" ] }
 wasmtime = "0.35"
 wasmtime-wasi = "0.35"
+bincode = "1"
+syn = "1"
+proc-macro2 = "1"
+prettyplease = "0.1"
 
 [dev-dependencies]
 pgx-tests = "0.4.1"
