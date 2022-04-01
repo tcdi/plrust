@@ -161,7 +161,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
             PgOid::Custom(_) => todo!(),
             PgOid::BuiltIn(builtin) => match builtin {
                 PgBuiltInOids::TEXTOID => {
-                    let val: String = plrust_interface::unpack_and_own_from_wasm(ptr as u64, len as u64).unwrap();
+                    let val: String = plrust_interface::deserialize(&plrust_interface::unpack(ptr as u64 as *mut u8).unwrap().1).unwrap();
                     val.into_datum().unwrap()
                 },
                 _ => todo!(),
@@ -187,9 +187,6 @@ fn set_wasm_ret(
     match oid_to_valtype_and_ptr_marker(oid) {
         (valtype, false) => buf.push(Val::ExternRef(None)),
         (valtype, true) => {
-            buf.push(
-                Val::ExternRef(None)
-            );
             buf.push(
                 Val::ExternRef(None)
             );
@@ -228,23 +225,19 @@ fn set_wasm_args(
                     _ => todo!(),
                 },
             };
+            let packed = plrust_interface::pack_with_len(bincoded);
 
+            pgx::info!("About to alloc {} bytes", packed.len());
             let wasm_alloc = instance.get_typed_func::<(u64, u64), u64, _>(&mut *store, &"guest_alloc").unwrap();;
             let wasm_dealloc = instance.get_typed_func::<(u64, u64, u64), (), _>(&mut *store, &"guest_dealloc").unwrap();
 
-            pgx::info!("About to alloc {} bytes", bincoded.len());
-            let guest_ptr = wasm_alloc.call(&mut *store, (bincoded.len() as u64, 8)).unwrap();
-            pgx::info!("Wrote {} bytes at offset {}", bincoded.len(), guest_ptr);
-            instance.get_memory(&mut *store, "memory").unwrap().write(&mut *store, guest_ptr as usize, bincoded.as_slice()).unwrap();
+            let guest_ptr = wasm_alloc.call(&mut *store, (packed.len() as u64, 8)).unwrap();
+            pgx::info!("Wrote {} bytes at offset {}", packed.len(), guest_ptr);
+            instance.get_memory(&mut *store, "memory").unwrap()
+                .write(&mut *store, guest_ptr as usize, packed.as_slice()).unwrap();
 
-            let packed = unsafe {
-                plrust_interface::pack_and_leak_into_wasm(bincoded)
-            };
             buf.push(
-                Val::I64(packed.0 as i64)
-            );
-            buf.push(
-                Val::I64(packed.1 as i64)
+                Val::I64(guest_ptr as i64)
             );
         },
     }
@@ -262,20 +255,12 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
     let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
 
-    let wasm_build_output = Command::new("rustup")
+    let wasm_build_output = Command::new("cargo")
         .current_dir(&crate_dir)
-        .arg("run")
-        .arg("nightly")
-        .arg("cargo")
         .arg("build")
-        .arg("-Z")
-        // The ordering of these is quite particular.
-        .arg("build-std=core,compiler_builtins,panic_abort,alloc,std,proc_macro")
         .arg("--target")
         .arg("wasm32-wasi")
         .arg("--release")
-        // Must be an env to pass to children.
-        .env("RUSTFLAGS", "-C target-feature=+multivalue,+reference-types")
         .output()
         .expect("failed to build function wasm module");
 
@@ -432,53 +417,65 @@ fn generate_function_source(
 
     let mut entry_fn_arg_idents = Vec::default();
     let mut entry_fn_arg_types: Vec<syn::Type> = Vec::default();
-    let mut entry_fn_transform_tokens: Vec<syn::Expr> = Vec::default();
+    let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
         match oid_to_valtype(arg_type_oid) {
             Some(valtype) => {
                 // It's a primitive, we pass directly.
                 let ident = &user_fn_arg_idents[arg_idx];
-                entry_fn_transform_tokens.push(syn::parse_quote! { #ident });
+                entry_fn_arg_transform_tokens.push(syn::parse_quote! { #ident });
 
                 let ty = valtype_to_syn_type(valtype).unwrap();
+                entry_fn_arg_idents.push(ident.clone());
                 entry_fn_arg_types.push(syn::parse_quote! { #ty })
             },
             None => {
                 // It's an encoded value. This expands to (ptr, len)
                 let ident = &user_fn_arg_idents[arg_idx];
 
-                let ptr_ident = syn::Ident::new(&(ident.to_string() + "_ptr"), proc_macro2::Span::call_site());
-                entry_fn_arg_idents.push(ptr_ident.clone()); // ptr
+                entry_fn_arg_idents.push(ident.clone()); // ptr
                 entry_fn_arg_types.push(syn::parse_quote! { u64 }); // ptr
 
-                let len_ident = syn::Ident::new(&(ident.to_string() + "_len"), proc_macro2::Span::call_site());
-                entry_fn_arg_idents.push(len_ident.clone()); // ptr
-                entry_fn_arg_types.push(syn::parse_quote! { u64 }); // len
-
-                entry_fn_transform_tokens.push(syn::parse_quote! { unsafe { ::plrust_interface::unpack_and_own_from_wasm(#ptr_ident, #len_ident).unwrap() } });
+                entry_fn_arg_transform_tokens.push(syn::parse_quote! {
+                    unsafe {
+                        ::plrust_interface::deserialize(&::plrust_interface::unpack(#ident as *mut u8).unwrap().1).unwrap()
+                    }
+                });
             },
         }
     }
+    let entry_fn_return_transform_tokens: syn::Expr;
     let entry_fn_return_tokens = match oid_to_valtype(return_type) {
         Some(valtype) => {
             // It's a primitive, we pass directly.
+            entry_fn_return_transform_tokens = syn::parse_quote! {
+                retval
+            };
             valtype_to_syn_type(valtype).unwrap()
         },
         None => {
             // It's an encoded value. This expands to (ptr, len)
-            syn::parse_quote! { (u64, u64) }
+            entry_fn_return_transform_tokens = syn::parse_quote! {
+                unsafe {
+                    ::plrust_interface::leak_into_wasm(
+                        ::plrust_interface::pack_with_len(
+                            ::plrust_interface::serialize(&retval).unwrap()
+                        )
+                    )
+                }
+            };
+            syn::parse_quote! { u64 }
         },
     };
-
     let entry_fn: syn::ItemFn = syn::parse_quote! {
         #[no_mangle]
         fn entry(
             #( #entry_fn_arg_idents: #entry_fn_arg_types ),*
         ) -> #entry_fn_return_tokens {
             let retval = #user_fn_ident(
-                #(#entry_fn_transform_tokens),*
+                #(#entry_fn_arg_transform_tokens),*
             );
-            unsafe { plrust_interface::serialize_and_leak_into_wasm(&retval).unwrap() }
+            #entry_fn_return_transform_tokens
         }
     };
     source.items.push(syn::Item::Fn(entry_fn));
