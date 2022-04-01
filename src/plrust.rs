@@ -8,12 +8,12 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::gucs;
-use pgx::pg_sys::heap_tuple_get_struct;
+use pgx::pg_sys::{heap_tuple_get_struct, FunctionCallInfo};
 use pgx::*;
 use wasmtime::{Val, ValType};
 use std::{path::PathBuf, collections::HashMap, process::Command, io::Write};
 
-use wasmtime::{Engine, Linker, Store, Module};
+use wasmtime::{Engine, Instance, Linker, Store, Module};
 use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
 use once_cell::sync::Lazy;
@@ -32,14 +32,13 @@ static LINKER: Lazy<Linker<WasiCtx>> = Lazy::new(|| {
 
     linker
 });
+
 static mut CACHE: Lazy<HashMap<
     pg_sys::Oid,
     (
         Module,
         Vec<PgOid>, // Arg OIDs
-        Vec<Val>,   // Arg value slots
         PgOid, // Return OIDs
-        Val,   // Return value slots
     ),
 >> = Lazy::new(|| Default::default());
 
@@ -73,9 +72,7 @@ fn provision_interface_crate(dir: &include_dir::Dir) {
 fn initialize_cache_entry(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> (
     Module,
     Vec<PgOid>, // Arg OIDs
-    Vec<Val>,   // Arg value slots
     PgOid, // Return OIDs
-    Val,   // Return value slots
 ) {
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -122,18 +119,12 @@ fn initialize_cache_entry(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo)
         (argtypes, rettype)
     };
 
-    let mut args: Vec<wasmtime::Val> = vec![ ];
-    for idx in 0..argtypes.len() {
-        args.push(Val::ExternRef(None));
-    }
-    let mut ret = Val::ExternRef(None);
-
-    (module, argtypes, args, rettype, ret)
+    (module, argtypes, rettype)
 }
 
 pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
-    let (module, argtypes, args, rettypes, rets) = CACHE.entry(fn_oid).or_insert_with(|| 
+    let (module, arg_oids, ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
         initialize_cache_entry(fn_oid, fcinfo)
     );
 
@@ -147,72 +138,116 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
         ),
     };
 
-    let mut instance_args = args.clone();
-    for (idx, val) in instance_args.iter_mut().enumerate() {
-        pgx::log!("Got OID {:?}", argtypes[idx]);
-        let wasm_val = match oid_to_valtype(&argtypes[idx]) {
-            Some(valtype) => match valtype {
-                ValType::I32 => Val::I32(pg_getarg(fcinfo, idx).unwrap()),
-                ValType::I64 => Val::I64(pg_getarg(fcinfo, idx).unwrap()),
-                ValType::F32 => todo!(),
-                ValType::F64 => todo!(),
-                ValType::V128 => todo!(),
-                ValType::FuncRef => todo!(),
-                ValType::ExternRef => todo!(),
-            },
-            None => {
-                let datum = pg_getarg_datum(fcinfo, idx).unwrap();
-
-                let bincoded = match &argtypes[idx] {
-                    PgOid::InvalidOid => todo!(),
-                    PgOid::Custom(_) => todo!(),
-                    PgOid::BuiltIn(builtin) => match builtin {
-                        PgBuiltInOids::TEXTOID => bincode::serialize(&pg_getarg::<String>(fcinfo, idx).unwrap()).unwrap(),
-                        _ => todo!(),
-                    },
-                };
-
-                let wasm_alloc = match instance.get_typed_func::<(u64, u64), u64, _>(&mut store, &"guest_alloc") {
-                    Ok(f) => f,
-                    Err(e) => panic!("Could not find function {}: {}", wasm_fn_name, e),
-                };
-                let wasm_dealloc = match instance.get_typed_func::<(u64, u64, u64), (), _>(&mut store, &"guest_dealloc") {
-                    Ok(f) => f,
-                    Err(e) => panic!("Could not find function {}: {}", wasm_fn_name, e),
-                };
-
-                pgx::info!("About to alloc {} bytes", bincoded.len());
-                let guest_ptr = match wasm_alloc.call(&mut store, (bincoded.len() as u64, 8)) {
-                    Ok(res) => res,
-                    Err(e) => panic!("Got an error: {:?}", e),
-                };
-                pgx::info!("Wrote {} bytes at offset {}", bincoded.len(), guest_ptr);
-                instance.get_memory(&mut store, "memory").unwrap().write(&mut store, guest_ptr as usize, bincoded.as_slice()).unwrap();
-
-                let packed = plrust_interface::pack_and_leak_into_wasm_u128(bincoded);
-                Val::V128(packed)
-            },
-        };
-
-        *val = wasm_val;
+    let mut args = Vec::with_capacity(arg_oids.len());
+    for (idx, arg_oid) in arg_oids.iter().enumerate() {
+        set_wasm_args(arg_oid, idx, fcinfo, &instance, &mut store, &mut args);
     }
-    let mut instance_ret = [ rets.clone() ];
+    let mut ret = Vec::with_capacity(2);
+    set_wasm_ret(ret_oid, &mut ret);
 
     let wasm_fn = match instance.get_func(&mut store, &"entry") {
         Some(f) => f,
         None => panic!("Could not find function {}", wasm_fn_name),
     };
 
-    match wasm_fn.call(&mut store, instance_args.as_slice(), instance_ret.as_mut_slice()) {
+    match wasm_fn.call(&mut store, args.as_slice(), ret.as_mut_slice()) {
         Ok(res) => res,
         Err(e) => panic!("Got an error: {:?}", e),
     };
 
-    let res = match &instance_ret[0] {
-        wasmtime::Val::V128(val) => val,
-        other => unimplemented!("Cannot handle {:?}", other),
-    };
-    *res as pg_sys::Datum
+    match ret.as_slice() {
+        &[Val::I64(ptr), Val::I64(len)] => match ret_oid {
+            PgOid::InvalidOid => todo!(),
+            PgOid::Custom(_) => todo!(),
+            PgOid::BuiltIn(builtin) => match builtin {
+                PgBuiltInOids::TEXTOID => {
+                    let val: String = plrust_interface::unpack_and_own_from_wasm(ptr as u64, len as u64).unwrap();
+                    val.into_datum().unwrap()
+                },
+                _ => todo!(),
+            },
+        },
+        &[ref primitive_value] => match primitive_value {
+            Val::I32(val) => *val as pg_sys::Datum,
+            Val::I64(val) => *val as pg_sys::Datum,
+            Val::F32(_) => todo!(),
+            Val::F64(_) => todo!(),
+            Val::V128(_) => todo!(),
+            Val::FuncRef(_) => todo!(),
+            Val::ExternRef(_) => todo!(),
+        },
+        _ => unimplemented!(),
+    }
+}
+
+fn set_wasm_ret(
+    oid: &PgOid,
+    buf: &mut Vec<Val>
+) {
+    match oid_to_valtype_and_ptr_marker(oid) {
+        (valtype, false) => buf.push(Val::ExternRef(None)),
+        (valtype, true) => {
+            buf.push(
+                Val::ExternRef(None)
+            );
+            buf.push(
+                Val::ExternRef(None)
+            );
+        },
+    }
+}
+
+fn set_wasm_args(
+    oid: &PgOid,
+    idx: usize,
+    fcinfo: FunctionCallInfo,
+    instance: &Instance,
+    store: &mut Store<WasiCtx>,
+    buf: &mut Vec<Val>
+) {
+    match oid_to_valtype_and_ptr_marker(oid) {
+        (valtype, false) => match valtype {
+            ValType::I32 => buf.push(
+                Val::I32(pg_getarg(fcinfo, idx).unwrap())
+            ),
+            ValType::I64 => buf.push(
+                Val::I64(pg_getarg(fcinfo, idx).unwrap())
+            ),
+            ValType::F32 => todo!(),
+            ValType::F64 => todo!(),
+            ValType::V128 => todo!(),
+            ValType::FuncRef => todo!(),
+            ValType::ExternRef => todo!(),
+        },
+        (valtype, true) => {
+            let bincoded = match oid {
+                PgOid::InvalidOid => todo!(),
+                PgOid::Custom(_) => todo!(),
+                PgOid::BuiltIn(builtin) => match builtin {
+                    PgBuiltInOids::TEXTOID => bincode::serialize(&pg_getarg::<String>(fcinfo, idx).unwrap()).unwrap(),
+                    _ => todo!(),
+                },
+            };
+
+            let wasm_alloc = instance.get_typed_func::<(u64, u64), u64, _>(&mut *store, &"guest_alloc").unwrap();;
+            let wasm_dealloc = instance.get_typed_func::<(u64, u64, u64), (), _>(&mut *store, &"guest_dealloc").unwrap();
+
+            pgx::info!("About to alloc {} bytes", bincoded.len());
+            let guest_ptr = wasm_alloc.call(&mut *store, (bincoded.len() as u64, 8)).unwrap();
+            pgx::info!("Wrote {} bytes at offset {}", bincoded.len(), guest_ptr);
+            instance.get_memory(&mut *store, "memory").unwrap().write(&mut *store, guest_ptr as usize, bincoded.as_slice()).unwrap();
+
+            let packed = unsafe {
+                plrust_interface::pack_and_leak_into_wasm(bincoded)
+            };
+            buf.push(
+                Val::I64(packed.0 as i64)
+            );
+            buf.push(
+                Val::I64(packed.1 as i64)
+            );
+        },
+    }
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
@@ -227,12 +262,20 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
     let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
 
-    let wasm_build_output = Command::new("cargo")
+    let wasm_build_output = Command::new("rustup")
         .current_dir(&crate_dir)
+        .arg("run")
+        .arg("nightly")
+        .arg("cargo")
         .arg("build")
+        .arg("-Z")
+        // The ordering of these is quite particular.
+        .arg("build-std=core,compiler_builtins,panic_abort,alloc,std,proc_macro")
         .arg("--target")
         .arg("wasm32-wasi")
         .arg("--release")
+        // Must be an env to pass to children.
+        .env("RUSTFLAGS", "-C target-feature=+multivalue,+reference-types")
         .output()
         .expect("failed to build function wasm module");
 
@@ -387,28 +430,34 @@ fn generate_function_source(
     };
     source.items.push(syn::Item::Fn(user_fn_tokens));
 
-    let entry_fn_arg_idents = user_fn_arg_idents.clone();
+    let mut entry_fn_arg_idents = Vec::default();
     let mut entry_fn_arg_types: Vec<syn::Type> = Vec::default();
     let mut entry_fn_transform_tokens: Vec<syn::Expr> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
-        let (mapped, is_u128_ptr) = match oid_to_valtype(arg_type_oid) {
+        match oid_to_valtype(arg_type_oid) {
             Some(valtype) => {
                 // It's a primitive, we pass directly.
+                let ident = &user_fn_arg_idents[arg_idx];
+                entry_fn_transform_tokens.push(syn::parse_quote! { #ident });
+
                 let ty = valtype_to_syn_type(valtype).unwrap();
-                (syn::parse_quote! { #ty }, false)
+                entry_fn_arg_types.push(syn::parse_quote! { #ty })
             },
             None => {
                 // It's an encoded value. This expands to (ptr, len)
-                (syn::parse_quote! { u128 }, true)
-            },
-        };
-        entry_fn_arg_types.push(mapped);
+                let ident = &user_fn_arg_idents[arg_idx];
 
-        let ident = &user_fn_arg_idents[arg_idx];
-        entry_fn_transform_tokens.push(match is_u128_ptr {
-            true => syn::parse_quote! { unsafe { ::plrust_interface::unpack_and_own_from_wasm_u128(#ident).unwrap() } },
-            false => syn::parse_quote! { #ident },
-        })
+                let ptr_ident = syn::Ident::new(&(ident.to_string() + "_ptr"), proc_macro2::Span::call_site());
+                entry_fn_arg_idents.push(ptr_ident.clone()); // ptr
+                entry_fn_arg_types.push(syn::parse_quote! { u64 }); // ptr
+
+                let len_ident = syn::Ident::new(&(ident.to_string() + "_len"), proc_macro2::Span::call_site());
+                entry_fn_arg_idents.push(len_ident.clone()); // ptr
+                entry_fn_arg_types.push(syn::parse_quote! { u64 }); // len
+
+                entry_fn_transform_tokens.push(syn::parse_quote! { unsafe { ::plrust_interface::unpack_and_own_from_wasm(#ptr_ident, #len_ident).unwrap() } });
+            },
+        }
     }
     let entry_fn_return_tokens = match oid_to_valtype(return_type) {
         Some(valtype) => {
@@ -417,19 +466,19 @@ fn generate_function_source(
         },
         None => {
             // It's an encoded value. This expands to (ptr, len)
-            syn::parse_quote! { u128 }
+            syn::parse_quote! { (u64, u64) }
         },
     };
 
     let entry_fn: syn::ItemFn = syn::parse_quote! {
         #[no_mangle]
-        extern "C" fn entry(
+        fn entry(
             #( #entry_fn_arg_idents: #entry_fn_arg_types ),*
         ) -> #entry_fn_return_tokens {
             let retval = #user_fn_ident(
                 #(#entry_fn_transform_tokens),*
             );
-            unsafe { plrust_interface::serialize_and_leak_into_wasm_u128(&retval).unwrap() }
+            unsafe { plrust_interface::serialize_and_leak_into_wasm(&retval).unwrap() }
         }
     };
     source.items.push(syn::Item::Fn(entry_fn));
@@ -563,6 +612,18 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     (deps_block, code_block)
 }
 
+
+fn oid_to_valtype_and_ptr_marker(oid: &PgOid) -> (ValType, bool) {
+    match oid_to_valtype(oid) {
+        Some(valtype) => (valtype, false),
+        None => {
+            // This is a type we must encode/decode, expanding to two arguments, `(ptr, len)`
+            (wasmtime::ValType::I64, true)
+        }
+    }
+}
+
+
 fn oid_to_valtype(oid: &pg_sys::PgOid) -> Option<ValType> {
     match oid {
         PgOid::InvalidOid => todo!(),
@@ -572,18 +633,6 @@ fn oid_to_valtype(oid: &pg_sys::PgOid) -> Option<ValType> {
             PgBuiltInOids::INT8OID => Some(ValType::I64),
             _ => None,
         },
-    }
-}
-
-fn valtype_to_oid(valtype: ValType) -> Option<PgOid> {
-    match valtype {
-        ValType::I32 => Some(PgOid::BuiltIn(PgBuiltInOids::INT4OID)),
-        ValType::I64 => Some(PgOid::BuiltIn(PgBuiltInOids::INT8OID)),
-        ValType::F32 => todo!(),
-        ValType::F64 => todo!(),
-        ValType::V128 => todo!(),
-        ValType::FuncRef => todo!(),
-        ValType::ExternRef => todo!(),
     }
 }
 
@@ -644,53 +693,4 @@ fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Option<syn::Type> {
     } else {
         Some(base_rust_type)
     }
-}
-
-fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
-    let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
-
-    let (base_oid, array) = if array_type != pg_sys::InvalidOid {
-        (PgOid::from(array_type), true)
-    } else {
-        (type_oid.clone(), false)
-    };
-
-    let type_oid = base_oid;
-    let mut rust_type = match type_oid {
-        PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::ANYELEMENTOID => "AnyElement",
-            PgBuiltInOids::BOOLOID => "bool",
-            PgBuiltInOids::BYTEAOID if owned => "Vec<Option<[u8]]>>",
-            PgBuiltInOids::BYTEAOID => "&[u8]",
-            PgBuiltInOids::CHAROID => "u8",
-            PgBuiltInOids::CSTRINGOID => "std::ffi::CStr",
-            PgBuiltInOids::FLOAT4OID => "f32",
-            PgBuiltInOids::FLOAT8OID => "f64",
-            PgBuiltInOids::INETOID => "Inet",
-            PgBuiltInOids::INT2OID => "i16",
-            PgBuiltInOids::INT4OID => "i32",
-            PgBuiltInOids::INT8OID => "i64",
-            PgBuiltInOids::JSONBOID => "JsonB",
-            PgBuiltInOids::JSONOID => "Json",
-            PgBuiltInOids::NUMERICOID => "Numeric",
-            PgBuiltInOids::OIDOID => "pg_sys::Oid",
-            PgBuiltInOids::TEXTOID if owned => "String",
-            PgBuiltInOids::TEXTOID => "&str",
-            PgBuiltInOids::TIDOID => "pg_sys::ItemPointer",
-            PgBuiltInOids::VARCHAROID if owned => "String",
-            PgBuiltInOids::VARCHAROID => "&str",
-            PgBuiltInOids::VOIDOID => "()",
-            _ => panic!("unsupported argument type: {:?}", type_oid),
-        },
-        _ => panic!("unsupported argument type: {:?}", type_oid),
-    }
-    .to_string();
-
-    if array && owned {
-        rust_type = format!("Vec<Option<{}>>", rust_type);
-    } else if array {
-        rust_type = format!("Array<{}>", rust_type);
-    }
-
-    rust_type
 }
