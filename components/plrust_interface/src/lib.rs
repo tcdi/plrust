@@ -29,6 +29,21 @@ unsafe fn guest_alloc(size: u64, align: u64) -> u64 {
     std::alloc::alloc(layout) as u64
 }
 
+pub unsafe fn serialize_pack_and_leak<T: serde::Serialize>(val: &T) -> Result<u64, Box<bincode::ErrorKind>> {
+    let retval = leak_into_wasm(
+        pack_with_len(
+            serialize(val)?
+        )
+    );
+    Ok(retval)
+}
+
+pub unsafe fn own_unpack_and_deserialize<T: serde::de::DeserializeOwned>(ptr: *mut u8) -> Result<T, Box<bincode::ErrorKind>> {
+    let (_unpacked_len, unpacked_bytes) = unpack(ptr).unwrap();
+    let retval = deserialize(&unpacked_bytes).unwrap();
+    Ok(retval)
+}
+
 pub unsafe fn get_packed_len(ptr: *mut u8) -> Result<u64, std::array::TryFromSliceError> {
     let packed_len_bytes = std::slice::from_raw_parts(ptr, std::mem::size_of::<u64>());
     let len = u64::from_le_bytes(packed_len_bytes.try_into()?);
@@ -43,7 +58,7 @@ pub unsafe fn unpack(ptr: *mut u8) -> Result<(u64, Vec<u8>), Box<dyn std::error:
     Ok((packed_len, bytes))
 }
 
-pub fn deserialize<'d, T: serde::Deserialize<'d>>(bytes: &'d [u8]) -> Result<T, Box<bincode::ErrorKind>> {
+pub fn deserialize<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, Box<bincode::ErrorKind>> {
     bincode::deserialize(bytes)
 }
 
@@ -52,8 +67,8 @@ pub fn serialize<T: serde::Serialize>(val: &T) -> Result<Vec<u8>, Box<bincode::E
 }
 
 pub fn pack_with_len(mut bytes: Vec<u8>) -> Vec<u8> {
-    let bytes_len = bytes.len();
-    let mut packed_bytes = bytes.len().to_le_bytes().to_vec();
+    let bytes_len = bytes.len() as u64; // This cast is extremely load bearing, don't trim it.
+    let mut packed_bytes = bytes_len.to_le_bytes().to_vec();
     packed_bytes.append(&mut bytes);
     assert_eq!(
         u64::from_le_bytes(packed_bytes[0..std::mem::size_of::<u64>()].try_into().unwrap()),
@@ -89,6 +104,15 @@ pub fn spi_exec_select_num(i: i32) -> i32 {
             return -1;
         }
     }
+}
+
+#[test]
+fn round_trip_string() -> Result<(), Box<dyn std::error::Error>> {
+    let data = String::from("Nami");
+    let leaked_ptr = unsafe { serialize_pack_and_leak(&data).unwrap() };
+    let reowned: String = unsafe { own_unpack_and_deserialize(leaked_ptr as *mut u8).unwrap() };
+    assert_eq!(data, reowned);
+    Ok(())
 }
 
 #[test]

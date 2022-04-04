@@ -156,12 +156,20 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     };
 
     match ret.as_slice() {
-        &[Val::I64(ptr), Val::I64(len)] => match ret_oid {
+        &[Val::I64(guest_ptr)] => match ret_oid {
             PgOid::InvalidOid => todo!(),
             PgOid::Custom(_) => todo!(),
             PgOid::BuiltIn(builtin) => match builtin {
                 PgBuiltInOids::TEXTOID => {
-                    let val: String = plrust_interface::deserialize(&plrust_interface::unpack(ptr as u64 as *mut u8).unwrap().1).unwrap();
+                    let mut length_bytes = vec![0; std::mem::size_of::<u64>()];
+                    instance.get_memory(&mut store, "memory").unwrap()
+                        .read(&mut store, guest_ptr as usize, length_bytes.as_mut_slice()).unwrap();
+                    let length = u64::from_le_bytes(length_bytes.as_slice().try_into().unwrap());
+
+                    let mut returned_bytes = vec![0; length as usize];
+                    instance.get_memory(&mut store, "memory").unwrap()
+                        .read(&mut store, (guest_ptr as usize + std::mem::size_of::<u64>()), returned_bytes.as_mut_slice()).unwrap();
+                    let val: String = plrust_interface::deserialize(&returned_bytes).unwrap();
                     val.into_datum().unwrap()
                 },
                 _ => todo!(),
@@ -227,12 +235,11 @@ fn set_wasm_args(
             };
             let packed = plrust_interface::pack_with_len(bincoded);
 
-            pgx::info!("About to alloc {} bytes", packed.len());
             let wasm_alloc = instance.get_typed_func::<(u64, u64), u64, _>(&mut *store, &"guest_alloc").unwrap();;
             let wasm_dealloc = instance.get_typed_func::<(u64, u64, u64), (), _>(&mut *store, &"guest_dealloc").unwrap();
 
             let guest_ptr = wasm_alloc.call(&mut *store, (packed.len() as u64, 8)).unwrap();
-            pgx::info!("Wrote {} bytes at offset {}", packed.len(), guest_ptr);
+            
             instance.get_memory(&mut *store, "memory").unwrap()
                 .write(&mut *store, guest_ptr as usize, packed.as_slice()).unwrap();
 
@@ -394,7 +401,7 @@ fn generate_function_source(
     let mut user_fn_arg_idents: Vec<syn::Ident> = Vec::default(); 
     let mut user_fn_arg_types: Vec<syn::Type> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
-        let arg_ty = oid_to_syn_type(arg_type_oid, false).unwrap();
+        let arg_ty = oid_to_syn_type(arg_type_oid, true).unwrap();
         let arg_name = match arg_name {
             Some(name) if name.len() > 0 => name.clone(),
             _ => format!("arg{}", arg_idx),
@@ -438,7 +445,7 @@ fn generate_function_source(
 
                 entry_fn_arg_transform_tokens.push(syn::parse_quote! {
                     unsafe {
-                        ::plrust_interface::deserialize(&::plrust_interface::unpack(#ident as *mut u8).unwrap().1).unwrap()
+                        ::plrust_interface::own_unpack_and_deserialize(#ident as *mut u8).unwrap()
                     }
                 });
             },
@@ -456,13 +463,7 @@ fn generate_function_source(
         None => {
             // It's an encoded value. This expands to (ptr, len)
             entry_fn_return_transform_tokens = syn::parse_quote! {
-                unsafe {
-                    ::plrust_interface::leak_into_wasm(
-                        ::plrust_interface::pack_with_len(
-                            ::plrust_interface::serialize(&retval).unwrap()
-                        )
-                    )
-                }
+                unsafe { ::plrust_interface::serialize_pack_and_leak(&retval).unwrap() }
             };
             syn::parse_quote! { u64 }
         },
