@@ -161,7 +161,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let crate_name = {
         let mut crate_name = crate_name;
         let latest = generation::next_generation(&crate_name, true)
