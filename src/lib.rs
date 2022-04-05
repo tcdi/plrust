@@ -23,7 +23,7 @@ fn _PG_init() {
 /// `pgx` doesn't know how to declare a CREATE FUNCTION statement for a function
 /// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
 #[pg_extern(sql = "
-CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
+CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
