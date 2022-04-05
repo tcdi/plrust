@@ -81,8 +81,8 @@ extension_sql!(
 CREATE LANGUAGE plrust
     HANDLER plrust.plrust_call_handler
     VALIDATOR plrust.plrust_validator;
-    
-COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';    
+
+COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
 "#,
     name = "language_handler",
     requires = [plrust_call_handler, plrust_validator]
@@ -95,7 +95,7 @@ mod tests {
 
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
-        r#"   
+        r#"
         CREATE TABLE contributors_pets (
             id serial8 not null primary key,
             name text
