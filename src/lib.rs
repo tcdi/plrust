@@ -76,6 +76,24 @@ fn recompile_function(
     }
 }
 
+#[pg_extern]
+fn list_function_in_work_dir() -> impl std::iter::Iterator<Item = String> {
+    plrust::list_functions()
+}
+
+#[pg_extern]
+fn remove_fn_from_work_dir(fn_oid: pg_sys::Oid, schema_name: String) {
+    let removed = plrust::remove_fn_from_work_dir(fn_oid, schema_name);
+    if !removed {
+        panic!("No file was removed")
+    }
+}
+
+#[pg_extern]
+fn remove_fn_from_work_dir_priviliged(basename: String) {
+    plrust::remove_file_from_work_dir(basename);
+}
+
 extension_sql!(
     r#"
 CREATE LANGUAGE plrust

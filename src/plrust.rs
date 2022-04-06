@@ -157,6 +157,121 @@ pub(crate) unsafe fn lookup_function(
     }
 }
 
+pub(crate) fn list_functions() -> impl std::iter::Iterator<Item = String> {
+    let paths = std::fs::read_dir(gucs::work_dir()).unwrap();
+    let mut valid_fns = Vec::new();
+
+    // Provide a santized version of pg_ls_dir but only for the work_dir
+    // Useful when PL/Rust is being provided to an unpriviliged user
+    let superuser = unsafe { pg_sys::superuser() };
+    let db_oid = unsafe { pg_sys::MyDatabaseId };
+
+    for entry in paths {
+        let path = String::from(entry.unwrap().path().to_string_lossy());
+
+        // If superuser, provide a view of the contents of the directory
+        // Otherwise provide only a view of files containing the oid of the database.
+        // This is to prevent metadata information from being leaked in multi-tenant systems
+        if superuser {
+            valid_fns.push(path);
+        } else {
+            let sanitized_path = String::from(
+                std::path::Path::new(&gucs::work_dir())
+                    .join(format!("{}{}", "fn", db_oid))
+                    .to_string_lossy(),
+            );
+            if path.starts_with(&sanitized_path) {
+                valid_fns.push(path);
+            }
+        }
+    }
+
+    valid_fns.into_iter()
+}
+
+pub(crate) fn remove_fn_from_work_dir(fn_oid: pg_sys::Oid, schema_name: String) -> bool {
+    let mut removed = false;
+    let schema = std::ffi::CString::new(schema_name).unwrap();
+
+    // Don't need to sanitize schema as it gets converted into an Oid
+    let ns_oid = unsafe { pg_sys::get_namespace_oid(schema.as_ptr(), false) };
+    let db_oid = unsafe { pg_sys::MyDatabaseId };
+
+    let crate_name = crate_name_fmt(db_oid, ns_oid, fn_oid);
+
+    let work_dir = gucs::work_dir();
+    for entry in work_dir
+        .read_dir()
+        .expect("Unable to iterate through PL/Rust work directory")
+    {
+        if let Ok(entry) = entry {
+            let canonical_path = entry.path().canonicalize().unwrap();
+
+            // Check that the canonical path of the entry is in the work directory
+            // and the file_name/basename lines up with our crate format
+            // We check for is_dir and is_file to protect against symlink but since the
+            // operations are not atomic it's still possible for us to accidentally delete
+            // a file in an unintended location.
+            if canonical_path.starts_with(&work_dir)
+                && canonical_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+                    .starts_with(&crate_name)
+            {
+                if canonical_path.is_dir() {
+                    removed = true;
+                    std::fs::remove_dir_all(&canonical_path).ok();
+                } else if canonical_path.is_file() {
+                    removed = true;
+                    std::fs::remove_file(&canonical_path).ok();
+                }
+
+                if removed {
+                    eprintln!("Removed {:?}", &canonical_path);
+                }
+            }
+        }
+    }
+    removed
+}
+
+pub(crate) fn remove_file_from_work_dir(basename: String) {
+    let superuser = unsafe { pg_sys::superuser() };
+    if !superuser {
+        panic!("Only superusers are allowed to remove arbitrary files");
+    }
+    let canon_work_dir = &gucs::work_dir().canonicalize().unwrap();
+    let canon_path = &gucs::work_dir().join(basename).canonicalize().unwrap();
+
+    if !canon_path.starts_with(canon_work_dir) {
+        panic!("Unable to remove a file not in the work directory")
+    }
+
+    if canon_path.eq(canon_work_dir) {
+        panic!("Unable to remove work directory")
+    }
+
+    let file_path = canon_path.as_path();
+
+    if !file_path.exists() {
+        panic!(
+            "File {:?} cannot be removed as it does not exist",
+            file_path
+        );
+    }
+
+    if file_path.is_dir() {
+        eprintln!("Removed_1 directory {:?} and it's contents", file_path);
+        std::fs::remove_dir_all(file_path).unwrap();
+    } else if file_path.is_file() {
+        std::fs::remove_file(file_path).unwrap();
+        eprintln!("Removed_2 {:?}", file_path);
+    }
+}
+
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -276,6 +391,10 @@ codegen-units = 1
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let db_oid = unsafe { pg_sys::MyDatabaseId };
     let ns_oid = unsafe { pg_sys::get_func_namespace(fn_oid) };
+    crate_name_fmt(db_oid, ns_oid, fn_oid)
+}
+
+fn crate_name_fmt(db_oid: pg_sys::Oid, ns_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
 }
 
