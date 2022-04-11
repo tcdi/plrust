@@ -113,14 +113,20 @@ pub fn host_get_one_with_args(mut caller: wasmtime::Caller<'_, wasmtime_wasi::Wa
     
     // args...
 
-    let retval_datum: Option<Datum> = pgx::Spi::get_one_with_args(
-        &query, 
-        vec![],
-    );
-
     pgx::warning!("Expecting return type id of: {:?}", return_type_id);
-    
-    let serialized = retval_datum.map(|datum| serialize_by_type_id(datum, return_type_id).unwrap()).unwrap();
+    let serialized = match return_type_id {
+        0 => {
+            pgx::warning!("Returns: String");
+            let retval: Option<String> = pgx::Spi::get_one_with_args(
+                &query, 
+                vec![],
+            );
+        
+            pgx::warning!("Serializing: {:?}", retval);
+            serialize(&WasmArgOrReturn::String(retval.unwrap())).unwrap()
+        },
+        _ => todo!(),
+    };
 
     let packed = pack_with_len(serialized);
 
