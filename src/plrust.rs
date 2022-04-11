@@ -69,12 +69,11 @@ fn provision_interface_crate(dir: &include_dir::Dir) {
     }
 }
 
-fn initialize_cache_entry(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> (
+fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
     Module,
     Vec<PgOid>, // Arg OIDs
     PgOid, // Return OIDs
 ) {
-    let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
     let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
 
@@ -125,7 +124,7 @@ fn initialize_cache_entry(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo)
 pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (module, arg_oids, ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
-        initialize_cache_entry(fn_oid, fcinfo)
+        initialize_cache_entry(fn_oid)
     );
 
     let mut store = Store::new(&ENGINE, WasiCtxBuilder::new().inherit_stdio().build());
@@ -168,7 +167,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
 
                     let mut returned_bytes = vec![0; length as usize];
                     instance.get_memory(&mut store, "memory").unwrap()
-                        .read(&mut store, (guest_ptr as usize + std::mem::size_of::<u64>()), returned_bytes.as_mut_slice()).unwrap();
+                        .read(&mut store, guest_ptr as usize + std::mem::size_of::<u64>(), returned_bytes.as_mut_slice()).unwrap();
                     let val: String = plrust_interface::deserialize(&returned_bytes).unwrap();
                     val.into_datum().unwrap()
                 },
@@ -189,17 +188,10 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
 }
 
 fn set_wasm_ret(
-    oid: &PgOid,
+    _oid: &PgOid,
     buf: &mut Vec<Val>
 ) {
-    match oid_to_valtype_and_ptr_marker(oid) {
-        (valtype, false) => buf.push(Val::ExternRef(None)),
-        (valtype, true) => {
-            buf.push(
-                Val::ExternRef(None)
-            );
-        },
-    }
+    buf.push(Val::ExternRef(None))
 }
 
 fn set_wasm_args(
@@ -239,7 +231,7 @@ fn set_wasm_args(
             let wasm_dealloc = instance.get_typed_func::<(u64, u64, u64), (), _>(&mut *store, &"guest_dealloc").unwrap();
 
             let guest_ptr = wasm_alloc.call(&mut *store, (packed.len() as u64, 8)).unwrap();
-            
+
             instance.get_memory(&mut *store, "memory").unwrap()
                 .write(&mut *store, guest_ptr as usize, packed.as_slice()).unwrap();
 
@@ -256,6 +248,9 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
+    let pg_version = format!("pg{}", pgx::pg_sys::get_pg_major_version_num());
+
+
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
     std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
@@ -463,7 +458,7 @@ fn generate_function_source(
         None => {
             // It's an encoded value. This expands to (ptr, len)
             entry_fn_return_transform_tokens = syn::parse_quote! {
-                unsafe { ::plrust_interface::serialize_pack_and_leak(&retval).unwrap() }
+                unsafe { ::plrust_interface::serialize_pack_and_leak(&retval).unwrap() as u64 }
             };
             syn::parse_quote! { u64 }
         },
@@ -655,7 +650,7 @@ fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Option<syn::Type> {
         (type_oid.clone(), false)
     };
 
-    let mut base_rust_type: syn::Type = match base_oid {
+    let base_rust_type: syn::Type = match base_oid {
         PgOid::BuiltIn(builtin) => match builtin {
             PgBuiltInOids::ANYELEMENTOID => syn::parse_quote! { AnyElement },
             PgBuiltInOids::BOOLOID => syn::parse_quote! { bool },

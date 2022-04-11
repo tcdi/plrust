@@ -1,19 +1,154 @@
+use std::mem::size_of;
+use serde::{Serialize, Deserialize};
+
 #[cfg(feature = "host")]
 pub fn create_linker_functions(linker: &mut wasmtime::Linker<wasmtime_wasi::WasiCtx>) -> Result<(), wasmtime_wasi::Error> {
-    linker.func_wrap("plrust_interface", "unsafe_spi_exec_select_num", crate::spi_exec_select_num)?;
+    linker.func_wrap("plrust_interface", "unsafe_get_one_with_args", crate::host_get_one_with_args)?;
     Ok(())
 }
+
+pub trait WasmArgOrReturnId {
+    const ID: u64;
+}
+
+impl WasmArgOrReturnId for String {
+    const ID: u64 = 0;
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum WasmArgOrReturn {
+     String(String),
+     I32(i32)
+}
+
+impl From<WasmArgOrReturn> for String {
+    fn from(val: WasmArgOrReturn) -> Self {
+        match val {
+            WasmArgOrReturn::String(s) => s,
+            _ => todo!(),
+        }
+    }
+}
+
+impl From<String> for WasmArgOrReturn {
+    fn from(val: String) -> Self {
+        WasmArgOrReturn::String(val)
+    }
+}
+
+impl From<i32> for WasmArgOrReturn {
+    fn from(val: i32) -> Self {
+        WasmArgOrReturn::I32(val)
+    }
+}
+
+// impl WasmArgOrReturn {
+//     unsafe fn own_and_unpack(ptr: *mut u8) -> Result<Self, Box<bincode::ErrorKind>> {
+//         let len_bytes = std::slice::from_raw_parts(ptr, std::mem::size_of::<u64>());
+//         let len = u64::from_le_bytes(len_bytes.try_into().unwrap());
+
+//         let buf_bytes = std::slice::from_raw_parts(ptr, len as usize + std::mem::size_of::<u64>());
+//         Self::unpack(buf_bytes)
+//     }
+
+//     fn unpack(bytes: &[u8]) -> Result<Self, Box<bincode::ErrorKind>> {
+//         let _unpacked_len = u64::from_le_bytes(bytes[0..size_of::<u64>()].try_into().unwrap());
+        
+//         let buf = &bytes[size_of::<u64>()..];
+
+//         deserialize(buf)
+//     }
+
+//     unsafe fn pack_and_leak(&self) -> Result<*mut u8, Box<bincode::ErrorKind>> {
+//         let packed = self.pack()?;
+//         Ok(leak_into_wasm(packed))
+//     }
+    
+//     fn pack(&self) -> Result<Vec<u8>, Box<bincode::ErrorKind>> {
+//         let mut serialized = serialize(self)?;
+
+//         let mut with_len = serialized.len().to_le_bytes().to_vec();
+//         with_len.append(&mut serialized);
+
+//         Ok(with_len)
+//     }
+
+//     #[cfg(feature = "host")]
+//     fn to_oid_and_datum(self) -> (pgx::PgOid, Option<pgx::pg_sys::Datum>) {
+//         match self {
+//             WasmArgOrReturn::String(v) => (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), pgx::IntoDatum::into_datum(v)),
+//             WasmArgOrReturn::I32(v) => (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), pgx::IntoDatum::into_datum(v)),
+//         }
+//     }
+// }
+
+// start spi_exec_select_num
 
 #[cfg(feature = "guest")]
 #[link(wasm_import_module = "plrust_interface")]
 extern "C" {
-    fn unsafe_spi_exec_select_num(i: i32) -> i32; // This simply does "SELECT i"
+    fn unsafe_get_one_with_args(query_packed_ptr: i64, args_packed_ptr: i64, return_type_id: u64) -> u64;
+}
+
+// The function signature must match `unsafe_get_one_with_args`
+#[cfg(feature = "host")]
+pub fn host_get_one_with_args(mut caller: wasmtime::Caller<'_, wasmtime_wasi::WasiCtx>, query_packed_ptr: i64, args_packed_ptr: i64, return_type_id: u64) -> i64 {
+    use pgx::{PgOid, pg_sys::{Oid, Datum}, FromDatum, IntoDatum};
+
+    let store = caller.data_mut();
+
+    let mem = match caller.get_export("memory").unwrap() {
+        wasmtime::Extern::Memory(mem) => mem,
+        _ => todo!(),
+    };
+
+    let mut len_bytes = [0_u8; 8];
+    mem.read(&mut caller, query_packed_ptr as usize, &mut len_bytes).unwrap();
+    let query_bytes_len = u64::from_le_bytes(len_bytes);
+    let mut query_bytes = vec![0_u8; query_bytes_len as usize];
+
+    mem.read(&mut caller, query_packed_ptr as usize + size_of::<u64>(), &mut query_bytes).unwrap();
+    let query: String = deserialize(&query_bytes).unwrap();
+    pgx::warning!("Got query: {:?}", query);
+    
+    // args...
+
+    let retval_datum: Option<Datum> = pgx::Spi::get_one_with_args(
+        &query, 
+        vec![],
+    );
+
+    pgx::warning!("Expecting return type id of: {:?}", return_type_id);
+    
+    let serialized = retval_datum.map(|datum| serialize_by_type_id(datum, return_type_id).unwrap()).unwrap();
+
+    let packed = pack_with_len(serialized);
+
+    let wasm_alloc = match caller.get_export("guest_alloc").unwrap() {
+        wasmtime::Extern::Func(func) => func.typed::<(u64, u64), u64, _>(&mut caller).unwrap(),
+        _ => todo!(),
+    };
+
+    let guest_ptr = wasm_alloc.call(&mut caller, (packed.len() as u64, 8)).unwrap();
+
+    mem.write(&mut caller, guest_ptr as usize, packed.as_slice()).unwrap();
+
+    guest_ptr as i64
 }
 
 #[cfg(feature = "guest")]
-pub fn spi_exec_select_num(i: i32) -> i32 {
-    unsafe { unsafe_spi_exec_select_num(i) }
+pub fn get_one_with_args<R: From<WasmArgOrReturn> + WasmArgOrReturnId>(query: &str, args: Vec<WasmArgOrReturn>) -> R  {
+    let query_packed = unsafe { serialize_pack_and_leak(&query).unwrap() };
+    let args_packed = unsafe { serialize_pack_and_leak(&args).unwrap() };
+    
+    let retval_ptr = unsafe { unsafe_get_one_with_args(query_packed as i64, args_packed as i64, <R as WasmArgOrReturnId>::ID) as *mut u8 };
+
+    let retval: WasmArgOrReturn = unsafe { own_unpack_and_deserialize(retval_ptr).unwrap() };
+    R::from(retval)
 }
+
+
+// end spi_exec_select_num
 
 #[no_mangle]
 #[cfg(feature = "guest")]
@@ -29,7 +164,21 @@ unsafe fn guest_alloc(size: u64, align: u64) -> u64 {
     std::alloc::alloc(layout) as u64
 }
 
-pub unsafe fn serialize_pack_and_leak<T: serde::Serialize>(val: &T) -> Result<u64, Box<bincode::ErrorKind>> {
+#[cfg(feature = "host")]
+fn serialize_by_type_id(datum: pgx::pg_sys::Datum, type_id: u64) -> Result<Vec<u8>, Box<bincode::ErrorKind>> {
+    pub use pgx::{PgOid, pg_sys::{Oid, Datum}, FromDatum, IntoDatum};
+
+    match type_id {
+        0 => {
+            let val = unsafe { String::from_datum(datum, false, pgx::pg_sys::PgBuiltInOids::TEXTOID.value()).unwrap() };
+            pgx::warning!("Serializing: {:?}", val);
+            serialize(&WasmArgOrReturn::String(val))
+        },
+        _ => todo!(),
+    }
+}
+
+pub unsafe fn serialize_pack_and_leak<T: serde::Serialize>(val: &T) -> Result<*mut u8, Box<bincode::ErrorKind>> {
     let retval = leak_into_wasm(
         pack_with_len(
             serialize(val)?
@@ -40,7 +189,7 @@ pub unsafe fn serialize_pack_and_leak<T: serde::Serialize>(val: &T) -> Result<u6
 
 pub unsafe fn own_unpack_and_deserialize<T: serde::de::DeserializeOwned>(ptr: *mut u8) -> Result<T, Box<bincode::ErrorKind>> {
     let (_unpacked_len, unpacked_bytes) = unpack(ptr).unwrap();
-    let retval = deserialize(&unpacked_bytes).unwrap();
+    let retval = deserialize(&unpacked_bytes)?;
     Ok(retval)
 }
 
@@ -78,7 +227,7 @@ pub fn pack_with_len(mut bytes: Vec<u8>) -> Vec<u8> {
     packed_bytes
 }
 
-pub unsafe fn leak_into_wasm(mut bytes: Vec<u8>) -> u64 {
+pub unsafe fn leak_into_wasm(mut bytes: Vec<u8>) -> *mut u8 {
     bytes.shrink_to(0); // This only shrinks capacity, and doesn't remove values.
     assert_eq!(
         bytes.len(),
@@ -89,21 +238,7 @@ pub unsafe fn leak_into_wasm(mut bytes: Vec<u8>) -> u64 {
     let ptr = bytes.as_mut_ptr();
     std::mem::forget(bytes);
     
-    ptr as u64
-}
-
-
-#[cfg(feature = "host")]
-pub fn spi_exec_select_num(i: i32) -> i32 {
-    match pgx::Spi::get_one(format!("SELECT {}", i).as_str()) {
-        Some(res) => {
-            return res;
-        }
-        None => {
-            pgx::warning!("Spi::get_one returned nothing, returning default value");
-            return -1;
-        }
-    }
+    ptr
 }
 
 #[test]
