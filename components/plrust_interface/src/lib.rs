@@ -1,4 +1,6 @@
+#[cfg(feature = "host")]
 use std::mem::size_of;
+
 use serde::{Serialize, Deserialize};
 
 #[cfg(feature = "host")]
@@ -15,7 +17,7 @@ impl WasmArgOrReturnId for String {
     const ID: u64 = 0;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum WasmArgOrReturn {
      String(String),
      I32(i32)
@@ -36,13 +38,19 @@ impl From<String> for WasmArgOrReturn {
     }
 }
 
+impl<'a> From<&'a str> for WasmArgOrReturn {
+    fn from(val: &'a str) -> Self {
+        WasmArgOrReturn::String(val.to_string())
+    }
+}
+
 impl From<i32> for WasmArgOrReturn {
     fn from(val: i32) -> Self {
         WasmArgOrReturn::I32(val)
     }
 }
 
-// impl WasmArgOrReturn {
+impl WasmArgOrReturn {
 //     unsafe fn own_and_unpack(ptr: *mut u8) -> Result<Self, Box<bincode::ErrorKind>> {
 //         let len_bytes = std::slice::from_raw_parts(ptr, std::mem::size_of::<u64>());
 //         let len = u64::from_le_bytes(len_bytes.try_into().unwrap());
@@ -73,14 +81,14 @@ impl From<i32> for WasmArgOrReturn {
 //         Ok(with_len)
 //     }
 
-//     #[cfg(feature = "host")]
-//     fn to_oid_and_datum(self) -> (pgx::PgOid, Option<pgx::pg_sys::Datum>) {
-//         match self {
-//             WasmArgOrReturn::String(v) => (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), pgx::IntoDatum::into_datum(v)),
-//             WasmArgOrReturn::I32(v) => (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), pgx::IntoDatum::into_datum(v)),
-//         }
-//     }
-// }
+    #[cfg(feature = "host")]
+    fn to_oid_and_datum(self) -> (pgx::PgOid, Option<pgx::pg_sys::Datum>) {
+        match self {
+            WasmArgOrReturn::String(v) => (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), pgx::IntoDatum::into_datum(v)),
+            WasmArgOrReturn::I32(v) => (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), pgx::IntoDatum::into_datum(v)),
+        }
+    }
+}
 
 // start spi_exec_select_num
 
@@ -102,16 +110,27 @@ pub fn host_get_one_with_args(mut caller: wasmtime::Caller<'_, wasmtime_wasi::Wa
         _ => todo!(),
     };
 
-    let mut len_bytes = [0_u8; 8];
-    mem.read(&mut caller, query_packed_ptr as usize, &mut len_bytes).unwrap();
-    let query_bytes_len = u64::from_le_bytes(len_bytes);
-    let mut query_bytes = vec![0_u8; query_bytes_len as usize];
-
-    mem.read(&mut caller, query_packed_ptr as usize + size_of::<u64>(), &mut query_bytes).unwrap();
-    let query: String = deserialize(&query_bytes).unwrap();
+    let mut query: String = {
+        let mut query_len_bytes = [0_u8; 8];
+        mem.read(&mut caller, query_packed_ptr as usize, &mut query_len_bytes).unwrap();
+        let query_bytes_len = u64::from_le_bytes(query_len_bytes);
+        
+        let mut query_bytes = vec![0_u8; query_bytes_len as usize];
+        mem.read(&mut caller, query_packed_ptr as usize + size_of::<u64>(), &mut query_bytes).unwrap();
+        deserialize(&query_bytes).unwrap()
+    };
     pgx::warning!("Got query: {:?}", query);
-    
-    // args...
+
+    let mut args: Vec<WasmArgOrReturn> = {
+        let mut args_len_bytes = [0_u8; 8];
+        mem.read(&mut caller, args_packed_ptr as usize, &mut args_len_bytes).unwrap();
+        let args_bytes_len = u64::from_le_bytes(args_len_bytes);
+        
+        let mut args_bytes = vec![0_u8; args_bytes_len as usize];
+        mem.read(&mut caller, args_packed_ptr as usize + size_of::<u64>(), &mut args_bytes).unwrap();
+        deserialize(&args_bytes).unwrap()
+    };
+    pgx::warning!("Got args: {:?}", args);
 
     pgx::warning!("Expecting return type id of: {:?}", return_type_id);
     let serialized = match return_type_id {
@@ -119,7 +138,7 @@ pub fn host_get_one_with_args(mut caller: wasmtime::Caller<'_, wasmtime_wasi::Wa
             pgx::warning!("Returns: String");
             let retval: Option<String> = pgx::Spi::get_one_with_args(
                 &query, 
-                vec![],
+                args.into_iter().map(|arg| arg.to_oid_and_datum()).collect(),
             );
         
             pgx::warning!("Serializing: {:?}", retval);
