@@ -44,7 +44,6 @@ writable `work_dir`:
 
 ```bash
 cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
-  plrust.pg_config = '/home/${USER}/.pgx/14.2/pgx-install/bin/pg_config'
   plrust.work_dir = '/home/${USER}/git/zombodb/plrust/scratch'
 EOF
 mkdir -p scratch
@@ -150,7 +149,6 @@ There are two `postgresql.conf` settings that must be configured:
 
 Option | Description
 --------------|-----------
-`plrust.pg_config` | The location of the `postgresql.conf`.
 `plrust.work_dir` | The directory where pl/rust will build functions with cargo.
 
 [github-pgx]: https://github.com/zombodb/pgx

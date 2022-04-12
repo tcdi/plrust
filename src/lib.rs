@@ -11,6 +11,7 @@ use pgx::*;
 
 mod gucs;
 mod plrust;
+pub mod interface;
 
 pg_module_magic!();
 

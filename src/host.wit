@@ -1,0 +1,10 @@
+variant value {
+  str(string),
+  int32(s32),
+  int64(s64),
+  uint32(u32),
+  uint64(u64),
+  boolean(bool)
+}
+
+get-one-with-args: function(query: string, args: list<value>) -> value

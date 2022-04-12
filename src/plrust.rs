@@ -18,20 +18,24 @@ use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
 use once_cell::sync::Lazy;
 
+struct PlRustStore {
+    wasi: WasiCtx,
+    host: crate::interface::Host,
+    guest_data: crate::interface::guest::GuestData,
+}
+
+impl Default for PlRustStore {
+    fn default() -> Self {
+        Self {
+            wasi: WasiCtxBuilder::new().inherit_stdio().build(),
+            guest_data: crate::interface::guest::GuestData::default(),
+            host: crate::interface::Host::default(),
+        }
+
+    }
+}
+
 static ENGINE: Lazy<Engine> = Lazy::new(|| Engine::default());
-static LINKER: Lazy<Linker<WasiCtx>> = Lazy::new(|| {
-    let mut linker = Linker::new(&ENGINE);
-
-    match wasmtime_wasi::add_to_linker(&mut linker, |cx| cx) {
-        Ok(_) => {}
-        Err(_) => panic!("failed to call add_to_linker"),
-    };
-
-    plrust_interface::create_linker_functions(&mut linker)
-        .expect("Could not create linker functions");
-
-    linker
-});
 
 static mut CACHE: Lazy<HashMap<
     pg_sys::Oid,
@@ -42,31 +46,22 @@ static mut CACHE: Lazy<HashMap<
     ),
 >> = Lazy::new(|| Default::default());
 
-static INTERFACE_CRATE_PATH: Lazy<PathBuf> = Lazy::new(|| {
-    let mut interface_crate = gucs::work_dir();
-    interface_crate.push("plrust_interface");
-    interface_crate
+static WORK_DIR_GUEST_WIT: Lazy<PathBuf> = Lazy::new(|| {
+    let mut guest_wit = gucs::work_dir();
+    guest_wit.push("guest.wit");
+    guest_wit
 });
-static INTERFACE_CRATE: include_dir::Dir<'_> = include_dir::include_dir!("$CARGO_MANIFEST_DIR/components/plrust_interface");
+
+static WORK_DIR_HOST_WIT: Lazy<PathBuf> = Lazy::new(|| {
+    let mut host_wit = gucs::work_dir();
+    host_wit.push("host.wit");
+    host_wit
+});
 
 pub(crate) fn init() {
-    provision_interface_crate(&INTERFACE_CRATE)
-}
-
-fn provision_interface_crate(dir: &include_dir::Dir) {
-    for entry in dir.entries() {
-        match entry {
-            include_dir::DirEntry::File(entry_file) => {
-                let mut file_destination = INTERFACE_CRATE_PATH.clone();
-                file_destination.push(entry_file.path());
-
-                std::fs::create_dir_all(file_destination.parent().unwrap()).unwrap();
-                let mut destination = std::fs::File::create(file_destination).unwrap();
-                destination.write_all(entry_file.contents()).unwrap();
-            }
-            include_dir::DirEntry::Dir(dir) => provision_interface_crate(dir),
-        }
-    }
+    std::fs::create_dir_all(gucs::work_dir()).unwrap();
+    std::fs::write(&*WORK_DIR_GUEST_WIT, include_str!("guest.wit")).unwrap();
+    std::fs::write(&*WORK_DIR_HOST_WIT, include_str!("host.wit")).unwrap();
 }
 
 fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
@@ -121,124 +116,49 @@ fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
     (module, argtypes, rettype)
 }
 
+fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate::interface::guest::ValueParam<'static> {
+    use crate::interface::guest::ValueParam;
+    match oid {
+        PgOid::BuiltIn(builtin) => match builtin {
+            PgBuiltInOids::TEXTOID => ValueParam::Str(pg_getarg(fcinfo, idx).unwrap()),
+            _ => todo!(),
+        },
+        _ => todo!(),
+    }
+}
+
 pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
     let (module, arg_oids, ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
         initialize_cache_entry(fn_oid)
     );
 
-    let mut store = Store::new(&ENGINE, WasiCtxBuilder::new().inherit_stdio().build());
+    let mut store = Store::new(&ENGINE, PlRustStore::default());
+    
+    let mut linker = Linker::new(&ENGINE);
+    wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi).unwrap();
+    crate::interface::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host).unwrap();
 
-    let instance = match LINKER.instantiate(&mut store, &module) {
-        Ok(i) => i,
-        Err(e) => panic!(
-            "Could not instantiate {}: {}",
-            wasm_fn_name, e
-        ),
-    };
+    let (guest, _guest_instance) = crate::interface::guest::Guest::instantiate(
+        &mut store,
+        &module,
+        &mut linker,
+        |cx| &mut cx.guest_data,
+    ).unwrap();
 
-    let mut args = Vec::with_capacity(arg_oids.len());
-    for (idx, arg_oid) in arg_oids.iter().enumerate() {
-        set_wasm_args(arg_oid, idx, fcinfo, &instance, &mut store, &mut args);
-    }
-    let mut ret = Vec::with_capacity(2);
-    set_wasm_ret(ret_oid, &mut ret);
+    let args = arg_oids.iter().enumerate().map(|(idx, arg_oid)| 
+        build_arg(idx, *arg_oid, fcinfo)
+    ).collect::<Vec<_>>();
+    let retval = guest.entry(&mut store, args.as_slice()).unwrap();
 
-    let wasm_fn = match instance.get_func(&mut store, &"entry") {
-        Some(f) => f,
-        None => panic!("Could not find function {}", wasm_fn_name),
-    };
-
-    match wasm_fn.call(&mut store, args.as_slice(), ret.as_mut_slice()) {
-        Ok(res) => res,
-        Err(e) => panic!("Got an error: {:?}", e),
-    };
-
-    match ret.as_slice() {
-        &[Val::I64(guest_ptr)] => match ret_oid {
-            PgOid::InvalidOid => todo!(),
-            PgOid::Custom(_) => todo!(),
-            PgOid::BuiltIn(builtin) => match builtin {
-                PgBuiltInOids::TEXTOID => {
-                    let mut length_bytes = vec![0; std::mem::size_of::<u64>()];
-                    instance.get_memory(&mut store, "memory").unwrap()
-                        .read(&mut store, guest_ptr as usize, length_bytes.as_mut_slice()).unwrap();
-                    let length = u64::from_le_bytes(length_bytes.as_slice().try_into().unwrap());
-
-                    let mut returned_bytes = vec![0; length as usize];
-                    instance.get_memory(&mut store, "memory").unwrap()
-                        .read(&mut store, guest_ptr as usize + std::mem::size_of::<u64>(), returned_bytes.as_mut_slice()).unwrap();
-                    let val: String = plrust_interface::deserialize(&returned_bytes).unwrap();
-                    val.into_datum().unwrap()
-                },
-                _ => todo!(),
-            },
-        },
-        &[ref primitive_value] => match primitive_value {
-            Val::I32(val) => *val as pg_sys::Datum,
-            Val::I64(val) => *val as pg_sys::Datum,
-            Val::F32(_) => todo!(),
-            Val::F64(_) => todo!(),
-            Val::V128(_) => todo!(),
-            Val::FuncRef(_) => todo!(),
-            Val::ExternRef(_) => todo!(),
-        },
-        _ => unimplemented!(),
-    }
-}
-
-fn set_wasm_ret(
-    _oid: &PgOid,
-    buf: &mut Vec<Val>
-) {
-    buf.push(Val::ExternRef(None))
-}
-
-fn set_wasm_args(
-    oid: &PgOid,
-    idx: usize,
-    fcinfo: FunctionCallInfo,
-    instance: &Instance,
-    store: &mut Store<WasiCtx>,
-    buf: &mut Vec<Val>
-) {
-    match oid_to_valtype_and_ptr_marker(oid) {
-        (valtype, false) => match valtype {
-            ValType::I32 => buf.push(
-                Val::I32(pg_getarg(fcinfo, idx).unwrap())
-            ),
-            ValType::I64 => buf.push(
-                Val::I64(pg_getarg(fcinfo, idx).unwrap())
-            ),
-            ValType::F32 => todo!(),
-            ValType::F64 => todo!(),
-            ValType::V128 => todo!(),
-            ValType::FuncRef => todo!(),
-            ValType::ExternRef => todo!(),
-        },
-        (valtype, true) => {
-            let bincoded = match oid {
-                PgOid::InvalidOid => todo!(),
-                PgOid::Custom(_) => todo!(),
-                PgOid::BuiltIn(builtin) => match builtin {
-                    PgBuiltInOids::TEXTOID => bincode::serialize(&pg_getarg::<String>(fcinfo, idx).unwrap()).unwrap(),
-                    _ => todo!(),
-                },
-            };
-            let packed = plrust_interface::pack_with_len(bincoded);
-
-            let wasm_alloc = instance.get_typed_func::<(u64, u64), u64, _>(&mut *store, &"guest_alloc").unwrap();;
-            let wasm_dealloc = instance.get_typed_func::<(u64, u64, u64), (), _>(&mut *store, &"guest_dealloc").unwrap();
-
-            let guest_ptr = wasm_alloc.call(&mut *store, (packed.len() as u64, 8)).unwrap();
-
-            instance.get_memory(&mut *store, "memory").unwrap()
-                .write(&mut *store, guest_ptr as usize, packed.as_slice()).unwrap();
-
-            buf.push(
-                Val::I64(guest_ptr as i64)
-            );
-        },
+    use crate::interface::guest::ValueResult;
+    match retval {
+        ValueResult::Str(string) => string.into_datum().unwrap(),
+        ValueResult::Int32(_) => todo!(),
+        ValueResult::Int64(_) => todo!(),
+        ValueResult::Uint32(_) => todo!(),
+        ValueResult::Uint64(_) => todo!(),
+        ValueResult::Boolean(_) => todo!(),
     }
 }
 
@@ -248,8 +168,6 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
     let work_dir = gucs::work_dir();
-    let pg_version = format!("pg{}", pgx::pg_sys::get_pg_major_version_num());
-
 
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
@@ -320,12 +238,11 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-plrust_interface = {{ path = "{plrust_interface_crate_path}" }}
+wit-bindgen-rust = {{ git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300" }}
 {dependencies}
 "#,
             crate_name = crate_name,
             dependencies = dependencies,
-            plrust_interface_crate_path = INTERFACE_CRATE_PATH.display(),
         ),
     )
     .expect("failed to write Cargo.toml");
@@ -417,64 +334,87 @@ fn generate_function_source(
     };
     source.items.push(syn::Item::Fn(user_fn_tokens));
 
-    let mut entry_fn_arg_idents = Vec::default();
-    let mut entry_fn_arg_types: Vec<syn::Type> = Vec::default();
     let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
-    for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
-        match oid_to_valtype(arg_type_oid) {
-            Some(valtype) => {
-                // It's a primitive, we pass directly.
-                let ident = &user_fn_arg_idents[arg_idx];
-                entry_fn_arg_transform_tokens.push(syn::parse_quote! { #ident });
-
-                let ty = valtype_to_syn_type(valtype).unwrap();
-                entry_fn_arg_idents.push(ident.clone());
-                entry_fn_arg_types.push(syn::parse_quote! { #ty })
-            },
-            None => {
-                // It's an encoded value. This expands to (ptr, len)
-                let ident = &user_fn_arg_idents[arg_idx];
-
-                entry_fn_arg_idents.push(ident.clone()); // ptr
-                entry_fn_arg_types.push(syn::parse_quote! { u64 }); // ptr
-
-                entry_fn_arg_transform_tokens.push(syn::parse_quote! {
-                    unsafe {
-                        ::plrust_interface::own_unpack_and_deserialize(#ident as *mut u8).unwrap()
-                    }
-                });
-            },
-        }
+    for (arg_type_oid, arg_name) in args.iter() {
+        entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().into() });
     }
-    let entry_fn_return_transform_tokens: syn::Expr;
-    let entry_fn_return_tokens = match oid_to_valtype(return_type) {
-        Some(valtype) => {
-            // It's a primitive, we pass directly.
-            entry_fn_return_transform_tokens = syn::parse_quote! {
-                retval
-            };
-            valtype_to_syn_type(valtype).unwrap()
-        },
-        None => {
-            // It's an encoded value. This expands to (ptr, len)
-            entry_fn_return_transform_tokens = syn::parse_quote! {
-                unsafe { ::plrust_interface::serialize_pack_and_leak(&retval).unwrap() as u64 }
-            };
-            syn::parse_quote! { u64 }
-        },
-    };
-    let entry_fn: syn::ItemFn = syn::parse_quote! {
-        #[no_mangle]
-        fn entry(
-            #( #entry_fn_arg_idents: #entry_fn_arg_types ),*
-        ) -> #entry_fn_return_tokens {
-            let retval = #user_fn_ident(
-                #(#entry_fn_arg_transform_tokens),*
-            );
-            #entry_fn_return_transform_tokens
+
+    let guest_wit_path = WORK_DIR_GUEST_WIT.canonicalize().unwrap().display().to_string();
+    let host_wit_path = WORK_DIR_HOST_WIT.canonicalize().unwrap().display().to_string();
+
+    source.items.push(syn::parse_quote! {
+        wit_bindgen_rust::import!(#host_wit_path);
+    });
+    source.items.push(syn::parse_quote! {
+        wit_bindgen_rust::export!(#guest_wit_path);
+    });
+    source.items.push(syn::parse_quote! {
+        struct Guest;
+    });
+    source.items.push(syn::parse_quote! {
+        impl guest::Guest for Guest {
+            fn entry(
+                mut args: Vec<guest::Value>
+            ) -> guest::Value {
+                let retval = #user_fn_ident(
+                    #(#entry_fn_arg_transform_tokens),*
+                );
+                retval.into()
+            }
         }
-    };
-    source.items.push(syn::Item::Fn(entry_fn));
+    });
+    source.items.push(syn::parse_quote! {
+        impl Into<String> for guest::Value {
+            fn into(self) -> String {
+                match self {
+                    guest::Value::Str(s) => s,
+                    _ => panic!("Not a string"),
+                }
+            }
+        }
+    });
+    source.items.push(syn::parse_quote! {
+        impl From<String> for guest::Value {
+            fn from(s: String) -> Self {
+                guest::Value::Str(s)
+            }
+        }
+    });
+    source.items.push(syn::parse_quote! {
+        impl<'a> Into<&'a str> for host::ValueParam<'a> {
+            fn into(self) -> &'a str {
+                match self {
+                    host::ValueParam::Str(s) => s,
+                    _ => panic!("Not a string"),
+                }
+            }
+        }
+    });
+    source.items.push(syn::parse_quote! {
+        impl<'a> From<&'a str> for host::ValueParam<'a> {
+            fn from(s: &'a str) -> Self {
+                host::ValueParam::Str(s)
+            }
+        }
+    });
+    source.items.push(syn::parse_quote! {
+        impl Into<String> for host::ValueResult {
+            fn into(self) -> String {
+                match self {
+                    host::ValueResult::Str(s) => s,
+                    _ => panic!("Not a string"),
+                }
+            }
+        }
+    });
+    source.items.push(syn::parse_quote! {
+        impl From<String> for host::ValueResult {
+            fn from(s: String) -> Self {
+                host::ValueResult::Str(s)
+            }
+        }
+    });
+
     source
 }
 
