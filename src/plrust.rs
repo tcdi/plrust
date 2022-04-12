@@ -48,20 +48,32 @@ static mut CACHE: Lazy<HashMap<
 
 static WORK_DIR_GUEST_WIT: Lazy<PathBuf> = Lazy::new(|| {
     let mut guest_wit = gucs::work_dir();
+    guest_wit.push("wit");
     guest_wit.push("guest.wit");
     guest_wit
 });
 
 static WORK_DIR_HOST_WIT: Lazy<PathBuf> = Lazy::new(|| {
     let mut host_wit = gucs::work_dir();
+    host_wit.push("wit");
     host_wit.push("host.wit");
     host_wit
 });
 
+static WORK_DIR_VALUE_WIT: Lazy<PathBuf> = Lazy::new(|| {
+    let mut host_wit = gucs::work_dir();
+    host_wit.push("wit");
+    host_wit.push("types.wit");
+    host_wit
+});
+
 pub(crate) fn init() {
-    std::fs::create_dir_all(gucs::work_dir()).unwrap();
-    std::fs::write(&*WORK_DIR_GUEST_WIT, include_str!("guest.wit")).unwrap();
-    std::fs::write(&*WORK_DIR_HOST_WIT, include_str!("host.wit")).unwrap();
+    let mut host_wit = gucs::work_dir();
+    host_wit.push("wit");
+    std::fs::create_dir_all(host_wit).unwrap();
+    std::fs::write(&*WORK_DIR_GUEST_WIT, include_str!("wit/guest.wit")).unwrap();
+    std::fs::write(&*WORK_DIR_HOST_WIT, include_str!("wit/host.wit")).unwrap();
+    std::fs::write(&*WORK_DIR_VALUE_WIT, include_str!("wit/types.wit")).unwrap();
 }
 
 fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
@@ -120,7 +132,7 @@ fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate:
     use crate::interface::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::TEXTOID => ValueParam::Str(pg_getarg(fcinfo, idx).unwrap()),
+            PgBuiltInOids::TEXTOID => ValueParam::String(pg_getarg(fcinfo, idx).unwrap()),
             _ => todo!(),
         },
         _ => todo!(),
@@ -149,16 +161,16 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     let args = arg_oids.iter().enumerate().map(|(idx, arg_oid)| 
         build_arg(idx, *arg_oid, fcinfo)
     ).collect::<Vec<_>>();
-    let retval = guest.entry(&mut store, args.as_slice()).unwrap();
+    let retval = guest.entry(&mut store, args.as_slice()).unwrap().unwrap();
 
     use crate::interface::guest::ValueResult;
     match retval {
-        ValueResult::Str(string) => string.into_datum().unwrap(),
-        ValueResult::Int32(_) => todo!(),
-        ValueResult::Int64(_) => todo!(),
-        ValueResult::Uint32(_) => todo!(),
-        ValueResult::Uint64(_) => todo!(),
-        ValueResult::Boolean(_) => todo!(),
+        ValueResult::String(string) => string.into_datum().unwrap(),
+        ValueResult::I32(_) => todo!(),
+        ValueResult::I64(_) => todo!(),
+        ValueResult::U32(_) => todo!(),
+        ValueResult::U64(_) => todo!(),
+        ValueResult::Bool(_) => todo!(),
     }
 }
 
@@ -252,6 +264,10 @@ wit-bindgen-rust = {{ git = "https://github.com/bytecodealliance/wit-bindgen.git
     src.push("src");
     std::fs::create_dir_all(&src).expect("failed to create src directory");
 
+    let mut toolbox_rs = src.clone();
+    toolbox_rs.push("toolbox.rs");
+    std::fs::write(toolbox_rs, include_str!("../guest_src/toolbox.rs")).unwrap();
+
     // the actual source code in src/lib.rs
     let mut lib_rs = src.clone();
     lib_rs.push("lib.rs");
@@ -329,18 +345,23 @@ fn generate_function_source(
     let user_fn_tokens: syn::ItemFn = syn::parse_quote! {
         fn #user_fn_ident(
             #( #user_fn_arg_idents: #user_fn_arg_types ),*
-        ) -> #user_fn_return_tokens
+        ) -> Result<#user_fn_return_tokens, guest::Error>
         #user_fn_block_tokens
     };
     source.items.push(syn::Item::Fn(user_fn_tokens));
 
     let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
     for (arg_type_oid, arg_name) in args.iter() {
-        entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().into() });
+        entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().try_into()? });
     }
 
     let guest_wit_path = WORK_DIR_GUEST_WIT.canonicalize().unwrap().display().to_string();
     let host_wit_path = WORK_DIR_HOST_WIT.canonicalize().unwrap().display().to_string();
+
+    source.items.push(syn::parse_quote! {
+        // Various implementations to support bindings.
+        mod toolbox;
+    });
 
     source.items.push(syn::parse_quote! {
         wit_bindgen_rust::import!(#host_wit_path);
@@ -355,62 +376,11 @@ fn generate_function_source(
         impl guest::Guest for Guest {
             fn entry(
                 mut args: Vec<guest::Value>
-            ) -> guest::Value {
+            ) -> Result<guest::Value, guest::Error> {
                 let retval = #user_fn_ident(
                     #(#entry_fn_arg_transform_tokens),*
-                );
-                retval.into()
-            }
-        }
-    });
-    source.items.push(syn::parse_quote! {
-        impl Into<String> for guest::Value {
-            fn into(self) -> String {
-                match self {
-                    guest::Value::Str(s) => s,
-                    _ => panic!("Not a string"),
-                }
-            }
-        }
-    });
-    source.items.push(syn::parse_quote! {
-        impl From<String> for guest::Value {
-            fn from(s: String) -> Self {
-                guest::Value::Str(s)
-            }
-        }
-    });
-    source.items.push(syn::parse_quote! {
-        impl<'a> Into<&'a str> for host::ValueParam<'a> {
-            fn into(self) -> &'a str {
-                match self {
-                    host::ValueParam::Str(s) => s,
-                    _ => panic!("Not a string"),
-                }
-            }
-        }
-    });
-    source.items.push(syn::parse_quote! {
-        impl<'a> From<&'a str> for host::ValueParam<'a> {
-            fn from(s: &'a str) -> Self {
-                host::ValueParam::Str(s)
-            }
-        }
-    });
-    source.items.push(syn::parse_quote! {
-        impl Into<String> for host::ValueResult {
-            fn into(self) -> String {
-                match self {
-                    host::ValueResult::Str(s) => s,
-                    _ => panic!("Not a string"),
-                }
-            }
-        }
-    });
-    source.items.push(syn::parse_quote! {
-        impl From<String> for host::ValueResult {
-            fn from(s: String) -> Self {
-                host::ValueResult::Str(s)
+                )?;
+                Ok(retval.into())
             }
         }
     });
@@ -546,40 +516,6 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
 }
 
 
-fn oid_to_valtype_and_ptr_marker(oid: &PgOid) -> (ValType, bool) {
-    match oid_to_valtype(oid) {
-        Some(valtype) => (valtype, false),
-        None => {
-            // This is a type we must encode/decode, expanding to two arguments, `(ptr, len)`
-            (wasmtime::ValType::I64, true)
-        }
-    }
-}
-
-
-fn oid_to_valtype(oid: &pg_sys::PgOid) -> Option<ValType> {
-    match oid {
-        PgOid::InvalidOid => todo!(),
-        PgOid::Custom(_) => todo!(),
-        PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::INT4OID => Some(ValType::I32),
-            PgBuiltInOids::INT8OID => Some(ValType::I64),
-            _ => None,
-        },
-    }
-}
-
-fn valtype_to_syn_type(valtype: ValType) -> Option<syn::Type> {
-    match valtype {
-        ValType::I32 => Some(syn::parse_quote! { i32 }),
-        ValType::I64 => Some(syn::parse_quote! { i64 }),
-        ValType::F32 => todo!(),
-        ValType::F64 => todo!(),
-        ValType::V128 => todo!(),
-        ValType::FuncRef => todo!(),
-        ValType::ExternRef => todo!(),
-    }
-}
 
 fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Option<syn::Type> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };

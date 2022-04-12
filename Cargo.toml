@@ -26,8 +26,7 @@ sandboxed = []
 [dependencies]
 bincode = "1"
 pgx = "0.4.2"
-include_dir = "0.7"
-wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300" }
+wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300", features = ["tracing"] }
 wasmtime = "0.35"
 wasmtime-wasi = "0.35"
 syn = "1"

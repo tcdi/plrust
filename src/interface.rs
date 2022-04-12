@@ -1,5 +1,8 @@
-wit_bindgen_wasmtime::export!("src/host.wit");
-wit_bindgen_wasmtime::import!("src/guest.wit");
+wit_bindgen_wasmtime::export!("src/wit/host.wit");
+wit_bindgen_wasmtime::import!("src/wit/guest.wit");
+
+use host::{ValueParam, ValueResult};
+use pgx::IntoDatum;
 
 #[derive(Default)]
 pub struct Host;
@@ -9,15 +12,14 @@ impl host::Host for Host {
         &mut self,
         query: &str,
         args: Vec<host::ValueParam<'_>>
-    ) -> host::ValueResult {
+    ) -> Result<host::ValueResult, host::Error> {
         let prepared_args = args.into_iter().map(|v| {
-            use pgx::IntoDatum;
-            (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), match v {
-                host::ValueParam::Str(s) => s.into_datum(),
+            match v {
+                ValueParam::String(s) => (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum()),
                 _ => panic!("oh no"),
-            })
+            }
         }).collect();
         let s: String = pgx::spi::Spi::get_one_with_args(query, prepared_args).unwrap();
-        host::ValueResult::Str(s)
+        Ok(ValueResult::String(s))
     }
 }

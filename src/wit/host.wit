@@ -1,0 +1,3 @@
+use { value, error } from types
+
+get-one-with-args: function(query: string, args: list<value>) -> expected<value, error>

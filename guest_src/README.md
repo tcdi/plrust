@@ -1,0 +1,1 @@
+These files get templated into the folder with the created user code.
