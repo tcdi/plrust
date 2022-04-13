@@ -8,12 +8,11 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::gucs;
-use pgx::pg_sys::{heap_tuple_get_struct, FunctionCallInfo};
+use pgx::pg_sys::{heap_tuple_get_struct};
 use pgx::*;
-use wasmtime::{Val, ValType};
-use std::{path::PathBuf, collections::HashMap, process::Command, io::Write};
+use std::{path::PathBuf, io::BufReader, collections::HashMap, process::Command};
 
-use wasmtime::{Engine, Instance, Linker, Store, Module};
+use wasmtime::{Engine, Linker, Store, Module};
 use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
 use once_cell::sync::Lazy;
@@ -140,8 +139,7 @@ fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate:
 }
 
 pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let wasm_fn_name = format!("plrust_fn_{}", fn_oid);
-    let (module, arg_oids, ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
+    let (module, arg_oids, _ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
         initialize_cache_entry(fn_oid)
     );
 
@@ -161,16 +159,14 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     let args = arg_oids.iter().enumerate().map(|(idx, arg_oid)| 
         build_arg(idx, *arg_oid, fcinfo)
     ).collect::<Vec<_>>();
-    let retval = guest.entry(&mut store, args.as_slice()).unwrap().unwrap();
+    let retval = guest.entry(&mut store, args.as_slice()).expect("Call error").expect("User code returned error");
 
     use crate::interface::guest::ValueResult;
     match retval {
-        ValueResult::String(string) => string.into_datum().unwrap(),
-        ValueResult::I32(_) => todo!(),
-        ValueResult::I64(_) => todo!(),
-        ValueResult::U32(_) => todo!(),
-        ValueResult::U64(_) => todo!(),
-        ValueResult::Bool(_) => todo!(),
+        ValueResult::String(v) => v.into_datum().unwrap(),
+        ValueResult::I32(v) => v.into_datum().unwrap(),
+        ValueResult::I64(v) => v.into_datum().unwrap(),
+        ValueResult::Bool(v) => v.into_datum().unwrap(),
     }
 }
 
@@ -193,21 +189,51 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         .arg("--target")
         .arg("wasm32-wasi")
         .arg("--release")
+        .arg("--message-format=json-render-diagnostics")
         .output()
         .expect("failed to build function wasm module");
 
     let mut wasm_build_output_string = String::new();
+    
     unsafe {
-        wasm_build_output_string.push_str(&String::from_utf8_unchecked(wasm_build_output.stdout));
         wasm_build_output_string.push_str(&String::from_utf8_unchecked(wasm_build_output.stderr));
     }
+
+    let wasm_build_command_bytes = wasm_build_output.stdout;
+    let wasm_build_command_reader = BufReader::new(wasm_build_command_bytes.as_slice());
+    let wasm_build_command_stream = cargo_metadata::Message::parse_stream(wasm_build_command_reader);
+    let wasm_build_command_messages =
+        wasm_build_command_stream.collect::<Result<Vec<_>, std::io::Error>>().unwrap();
+
+    let mut wasm_module = None;
+    for message in wasm_build_command_messages {
+        match message {
+            cargo_metadata::Message::CompilerArtifact(artifact) => {
+                if artifact.target.name != *crate_name {
+                    continue;
+                }
+                for filename in &artifact.filenames {
+                    if filename.extension() == Some("wasm") {
+                        wasm_module = Some(filename.to_string());
+                        break;
+                    }
+                }
+            }
+            cargo_metadata::Message::CompilerMessage(_)
+            | cargo_metadata::Message::BuildScriptExecuted(_)
+            | cargo_metadata::Message::BuildFinished(_)
+            | _ => (),
+        }
+    }
+
+    pgx::warning!("Status: {:?} .. {:?}", wasm_build_output.status.success(), wasm_build_output.status);
 
     let result = if !wasm_build_output.status.success() {
         wasm_build_output_string.push_str("-----------------\n");
         wasm_build_output_string.push_str(&source_code);
         Err(wasm_build_output_string)
     } else {
-        match find_wasm_module(&crate_name) {
+        match wasm_module {
             Some(wasm_module) => {
                 pgx::info!("{}", crate_name);
                 let mut final_path = work_dir.clone();
@@ -219,7 +245,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
                 Ok((final_path, wasm_build_output_string))
             }
-            None => Err(wasm_build_output_string),
+            None => Err(String::from(format!("wasm module {} not found", crate_name))),
         }
     };
 
@@ -292,23 +318,6 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     (crate_name, crate_dir)
 }
 
-fn find_wasm_module(crate_name: &str) -> Option<PathBuf> {
-    let work_dir = gucs::work_dir();
-    let mut debug_dir = work_dir.clone();
-    debug_dir.push(&crate_name);
-    debug_dir.push("target");
-    debug_dir.push("wasm32-wasi");
-    debug_dir.push("release");
-
-    let mut wasm = debug_dir.clone();
-    wasm.push(&format!("{}.wasm", crate_name));
-    if wasm.exists() {
-        return Some(wasm);
-    }
-
-    None
-}
-
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     code: &str,
@@ -351,7 +360,7 @@ fn generate_function_source(
     source.items.push(syn::Item::Fn(user_fn_tokens));
 
     let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
-    for (arg_type_oid, arg_name) in args.iter() {
+    for (_arg_type_oid, _arg_name) in args.iter() {
         entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().try_into()? });
     }
 
@@ -374,6 +383,7 @@ fn generate_function_source(
     });
     source.items.push(syn::parse_quote! {
         impl guest::Guest for Guest {
+            #[allow(unused_variables, unused_mut)] // In case of zero args.
             fn entry(
                 mut args: Vec<guest::Value>
             ) -> Result<guest::Value, guest::Error> {

@@ -104,26 +104,47 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_basic() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
+            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Some(a.into_iter().map(|v| v.unwrap_or_default()).sum())
+                Ok(String::from("booper"))
             $$;
         "#;
         Spi::run(definition);
 
-        let retval = Spi::get_one_with_args(
+        let retval = Spi::get_one(
             r#"
-            SELECT sum_array($1);
+            SELECT update_me();
         "#,
-            vec![(
-                PgBuiltInOids::INT4ARRAYOID.oid(),
-                vec![1, 2, 3].into_datum(),
-            )],
         );
-        assert_eq!(retval, Some(6));
+        assert_eq!(retval, Some("booper"));
     }
+
+    // #[pg_test]
+    // #[search_path(@extschema@)]
+    // fn test_lists() {
+    //     let definition = r#"
+    //         CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
+    //             IMMUTABLE STRICT
+    //             LANGUAGE PLRUST AS
+    //         $$
+    //             Ok(a.into_iter().map(|v| v.unwrap_or_default()).sum())
+    //         $$;
+    //     "#;
+    //     Spi::run(definition);
+
+    //     let retval = Spi::get_one_with_args(
+    //         r#"
+    //         SELECT sum_array($1);
+    //     "#,
+    //         vec![(
+    //             PgBuiltInOids::INT4ARRAYOID.oid(),
+    //             vec![1, 2, 3].into_datum(),
+    //         )],
+    //     );
+    //     assert_eq!(retval, Some(6));
+    // }
 
     #[pg_test]
     #[search_path(@extschema@)]
@@ -133,7 +154,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                String::from("booper").into()
+                Ok(String::from("booper"))
             $$;
         "#;
         Spi::run(definition);
@@ -150,7 +171,8 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                String::from("swooper").into()
+
+                Ok(String::from("swooper"))
             $$;
         "#;
         Spi::run(definition);
@@ -171,8 +193,11 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let name = Spi::get_one("SELECT name FROM contributors_pets ORDER BY random() LIMIT 1");
-                name
+                let name: String = host::get_one(
+                    "SELECT name FROM contributors_pets ORDER BY random() LIMIT 1",
+                    host::ValueType::String,
+                )?.try_into()?;
+                Ok(name)
             $$;
         "#;
         Spi::run(random_definition);
@@ -189,11 +214,13 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let id = Spi::get_one_with_args(
+                let id: i32 = host::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
-                    vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
-                );
-                id
+                    &[name.as_str().into()],
+                    host::ValueType::I32,
+                )?.try_into()?;
+
+                Ok(id)
             $$;
         "#;
         Spi::run(specific_definition);
@@ -211,28 +238,23 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_deps() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION zalgo(input TEXT) RETURNS TEXT
+            CREATE OR REPLACE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
             [dependencies]
-                zalgo = "0.2.0"
+                owo-colors = "3"
             [code]
-                use zalgo::{Generator, GeneratorArgs, ZalgoSize};
+                use owo_colors::OwoColorize;
 
-                let mut generator = Generator::new();
-                let mut out = String::new();
-                let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
-                let result = generator.gen(input, &mut out, &args);
-
-                Some(out)
+                Ok(input.purple().to_string())
             $$;
         "#;
         Spi::run(definition);
 
         let retval: Option<String> = Spi::get_one_with_args(
             r#"
-            SELECT zalgo($1);
+            SELECT colorize($1);
         "#,
             vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
         );
@@ -243,19 +265,11 @@ mod tests {
 #[cfg(test)]
 pub mod pg_test {
     use once_cell::sync::Lazy;
-    use pgx::utils::pg_config::Pgx;
     use tempdir::TempDir;
 
     static WORK_DIR: Lazy<String> = Lazy::new(|| {
         let work_dir = TempDir::new("plrust-tests").expect("Couldn't create tempdir");
         format!("plrust.work_dir='{}'", work_dir.path().display())
-    });
-    static PG_CONFIG: Lazy<String> = Lazy::new(|| {
-        let pgx_config = Pgx::from_config().unwrap();
-        let version = format!("pg{}", pgx::pg_sys::get_pg_major_version_num());
-        let pg_config = pgx_config.get(&version).unwrap();
-        let path = pg_config.path().unwrap();
-        format!("plrust.pg_config='{}'", path.as_path().display())
     });
 
     pub fn setup(_options: Vec<&str>) {
@@ -263,6 +277,6 @@ pub mod pg_test {
     }
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
-        vec![&*WORK_DIR, &*PG_CONFIG]
+        vec![&*WORK_DIR]
     }
 }

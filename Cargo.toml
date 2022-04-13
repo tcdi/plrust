@@ -32,6 +32,7 @@ wasmtime-wasi = "0.35"
 syn = "1"
 proc-macro2 = "1"
 prettyplease = "0.1"
+cargo_metadata = "0.14.2"
 
 [dev-dependencies]
 pgx-tests = "0.4.2"

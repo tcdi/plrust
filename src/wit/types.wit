@@ -2,20 +2,21 @@ variant value {
     %string(string),
     %i32(s32),
     %i64(s64),
-    %u32(u32),
-    %u64(u64),
-    %bool(bool)
+    %bool(bool),
 }
 
 enum value-type {
     %string,
     %i32,
     %i64,
-    %u32,
-    %u64,
     %bool,
 }
 
 variant error {
-    message(string)
+    %conversion-error(conversion-error)
+}
+
+record conversion-error {
+    %value: string,
+    %into: string,
 }
