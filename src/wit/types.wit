@@ -13,10 +13,11 @@ enum value-type {
 }
 
 variant error {
-    %conversion-error(conversion-error)
+    %conversion-error(conversion-error),
+    %coerce-error(value-type)
 }
 
 record conversion-error {
-    %value: string,
-    %into: string,
+    %value: value,
+    %into: value-type,
 }

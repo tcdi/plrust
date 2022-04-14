@@ -16,18 +16,19 @@ use wasmtime::{Engine, Linker, Store, Module};
 use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
 use once_cell::sync::Lazy;
+use crate::error::PlRustError;
 
 struct PlRustStore {
     wasi: WasiCtx,
     host: crate::interface::Host,
-    guest_data: crate::interface::guest::GuestData,
+    guest_data: crate::guest::GuestData,
 }
 
 impl Default for PlRustStore {
     fn default() -> Self {
         Self {
             wasi: WasiCtxBuilder::new().inherit_stdio().build(),
-            guest_data: crate::interface::guest::GuestData::default(),
+            guest_data: crate::guest::GuestData::default(),
             host: crate::interface::Host::default(),
         }
 
@@ -127,8 +128,8 @@ fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
     (module, argtypes, rettype)
 }
 
-fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate::interface::guest::ValueParam<'static> {
-    use crate::interface::guest::ValueParam;
+fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate::guest::ValueParam<'static> {
+    use crate::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
             PgBuiltInOids::TEXTOID => ValueParam::String(pg_getarg(fcinfo, idx).unwrap()),
@@ -138,7 +139,7 @@ fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate:
     }
 }
 
-pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, PlRustError> {
     let (module, arg_oids, _ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
         initialize_cache_entry(fn_oid)
     );
@@ -146,35 +147,36 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
     let mut store = Store::new(&ENGINE, PlRustStore::default());
     
     let mut linker = Linker::new(&ENGINE);
-    wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi).unwrap();
-    crate::interface::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host).unwrap();
+    wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi)?;
+    crate::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host)?;
 
-    let (guest, _guest_instance) = crate::interface::guest::Guest::instantiate(
+    let (guest, _guest_instance) = crate::guest::Guest::instantiate(
         &mut store,
         &module,
         &mut linker,
         |cx| &mut cx.guest_data,
-    ).unwrap();
+    )?;
 
     let args = arg_oids.iter().enumerate().map(|(idx, arg_oid)| 
         build_arg(idx, *arg_oid, fcinfo)
     ).collect::<Vec<_>>();
-    let retval = guest.entry(&mut store, args.as_slice()).expect("Call error").expect("User code returned error");
+    let retval = guest.entry(&mut store, args.as_slice())??;
 
-    use crate::interface::guest::ValueResult;
-    match retval {
-        ValueResult::String(v) => v.into_datum().unwrap(),
-        ValueResult::I32(v) => v.into_datum().unwrap(),
-        ValueResult::I64(v) => v.into_datum().unwrap(),
-        ValueResult::Bool(v) => v.into_datum().unwrap(),
-    }
+    use crate::guest::ValueResult;
+    Ok(match retval {
+        Some(ValueResult::String(v)) => v.into_datum().unwrap(),
+        Some(ValueResult::I32(v)) => v.into_datum().unwrap(),
+        Some(ValueResult::I64(v)) => v.into_datum().unwrap(),
+        Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
+        None => Option::<()>::None.into_datum().unwrap()
+    })
 }
 
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     CACHE.remove(&fn_oid);
 }
 
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), PlRustError> {
     let work_dir = gucs::work_dir();
 
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -203,39 +205,37 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     let wasm_build_command_reader = BufReader::new(wasm_build_command_bytes.as_slice());
     let wasm_build_command_stream = cargo_metadata::Message::parse_stream(wasm_build_command_reader);
     let wasm_build_command_messages =
-        wasm_build_command_stream.collect::<Result<Vec<_>, std::io::Error>>().unwrap();
-
-    let mut wasm_module = None;
-    for message in wasm_build_command_messages {
-        match message {
-            cargo_metadata::Message::CompilerArtifact(artifact) => {
-                if artifact.target.name != *crate_name {
-                    continue;
-                }
-                for filename in &artifact.filenames {
-                    if filename.extension() == Some("wasm") {
-                        wasm_module = Some(filename.to_string());
-                        break;
-                    }
-                }
-            }
-            cargo_metadata::Message::CompilerMessage(_)
-            | cargo_metadata::Message::BuildScriptExecuted(_)
-            | cargo_metadata::Message::BuildFinished(_)
-            | _ => (),
-        }
-    }
-
-    pgx::warning!("Status: {:?} .. {:?}", wasm_build_output.status.success(), wasm_build_output.status);
+        wasm_build_command_stream.collect::<Result<Vec<_>, std::io::Error>>()
+        .map_err(|e| PlRustError::CargoMessageParse(e))?;
 
     let result = if !wasm_build_output.status.success() {
         wasm_build_output_string.push_str("-----------------\n");
         wasm_build_output_string.push_str(&source_code);
-        Err(wasm_build_output_string)
+        Err(PlRustError::BuildFailure(wasm_build_output.status, wasm_build_output_string))
     } else {
+        let mut wasm_module = None;
+        for message in wasm_build_command_messages {
+            match message {
+                cargo_metadata::Message::CompilerArtifact(artifact) => {
+                    if artifact.target.name != *crate_name {
+                        continue;
+                    }
+                    for filename in &artifact.filenames {
+                        if filename.extension() == Some("wasm") {
+                            wasm_module = Some(filename.to_string());
+                            break;
+                        }
+                    }
+                }
+                cargo_metadata::Message::CompilerMessage(_)
+                | cargo_metadata::Message::BuildScriptExecuted(_)
+                | cargo_metadata::Message::BuildFinished(_)
+                | _ => (),
+            }
+        }
+        
         match wasm_module {
             Some(wasm_module) => {
-                pgx::info!("{}", crate_name);
                 let mut final_path = work_dir.clone();
                 final_path.push(&format!("{}.wasm", crate_name));
 
@@ -245,7 +245,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
                 Ok((final_path, wasm_build_output_string))
             }
-            None => Err(String::from(format!("wasm module {} not found", crate_name))),
+            None => Err(PlRustError::ModuleNotFound(crate_name)),
         }
     };
 
@@ -354,7 +354,7 @@ fn generate_function_source(
     let user_fn_tokens: syn::ItemFn = syn::parse_quote! {
         fn #user_fn_ident(
             #( #user_fn_arg_idents: #user_fn_arg_types ),*
-        ) -> Result<#user_fn_return_tokens, guest::Error>
+        ) -> Result<Option<#user_fn_return_tokens>, guest::Error>
         #user_fn_block_tokens
     };
     source.items.push(syn::Item::Fn(user_fn_tokens));
@@ -386,11 +386,11 @@ fn generate_function_source(
             #[allow(unused_variables, unused_mut)] // In case of zero args.
             fn entry(
                 mut args: Vec<guest::Value>
-            ) -> Result<guest::Value, guest::Error> {
+            ) -> Result<Option<guest::Value>, guest::Error> {
                 let retval = #user_fn_ident(
                     #(#entry_fn_arg_transform_tokens),*
                 )?;
-                Ok(retval.into())
+                Ok(retval.map(|v| v.into()))
             }
         }
     });

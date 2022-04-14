@@ -1699,6 +1699,7 @@ dependencies = [
  "proc-macro2",
  "syn",
  "tempdir",
+ "thiserror",
  "toml",
  "wasmtime",
  "wasmtime-wasi",

@@ -1,5 +1,5 @@
 use { value, value-type, error } from types
 
-get-one: function(query: string, returns: value-type) -> expected<value, error>
+get-one: function(query: string, returns: value-type) -> expected<option<value>, error>
 
-get-one-with-args: function(query: string, args: list<value>, returns: value-type) -> expected<value, error>
+get-one-with-args: function(query: string, args: list<value>, returns: value-type) -> expected<option<value>, error>

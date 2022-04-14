@@ -11,7 +11,12 @@ use pgx::*;
 
 mod gucs;
 mod plrust;
+mod error;
 pub mod interface;
+
+wit_bindgen_wasmtime::export!("src/wit/host.wit");
+wit_bindgen_wasmtime::import!("src/wit/guest.wit");
+
 
 pg_module_magic!();
 
@@ -29,7 +34,7 @@ CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
 ")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let fn_oid = fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid;
-    plrust::execute_wasm_function(fn_oid, fcinfo)
+    plrust::execute_wasm_function(fn_oid, fcinfo).unwrap()
 }
 
 #[pg_extern]
@@ -65,7 +70,7 @@ fn recompile_function(
     }
     match plrust::compile_function(fn_oid) {
         Ok((work_dir, output)) => (Some(work_dir.display().to_string()), output),
-        Err(e) => (None, e),
+        Err(e) => (None, format!("{}", e)),
     }
 }
 
@@ -108,7 +113,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Ok(String::from("booper"))
+                Ok(Some(String::from("booper")))
             $$;
         "#;
         Spi::run(definition);
@@ -154,7 +159,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Ok(String::from("booper"))
+                Ok(Some(String::from("booper")))
             $$;
         "#;
         Spi::run(definition);
@@ -172,7 +177,7 @@ mod tests {
                 LANGUAGE PLRUST AS
             $$
 
-                Ok(String::from("swooper"))
+                Ok(Some(String::from("swooper")))
             $$;
         "#;
         Spi::run(definition);
@@ -193,10 +198,10 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let name: String = host::get_one(
+                let name: Option<String> = host::get_one(
                     "SELECT name FROM contributors_pets ORDER BY random() LIMIT 1",
                     host::ValueType::String,
-                )?.try_into()?;
+                ).map_err(Into::into).transpose().map(|v| v.and_then(|i| i.try_into())).transpose()?;
                 Ok(name)
             $$;
         "#;
@@ -214,11 +219,11 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let id: i32 = host::get_one_with_args(
+                let id: Option<i32> = host::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
                     &[name.as_str().into()],
                     host::ValueType::I32,
-                )?.try_into()?;
+                ).map_err(Into::into).transpose().map(|v| v.and_then(|i| i.try_into())).transpose()?;
 
                 Ok(id)
             $$;
@@ -247,7 +252,7 @@ mod tests {
             [code]
                 use owo_colors::OwoColorize;
 
-                Ok(input.purple().to_string())
+                Ok(Some(input.purple().to_string()))
             $$;
         "#;
         Spi::run(definition);
