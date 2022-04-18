@@ -11,6 +11,7 @@ mod error;
 mod gucs;
 pub mod interface;
 mod plrust;
+mod logging;
 
 use error::PlRustError;
 use pgx::*;
@@ -22,17 +23,6 @@ pg_module_magic!();
 
 #[pg_guard]
 fn _PG_init() {
-    gucs::init();
-    plrust::init();
-}
-
-/// `pgx` doesn't know how to declare a CREATE FUNCTION statement for a function
-/// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
-#[pg_extern(sql = "\
-CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
-    LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';\
-")]
-unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     color_eyre::config::HookBuilder::default()
         .theme(if !atty::is(atty::Stream::Stderr) {
             color_eyre::config::Theme::new()
@@ -44,6 +34,17 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
         .install()
         .unwrap();
 
+    gucs::init();
+    plrust::init();
+}
+
+/// `pgx` doesn't know how to declare a CREATE FUNCTION statement for a function
+/// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
+#[pg_extern(sql = "\
+CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
+    LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';\
+")]
+unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     match plrust_call_handler_inner(fcinfo) {
         Ok(datum) => datum,
         // Panic into the pgx guard.
@@ -66,17 +67,6 @@ unsafe fn plrust_call_handler_inner(
 
 #[pg_extern]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
-    color_eyre::config::HookBuilder::default()
-        .theme(if !atty::is(atty::Stream::Stderr) {
-            color_eyre::config::Theme::new()
-        } else {
-            color_eyre::config::Theme::default()
-        })
-        .into_hooks()
-        .1
-        .install()
-        .unwrap();
-
     match plrust_validator_inner(fn_oid, fcinfo) {
         Ok(()) => (),
         // Panic into the pgx guard.

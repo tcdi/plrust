@@ -29,6 +29,7 @@ pgx = "0.4.2"
 wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300", features = ["tracing"] }
 wasmtime = "0.35"
 wasmtime-wasi = "0.35"
+wasi-common = "0.35"
 syn = "1"
 proc-macro2 = "1"
 prettyplease = "0.1"
