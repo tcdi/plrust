@@ -7,17 +7,13 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-
 mod error;
 mod gucs;
 pub mod interface;
 mod plrust;
 
-use pgx::*;
 use error::PlRustError;
-use eyre::Report;
-use color_eyre::SectionExt;
-
+use pgx::*;
 
 wit_bindgen_wasmtime::export!("src/wit/host.wit");
 wit_bindgen_wasmtime::import!("src/wit/guest.wit");
@@ -42,7 +38,11 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
             color_eyre::config::Theme::new()
         } else {
             color_eyre::config::Theme::default()
-        }).into_hooks().1.install().unwrap();
+        })
+        .into_hooks()
+        .1
+        .install()
+        .unwrap();
 
     match plrust_call_handler_inner(fcinfo) {
         Ok(datum) => datum,
@@ -71,8 +71,12 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
             color_eyre::config::Theme::new()
         } else {
             color_eyre::config::Theme::default()
-        }).into_hooks().1.install().unwrap();
-    
+        })
+        .into_hooks()
+        .1
+        .install()
+        .unwrap();
+
     match plrust_validator_inner(fn_oid, fcinfo) {
         Ok(()) => (),
         // Panic into the pgx guard.
@@ -80,12 +84,15 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
     }
 }
 
-unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> eyre::Result<()> {
+unsafe fn plrust_validator_inner(
+    fn_oid: pg_sys::Oid,
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> eyre::Result<()> {
     let fcinfo = PgBox::from_pg(fcinfo);
     let flinfo = PgBox::from_pg(fcinfo.flinfo);
     if !pg_sys::CheckFunctionValidatorAccess(
         flinfo.fn_oid,
-        pg_getarg(fcinfo.as_ptr(), 0).ok_or(PlRustError::PgGetArgWasNone(fn_oid, 0))?
+        pg_getarg(fcinfo.as_ptr(), 0).ok_or(PlRustError::PgGetArgWasNone(fn_oid, 0))?,
     ) {
         return Ok(());
     }
@@ -93,8 +100,7 @@ unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCa
     plrust::unload_function(fn_oid);
     // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
     // compile the function when it's created to avoid locking during function execution
-    let (_, output) =
-        plrust::compile_function(fn_oid)?;
+    let (_, output) = plrust::compile_function(fn_oid)?;
 
     // if the compilation had warnings we'll display them
     if output.contains("warning: ") {

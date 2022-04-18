@@ -16,9 +16,9 @@ use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
 
 use crate::error::PlRustError;
-use once_cell::sync::Lazy;
-use eyre::eyre;
 use color_eyre::{Section, SectionExt};
+use eyre::eyre;
+use once_cell::sync::Lazy;
 
 struct PlRustStore {
     wasi: WasiCtx,
@@ -166,9 +166,8 @@ pub(crate) unsafe fn execute_wasm_function(
         .map_err(|e| eyre!(e))?;
 
     let (guest, _guest_instance) =
-        crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| {
-            &mut cx.guest_data
-        }).map_err(|e| eyre!(e))?;
+        crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| &mut cx.guest_data)
+            .map_err(|e| eyre!(e))?;
 
     let args = arg_oids
         .iter()
@@ -196,9 +195,10 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
-    std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
+    std::fs::create_dir_all(&crate_dir)
+        .map_err(|e| PlRustError::ModuleFileGeneration(crate_dir.clone(), e))?;
 
-    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
+    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name)?;
 
     let wasm_build_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -208,7 +208,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         .arg("--release")
         .arg("--message-format=json-render-diagnostics")
         .output()
-        .expect("failed to build function wasm module");
+        .map_err(|e| PlRustError::ModuleBuildExecution(e))?;
 
     let wasm_build_command_bytes = wasm_build_output.stdout;
     let wasm_build_command_reader = BufReader::new(wasm_build_command_bytes.as_slice());
@@ -222,9 +222,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     let result = if !wasm_build_output.status.success() {
         Err(
-            eyre!(PlRustError::BuildFailure(wasm_build_output.status))
+            eyre!(PlRustError::ModuleExitNonZero(wasm_build_output.status))
                 .with_section(move || source_code.header("Source Code:"))
-                .with_section(move || build_output_stderr.header("Stderr:"))
+                .with_section(move || build_output_stderr.header("Stderr:")),
         )
     } else {
         let mut wasm_module = None;
@@ -255,7 +255,8 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
                 // move the wasm module into its final location, which is
                 // at the root of the configured `work_dir`
-                std::fs::rename(&wasm_module, &final_path).expect("unable to rename wasm module");
+                std::fs::rename(&wasm_module, &final_path)
+                    .map_err(|e| PlRustError::ModuleRelocation(e))?;
 
                 Ok((final_path, build_output_stderr))
             }
@@ -263,13 +264,16 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         }
     };
 
-    // Let's keep the crate for debugging purpose
-    // std::fs::remove_dir_all(&crate_dir).ok();
+    std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
 
     result
 }
 
-fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> String {
+fn create_function_crate(
+    fn_oid: pg_sys::Oid,
+    crate_dir: &PathBuf,
+    crate_name: &str,
+) -> eyre::Result<String> {
     let (fn_oid, dependencies, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid);
     let source_code =
@@ -313,9 +317,10 @@ wit-bindgen-rust = {{ git = "https://github.com/bytecodealliance/wit-bindgen.git
     lib_rs.push("lib.rs");
 
     let source_code_formatted = prettyplease::unparse(&source_code);
-    std::fs::write(&lib_rs, &source_code_formatted).expect("failed to write source code to lib.rs");
+    std::fs::write(&lib_rs, &source_code_formatted)
+        .map_err(|e| PlRustError::ModuleFileGeneration(lib_rs.into(), e))?;
 
-    source_code_formatted
+    Ok(source_code_formatted)
 }
 
 fn crate_name(fn_oid: pg_sys::Oid) -> String {

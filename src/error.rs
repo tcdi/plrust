@@ -1,6 +1,7 @@
-use crate::{guest, host};
 use std::{
     fmt::{Display, Formatter},
+    io,
+    path::PathBuf,
     process::ExitStatus,
 };
 
@@ -13,11 +14,19 @@ pub enum PlRustError {
     #[error("WASM WASI error: {0}")]
     Wasi(#[from] wasmtime_wasi::Error),
     #[error("Failed to parse `cargo build` messages: {0}")]
-    CargoMessageParse(#[from] std::io::Error),
+    CargoMessageParse(io::Error),
+    #[error("Module generation failed on file {0}: {1}")]
+    ModuleFileGeneration(PathBuf, io::Error),
+    #[error("Module build failed to execute: {0}")]
+    ModuleBuildExecution(io::Error),
     #[error("`cargo build` failed with code {0}")]
-    BuildFailure(ExitStatus),
+    ModuleExitNonZero(ExitStatus),
     #[error("Module not found: {0}")]
     ModuleNotFound(String),
+    #[error("Failed to relocate compiled wasm artifact: {0}")]
+    ModuleRelocation(io::Error),
+    #[error("Failed to cleanup build directory {0}: {1}")]
+    Cleanup(PathBuf, io::Error),
     #[error("FunctionCallInfo was None")]
     FunctionCallInfoWasNone,
     #[error("FunctionCallInfo provided fn_oid was None")]
