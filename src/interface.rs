@@ -1,6 +1,6 @@
+use crate::{guest, host};
 use pgx::IntoDatum;
 use std::fmt::{Display, Formatter};
-use crate::{guest, host};
 
 #[derive(Default)]
 pub struct Host;
@@ -12,30 +12,33 @@ impl host::Host for Host {
         args: Vec<host::ValueParam<'_>>,
         returns: host::ValueType,
     ) -> Result<Option<host::ValueResult>, host::Error> {
-        let prepared_args = args.into_iter().map(|v| {
-            match v {
-                host::ValueParam::String(s) => (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum()),
+        let prepared_args = args
+            .into_iter()
+            .map(|v| match v {
+                host::ValueParam::String(s) => {
+                    (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum())
+                }
                 _ => panic!("oh no"),
-            }
-        }).collect();
+            })
+            .collect();
 
         match returns {
             host::ValueType::String => {
                 let s: Option<String> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
                 Ok(s.map(|i| i.into()))
-            },
+            }
             host::ValueType::I64 => {
                 let s: Option<i64> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
                 Ok(s.map(|i| i.into()))
-            },
+            }
             host::ValueType::I32 => {
                 let s: Option<i32> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
                 Ok(s.map(|i| i.into()))
-            },
+            }
             host::ValueType::Bool => {
                 let s: Option<bool> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
                 Ok(s.map(|i| i.into()))
-            },
+            }
         }
     }
 
@@ -48,19 +51,19 @@ impl host::Host for Host {
             host::ValueType::String => {
                 let s: Option<String> = pgx::spi::Spi::get_one(query);
                 Ok(s.map(|i| i.into()))
-            },
+            }
             host::ValueType::I64 => {
                 let s: Option<i64> = pgx::spi::Spi::get_one(query);
                 Ok(s.map(|i| i.into()))
-            },
+            }
             host::ValueType::I32 => {
                 let s: Option<i32> = pgx::spi::Spi::get_one(query);
                 Ok(s.map(|i| i.into()))
-            },
+            }
             host::ValueType::Bool => {
                 let s: Option<bool> = pgx::spi::Spi::get_one(query);
                 Ok(s.map(|i| i.into()))
-            },
+            }
         }
     }
 }
@@ -97,7 +100,6 @@ impl Display for host::ValueType {
         }
     }
 }
-
 
 impl Display for guest::ValueResult {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {

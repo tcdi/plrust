@@ -1,8 +1,8 @@
-use std::{fmt::{
-    Formatter,
-    Display,
-}, process::ExitStatus};
 use crate::{guest, host};
+use std::{
+    fmt::{Display, Formatter},
+    process::ExitStatus,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PlRustError {
@@ -18,6 +18,12 @@ pub enum PlRustError {
     BuildFailure(ExitStatus, String),
     #[error("Module not found: {0}")]
     ModuleNotFound(String),
+    #[error("FunctionCallInfo was None")]
+    FunctionCallInfoWasNone,
+    #[error("FunctionCallInfo provided fn_oid was None")]
+    FnOidWasNone,
+    #[error("pg_getarg on fn_oid {0} at index {1} was None")]
+    PgGetArgWasNone(pgx::pg_sys::Oid, u64),
 }
 
 // Guest

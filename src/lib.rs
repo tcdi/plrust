@@ -7,16 +7,18 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use pgx::*;
 
-mod gucs;
-mod plrust;
 mod error;
+mod gucs;
 pub mod interface;
+mod plrust;
+
+use pgx::*;
+use error::PlRustError;
+
 
 wit_bindgen_wasmtime::export!("src/wit/host.wit");
 wit_bindgen_wasmtime::import!("src/wit/guest.wit");
-
 
 pg_module_magic!();
 
@@ -33,29 +35,56 @@ CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';\
 ")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let fn_oid = fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid;
-    plrust::execute_wasm_function(fn_oid, fcinfo).unwrap()
+    match plrust_call_handler_inner(fcinfo) {
+        Ok(datum) => datum,
+        // Panic into the pgx guard.
+        Err(e) => panic!("{}", e),
+    }
+}
+
+unsafe fn plrust_call_handler_inner(
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> Result<pg_sys::Datum, PlRustError> {
+    let fn_oid = fcinfo
+        .as_ref()
+        .ok_or(PlRustError::FunctionCallInfoWasNone)?
+        .flinfo
+        .as_ref()
+        .ok_or(PlRustError::FnOidWasNone)?
+        .fn_oid;
+    plrust::execute_wasm_function(fn_oid, fcinfo)
 }
 
 #[pg_extern]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
+    match plrust_validator_inner(fn_oid, fcinfo) {
+        Ok(()) => (),
+        // Panic into the pgx guard.
+        Err(e) => panic!("{}", e),
+    }
+}
+
+unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> Result<(), PlRustError> {
     let fcinfo = PgBox::from_pg(fcinfo);
     let flinfo = PgBox::from_pg(fcinfo.flinfo);
-    if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
-    {
-        return;
+    if !pg_sys::CheckFunctionValidatorAccess(
+        flinfo.fn_oid,
+        pg_getarg(fcinfo.as_ptr(), 0).ok_or(PlRustError::PgGetArgWasNone(fn_oid, 0))?
+    ) {
+        return Ok(());
     }
 
     plrust::unload_function(fn_oid);
     // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
     // compile the function when it's created to avoid locking during function execution
     let (_, output) =
-        plrust::compile_function(fn_oid).unwrap_or_else(|e| panic!("compilation failed\n{}", e));
+        plrust::compile_function(fn_oid)?;
 
     // if the compilation had warnings we'll display them
     if output.contains("warning: ") {
         pgx::warning!("\n{}", output);
     }
+    Ok(())
 }
 
 #[pg_extern]
@@ -74,7 +103,8 @@ fn recompile_function(
     }
 }
 
-extension_sql!("\
+extension_sql!(
+    "\
 CREATE LANGUAGE plrust
     HANDLER plrust.plrust_call_handler
     VALIDATOR plrust.plrust_validator;

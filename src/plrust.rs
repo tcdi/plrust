@@ -8,15 +8,15 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::gucs;
-use pgx::pg_sys::{heap_tuple_get_struct};
+use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{path::PathBuf, io::BufReader, collections::HashMap, process::Command};
+use std::{collections::HashMap, io::BufReader, path::PathBuf, process::Command};
 
-use wasmtime::{Engine, Linker, Store, Module};
-use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
+use wasmtime::{Engine, Linker, Module, Store};
+use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
 
-use once_cell::sync::Lazy;
 use crate::error::PlRustError;
+use once_cell::sync::Lazy;
 
 struct PlRustStore {
     wasi: WasiCtx,
@@ -31,20 +31,21 @@ impl Default for PlRustStore {
             guest_data: crate::guest::GuestData::default(),
             host: crate::interface::Host::default(),
         }
-
     }
 }
 
 static ENGINE: Lazy<Engine> = Lazy::new(|| Engine::default());
 
-static mut CACHE: Lazy<HashMap<
-    pg_sys::Oid,
-    (
-        Module,
-        Vec<PgOid>, // Arg OIDs
-        PgOid, // Return OIDs
-    ),
->> = Lazy::new(|| Default::default());
+static mut CACHE: Lazy<
+    HashMap<
+        pg_sys::Oid,
+        (
+            Module,
+            Vec<PgOid>, // Arg OIDs
+            PgOid,      // Return OIDs
+        ),
+    >,
+> = Lazy::new(|| Default::default());
 
 static WORK_DIR_GUEST_WIT: Lazy<PathBuf> = Lazy::new(|| {
     let mut guest_wit = gucs::work_dir();
@@ -76,10 +77,12 @@ pub(crate) fn init() {
     std::fs::write(&*WORK_DIR_VALUE_WIT, include_str!("wit/types.wit")).unwrap();
 }
 
-fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
+fn initialize_cache_entry(
+    fn_oid: pg_sys::Oid,
+) -> (
     Module,
     Vec<PgOid>, // Arg OIDs
-    PgOid, // Return OIDs
+    PgOid,      // Return OIDs
 ) {
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
     let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
@@ -110,11 +113,12 @@ fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
             pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argtypes = Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap()
+        let argtypes = Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID)
+            .unwrap()
             .iter()
             .map(|&v| PgOid::from(v))
             .collect::<Vec<_>>();
-        
+
         let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
         ));
@@ -128,7 +132,11 @@ fn initialize_cache_entry(fn_oid: pg_sys::Oid) -> (
     (module, argtypes, rettype)
 }
 
-fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate::guest::ValueParam<'static> {
+fn build_arg(
+    idx: usize,
+    oid: PgOid,
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> crate::guest::ValueParam<'static> {
     use crate::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
@@ -139,27 +147,30 @@ fn build_arg(idx: usize, oid: PgOid, fcinfo: pg_sys::FunctionCallInfo) -> crate:
     }
 }
 
-pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, PlRustError> {
-    let (module, arg_oids, _ret_oid) = CACHE.entry(fn_oid).or_insert_with(|| 
-        initialize_cache_entry(fn_oid)
-    );
+pub(crate) unsafe fn execute_wasm_function(
+    fn_oid: pg_sys::Oid,
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> Result<pg_sys::Datum, PlRustError> {
+    let (module, arg_oids, _ret_oid) = CACHE
+        .entry(fn_oid)
+        .or_insert_with(|| initialize_cache_entry(fn_oid));
 
     let mut store = Store::new(&ENGINE, PlRustStore::default());
-    
+
     let mut linker = Linker::new(&ENGINE);
     wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi)?;
     crate::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host)?;
 
-    let (guest, _guest_instance) = crate::guest::Guest::instantiate(
-        &mut store,
-        &module,
-        &mut linker,
-        |cx| &mut cx.guest_data,
-    )?;
+    let (guest, _guest_instance) =
+        crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| {
+            &mut cx.guest_data
+        })?;
 
-    let args = arg_oids.iter().enumerate().map(|(idx, arg_oid)| 
-        build_arg(idx, *arg_oid, fcinfo)
-    ).collect::<Vec<_>>();
+    let args = arg_oids
+        .iter()
+        .enumerate()
+        .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo))
+        .collect::<Vec<_>>();
     let retval = guest.entry(&mut store, args.as_slice())??;
 
     use crate::guest::ValueResult;
@@ -168,7 +179,7 @@ pub(crate) unsafe fn execute_wasm_function(fn_oid: pg_sys::Oid, fcinfo: pg_sys::
         Some(ValueResult::I32(v)) => v.into_datum().unwrap(),
         Some(ValueResult::I64(v)) => v.into_datum().unwrap(),
         Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
-        None => Option::<()>::None.into_datum().unwrap()
+        None => Option::<()>::None.into_datum().unwrap(),
     })
 }
 
@@ -196,22 +207,26 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         .expect("failed to build function wasm module");
 
     let mut wasm_build_output_string = String::new();
-    
+
     unsafe {
         wasm_build_output_string.push_str(&String::from_utf8_unchecked(wasm_build_output.stderr));
     }
 
     let wasm_build_command_bytes = wasm_build_output.stdout;
     let wasm_build_command_reader = BufReader::new(wasm_build_command_bytes.as_slice());
-    let wasm_build_command_stream = cargo_metadata::Message::parse_stream(wasm_build_command_reader);
-    let wasm_build_command_messages =
-        wasm_build_command_stream.collect::<Result<Vec<_>, std::io::Error>>()
+    let wasm_build_command_stream =
+        cargo_metadata::Message::parse_stream(wasm_build_command_reader);
+    let wasm_build_command_messages = wasm_build_command_stream
+        .collect::<Result<Vec<_>, std::io::Error>>()
         .map_err(|e| PlRustError::CargoMessageParse(e))?;
 
     let result = if !wasm_build_output.status.success() {
         wasm_build_output_string.push_str("-----------------\n");
         wasm_build_output_string.push_str(&source_code);
-        Err(PlRustError::BuildFailure(wasm_build_output.status, wasm_build_output_string))
+        Err(PlRustError::BuildFailure(
+            wasm_build_output.status,
+            wasm_build_output_string,
+        ))
     } else {
         let mut wasm_module = None;
         for message in wasm_build_command_messages {
@@ -233,7 +248,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
                 | _ => (),
             }
         }
-        
+
         match wasm_module {
             Some(wasm_module) => {
                 let mut final_path = work_dir.clone();
@@ -250,7 +265,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     };
 
     // Let's keep the crate for debugging purpose
-    // std::fs::remove_dir_all(&crate_dir).ok(); 
+    // std::fs::remove_dir_all(&crate_dir).ok();
 
     result
 }
@@ -335,7 +350,7 @@ fn generate_function_source(
     // User defined function
     let user_fn_name = &format!("plrust_fn_{}", fn_oid);
     let user_fn_ident = syn::Ident::new(user_fn_name, proc_macro2::Span::call_site());
-    let mut user_fn_arg_idents: Vec<syn::Ident> = Vec::default(); 
+    let mut user_fn_arg_idents: Vec<syn::Ident> = Vec::default();
     let mut user_fn_arg_types: Vec<syn::Type> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
         let arg_ty = oid_to_syn_type(arg_type_oid, true).unwrap();
@@ -348,7 +363,8 @@ fn generate_function_source(
         user_fn_arg_idents.push(arg_ident);
         user_fn_arg_types.push(arg_ty);
     }
-    let user_fn_block_tokens: syn::Block = syn::parse_str(&format!("{{ {} }}", code)).expect("Couldn't parse user code");
+    let user_fn_block_tokens: syn::Block =
+        syn::parse_str(&format!("{{ {} }}", code)).expect("Couldn't parse user code");
     let user_fn_return_tokens = oid_to_syn_type(return_type, true);
 
     let user_fn_tokens: syn::ItemFn = syn::parse_quote! {
@@ -364,8 +380,16 @@ fn generate_function_source(
         entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().try_into()? });
     }
 
-    let guest_wit_path = WORK_DIR_GUEST_WIT.canonicalize().unwrap().display().to_string();
-    let host_wit_path = WORK_DIR_HOST_WIT.canonicalize().unwrap().display().to_string();
+    let guest_wit_path = WORK_DIR_GUEST_WIT
+        .canonicalize()
+        .unwrap()
+        .display()
+        .to_string();
+    let host_wit_path = WORK_DIR_HOST_WIT
+        .canonicalize()
+        .unwrap()
+        .display()
+        .to_string();
 
     source.items.push(syn::parse_quote! {
         // Various implementations to support bindings.
@@ -525,8 +549,6 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     (deps_block, code_block)
 }
 
-
-
 fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Option<syn::Type> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 
@@ -564,7 +586,7 @@ fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Option<syn::Type> {
         },
         _ => return None,
     };
-    
+
     if array && owned {
         Some(syn::parse_quote! { Vec<Option<#base_rust_type>> })
     } else if array {
