@@ -34,6 +34,9 @@ proc-macro2 = "1"
 prettyplease = "0.1"
 cargo_metadata = "0.14.2"
 thiserror = "1.0"
+eyre = "0.6"
+color-eyre = "0.6"
+atty = "0.2"
 
 [dev-dependencies]
 pgx-tests = "0.4.2"

@@ -14,8 +14,8 @@ pub enum PlRustError {
     Wasi(#[from] wasmtime_wasi::Error),
     #[error("Failed to parse `cargo build` messages: {0}")]
     CargoMessageParse(#[from] std::io::Error),
-    #[error("`cargo build` failed with code {0}: {1}")]
-    BuildFailure(ExitStatus, String),
+    #[error("`cargo build` failed with code {0}")]
+    BuildFailure(ExitStatus),
     #[error("Module not found: {0}")]
     ModuleNotFound(String),
     #[error("FunctionCallInfo was None")]

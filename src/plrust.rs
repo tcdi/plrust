@@ -17,6 +17,8 @@ use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
 
 use crate::error::PlRustError;
 use once_cell::sync::Lazy;
+use eyre::eyre;
+use color_eyre::{Section, SectionExt};
 
 struct PlRustStore {
     wasi: WasiCtx,
@@ -150,7 +152,7 @@ fn build_arg(
 pub(crate) unsafe fn execute_wasm_function(
     fn_oid: pg_sys::Oid,
     fcinfo: pg_sys::FunctionCallInfo,
-) -> Result<pg_sys::Datum, PlRustError> {
+) -> eyre::Result<pg_sys::Datum> {
     let (module, arg_oids, _ret_oid) = CACHE
         .entry(fn_oid)
         .or_insert_with(|| initialize_cache_entry(fn_oid));
@@ -158,13 +160,15 @@ pub(crate) unsafe fn execute_wasm_function(
     let mut store = Store::new(&ENGINE, PlRustStore::default());
 
     let mut linker = Linker::new(&ENGINE);
-    wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi)?;
-    crate::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host)?;
+    wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi)
+        .map_err(|e| eyre!(e))?;
+    crate::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host)
+        .map_err(|e| eyre!(e))?;
 
     let (guest, _guest_instance) =
         crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| {
             &mut cx.guest_data
-        })?;
+        }).map_err(|e| eyre!(e))?;
 
     let args = arg_oids
         .iter()
@@ -187,7 +191,7 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     CACHE.remove(&fn_oid);
 }
 
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), PlRustError> {
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String)> {
     let work_dir = gucs::work_dir();
 
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -206,12 +210,6 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         .output()
         .expect("failed to build function wasm module");
 
-    let mut wasm_build_output_string = String::new();
-
-    unsafe {
-        wasm_build_output_string.push_str(&String::from_utf8_unchecked(wasm_build_output.stderr));
-    }
-
     let wasm_build_command_bytes = wasm_build_output.stdout;
     let wasm_build_command_reader = BufReader::new(wasm_build_command_bytes.as_slice());
     let wasm_build_command_stream =
@@ -220,13 +218,14 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         .collect::<Result<Vec<_>, std::io::Error>>()
         .map_err(|e| PlRustError::CargoMessageParse(e))?;
 
+    let build_output_stderr = String::from_utf8(wasm_build_output.stderr)?;
+
     let result = if !wasm_build_output.status.success() {
-        wasm_build_output_string.push_str("-----------------\n");
-        wasm_build_output_string.push_str(&source_code);
-        Err(PlRustError::BuildFailure(
-            wasm_build_output.status,
-            wasm_build_output_string,
-        ))
+        Err(
+            eyre!(PlRustError::BuildFailure(wasm_build_output.status))
+                .with_section(move || source_code.header("Source Code:"))
+                .with_section(move || build_output_stderr.header("Stderr:"))
+        )
     } else {
         let mut wasm_module = None;
         for message in wasm_build_command_messages {
@@ -258,9 +257,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
                 // at the root of the configured `work_dir`
                 std::fs::rename(&wasm_module, &final_path).expect("unable to rename wasm module");
 
-                Ok((final_path, wasm_build_output_string))
+                Ok((final_path, build_output_stderr))
             }
-            None => Err(PlRustError::ModuleNotFound(crate_name)),
+            None => Err(eyre!(PlRustError::ModuleNotFound(crate_name))),
         }
     };
 

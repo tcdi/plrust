@@ -1690,8 +1690,11 @@ dependencies = [
 name = "plrust"
 version = "0.0.0"
 dependencies = [
+ "atty",
  "bincode",
  "cargo_metadata",
+ "color-eyre",
+ "eyre",
  "once_cell",
  "pgx",
  "pgx-tests",

@@ -15,6 +15,8 @@ mod plrust;
 
 use pgx::*;
 use error::PlRustError;
+use eyre::Report;
+use color_eyre::SectionExt;
 
 
 wit_bindgen_wasmtime::export!("src/wit/host.wit");
@@ -35,16 +37,23 @@ CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';\
 ")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    color_eyre::config::HookBuilder::default()
+        .theme(if !atty::is(atty::Stream::Stderr) {
+            color_eyre::config::Theme::new()
+        } else {
+            color_eyre::config::Theme::default()
+        }).into_hooks().1.install().unwrap();
+
     match plrust_call_handler_inner(fcinfo) {
         Ok(datum) => datum,
         // Panic into the pgx guard.
-        Err(e) => panic!("{}", e),
+        Err(e) => panic!("{:?}", e),
     }
 }
 
 unsafe fn plrust_call_handler_inner(
     fcinfo: pg_sys::FunctionCallInfo,
-) -> Result<pg_sys::Datum, PlRustError> {
+) -> eyre::Result<pg_sys::Datum> {
     let fn_oid = fcinfo
         .as_ref()
         .ok_or(PlRustError::FunctionCallInfoWasNone)?
@@ -57,14 +66,21 @@ unsafe fn plrust_call_handler_inner(
 
 #[pg_extern]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
+    color_eyre::config::HookBuilder::default()
+        .theme(if !atty::is(atty::Stream::Stderr) {
+            color_eyre::config::Theme::new()
+        } else {
+            color_eyre::config::Theme::default()
+        }).into_hooks().1.install().unwrap();
+    
     match plrust_validator_inner(fn_oid, fcinfo) {
         Ok(()) => (),
         // Panic into the pgx guard.
-        Err(e) => panic!("{}", e),
+        Err(e) => panic!("{:?}", e),
     }
 }
 
-unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> Result<(), PlRustError> {
+unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> eyre::Result<()> {
     let fcinfo = PgBox::from_pg(fcinfo);
     let flinfo = PgBox::from_pg(fcinfo.flinfo);
     if !pg_sys::CheckFunctionValidatorAccess(
