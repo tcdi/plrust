@@ -1,7 +1,7 @@
 // User code is templated into this code when a user's PL/Rust function is created.
 wit_bindgen_rust::export!("../components/wit/guest.wit");
 
-mod toolbox;
+mod impls;
 struct Guest;
 
 // This code exists as a smoke test so this template can be built outside of a running PL/Rust. It gets replaced.

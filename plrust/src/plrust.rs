@@ -10,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{collections::HashMap, io::BufReader, path::PathBuf, process::Command, borrow::BorrowMut};
+use std::{collections::{HashMap, BTreeMap}, io::BufReader, path::PathBuf, process::Command, borrow::BorrowMut};
 
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
@@ -80,6 +80,7 @@ pub(crate) fn init() {
     std::fs::remove_dir_all(&interface_dir).ok();
     std::fs::create_dir_all(&interface_dir).expect("Could not initialize interface crate");
     GUEST_INTERFACE_DIR.extract(&interface_dir).expect("Could not extract Guest interface crate");
+
     let wit_dir = wit_dir();
     std::fs::remove_dir_all(&wit_dir).ok();
     std::fs::create_dir_all(&wit_dir).expect("Could not initialize wit directory");
@@ -285,7 +286,7 @@ fn create_function_crate(
     crate_dir: &PathBuf,
     crate_name: &str,
 ) -> eyre::Result<String> {
-    let (fn_oid, dependencies, code, args, (return_type, is_set), is_strict) =
+    let (fn_oid, mut dependencies, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid);
     let mut source_code =
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
@@ -312,6 +313,7 @@ fn create_function_crate(
             .. Default::default()
         }),
     );
+    updated_cargo_toml.dependencies.append(&mut dependencies);
 
     // TODO: Include user deps
 
@@ -416,7 +418,7 @@ fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
 ) -> (
     pg_sys::Oid,
-    String,
+    BTreeMap<std::string::String, cargo_toml::Dependency>,
     String,
     Vec<(PgOid, Option<String>)>,
     (PgOid, bool),
@@ -458,6 +460,7 @@ fn extract_code_and_args(
             &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
                 .expect("source code was null"),
         );
+        let deps_parsed: BTreeMap<std::string::String, cargo_toml::Dependency> = toml::from_str(&deps).unwrap();
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             proc_tuple,
@@ -503,7 +506,7 @@ fn extract_code_and_args(
 
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        (fn_oid, deps, source_code, args, return_type, is_strict)
+        (fn_oid, deps_parsed, source_code, args, return_type, is_strict)
     }
 }
 

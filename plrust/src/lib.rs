@@ -240,9 +240,9 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let name: Option<String> = host::get_one(
+                let name: Option<String> = interface::get_one(
                     "SELECT name FROM contributors_pets ORDER BY random() LIMIT 1",
-                    host::ValueType::String,
+                    interface::ValueType::String,
                 ).map_err(Into::into).transpose().map(|v| v.and_then(|i| i.try_into())).transpose()?;
                 Ok(name)
             $$;
@@ -261,10 +261,10 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let id: Option<i32> = host::get_one_with_args(
+                let id: Option<i32> = interface::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
-                    &[name.as_str().into()],
-                    host::ValueType::I32,
+                    &[name.unwrap().as_str().into()],
+                    interface::ValueType::I32,
                 ).map_err(Into::into).transpose().map(|v| v.and_then(|i| i.try_into())).transpose()?;
 
                 Ok(id)
@@ -294,7 +294,7 @@ mod tests {
             [code]
                 use owo_colors::OwoColorize;
 
-                Ok(Some(input.purple().to_string()))
+                Ok(Some(input.unwrap().purple().to_string()))
             $$;
         "#;
         Spi::run(definition);
