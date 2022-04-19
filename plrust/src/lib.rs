@@ -16,8 +16,8 @@ mod logging;
 use error::PlRustError;
 use pgx::*;
 
-wit_bindgen_wasmtime::export!("src/wit/host.wit");
-wit_bindgen_wasmtime::import!("src/wit/guest.wit");
+wit_bindgen_wasmtime::export!("../components/wit/host.wit");
+wit_bindgen_wasmtime::import!("../components/wit/guest.wit");
 
 pg_module_magic!();
 

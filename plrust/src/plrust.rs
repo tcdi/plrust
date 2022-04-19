@@ -10,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{collections::HashMap, io::BufReader, path::PathBuf, process::Command};
+use std::{collections::HashMap, io::BufReader, path::PathBuf, process::Command, borrow::BorrowMut};
 
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
@@ -23,6 +23,7 @@ use crate::{
 use color_eyre::{Section, SectionExt};
 use eyre::eyre;
 use once_cell::sync::Lazy;
+use include_dir::include_dir;
 
 struct PlRustStore {
     wasi: WasiCtx,
@@ -56,34 +57,33 @@ static mut CACHE: Lazy<
     >,
 > = Lazy::new(|| Default::default());
 
-static WORK_DIR_GUEST_WIT: Lazy<PathBuf> = Lazy::new(|| {
-    let mut guest_wit = gucs::work_dir();
-    guest_wit.push("wit");
-    guest_wit.push("guest.wit");
-    guest_wit
-});
+static GUEST_TEMPLATE_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../guest_template");
+static GUEST_INTERFACE_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../components/interface");
+static WIT_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../components/wit");
 
-static WORK_DIR_HOST_WIT: Lazy<PathBuf> = Lazy::new(|| {
-    let mut host_wit = gucs::work_dir();
-    host_wit.push("wit");
-    host_wit.push("host.wit");
-    host_wit
-});
+fn interface_dir() -> PathBuf {
+    let mut path = gucs::work_dir().clone();
+    path.push("components");
+    path.push("interface");
+    path
+}
 
-static WORK_DIR_VALUE_WIT: Lazy<PathBuf> = Lazy::new(|| {
-    let mut host_wit = gucs::work_dir();
-    host_wit.push("wit");
-    host_wit.push("types.wit");
-    host_wit
-});
+fn wit_dir() -> PathBuf {
+    let mut path = gucs::work_dir().clone();
+    path.push("components");
+    path.push("wit");
+    path
+}
 
 pub(crate) fn init() {
-    let mut host_wit = gucs::work_dir();
-    host_wit.push("wit");
-    std::fs::create_dir_all(host_wit).unwrap();
-    std::fs::write(&*WORK_DIR_GUEST_WIT, include_str!("wit/guest.wit")).unwrap();
-    std::fs::write(&*WORK_DIR_HOST_WIT, include_str!("wit/host.wit")).unwrap();
-    std::fs::write(&*WORK_DIR_VALUE_WIT, include_str!("wit/types.wit")).unwrap();
+    let interface_dir = interface_dir();
+    std::fs::remove_dir_all(&interface_dir).ok();
+    std::fs::create_dir_all(&interface_dir).expect("Could not initialize interface crate");
+    GUEST_INTERFACE_DIR.extract(&interface_dir).expect("Could not extract Guest interface crate");
+    let wit_dir = wit_dir();
+    std::fs::remove_dir_all(&wit_dir).ok();
+    std::fs::create_dir_all(&wit_dir).expect("Could not initialize wit directory");
+    WIT_DIR.extract(&wit_dir).expect("Could not extract WIT definitions");
 }
 
 fn initialize_cache_entry(
@@ -145,200 +145,15 @@ fn build_arg(
     idx: usize,
     oid: PgOid,
     fcinfo: pg_sys::FunctionCallInfo,
-) -> crate::guest::ValueParam<'static> {
+) -> Option<crate::guest::ValueParam<'static>> {
     use crate::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::TEXTOID => ValueParam::String(pg_getarg(fcinfo, idx).unwrap()),
-            PgBuiltInOids::BOOLOID => ValueParam::Bool(pg_getarg(fcinfo, idx).unwrap()),
-            PgBuiltInOids::BYTEAOID => todo!(),
-            PgBuiltInOids::CHAROID => todo!(),
-            PgBuiltInOids::NAMEOID => todo!(),
-            PgBuiltInOids::INT8OID => ValueParam::I64(pg_getarg(fcinfo, idx).unwrap()),
-            PgBuiltInOids::INT2OID => todo!(),
-            PgBuiltInOids::INT2VECTOROID => todo!(),
-            PgBuiltInOids::INT4OID => ValueParam::I32(pg_getarg(fcinfo, idx).unwrap()),
-            PgBuiltInOids::REGPROCOID => todo!(),
-            PgBuiltInOids::OIDOID => todo!(),
-            PgBuiltInOids::TIDOID => todo!(),
-            PgBuiltInOids::XIDOID => todo!(),
-            PgBuiltInOids::CIDOID => todo!(),
-            PgBuiltInOids::OIDVECTOROID => todo!(),
-            PgBuiltInOids::JSONOID => todo!(),
-            PgBuiltInOids::XMLOID => todo!(),
-            PgBuiltInOids::PG_NODE_TREEOID => todo!(),
-            PgBuiltInOids::PG_NDISTINCTOID => todo!(),
-            PgBuiltInOids::PG_DEPENDENCIESOID => todo!(),
-            PgBuiltInOids::PG_MCV_LISTOID => todo!(),
-            PgBuiltInOids::PG_DDL_COMMANDOID => todo!(),
-            PgBuiltInOids::XID8OID => todo!(),
-            PgBuiltInOids::POINTOID => todo!(),
-            PgBuiltInOids::LSEGOID => todo!(),
-            PgBuiltInOids::PATHOID => todo!(),
-            PgBuiltInOids::BOXOID => todo!(),
-            PgBuiltInOids::POLYGONOID => todo!(),
-            PgBuiltInOids::LINEOID => todo!(),
-            PgBuiltInOids::FLOAT4OID => todo!(),
-            PgBuiltInOids::FLOAT8OID => todo!(),
-            PgBuiltInOids::UNKNOWNOID => todo!(),
-            PgBuiltInOids::CIRCLEOID => todo!(),
-            PgBuiltInOids::MONEYOID => todo!(),
-            PgBuiltInOids::MACADDROID => todo!(),
-            PgBuiltInOids::INETOID => todo!(),
-            PgBuiltInOids::CIDROID => todo!(),
-            PgBuiltInOids::MACADDR8OID => todo!(),
-            PgBuiltInOids::ACLITEMOID => todo!(),
-            PgBuiltInOids::BPCHAROID => todo!(),
-            PgBuiltInOids::VARCHAROID => todo!(),
-            PgBuiltInOids::DATEOID => todo!(),
-            PgBuiltInOids::TIMEOID => todo!(),
-            PgBuiltInOids::TIMESTAMPOID => todo!(),
-            PgBuiltInOids::TIMESTAMPTZOID => todo!(),
-            PgBuiltInOids::INTERVALOID => todo!(),
-            PgBuiltInOids::TIMETZOID => todo!(),
-            PgBuiltInOids::BITOID => todo!(),
-            PgBuiltInOids::VARBITOID => todo!(),
-            PgBuiltInOids::NUMERICOID => todo!(),
-            PgBuiltInOids::REFCURSOROID => todo!(),
-            PgBuiltInOids::REGPROCEDUREOID => todo!(),
-            PgBuiltInOids::REGOPEROID => todo!(),
-            PgBuiltInOids::REGOPERATOROID => todo!(),
-            PgBuiltInOids::REGCLASSOID => todo!(),
-            PgBuiltInOids::REGCOLLATIONOID => todo!(),
-            PgBuiltInOids::REGTYPEOID => todo!(),
-            PgBuiltInOids::REGROLEOID => todo!(),
-            PgBuiltInOids::REGNAMESPACEOID => todo!(),
-            PgBuiltInOids::UUIDOID => todo!(),
-            PgBuiltInOids::PG_LSNOID => todo!(),
-            PgBuiltInOids::TSVECTOROID => todo!(),
-            PgBuiltInOids::GTSVECTOROID => todo!(),
-            PgBuiltInOids::TSQUERYOID => todo!(),
-            PgBuiltInOids::REGCONFIGOID => todo!(),
-            PgBuiltInOids::REGDICTIONARYOID => todo!(),
-            PgBuiltInOids::JSONBOID => todo!(),
-            PgBuiltInOids::JSONPATHOID => todo!(),
-            PgBuiltInOids::TXID_SNAPSHOTOID => todo!(),
-            PgBuiltInOids::PG_SNAPSHOTOID => todo!(),
-            PgBuiltInOids::INT4RANGEOID => todo!(),
-            PgBuiltInOids::NUMRANGEOID => todo!(),
-            PgBuiltInOids::TSRANGEOID => todo!(),
-            PgBuiltInOids::TSTZRANGEOID => todo!(),
-            PgBuiltInOids::DATERANGEOID => todo!(),
-            PgBuiltInOids::INT8RANGEOID => todo!(),
-            PgBuiltInOids::INT4MULTIRANGEOID => todo!(),
-            PgBuiltInOids::NUMMULTIRANGEOID => todo!(),
-            PgBuiltInOids::TSMULTIRANGEOID => todo!(),
-            PgBuiltInOids::TSTZMULTIRANGEOID => todo!(),
-            PgBuiltInOids::DATEMULTIRANGEOID => todo!(),
-            PgBuiltInOids::INT8MULTIRANGEOID => todo!(),
-            PgBuiltInOids::RECORDOID => todo!(),
-            PgBuiltInOids::RECORDARRAYOID => todo!(),
-            PgBuiltInOids::CSTRINGOID => todo!(),
-            PgBuiltInOids::ANYOID => todo!(),
-            PgBuiltInOids::ANYARRAYOID => todo!(),
-            PgBuiltInOids::VOIDOID => todo!(),
-            PgBuiltInOids::TRIGGEROID => todo!(),
-            PgBuiltInOids::EVENT_TRIGGEROID => todo!(),
-            PgBuiltInOids::LANGUAGE_HANDLEROID => todo!(),
-            PgBuiltInOids::INTERNALOID => todo!(),
-            PgBuiltInOids::ANYELEMENTOID => todo!(),
-            PgBuiltInOids::ANYNONARRAYOID => todo!(),
-            PgBuiltInOids::ANYENUMOID => todo!(),
-            PgBuiltInOids::FDW_HANDLEROID => todo!(),
-            PgBuiltInOids::INDEX_AM_HANDLEROID => todo!(),
-            PgBuiltInOids::TSM_HANDLEROID => todo!(),
-            PgBuiltInOids::TABLE_AM_HANDLEROID => todo!(),
-            PgBuiltInOids::ANYRANGEOID => todo!(),
-            PgBuiltInOids::ANYCOMPATIBLEOID => todo!(),
-            PgBuiltInOids::ANYCOMPATIBLEARRAYOID => todo!(),
-            PgBuiltInOids::ANYCOMPATIBLENONARRAYOID => todo!(),
-            PgBuiltInOids::ANYCOMPATIBLERANGEOID => todo!(),
-            PgBuiltInOids::ANYMULTIRANGEOID => todo!(),
-            PgBuiltInOids::ANYCOMPATIBLEMULTIRANGEOID => todo!(),
-            PgBuiltInOids::PG_BRIN_BLOOM_SUMMARYOID => todo!(),
-            PgBuiltInOids::PG_BRIN_MINMAX_MULTI_SUMMARYOID => todo!(),
-            PgBuiltInOids::BOOLARRAYOID => todo!(),
-            PgBuiltInOids::BYTEAARRAYOID => todo!(),
-            PgBuiltInOids::CHARARRAYOID => todo!(),
-            PgBuiltInOids::NAMEARRAYOID => todo!(),
-            PgBuiltInOids::INT8ARRAYOID => todo!(),
-            PgBuiltInOids::INT2ARRAYOID => todo!(),
-            PgBuiltInOids::INT2VECTORARRAYOID => todo!(),
-            PgBuiltInOids::INT4ARRAYOID => todo!(),
-            PgBuiltInOids::REGPROCARRAYOID => todo!(),
-            PgBuiltInOids::TEXTARRAYOID => todo!(),
-            PgBuiltInOids::OIDARRAYOID => todo!(),
-            PgBuiltInOids::TIDARRAYOID => todo!(),
-            PgBuiltInOids::XIDARRAYOID => todo!(),
-            PgBuiltInOids::CIDARRAYOID => todo!(),
-            PgBuiltInOids::OIDVECTORARRAYOID => todo!(),
-            PgBuiltInOids::PG_TYPEARRAYOID => todo!(),
-            PgBuiltInOids::PG_ATTRIBUTEARRAYOID => todo!(),
-            PgBuiltInOids::PG_PROCARRAYOID => todo!(),
-            PgBuiltInOids::PG_CLASSARRAYOID => todo!(),
-            PgBuiltInOids::JSONARRAYOID => todo!(),
-            PgBuiltInOids::XMLARRAYOID => todo!(),
-            PgBuiltInOids::XID8ARRAYOID => todo!(),
-            PgBuiltInOids::POINTARRAYOID => todo!(),
-            PgBuiltInOids::LSEGARRAYOID => todo!(),
-            PgBuiltInOids::PATHARRAYOID => todo!(),
-            PgBuiltInOids::BOXARRAYOID => todo!(),
-            PgBuiltInOids::POLYGONARRAYOID => todo!(),
-            PgBuiltInOids::LINEARRAYOID => todo!(),
-            PgBuiltInOids::FLOAT4ARRAYOID => todo!(),
-            PgBuiltInOids::FLOAT8ARRAYOID => todo!(),
-            PgBuiltInOids::CIRCLEARRAYOID => todo!(),
-            PgBuiltInOids::MONEYARRAYOID => todo!(),
-            PgBuiltInOids::MACADDRARRAYOID => todo!(),
-            PgBuiltInOids::INETARRAYOID => todo!(),
-            PgBuiltInOids::CIDRARRAYOID => todo!(),
-            PgBuiltInOids::MACADDR8ARRAYOID => todo!(),
-            PgBuiltInOids::ACLITEMARRAYOID => todo!(),
-            PgBuiltInOids::BPCHARARRAYOID => todo!(),
-            PgBuiltInOids::VARCHARARRAYOID => todo!(),
-            PgBuiltInOids::DATEARRAYOID => todo!(),
-            PgBuiltInOids::TIMEARRAYOID => todo!(),
-            PgBuiltInOids::TIMESTAMPARRAYOID => todo!(),
-            PgBuiltInOids::TIMESTAMPTZARRAYOID => todo!(),
-            PgBuiltInOids::INTERVALARRAYOID => todo!(),
-            PgBuiltInOids::TIMETZARRAYOID => todo!(),
-            PgBuiltInOids::BITARRAYOID => todo!(),
-            PgBuiltInOids::VARBITARRAYOID => todo!(),
-            PgBuiltInOids::NUMERICARRAYOID => todo!(),
-            PgBuiltInOids::REFCURSORARRAYOID => todo!(),
-            PgBuiltInOids::REGPROCEDUREARRAYOID => todo!(),
-            PgBuiltInOids::REGOPERARRAYOID => todo!(),
-            PgBuiltInOids::REGOPERATORARRAYOID => todo!(),
-            PgBuiltInOids::REGCLASSARRAYOID => todo!(),
-            PgBuiltInOids::REGCOLLATIONARRAYOID => todo!(),
-            PgBuiltInOids::REGTYPEARRAYOID => todo!(),
-            PgBuiltInOids::REGROLEARRAYOID => todo!(),
-            PgBuiltInOids::REGNAMESPACEARRAYOID => todo!(),
-            PgBuiltInOids::UUIDARRAYOID => todo!(),
-            PgBuiltInOids::PG_LSNARRAYOID => todo!(),
-            PgBuiltInOids::TSVECTORARRAYOID => todo!(),
-            PgBuiltInOids::GTSVECTORARRAYOID => todo!(),
-            PgBuiltInOids::TSQUERYARRAYOID => todo!(),
-            PgBuiltInOids::REGCONFIGARRAYOID => todo!(),
-            PgBuiltInOids::REGDICTIONARYARRAYOID => todo!(),
-            PgBuiltInOids::JSONBARRAYOID => todo!(),
-            PgBuiltInOids::JSONPATHARRAYOID => todo!(),
-            PgBuiltInOids::TXID_SNAPSHOTARRAYOID => todo!(),
-            PgBuiltInOids::PG_SNAPSHOTARRAYOID => todo!(),
-            PgBuiltInOids::INT4RANGEARRAYOID => todo!(),
-            PgBuiltInOids::NUMRANGEARRAYOID => todo!(),
-            PgBuiltInOids::TSRANGEARRAYOID => todo!(),
-            PgBuiltInOids::TSTZRANGEARRAYOID => todo!(),
-            PgBuiltInOids::DATERANGEARRAYOID => todo!(),
-            PgBuiltInOids::INT8RANGEARRAYOID => todo!(),
-            PgBuiltInOids::INT4MULTIRANGEARRAYOID => todo!(),
-            PgBuiltInOids::NUMMULTIRANGEARRAYOID => todo!(),
-            PgBuiltInOids::TSMULTIRANGEARRAYOID => todo!(),
-            PgBuiltInOids::TSTZMULTIRANGEARRAYOID => todo!(),
-            PgBuiltInOids::DATEMULTIRANGEARRAYOID => todo!(),
-            PgBuiltInOids::INT8MULTIRANGEARRAYOID => todo!(),
-            PgBuiltInOids::CSTRINGARRAYOID => todo!(),
-            //_ => todo!(),
+            PgBuiltInOids::TEXTOID => pg_getarg(fcinfo, idx).map(ValueParam::String),
+            PgBuiltInOids::BOOLOID => pg_getarg(fcinfo, idx).map(ValueParam::Bool),
+            PgBuiltInOids::INT8OID => pg_getarg(fcinfo, idx).map(ValueParam::I64),
+            PgBuiltInOids::INT4OID => pg_getarg(fcinfo, idx).map(ValueParam::I32),
+            _ => todo!(),
         },
         _ => todo!(),
     }
@@ -460,7 +275,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         }
     };
 
-    std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
+    // std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
 
     result
 }
@@ -472,51 +287,55 @@ fn create_function_crate(
 ) -> eyre::Result<String> {
     let (fn_oid, dependencies, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid);
-    let source_code =
+    let mut source_code =
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
 
-    // cargo.toml first
-    let mut cargo_toml = crate_dir.clone();
-    cargo_toml.push("Cargo.toml");
-    std::fs::write(
-        &cargo_toml,
-        &format!(
-            r#"[package]
-name = "{crate_name}"
-version = "0.0.0"
-edition = "2021"
 
-[lib]
-crate-type = ["cdylib"]
+    GUEST_TEMPLATE_DIR.extract(crate_dir).expect("Could not extract Guest template");
 
-[dependencies]
-wit-bindgen-rust = {{ git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300" }}
-{dependencies}
-"#,
-            crate_name = crate_name,
-            dependencies = dependencies,
-        ),
-    )
-    .expect("failed to write Cargo.toml");
+    // Update cargo toml
+    let cargo_toml_path = {
+        let mut file = crate_dir.clone();
+        file.push("Cargo.toml");
+        file
+    };
+    let cargo_toml_string = std::fs::read_to_string(&cargo_toml_path).unwrap();
+    let mut updated_cargo_toml = ::cargo_toml::Manifest::from_str(&cargo_toml_string)?;
+    if let Some(ref mut package) = updated_cargo_toml.package {
+        package.name = crate_name.to_string();
+    }
+    // Patch interface path
+    let _old_interface_dep = updated_cargo_toml.dependencies.insert(
+        "interface".to_string(),
+        cargo_toml::Dependency::Detailed(cargo_toml::DependencyDetail {
+            path: Some(interface_dir().display().to_string()),
+            .. Default::default()
+        }),
+    );
 
-    // the src/ directory
-    let mut src = crate_dir.clone();
-    src.push("src");
-    std::fs::create_dir_all(&src).expect("failed to create src directory");
+    // TODO: Include user deps
 
-    let mut toolbox_rs = src.clone();
-    toolbox_rs.push("toolbox.rs");
-    std::fs::write(toolbox_rs, include_str!("../guest_src/toolbox.rs")).unwrap();
+    let updated_cargo_toml_string = toml::to_string(&updated_cargo_toml).unwrap();
+    std::fs::write(&cargo_toml_path, &updated_cargo_toml_string)
+        .map_err(|e| PlRustError::ModuleFileGeneration(cargo_toml_path.into(), e))?;
 
-    // the actual source code in src/lib.rs
-    let mut lib_rs = src.clone();
-    lib_rs.push("lib.rs");
+    let lib_rs_path = {
+        let mut filename = crate_dir.clone();
+        filename.push("src");
+        filename.push("lib.rs");
+        filename
+    };
+    let mut lib_rs_source = std::fs::read_to_string(&lib_rs_path).unwrap();
+    let mut lib_rs = syn::parse_file(&lib_rs_source).unwrap();
+    // The last item is `mod smoke_test {}` (TODO: Assert)
+    lib_rs.items.remove(lib_rs.items.len() -1);
+    lib_rs.items.append(&mut source_code);
 
-    let source_code_formatted = prettyplease::unparse(&source_code);
-    std::fs::write(&lib_rs, &source_code_formatted)
-        .map_err(|e| PlRustError::ModuleFileGeneration(lib_rs.into(), e))?;
+    let lib_rs_formatted = prettyplease::unparse(&lib_rs);
+    std::fs::write(&lib_rs_path, &lib_rs_formatted)
+        .map_err(|e| PlRustError::ModuleFileGeneration(lib_rs_path.into(), e))?;
 
-    Ok(source_code_formatted)
+    Ok(lib_rs_formatted)
 }
 
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
@@ -540,12 +359,8 @@ fn generate_function_source(
     return_type: &PgOid,
     is_set: bool,
     is_strict: bool,
-) -> syn::File {
-    let mut source = syn::File {
-        shebang: Default::default(),
-        attrs: Default::default(),
-        items: Default::default(),
-    };
+) -> Vec<syn::Item> {
+    let mut items = Vec::new();
 
     // User defined function
     let user_fn_name = &format!("plrust_fn_{}", fn_oid);
@@ -561,7 +376,7 @@ fn generate_function_source(
         let arg_ident: syn::Ident = syn::parse_str(&arg_name).expect("Invalid ident");
 
         user_fn_arg_idents.push(arg_ident);
-        user_fn_arg_types.push(arg_ty);
+        user_fn_arg_types.push(syn::parse_quote! { Option<#arg_ty> });
     }
     let user_fn_block_tokens: syn::Block =
         syn::parse_str(&format!("{{ {} }}", code)).expect("Couldn't parse user code");
@@ -573,43 +388,18 @@ fn generate_function_source(
         ) -> Result<Option<#user_fn_return_tokens>, guest::Error>
         #user_fn_block_tokens
     };
-    source.items.push(syn::Item::Fn(user_fn_tokens));
+    items.push(syn::Item::Fn(user_fn_tokens));
 
     let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
     for (_arg_type_oid, _arg_name) in args.iter() {
-        entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().try_into()? });
+        entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().map(|v| v.try_into()).transpose()? });
     }
 
-    let guest_wit_path = WORK_DIR_GUEST_WIT
-        .canonicalize()
-        .unwrap()
-        .display()
-        .to_string();
-    let host_wit_path = WORK_DIR_HOST_WIT
-        .canonicalize()
-        .unwrap()
-        .display()
-        .to_string();
-
-    source.items.push(syn::parse_quote! {
-        // Various implementations to support bindings.
-        mod toolbox;
-    });
-
-    source.items.push(syn::parse_quote! {
-        wit_bindgen_rust::import!(#host_wit_path);
-    });
-    source.items.push(syn::parse_quote! {
-        wit_bindgen_rust::export!(#guest_wit_path);
-    });
-    source.items.push(syn::parse_quote! {
-        struct Guest;
-    });
-    source.items.push(syn::parse_quote! {
+    items.push(syn::parse_quote! {
         impl guest::Guest for Guest {
             #[allow(unused_variables, unused_mut)] // In case of zero args.
             fn entry(
-                mut args: Vec<guest::Value>
+                mut args: Vec<Option<guest::Value>>
             ) -> Result<Option<guest::Value>, guest::Error> {
                 let retval = #user_fn_ident(
                     #(#entry_fn_arg_transform_tokens),*
@@ -619,7 +409,7 @@ fn generate_function_source(
         }
     });
 
-    source
+    items
 }
 
 fn extract_code_and_args(

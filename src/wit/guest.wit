@@ -1,3 +1,0 @@
-use { value, error } from types
-
-entry: function(args: list<value>) -> expected<option<value>, error>
