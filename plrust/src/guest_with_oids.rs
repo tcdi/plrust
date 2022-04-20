@@ -1,11 +1,11 @@
-use pgx::{IntoDatum, FromDatum, pg_sys::{self, heap_tuple_get_struct}, PgOid, pg_getarg, PgBox, PgBuiltInOids};
-use crate::{
-    plrust_store::PlRustStore,
-    plrust::crate_name_and_path,
-    wasm_executor::WasmExecutor,
-};
+use crate::{plrust::crate_name_and_path, plrust_store::PlRustStore, wasm_executor::WasmExecutor};
 use eyre::eyre;
-use wasmtime::{Store, Linker, Module};
+use pgx::{
+    pg_getarg,
+    pg_sys::{self, heap_tuple_get_struct},
+    FromDatum, IntoDatum, PgBox, PgBuiltInOids, PgOid,
+};
+use wasmtime::{Linker, Module, Store};
 
 pub(crate) struct GuestWithOids {
     #[allow(dead_code)] // This is mostly here for debugging.
@@ -47,11 +47,12 @@ impl GuestWithOids {
                 pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
                 &mut is_null,
             );
-            let argtypes = Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID)
-                .unwrap()
-                .iter()
-                .map(|&v| PgOid::from(v))
-                .collect::<Vec<_>>();
+            let argtypes =
+                Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID)
+                    .unwrap()
+                    .iter()
+                    .map(|&v| PgOid::from(v))
+                    .collect::<Vec<_>>();
 
             let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
                 proc_tuple,
@@ -72,8 +73,10 @@ impl GuestWithOids {
             .map_err(|e| eyre!(e))?;
 
         let (guest, _guest_instance) =
-            crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| &mut cx.guest_data)
-                .map_err(|e| eyre!(e))?;
+            crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| {
+                &mut cx.guest_data
+            })
+            .map_err(|e| eyre!(e))?;
 
         Ok(Self {
             arg_oids,
@@ -84,15 +87,19 @@ impl GuestWithOids {
         })
     }
 
-    pub(crate) fn entry(&mut self, fcinfo: &pg_sys::FunctionCallInfo) -> eyre::Result<pg_sys::Datum> {
-        let args = self.arg_oids
+    pub(crate) fn entry(
+        &mut self,
+        fcinfo: &pg_sys::FunctionCallInfo,
+    ) -> eyre::Result<pg_sys::Datum> {
+        let args = self
+            .arg_oids
             .iter()
             .enumerate()
             .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo))
             .collect::<Vec<_>>();
 
         let retval = self.guest.entry(&mut self.store, &args)??;
-        
+
         use crate::guest::ValueResult;
         Ok(match retval {
             Some(ValueResult::String(v)) => v.into_datum().unwrap(),

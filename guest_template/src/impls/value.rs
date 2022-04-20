@@ -48,7 +48,6 @@ impl From<i32> for Value {
     }
 }
 
-
 impl From<interface::ValueResult> for Value {
     fn from(v: interface::ValueResult) -> Self {
         match v {
@@ -70,7 +69,6 @@ impl<'a> From<interface::ValueParam<'a>> for Value {
         }
     }
 }
-
 
 impl From<Value> for interface::ValueResult {
     fn from(v: Value) -> Self {

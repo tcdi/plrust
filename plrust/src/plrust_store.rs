@@ -1,6 +1,6 @@
-use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
-use wasi_common::pipe::WritePipe;
 use crate::logging::{StderrLogger, StdoutLogger};
+use wasi_common::pipe::WritePipe;
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 
 pub(crate) struct PlRustStore {
     pub(crate) wasi: WasiCtx,

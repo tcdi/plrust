@@ -1,6 +1,5 @@
 use crate::host::{ValueParam, ValueType};
 
-
 impl<'a> TryFrom<ValueParam<'a>> for &'a str {
     type Error = crate::host::Error;
     fn try_from(v: ValueParam<'a>) -> Result<&'a str, Self::Error> {

@@ -10,10 +10,10 @@ mod smoke_test {
 
     impl guest::Guest for Guest {
         #[allow(unused_variables, unused_mut)] // In case of zero args.
-        fn entry(mut args: Vec<Option<guest::Value>>) -> Result<Option<guest::Value>, guest::Error> {
-            let retval = dummy_user_fn(
-                args.pop().unwrap().map(|v| v.try_into()).transpose()?,
-            )?;
+        fn entry(
+            mut args: Vec<Option<guest::Value>>,
+        ) -> Result<Option<guest::Value>, guest::Error> {
+            let retval = dummy_user_fn(args.pop().unwrap().map(|v| v.try_into()).transpose()?)?;
             Ok(retval.map(|v| v.into()))
         }
     }

@@ -9,12 +9,12 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 mod error;
 mod gucs;
+mod guest_with_oids;
 pub mod interface;
+mod logging;
 mod plrust;
 mod plrust_store;
-mod logging;
 mod wasm_executor;
-mod guest_with_oids;
 
 use error::PlRustError;
 use pgx::*;

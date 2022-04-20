@@ -10,22 +10,23 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{cell::RefCell, collections::{HashMap, BTreeMap, btree_map::Entry}, io::BufReader, path::PathBuf, process::Command, cell::Cell};
-
-use wasmtime::{Engine, Linker, Module, Store};
-
-use crate::{
-    error::PlRustError,
-    plrust_store::PlRustStore,
-    wasm_executor::WasmExecutor,
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    io::BufReader,
+    path::PathBuf,
+    process::Command,
 };
+
+use crate::{error::PlRustError, wasm_executor::WasmExecutor};
 use color_eyre::{Section, SectionExt};
 use eyre::eyre;
-use once_cell::sync::Lazy;
 use include_dir::include_dir;
 
-static GUEST_TEMPLATE_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../guest_template");
-static GUEST_INTERFACE_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../components/interface");
+static GUEST_TEMPLATE_DIR: include_dir::Dir<'_> =
+    include_dir!("$CARGO_MANIFEST_DIR/../guest_template");
+static GUEST_INTERFACE_DIR: include_dir::Dir<'_> =
+    include_dir!("$CARGO_MANIFEST_DIR/../components/interface");
 static WIT_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../components/wit");
 
 // We use a thread local to avoid having to do any locking or atomics.
@@ -52,12 +53,16 @@ pub(crate) fn init() {
     let interface_dir = interface_dir();
     std::fs::remove_dir_all(&interface_dir).ok();
     std::fs::create_dir_all(&interface_dir).expect("Could not initialize interface crate");
-    GUEST_INTERFACE_DIR.extract(&interface_dir).expect("Could not extract Guest interface crate");
+    GUEST_INTERFACE_DIR
+        .extract(&interface_dir)
+        .expect("Could not extract Guest interface crate");
 
     let wit_dir = wit_dir();
     std::fs::remove_dir_all(&wit_dir).ok();
     std::fs::create_dir_all(&wit_dir).expect("Could not initialize wit directory");
-    WIT_DIR.extract(&wit_dir).expect("Could not extract WIT definitions");
+    WIT_DIR
+        .extract(&wit_dir)
+        .expect("Could not extract WIT definitions");
 }
 
 pub(crate) fn execute_wasm_function(
@@ -174,8 +179,9 @@ fn create_function_crate(
     let mut source_code =
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
 
-
-    GUEST_TEMPLATE_DIR.extract(crate_dir).expect("Could not extract Guest template");
+    GUEST_TEMPLATE_DIR
+        .extract(crate_dir)
+        .expect("Could not extract Guest template");
 
     // Update cargo toml
     let cargo_toml_path = {
@@ -193,7 +199,7 @@ fn create_function_crate(
         "interface".to_string(),
         cargo_toml::Dependency::Detailed(cargo_toml::DependencyDetail {
             path: Some(interface_dir().display().to_string()),
-            .. Default::default()
+            ..Default::default()
         }),
     );
     updated_cargo_toml.dependencies.append(&mut dependencies);
@@ -213,7 +219,7 @@ fn create_function_crate(
     let lib_rs_source = std::fs::read_to_string(&lib_rs_path).unwrap();
     let mut lib_rs = syn::parse_file(&lib_rs_source).unwrap();
     // The last item is `mod smoke_test {}` (TODO: Assert)
-    lib_rs.items.remove(lib_rs.items.len() -1);
+    lib_rs.items.remove(lib_rs.items.len() - 1);
     lib_rs.items.append(&mut source_code);
 
     let lib_rs_formatted = prettyplease::unparse(&lib_rs);
@@ -277,7 +283,8 @@ fn generate_function_source(
 
     let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
     for (_arg_type_oid, _arg_name) in args.iter() {
-        entry_fn_arg_transform_tokens.push(syn::parse_quote! { args.pop().unwrap().map(|v| v.try_into()).transpose()? });
+        entry_fn_arg_transform_tokens
+            .push(syn::parse_quote! { args.pop().unwrap().map(|v| v.try_into()).transpose()? });
     }
 
     items.push(syn::parse_quote! {
@@ -343,7 +350,8 @@ fn extract_code_and_args(
             &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
                 .expect("source code was null"),
         );
-        let deps_parsed: BTreeMap<std::string::String, cargo_toml::Dependency> = toml::from_str(&deps).unwrap();
+        let deps_parsed: BTreeMap<std::string::String, cargo_toml::Dependency> =
+            toml::from_str(&deps).unwrap();
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             proc_tuple,
@@ -389,7 +397,14 @@ fn extract_code_and_args(
 
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        (fn_oid, deps_parsed, source_code, args, return_type, is_strict)
+        (
+            fn_oid,
+            deps_parsed,
+            source_code,
+            args,
+            return_type,
+            is_strict,
+        )
     }
 }
 

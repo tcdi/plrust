@@ -1,4 +1,4 @@
-use crate::host::{ValueResult, ValueParam, ValueType};
+use crate::host::{ValueParam, ValueResult, ValueType};
 
 impl TryFrom<ValueResult> for i64 {
     type Error = crate::host::Error;
@@ -58,7 +58,6 @@ impl<'a> From<ValueParam<'a>> for ValueResult {
         }
     }
 }
-
 
 impl TryFrom<ValueResult> for String {
     type Error = crate::host::Error;

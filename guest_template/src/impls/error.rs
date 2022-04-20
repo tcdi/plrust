@@ -18,13 +18,19 @@ impl From<crate::guest::Error> for interface::Error {
 
 impl From<interface::ConversionError> for crate::guest::ConversionError {
     fn from(v: interface::ConversionError) -> Self {
-        Self { value: v.value.into(), into: v.into.into() }
+        Self {
+            value: v.value.into(),
+            into: v.into.into(),
+        }
     }
 }
 
 impl From<crate::guest::ConversionError> for interface::ConversionError {
     fn from(v: crate::guest::ConversionError) -> Self {
-        Self { value: v.value.into(), into: v.into.into() }
+        Self {
+            value: v.value.into(),
+            into: v.into.into(),
+        }
     }
 }
 

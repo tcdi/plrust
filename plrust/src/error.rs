@@ -52,7 +52,11 @@ impl std::error::Error for crate::guest::ConversionError {}
 
 impl Display for crate::guest::ConversionError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "Could not turn value {} into a {}", self.value, self.into)
+        write!(
+            f,
+            "Could not turn value {} into a {}",
+            self.value, self.into
+        )
     }
 }
 
@@ -73,6 +77,10 @@ impl std::error::Error for crate::host::ConversionError {}
 
 impl Display for crate::host::ConversionError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "Could not turn value {} into a {}", self.value, self.into)
+        write!(
+            f,
+            "Could not turn value {} into a {}",
+            self.value, self.into
+        )
     }
 }
