@@ -134,9 +134,8 @@ pub(crate) unsafe fn lookup_function(
         shared_library.push(&format!("{}.so", crate_name));
         let library = Library::new(&shared_library).unwrap_or_else(|e| {
             panic!(
-                "failed to open shared library at `{}`: {}",
-                shared_library.display(),
-                e
+                "failed to open shared library at `{so}`: {e}",
+                so = shared_library.display()
             )
         });
 
@@ -227,8 +226,8 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
 
     // cargo.toml first
-    let mut cargo_toml = crate_dir.clone();
-    cargo_toml.push("Cargo.toml");
+    let cargo_toml = crate_dir.join("Cargo.toml");
+    let major_version = pg_sys::get_pg_major_version_num();
     std::fs::write(
         &cargo_toml,
         &format!(
@@ -245,7 +244,7 @@ default = ["pgx/pg{major_version}"]
 
 [dependencies]
 pgx = "0.4.3"
-{dependencies}
+{deps}
 
 [profile.release]
 panic = "unwind"
@@ -253,21 +252,16 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 "#,
-            crate_name = crate_name,
-            major_version = pg_sys::get_pg_major_version_num(),
-            dependencies = deps
         ),
     )
     .expect("failed to write Cargo.toml");
 
     // the src/ directory
-    let mut src = crate_dir.clone();
-    src.push("src");
+    let src = crate_dir.join("src");
     std::fs::create_dir_all(&src).expect("failed to create src directory");
 
     // the actual source code in src/lib.rs
-    let mut lib_rs = src.clone();
-    lib_rs.push("lib.rs");
+    let lib_rs = src.join("lib.rs");
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
 
     source_code
@@ -280,9 +274,8 @@ fn crate_name(fn_oid: pg_sys::Oid) -> String {
 }
 
 fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
-    let mut crate_dir = gucs::work_dir();
     let crate_name = crate_name(fn_oid);
-    crate_dir.push(&crate_name);
+    let crate_dir = gucs::work_dir().join(&crate_name);
 
     (crate_name, crate_dir)
 }
@@ -329,18 +322,13 @@ fn generate_function_source(
     let mut source = String::new();
 
     // source header
-    source.push_str(
-        r#"
-use pgx::*;
-"#,
-    );
+    source.push_str("\nuse pgx::*;\n");
 
     // function name
     source.push_str(&format!(
         r#"
 #[pg_extern]
-fn plrust_fn_{}"#,
-        fn_oid
+fn plrust_fn_{fn_oid}"#
     ));
 
     // function args
@@ -366,13 +354,11 @@ fn plrust_fn_{}"#,
 
     // return type
     source.push_str(" -> ");
+    let ret = make_rust_type(return_type, true);
     if is_set {
-        source.push_str(&format!(
-            "impl std::iter::Iterator<Item = Option<{}>>",
-            make_rust_type(return_type, true)
-        ));
+        source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
     } else {
-        source.push_str(&format!("Option<{}>", make_rust_type(return_type, true)));
+        source.push_str(&format!("Option<{ret}>"));
     }
 
     // body
@@ -478,31 +464,22 @@ fn extract_code_and_args(
 }
 
 fn parse_source_and_deps(code: &str) -> (String, String) {
+    enum Parse {
+        Code,
+        Deps,
+    }
     let mut deps_block = String::new();
     let mut code_block = String::new();
-    let mut in_deps = false;
-    let mut in_code = true;
+    let mut parse = Parse::Code;
 
-    for line in code.trim().lines() {
-        let trimmed_line = line.trim();
-        if trimmed_line == "[dependencies]" {
-            // parsing deps
-            in_deps = true;
-            in_code = false;
-        } else if trimmed_line == "[code]" {
-            // parsing code
-            in_deps = false;
-            in_code = true;
-        } else if in_deps {
-            // track our dependencies
-            deps_block.push_str(line);
-            deps_block.push_str("\n");
-        } else if in_code {
-            // track our code
-            code_block.push_str(line);
-            code_block.push_str("\n");
-        } else {
-            panic!("unexpected pl/rust code state")
+    for line in code.trim().split_inclusive('\n') {
+        match line.trim() {
+            "[dependencies]" => parse = Parse::Deps,
+            "[code]" => parse = Parse::Code,
+            _ => match parse {
+                Parse::Code => code_block.push_str(line),
+                Parse::Deps => deps_block.push_str(line),
+            },
         }
     }
 
@@ -511,15 +488,14 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
 
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
-
-    let (base_oid, array) = if array_type != pg_sys::InvalidOid {
-        (PgOid::from(array_type), true)
+    let array = array_type != pg_sys::InvalidOid;
+    let type_oid = if array {
+        PgOid::from(array_type)
     } else {
-        (type_oid.clone(), false)
+        *type_oid
     };
 
-    let type_oid = base_oid;
-    let mut rust_type = match type_oid {
+    let rust_type = match type_oid {
         PgOid::BuiltIn(builtin) => match builtin {
             PgBuiltInOids::ANYELEMENTOID => "AnyElement",
             PgBuiltInOids::BOOLOID => "bool",
@@ -550,10 +526,10 @@ fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
     .to_string();
 
     if array && owned {
-        rust_type = format!("Vec<Option<{}>>", rust_type);
+        format!("Vec<Option<{rust_type}>>")
     } else if array {
-        rust_type = format!("Array<{}>", rust_type);
+        format!("Array<{rust_type}>")
+    } else {
+        rust_type
     }
-
-    rust_type
 }
