@@ -134,9 +134,8 @@ pub(crate) unsafe fn lookup_function(
         shared_library.push(&format!("{}.so", crate_name));
         let library = Library::new(&shared_library).unwrap_or_else(|e| {
             panic!(
-                "failed to open shared library at `{}`: {}",
-                shared_library.display(),
-                e
+                "failed to open shared library at `{so}`: {e}",
+                so = shared_library.display()
             )
         });
 
@@ -228,6 +227,7 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
 
     // cargo.toml first
     let cargo_toml = crate_dir.join("Cargo.toml");
+    let major_version = pg_sys::get_pg_major_version_num();
     std::fs::write(
         &cargo_toml,
         &format!(
@@ -244,7 +244,7 @@ default = ["pgx/pg{major_version}"]
 
 [dependencies]
 pgx = "0.4.3"
-{dependencies}
+{deps}
 
 [profile.release]
 panic = "unwind"
@@ -252,9 +252,6 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 "#,
-            crate_name = crate_name,
-            major_version = pg_sys::get_pg_major_version_num(),
-            dependencies = deps
         ),
     )
     .expect("failed to write Cargo.toml");
@@ -325,18 +322,13 @@ fn generate_function_source(
     let mut source = String::new();
 
     // source header
-    source.push_str(
-        r#"
-use pgx::*;
-"#,
-    );
+    source.push_str("\nuse pgx::*;\n");
 
     // function name
     source.push_str(&format!(
         r#"
 #[pg_extern]
-fn plrust_fn_{}"#,
-        fn_oid
+fn plrust_fn_{fn_oid}"#
     ));
 
     // function args
@@ -362,13 +354,11 @@ fn plrust_fn_{}"#,
 
     // return type
     source.push_str(" -> ");
+    let ret = make_rust_type(return_type, true);
     if is_set {
-        source.push_str(&format!(
-            "impl std::iter::Iterator<Item = Option<{}>>",
-            make_rust_type(return_type, true)
-        ));
+        source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
     } else {
-        source.push_str(&format!("Option<{}>", make_rust_type(return_type, true)));
+        source.push_str(&format!("Option<{ret}>"));
     }
 
     // body
