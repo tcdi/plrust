@@ -244,7 +244,7 @@ crate-type = ["cdylib"]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = "0.4.0-beta.0"
+pgx = "0.4.3"
 {dependencies}
 
 [profile.release]
