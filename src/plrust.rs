@@ -118,7 +118,6 @@ pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
 ) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
     let (library, symbol) = LOADED_SYMBOLS.entry(fn_oid).or_insert_with(|| {
-        let mut shared_library = gucs::work_dir();
         let crate_name = crate_name(fn_oid);
 
         #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -132,7 +131,7 @@ pub(crate) unsafe fn lookup_function(
             crate_name
         };
 
-        shared_library.push(&format!("{}.so", crate_name));
+        let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
         let library = Library::new(&shared_library).unwrap_or_else(|e| {
             panic!(
                 "failed to open shared library at `{}`: {}",
@@ -201,8 +200,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
-                let mut final_path = work_dir.clone();
-                final_path.push(&format!("{}.so", crate_name));
+                let final_path = work_dir.join(&format!("{crate_name}{DLL_SUFFIX}"));
 
                 // move the shared_library into its final location, which is
                 // at the root of the configured `work_dir`
