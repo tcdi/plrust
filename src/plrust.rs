@@ -464,31 +464,22 @@ fn extract_code_and_args(
 }
 
 fn parse_source_and_deps(code: &str) -> (String, String) {
+    enum Parse {
+        Code,
+        Deps,
+    }
     let mut deps_block = String::new();
     let mut code_block = String::new();
-    let mut in_deps = false;
-    let mut in_code = true;
+    let mut parse = Parse::Code;
 
-    for line in code.trim().lines() {
-        let trimmed_line = line.trim();
-        if trimmed_line == "[dependencies]" {
-            // parsing deps
-            in_deps = true;
-            in_code = false;
-        } else if trimmed_line == "[code]" {
-            // parsing code
-            in_deps = false;
-            in_code = true;
-        } else if in_deps {
-            // track our dependencies
-            deps_block.push_str(line);
-            deps_block.push_str("\n");
-        } else if in_code {
-            // track our code
-            code_block.push_str(line);
-            code_block.push_str("\n");
-        } else {
-            panic!("unexpected pl/rust code state")
+    for line in code.trim().split_inclusive('\n') {
+        match line.trim() {
+            "[dependencies]" => parse = Parse::Deps,
+            "[code]" => parse = Parse::Code,
+            _ => match parse {
+                Parse::Code => code_block.push_str(line),
+                Parse::Deps => deps_block.push_str(line),
+            },
         }
     }
 
