@@ -434,8 +434,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argnames =
-            Vec::<Option<String>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
+        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
 
         let argtypes_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -443,8 +442,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argtypes =
-            Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
+        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
 
         let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
