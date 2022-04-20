@@ -6,4 +6,3 @@
 sql/*.generated.sql
 .direnv
 scratch
-Cargo.lock
