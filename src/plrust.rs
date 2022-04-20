@@ -289,11 +289,9 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
 }
 
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
-    let work_dir = gucs::work_dir();
-    let mut target_dir = work_dir.clone();
-    target_dir.push("release");
-
+    let target_dir = gucs::work_dir().join("release");
     let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
+
     if so.exists() {
         (Some(so), crate_name)
     } else {
