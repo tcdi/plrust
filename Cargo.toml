@@ -23,7 +23,7 @@ pg_test = []
 sandboxed = []
 
 [dependencies]
-pgx = "0.4.0"
+pgx = "0.4.3"
 libloading = "0.7.2"
 
 [dev-dependencies]

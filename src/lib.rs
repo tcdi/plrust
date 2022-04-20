@@ -23,7 +23,7 @@ fn _PG_init() {
 /// `pgx` doesn't know how to declare a CREATE FUNCTION statement for a function
 /// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
 #[pg_extern(sql = "
-CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
+CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
@@ -81,8 +81,8 @@ extension_sql!(
 CREATE LANGUAGE plrust
     HANDLER plrust.plrust_call_handler
     VALIDATOR plrust.plrust_validator;
-    
-COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';    
+
+COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
 "#,
     name = "language_handler",
     requires = [plrust_call_handler, plrust_validator]
@@ -95,7 +95,7 @@ mod tests {
 
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
-        r#"   
+        r#"
         CREATE TABLE contributors_pets (
             id serial8 not null primary key,
             name text
