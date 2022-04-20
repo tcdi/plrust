@@ -65,7 +65,7 @@ unsafe fn plrust_call_handler_inner(
         .as_ref()
         .ok_or(PlRustError::FnOidWasNone)?
         .fn_oid;
-    plrust::execute_wasm_function(&fn_oid, &fcinfo)
+    plrust::execute(&fn_oid, &fcinfo)
 }
 
 #[pg_extern]
@@ -90,15 +90,12 @@ unsafe fn plrust_validator_inner(
         return Ok(());
     }
 
-    plrust::unload_function(&fn_oid)?;
+    plrust::unload(&fn_oid)?;
+    
     // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
     // compile the function when it's created to avoid locking during function execution
-    let (_, output) = plrust::compile_function(fn_oid)?;
+    let _path = plrust::compile(fn_oid)?;
 
-    // if the compilation had warnings we'll display them
-    if output.contains("warning: ") {
-        pgx::warning!("\n{}", output);
-    }
     Ok(())
 }
 

@@ -51,21 +51,24 @@ fn wit_dir() -> PathBuf {
 
 pub(crate) fn init() {
     let interface_dir = interface_dir();
-    std::fs::remove_dir_all(&interface_dir).ok();
+    // std::fs::remove_dir_all(&interface_dir).ok();
     std::fs::create_dir_all(&interface_dir).expect("Could not initialize interface crate");
     GUEST_INTERFACE_DIR
         .extract(&interface_dir)
         .expect("Could not extract Guest interface crate");
 
     let wit_dir = wit_dir();
-    std::fs::remove_dir_all(&wit_dir).ok();
+    // std::fs::remove_dir_all(&wit_dir).ok();
     std::fs::create_dir_all(&wit_dir).expect("Could not initialize wit directory");
     WIT_DIR
         .extract(&wit_dir)
         .expect("Could not extract WIT definitions");
 }
 
-pub(crate) fn execute_wasm_function(
+/// Executes the wasm related to a given `fn_oid`.
+///
+/// If this instance of the extension hasn't yet instantiated it, do that first.
+pub(crate) fn execute(
     fn_oid: &pg_sys::Oid,
     fcinfo: &pg_sys::FunctionCallInfo,
 ) -> eyre::Result<pg_sys::Datum> {
@@ -81,7 +84,8 @@ pub(crate) fn execute_wasm_function(
     })
 }
 
-pub(crate) fn unload_function(fn_oid: &pg_sys::Oid) -> eyre::Result<()> {
+// Unloads the wasm guest for a given `fn_oid`.
+pub(crate) fn unload(fn_oid: &pg_sys::Oid) -> eyre::Result<()> {
     EXECUTOR.with(|executor| {
         let mut executor = executor.try_borrow_mut()?;
 
@@ -90,7 +94,8 @@ pub(crate) fn unload_function(fn_oid: &pg_sys::Oid) -> eyre::Result<()> {
     })
 }
 
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String)> {
+/// Compiles the wasm related to a given `fn_oid` and retains the produced artifact in the `gucs::work_dir`.
+pub(crate) fn compile(fn_oid: pg_sys::Oid) -> eyre::Result<PathBuf> {
     let work_dir = gucs::work_dir();
 
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -158,7 +163,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
                 std::fs::rename(&wasm_module, &final_path)
                     .map_err(|e| PlRustError::ModuleRelocation(e))?;
 
-                Ok((final_path, build_output_stderr))
+                Ok(final_path)
             }
             None => Err(eyre!(PlRustError::ModuleNotFound(crate_name))),
         }
