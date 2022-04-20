@@ -435,8 +435,7 @@ fn extract_code_and_args(
             &mut is_null,
         );
         let argnames =
-            Vec::<Option<String>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID)
-                .unwrap();
+            Vec::<Option<String>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
 
         let argtypes_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -453,13 +452,10 @@ fn extract_code_and_args(
 
         let mut args = Vec::new();
         for i in 0..proc_entry.pronargs as usize {
-            let type_oid = argtypes.get(i);
-            let name = argnames.get(i).cloned().flatten();
+            let type_oid = argtypes.get(i).expect("no type_oid for argument");
+            let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
 
-            args.push((
-                PgOid::from(*type_oid.expect("no type_oid for argument")),
-                name,
-            ));
+            args.push((PgOid::from(*type_oid), name));
         }
 
         let is_strict = proc_entry.proisstrict;
