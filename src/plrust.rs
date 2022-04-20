@@ -12,6 +12,7 @@ use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
+use std::env::consts::DLL_SUFFIX;
 use std::{collections::HashMap, path::PathBuf, process::Command};
 
 static mut LOADED_SYMBOLS: Lazy<
@@ -117,7 +118,6 @@ pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
 ) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
     let (library, symbol) = LOADED_SYMBOLS.entry(fn_oid).or_insert_with(|| {
-        let mut shared_library = gucs::work_dir();
         let crate_name = crate_name(fn_oid);
 
         #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -131,7 +131,7 @@ pub(crate) unsafe fn lookup_function(
             crate_name
         };
 
-        shared_library.push(&format!("{}.so", crate_name));
+        let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
         let library = Library::new(&shared_library).unwrap_or_else(|e| {
             panic!(
                 "failed to open shared library at `{so}`: {e}",
@@ -199,8 +199,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
-                let mut final_path = work_dir.clone();
-                final_path.push(&format!("{}.so", crate_name));
+                let final_path = work_dir.join(&format!("{crate_name}{DLL_SUFFIX}"));
 
                 // move the shared_library into its final location, which is
                 // at the root of the configured `work_dir`
@@ -281,34 +280,14 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
 }
 
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
-    let work_dir = gucs::work_dir();
-    let mut target_dir = work_dir.clone();
-    target_dir.push("release");
+    let target_dir = gucs::work_dir().join("release");
+    let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
 
-    // TODO:  we could probably do a conditional compile #[cfg()] thing here
-
-    // linux
-    let mut so = target_dir.clone();
-    so.push(&format!("lib{}.so", crate_name));
     if so.exists() {
-        return (Some(so), crate_name);
+        (Some(so), crate_name)
     } else {
-        // macos
-        let mut dylib = target_dir.clone();
-        dylib.push(&format!("lib{}.dylib", crate_name));
-        if dylib.exists() {
-            return (Some(dylib), crate_name);
-        } else {
-            // windows?
-            let mut dll = target_dir.clone();
-            dll.push(&format!("lib{}.dll", crate_name));
-            if dll.exists() {
-                return (Some(dll), crate_name);
-            }
-        }
+        (None, crate_name)
     }
-
-    (None, crate_name)
 }
 
 fn generate_function_source(
