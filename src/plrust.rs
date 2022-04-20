@@ -227,8 +227,7 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
         generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
 
     // cargo.toml first
-    let mut cargo_toml = crate_dir.clone();
-    cargo_toml.push("Cargo.toml");
+    let cargo_toml = crate_dir.join("Cargo.toml");
     std::fs::write(
         &cargo_toml,
         &format!(
@@ -261,13 +260,11 @@ codegen-units = 1
     .expect("failed to write Cargo.toml");
 
     // the src/ directory
-    let mut src = crate_dir.clone();
-    src.push("src");
+    let src = crate_dir.join("src");
     std::fs::create_dir_all(&src).expect("failed to create src directory");
 
     // the actual source code in src/lib.rs
-    let mut lib_rs = src.clone();
-    lib_rs.push("lib.rs");
+    let lib_rs = src.join("lib.rs");
     std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
 
     source_code
@@ -280,9 +277,8 @@ fn crate_name(fn_oid: pg_sys::Oid) -> String {
 }
 
 fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
-    let mut crate_dir = gucs::work_dir();
     let crate_name = crate_name(fn_oid);
-    crate_dir.push(&crate_name);
+    let crate_dir = gucs::work_dir().join(&crate_name);
 
     (crate_name, crate_dir)
 }
