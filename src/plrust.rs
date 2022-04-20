@@ -507,14 +507,13 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
 
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
-
-    let (base_oid, array) = if array_type != pg_sys::InvalidOid {
-        (PgOid::from(array_type), true)
+    let array = array_type != pg_sys::InvalidOid;
+    let type_oid = if array {
+        PgOid::from(array_type)
     } else {
-        (type_oid.clone(), false)
+        *type_oid
     };
 
-    let type_oid = base_oid;
     let rust_type = match type_oid {
         PgOid::BuiltIn(builtin) => match builtin {
             PgBuiltInOids::ANYELEMENTOID => "AnyElement",
