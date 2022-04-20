@@ -91,7 +91,7 @@ unsafe fn plrust_validator_inner(
     }
 
     plrust::unload(&fn_oid)?;
-    
+
     // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
     // compile the function when it's created to avoid locking during function execution
     let _path = plrust::compile(fn_oid)?;
@@ -226,8 +226,7 @@ mod tests {
             $$
                 let name: Option<String> = interface::get_one(
                     "SELECT name FROM contributors_pets ORDER BY random() LIMIT 1",
-                    interface::ValueType::String,
-                ).map_err(Into::into).transpose().map(|v| v.and_then(|i| i.try_into())).transpose()?;
+                )?;
                 Ok(name)
             $$;
         "#;
@@ -248,8 +247,7 @@ mod tests {
                 let id: Option<i32> = interface::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
                     &[name.unwrap().as_str().into()],
-                    interface::ValueType::I32,
-                ).map_err(Into::into).transpose().map(|v| v.and_then(|i| i.try_into())).transpose()?;
+                )?;
 
                 Ok(id)
             $$;

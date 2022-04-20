@@ -10,13 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    io::BufReader,
-    path::PathBuf,
-    process::Command,
-};
+use std::{cell::RefCell, collections::BTreeMap, io::BufReader, path::PathBuf, process::Command};
 
 use crate::{error::PlRustError, wasm_executor::WasmExecutor};
 use color_eyre::{Section, SectionExt};
