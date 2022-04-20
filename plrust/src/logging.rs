@@ -1,4 +1,3 @@
-use wasi_common::pipe::WritePipe;
 use std::io::Write;
 
 pub(crate) struct StdoutLogger;

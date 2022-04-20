@@ -11,7 +11,10 @@ mod error;
 mod gucs;
 pub mod interface;
 mod plrust;
+mod plrust_store;
 mod logging;
+mod wasm_executor;
+mod guest_with_oids;
 
 use error::PlRustError;
 use pgx::*;
@@ -62,7 +65,7 @@ unsafe fn plrust_call_handler_inner(
         .as_ref()
         .ok_or(PlRustError::FnOidWasNone)?
         .fn_oid;
-    plrust::execute_wasm_function(fn_oid, fcinfo)
+    plrust::execute_wasm_function(&fn_oid, &fcinfo)
 }
 
 #[pg_extern]
@@ -87,7 +90,7 @@ unsafe fn plrust_validator_inner(
         return Ok(());
     }
 
-    plrust::unload_function(fn_oid);
+    plrust::unload_function(&fn_oid)?;
     // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
     // compile the function when it's created to avoid locking during function execution
     let (_, output) = plrust::compile_function(fn_oid)?;
@@ -97,22 +100,6 @@ unsafe fn plrust_validator_inner(
         pgx::warning!("\n{}", output);
     }
     Ok(())
-}
-
-#[pg_extern]
-fn recompile_function(
-    fn_oid: pg_sys::Oid,
-) -> (
-    name!(library_path, Option<String>),
-    name!(cargo_output, String),
-) {
-    unsafe {
-        plrust::unload_function(fn_oid);
-    }
-    match plrust::compile_function(fn_oid) {
-        Ok((work_dir, output)) => (Some(work_dir.display().to_string()), output),
-        Err(e) => (None, format!("{}", e)),
-    }
 }
 
 extension_sql!(

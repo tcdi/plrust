@@ -24,7 +24,7 @@ sandboxed = []
 
 [dependencies]
 bincode = "1"
-pgx = "0.4.2"
+pgx = "0.4.3"
 wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300", features = ["tracing"] }
 wasmtime = "0.35"
 wasmtime-wasi = "0.35"
@@ -42,7 +42,7 @@ cargo_toml = "0.11"
 toml = "0.5"
 
 [dev-dependencies]
-pgx-tests = "0.4.2"
+pgx-tests = "0.4.3"
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"

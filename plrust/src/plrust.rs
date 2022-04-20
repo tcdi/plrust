@@ -10,56 +10,29 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
-use std::{collections::{HashMap, BTreeMap}, io::BufReader, path::PathBuf, process::Command, borrow::BorrowMut};
+use std::{cell::RefCell, collections::{HashMap, BTreeMap, btree_map::Entry}, io::BufReader, path::PathBuf, process::Command, cell::Cell};
 
 use wasmtime::{Engine, Linker, Module, Store};
-use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
-use wasi_common::pipe::WritePipe;
 
 use crate::{
     error::PlRustError,
-    logging::{StderrLogger, StdoutLogger}
+    plrust_store::PlRustStore,
+    wasm_executor::WasmExecutor,
 };
 use color_eyre::{Section, SectionExt};
 use eyre::eyre;
 use once_cell::sync::Lazy;
 use include_dir::include_dir;
 
-struct PlRustStore {
-    wasi: WasiCtx,
-    host: crate::interface::Host,
-    guest_data: crate::guest::GuestData,
-}
-
-impl Default for PlRustStore {
-    fn default() -> Self {
-        Self {
-            wasi: WasiCtxBuilder::new()
-                .stdout(Box::new(WritePipe::new(StdoutLogger)))
-                .stderr(Box::new(WritePipe::new(StderrLogger)))
-                .build(),
-            guest_data: crate::guest::GuestData::default(),
-            host: crate::interface::Host::default(),
-        }
-    }
-}
-
-static ENGINE: Lazy<Engine> = Lazy::new(|| Engine::default());
-
-static mut CACHE: Lazy<
-    HashMap<
-        pg_sys::Oid,
-        (
-            Module,
-            Vec<PgOid>, // Arg OIDs
-            PgOid,      // Return OIDs
-        ),
-    >,
-> = Lazy::new(|| Default::default());
-
 static GUEST_TEMPLATE_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../guest_template");
 static GUEST_INTERFACE_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../components/interface");
 static WIT_DIR: include_dir::Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../components/wit");
+
+// We use a thread local to avoid having to do any locking or atomics.
+// Postgres (and thus PL/Rust) generally run single threaded.
+thread_local! {
+    static EXECUTOR: RefCell<WasmExecutor> = RefCell::new(WasmExecutor::new().expect("Could not instantiate WasmExecutor"));
+}
 
 fn interface_dir() -> PathBuf {
     let mut path = gucs::work_dir().clone();
@@ -87,119 +60,29 @@ pub(crate) fn init() {
     WIT_DIR.extract(&wit_dir).expect("Could not extract WIT definitions");
 }
 
-fn initialize_cache_entry(
-    fn_oid: pg_sys::Oid,
-) -> (
-    Module,
-    Vec<PgOid>, // Arg OIDs
-    PgOid,      // Return OIDs
-) {
-    let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
-    let wasm = format!("{}.wasm", crate_dir.to_str().unwrap());
-
-    let module = match Module::from_file(&ENGINE, wasm) {
-        Ok(m) => m,
-        Err(e) => panic!(
-            "Could not set up module {}.wasm from directory {:#?}: {}",
-            crate_name, crate_dir, e
-        ),
-    };
-    let (argtypes, rettype) = unsafe {
-        let proc_tuple = pg_sys::SearchSysCache(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            fn_oid.into_datum().unwrap(),
-            0,
-            0,
-            0,
-        );
-        if proc_tuple.is_null() {
-            panic!("cache lookup failed for function oid {}", fn_oid);
-        }
-
-        let mut is_null = false;
-        let argtypes_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let argtypes = Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID)
-            .unwrap()
-            .iter()
-            .map(|&v| PgOid::from(v))
-            .collect::<Vec<_>>();
-
-        let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
-            proc_tuple,
-        ));
-        let rettype = PgOid::from(proc_entry.prorettype);
-
-        // Make **sure** we have a copy as we're about to release it.
-        pg_sys::ReleaseSysCache(proc_tuple);
-        (argtypes, rettype)
-    };
-
-    (module, argtypes, rettype)
-}
-
-fn build_arg(
-    idx: usize,
-    oid: PgOid,
-    fcinfo: pg_sys::FunctionCallInfo,
-) -> Option<crate::guest::ValueParam<'static>> {
-    use crate::guest::ValueParam;
-    match oid {
-        PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::TEXTOID => pg_getarg(fcinfo, idx).map(ValueParam::String),
-            PgBuiltInOids::BOOLOID => pg_getarg(fcinfo, idx).map(ValueParam::Bool),
-            PgBuiltInOids::INT8OID => pg_getarg(fcinfo, idx).map(ValueParam::I64),
-            PgBuiltInOids::INT4OID => pg_getarg(fcinfo, idx).map(ValueParam::I32),
-            _ => todo!(),
-        },
-        _ => todo!(),
-    }
-}
-
-pub(crate) unsafe fn execute_wasm_function(
-    fn_oid: pg_sys::Oid,
-    fcinfo: pg_sys::FunctionCallInfo,
+pub(crate) fn execute_wasm_function(
+    fn_oid: &pg_sys::Oid,
+    fcinfo: &pg_sys::FunctionCallInfo,
 ) -> eyre::Result<pg_sys::Datum> {
-    let (module, arg_oids, _ret_oid) = CACHE
-        .entry(fn_oid)
-        .or_insert_with(|| initialize_cache_entry(fn_oid));
+    EXECUTOR.with(|executor| {
+        let mut executor = executor.try_borrow_mut()?;
 
-    let mut store = Store::new(&ENGINE, PlRustStore::default());
+        let guest = match executor.guest(&fn_oid) {
+            Some(guest) => guest,
+            None => executor.instantiate(*fn_oid)?,
+        };
 
-    let mut linker = Linker::new(&ENGINE);
-    wasmtime_wasi::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.wasi)
-        .map_err(|e| eyre!(e))?;
-    crate::host::add_to_linker(&mut linker, |cx: &mut PlRustStore| &mut cx.host)
-        .map_err(|e| eyre!(e))?;
-
-    let (guest, _guest_instance) =
-        crate::guest::Guest::instantiate(&mut store, &module, &mut linker, |cx| &mut cx.guest_data)
-            .map_err(|e| eyre!(e))?;
-
-    let args = arg_oids
-        .iter()
-        .enumerate()
-        .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo))
-        .collect::<Vec<_>>();
-
-    let retval = guest.entry(&mut store, args.as_slice())??;
-
-    use crate::guest::ValueResult;
-    Ok(match retval {
-        Some(ValueResult::String(v)) => v.into_datum().unwrap(),
-        Some(ValueResult::I32(v)) => v.into_datum().unwrap(),
-        Some(ValueResult::I64(v)) => v.into_datum().unwrap(),
-        Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
-        None => Option::<()>::None.into_datum().unwrap(),
+        guest.entry(&fcinfo)
     })
 }
 
-pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    CACHE.remove(&fn_oid);
+pub(crate) fn unload_function(fn_oid: &pg_sys::Oid) -> eyre::Result<()> {
+    EXECUTOR.with(|executor| {
+        let mut executor = executor.try_borrow_mut()?;
+
+        let _ = executor.remove(fn_oid);
+        Ok(())
+    })
 }
 
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String)> {
@@ -276,7 +159,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         }
     };
 
-    // std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
+    std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
 
     result
 }
@@ -327,7 +210,7 @@ fn create_function_crate(
         filename.push("lib.rs");
         filename
     };
-    let mut lib_rs_source = std::fs::read_to_string(&lib_rs_path).unwrap();
+    let lib_rs_source = std::fs::read_to_string(&lib_rs_path).unwrap();
     let mut lib_rs = syn::parse_file(&lib_rs_source).unwrap();
     // The last item is `mod smoke_test {}` (TODO: Assert)
     lib_rs.items.remove(lib_rs.items.len() -1);
@@ -346,7 +229,7 @@ fn crate_name(fn_oid: pg_sys::Oid) -> String {
     format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
 }
 
-fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
+pub(crate) fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     let mut crate_dir = gucs::work_dir();
     let crate_name = crate_name(fn_oid);
     crate_dir.push(&crate_name);
