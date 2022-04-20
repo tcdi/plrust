@@ -12,6 +12,7 @@ use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
 use pgx::pg_sys::heap_tuple_get_struct;
 use pgx::*;
+use std::env::consts::DLL_SUFFIX;
 use std::{collections::HashMap, path::PathBuf, process::Command};
 
 static mut LOADED_SYMBOLS: Lazy<
@@ -292,30 +293,12 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     let mut target_dir = work_dir.clone();
     target_dir.push("release");
 
-    // TODO:  we could probably do a conditional compile #[cfg()] thing here
-
-    // linux
-    let mut so = target_dir.clone();
-    so.push(&format!("lib{}.so", crate_name));
+    let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
     if so.exists() {
-        return (Some(so), crate_name);
+        (Some(so), crate_name)
     } else {
-        // macos
-        let mut dylib = target_dir.clone();
-        dylib.push(&format!("lib{}.dylib", crate_name));
-        if dylib.exists() {
-            return (Some(dylib), crate_name);
-        } else {
-            // windows?
-            let mut dll = target_dir.clone();
-            dll.push(&format!("lib{}.dll", crate_name));
-            if dll.exists() {
-                return (Some(dll), crate_name);
-            }
-        }
+        (None, crate_name)
     }
-
-    (None, crate_name)
 }
 
 fn generate_function_source(
