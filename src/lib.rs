@@ -229,9 +229,13 @@ mod tests {
                 use zalgo::{Generator, GeneratorArgs, ZalgoSize};
 
                 let mut generator = Generator::new();
+                log!("gen created");
                 let mut out = String::new();
+                log!("string created");
                 let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
+                log!("args created");
                 let result = generator.gen(input, &mut out, &args);
+                log!("should be returning?");
 
                 Some(out)
             $$;

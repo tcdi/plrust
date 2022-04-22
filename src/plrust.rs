@@ -177,6 +177,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         .current_dir(&crate_dir)
         .arg("build")
         .arg("--release")
+        .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
         .env(
@@ -299,6 +300,16 @@ fn generate_function_source(
     is_strict: bool,
 ) -> String {
     let mut source = String::new();
+    source.push_str(r#"
+#![no_std]
+extern crate alloc;
+#[allow(unused_imports)]
+use alloc::{format,
+    string::String,
+    vec,
+    vec::Vec};
+"#);
+    source.push_str(include_str!("./postalloc.rs"));
 
     // source header
     source.push_str("\nuse pgx::*;\n");
@@ -335,7 +346,7 @@ fn plrust_fn_{fn_oid}"#
     source.push_str(" -> ");
     let ret = make_rust_type(return_type, true);
     if is_set {
-        source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
+        source.push_str(&format!("impl core::iter::Iterator<Item = Option<{ret}>>"));
     } else {
         source.push_str(&format!("Option<{ret}>"));
     }
