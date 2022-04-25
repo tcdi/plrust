@@ -48,6 +48,22 @@ impl From<i32> for Value {
     }
 }
 
+impl TryFrom<Value> for bool {
+    type Error = crate::guest::Error;
+    fn try_from(v: Value) -> Result<bool, Self::Error> {
+        match v {
+            Value::Bool(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::Bool)),
+        }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(s: bool) -> Self {
+        Value::Bool(s)
+    }
+}
+
 impl From<interface::ValueResult> for Value {
     fn from(v: interface::ValueResult) -> Self {
         match v {

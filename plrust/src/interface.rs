@@ -17,6 +17,15 @@ impl host::Host for Host {
             .map(|v| match v {
                 host::ValueParam::String(s) => {
                     (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum())
+                },
+                host::ValueParam::I32(s) => {
+                    (pgx::pg_sys::PgBuiltInOids::INT4OID.oid(), s.into_datum())
+                },
+                host::ValueParam::I64(s) => {
+                    (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), s.into_datum())
+                },
+                host::ValueParam::Bool(s) => {
+                    (pgx::pg_sys::PgBuiltInOids::BOOLOID.oid(), s.into_datum())
                 }
                 _ => panic!("oh no"),
             })

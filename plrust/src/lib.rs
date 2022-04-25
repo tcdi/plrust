@@ -133,23 +133,86 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_basic() {
+    fn accepts_and_returns_text() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
+            CREATE OR REPLACE FUNCTION accepts_and_returns_text(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Ok(Some(String::from("booper")))
+                Ok(input)
             $$;
         "#;
         Spi::run(definition);
 
         let retval = Spi::get_one(
             r#"
-            SELECT update_me();
+            SELECT accepts_and_returns_text('booper');
         "#,
         );
         assert_eq!(retval, Some("booper"));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_and_returns_int() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_int(input INT) RETURNS INT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_int(1);
+        "#,
+        );
+        assert_eq!(retval, Some(1));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_and_returns_bigint() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_bigint(input BIGINT) RETURNS BIGINT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_bigint(1);
+        "#,
+        );
+        assert_eq!(retval, Some(1));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_and_returns_bool() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_bool(input BOOL) RETURNS BOOL
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_bool(true);
+        "#,
+        );
+        assert_eq!(retval, Some(true));
     }
 
     // #[pg_test]
@@ -179,7 +242,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_update() {
+    fn update() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
@@ -218,7 +281,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_spi() {
+    fn spi() {
         let random_definition = r#"
             CREATE OR REPLACE FUNCTION random_contributor_pet() RETURNS TEXT
                 STRICT
@@ -265,7 +328,7 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn test_deps() {
+    fn deps() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
