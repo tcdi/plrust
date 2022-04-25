@@ -42,6 +42,7 @@ impl Display for crate::guest::Error {
         match self {
             crate::guest::Error::ConversionError(e) => write!(f, "{}", e),
             crate::guest::Error::CoerceError(e) => write!(f, "{}", e),
+            crate::guest::Error::MismatchedArgLengthError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -60,6 +61,19 @@ impl Display for crate::guest::ConversionError {
     }
 }
 
+impl std::error::Error for crate::guest::MismatchedArgLengthError {}
+
+impl Display for crate::guest::MismatchedArgLengthError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Expected {} args, got {}",
+            self.expected, self.got
+        )
+    }
+}
+
+
 // Host
 
 impl Display for crate::host::Error {
@@ -67,6 +81,7 @@ impl Display for crate::host::Error {
         match self {
             crate::host::Error::ConversionError(e) => write!(f, "{}", e),
             crate::host::Error::CoerceError(e) => write!(f, "{}", e),
+            crate::host::Error::MismatchedArgLengthError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -81,6 +96,18 @@ impl Display for crate::host::ConversionError {
             f,
             "Could not turn value {} into a {}",
             self.value, self.into
+        )
+    }
+}
+
+impl std::error::Error for crate::host::MismatchedArgLengthError {}
+
+impl Display for crate::host::MismatchedArgLengthError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Expected {} args, got {}",
+            self.expected, self.got
         )
     }
 }

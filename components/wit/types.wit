@@ -14,7 +14,13 @@ enum value-type {
 
 variant error {
     %conversion-error(conversion-error),
-    %coerce-error(value-type)
+    %coerce-error(value-type),
+    %mismatched-arg-length-error(mismatched-arg-length-error),
+}
+
+record mismatched-arg-length-error {
+    %got: u64,
+    %expected: u64,
 }
 
 record conversion-error {

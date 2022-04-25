@@ -215,6 +215,30 @@ mod tests {
         assert_eq!(retval, Some(true));
     }
 
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_multiple_args() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_multiple_args(pet TEXT, food TEXT, times INT) RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                let pet = pet.unwrap();
+                let food = food.unwrap();
+                let times = times.unwrap();
+                Ok(Some(format!("{} eats {} {} times.", pet, food, times)))
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_multiple_args('Nami', 'duck', '2');
+        "#,
+        );
+        assert_eq!(retval, Some("Nami eats duck 2 times."));
+    }
+
     // #[pg_test]
     // #[search_path(@extschema@)]
     // fn test_lists() {

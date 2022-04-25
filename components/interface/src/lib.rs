@@ -3,7 +3,7 @@ use impls::value_type::HasValueType;
 
 wit_bindgen_rust::import!("../wit/host.wit");
 
-pub use host::{ConversionError, Error, ValueParam, ValueResult, ValueType};
+pub use host::{ConversionError, MismatchedArgLengthError, Error, ValueParam, ValueResult, ValueType};
 
 pub fn get_one<R>(query: &str) -> Result<Option<R>, host::Error>
 where

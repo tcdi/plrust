@@ -1755,6 +1755,7 @@ dependencies = [
  "pgx-tests",
  "prettyplease",
  "proc-macro2",
+ "quote",
  "syn",
  "tempdir",
  "thiserror",
