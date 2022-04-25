@@ -223,10 +223,10 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                let pet = pet.unwrap();
-                let food = food.unwrap();
-                let times = times.unwrap();
-                Ok(Some(format!("{} eats {} {} times.", pet, food, times)))
+                let pet = pet;
+                let food = food;
+                let times = times;
+                Ok(format!("{} eats {} {} times.", pet, food, times))
             $$;
         "#;
         Spi::run(definition);
@@ -272,7 +272,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Ok(Some(String::from("booper")))
+                Ok(String::from("booper"))
             $$;
         "#;
         Spi::run(definition);
@@ -290,7 +290,7 @@ mod tests {
                 LANGUAGE PLRUST AS
             $$
 
-                Ok(Some(String::from("swooper")))
+                Ok(String::from("swooper"))
             $$;
         "#;
         Spi::run(definition);
@@ -311,9 +311,9 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let name: Option<String> = interface::get_one(
+                let name: String = interface::get_one(
                     "SELECT name FROM contributors_pets ORDER BY random() LIMIT 1",
-                )?;
+                )?.unwrap();
                 Ok(name)
             $$;
         "#;
@@ -331,10 +331,10 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let id: Option<i32> = interface::get_one_with_args(
+                let id: i32 = interface::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
-                    &[name.unwrap().as_str().into()],
-                )?;
+                    &[name.as_str().into()],
+                )?.unwrap();
 
                 Ok(id)
             $$;
@@ -363,7 +363,7 @@ mod tests {
             [code]
                 use owo_colors::OwoColorize;
 
-                Ok(Some(input.unwrap().purple().to_string()))
+                Ok(input.purple().to_string())
             $$;
         "#;
         Spi::run(definition);

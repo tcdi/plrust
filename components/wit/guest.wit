@@ -1,3 +1,5 @@
 use { value, error } from types
 
 entry: function(args: list<option<value>>) -> expected<option<value>, error>
+
+strict-entry: function(args: list<value>) -> expected<value, error>

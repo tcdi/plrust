@@ -267,43 +267,96 @@ fn generate_function_source(
         let arg_ident: syn::Ident = syn::parse_str(&arg_name).expect("Invalid ident");
 
         user_fn_arg_idents.push(arg_ident);
-        user_fn_arg_types.push(syn::parse2(quote! { Option<#arg_ty> })?);
+        user_fn_arg_types.push(arg_ty);
     }
     let user_fn_block_tokens: syn::Block =
         syn::parse_str(&format!("{{ {} }}", code)).expect("Couldn't parse user code");
     let user_fn_return_tokens = oid_to_syn_type(return_type, true);
     let user_fn_arg_idents_len = user_fn_arg_idents.len() as u64;
 
-    let user_fn_tokens: syn::ItemFn = syn::parse2(quote! {
-        fn #user_fn_ident(
-            #( #user_fn_arg_idents: #user_fn_arg_types ),*
-        ) -> Result<Option<#user_fn_return_tokens>, guest::Error>
-        #user_fn_block_tokens
-    })?;
-    items.push(syn::Item::Fn(user_fn_tokens));
+    let entry_fn = match is_strict {
+        true => {
+            let user_fn_tokens: syn::ItemFn = syn::parse2(quote! {
+                fn #user_fn_ident(
+                    #( #user_fn_arg_idents: #user_fn_arg_types ),*
+                ) -> Result<#user_fn_return_tokens, guest::Error>
+                #user_fn_block_tokens
+            })?;
+            items.push(syn::Item::Fn(user_fn_tokens));
 
-    let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
-    for ident in user_fn_arg_idents.iter() {
-        entry_fn_arg_transform_tokens
-            .push(syn::parse2(quote! { #ident.map(|v| v.try_into()).transpose()? })?);
-    }
 
-    let entry_fn = quote! {
-        impl guest::Guest for Guest {
-            #[allow(unused_variables, unused_mut)] // In case of zero args.
-            fn entry(
-                mut args: Vec<Option<guest::Value>>
-            ) -> Result<Option<guest::Value>, guest::Error> {
-                let args_len = args.len() as u64;
-                let [ #(#user_fn_arg_idents),* ]: [_; #user_fn_arg_idents_len as usize] = args.try_into()
-                    .map_err(|_e| guest::Error::mismatched_args_length(#user_fn_arg_idents_len, args_len))?;
-                let retval = #user_fn_ident(
-                    #(#entry_fn_arg_transform_tokens),*
-                )?;
-                Ok(retval.map(|v| v.into()))
+            let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
+            for ident in user_fn_arg_idents.iter() {
+                entry_fn_arg_transform_tokens
+                    .push(syn::parse2(quote! { #ident.try_into()? })?);
             }
-        }
+
+            quote! {
+                impl guest::Guest for Guest {
+                    #[allow(unused_variables, unused_mut)] // In case of zero args.
+                    fn entry(
+                        mut args: Vec<Option<guest::Value>>
+                    ) -> Result<Option<guest::Value>, guest::Error> {
+                        unimplemented!("PL/Rust function defined as strict, but called as non-strict.")
+                    }
+
+                    #[allow(unused_variables, unused_mut)] // In case of zero args.
+                    fn strict_entry(
+                        mut args: Vec<guest::Value>
+                    ) -> Result<guest::Value, guest::Error> {
+                        let args_len = args.len() as u64;
+                        let [ #(#user_fn_arg_idents),* ]: [_; #user_fn_arg_idents_len as usize] = args.try_into()
+                            .map_err(|_e| guest::Error::mismatched_args_length(#user_fn_arg_idents_len, args_len))?;
+                        let retval = #user_fn_ident(
+                            #(#entry_fn_arg_transform_tokens),*
+                        )?;
+                        Ok(retval.into())
+                    }
+                }
+            }
+        },
+        false => {
+            let user_fn_tokens: syn::ItemFn = syn::parse2(quote! {
+                fn #user_fn_ident(
+                    #( #user_fn_arg_idents: Option<#user_fn_arg_types> ),*
+                ) -> Result<Option<#user_fn_return_tokens>, guest::Error>
+                #user_fn_block_tokens
+            })?;
+            items.push(syn::Item::Fn(user_fn_tokens));
+
+
+            let mut entry_fn_arg_transform_tokens: Vec<syn::Expr> = Vec::default();
+            for ident in user_fn_arg_idents.iter() {
+                entry_fn_arg_transform_tokens
+                    .push(syn::parse2(quote! { #ident.map(|v| v.try_into()).transpose()? })?);
+            }
+
+            quote! {
+                impl guest::Guest for Guest {
+                    #[allow(unused_variables, unused_mut)] // In case of zero args.
+                    fn entry(
+                        mut args: Vec<Option<guest::Value>>
+                    ) -> Result<Option<guest::Value>, guest::Error> {
+                        let args_len = args.len() as u64;
+                        let [ #(#user_fn_arg_idents),* ]: [_; #user_fn_arg_idents_len as usize] = args.try_into()
+                            .map_err(|_e| guest::Error::mismatched_args_length(#user_fn_arg_idents_len, args_len))?;
+                        let retval = #user_fn_ident(
+                            #(#entry_fn_arg_transform_tokens),*
+                        )?;
+                        Ok(retval.map(|v| v.into()))
+                    }
+
+                    #[allow(unused_variables, unused_mut)] // In case of zero args.
+                    fn strict_entry(
+                        mut args: Vec<guest::Value>
+                    ) -> Result<guest::Value, guest::Error> {
+                        unimplemented!("PL/Rust function defined as non-strict, but called as strict.")
+                    }
+                }
+            }
+        },
     };
+    
     items.push(
         syn::parse2(entry_fn.clone())
             .map_err(|e| eyre!(e).with_section(|| entry_fn.to_string().header("Source code:")))?

@@ -14,6 +14,7 @@ pub(crate) struct GuestWithOids {
     guest: crate::guest::Guest<PlRustStore>,
     arg_oids: Vec<PgOid>,
     ret_oid: PgOid,
+    strict: bool,
 }
 
 impl GuestWithOids {
@@ -28,7 +29,7 @@ impl GuestWithOids {
                 crate_name, crate_dir, e
             ),
         };
-        let (arg_oids, ret_oid) = unsafe {
+        let (arg_oids, ret_oid, strict) = unsafe {
             let proc_tuple = pg_sys::SearchSysCache(
                 pg_sys::SysCacheIdentifier_PROCOID as i32,
                 fn_oid.into_datum().unwrap(),
@@ -58,10 +59,11 @@ impl GuestWithOids {
                 proc_tuple,
             ));
             let rettype = PgOid::from(proc_entry.prorettype);
+            let strict = proc_entry.proisstrict;
 
             // Make **sure** we have a copy as we're about to release it.
             pg_sys::ReleaseSysCache(proc_tuple);
-            (argtypes, rettype)
+            (argtypes, rettype, strict)
         };
 
         let mut linker = Linker::new(executor.engine());
@@ -82,6 +84,7 @@ impl GuestWithOids {
             arg_oids,
             ret_oid,
             fn_oid,
+            strict,
             store,
             guest,
         })
@@ -91,23 +94,42 @@ impl GuestWithOids {
         &mut self,
         fcinfo: &pg_sys::FunctionCallInfo,
     ) -> eyre::Result<pg_sys::Datum> {
-        let args = self
-            .arg_oids
-            .iter()
-            .enumerate()
-            .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo))
-            .collect::<Vec<_>>();
+        if self.strict {
+            let args = self
+                .arg_oids
+                .iter()
+                .enumerate()
+                .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo).expect("Got null arg in strict entry function"))
+                .collect::<Vec<_>>();
 
-        let retval = self.guest.entry(&mut self.store, &args)??;
+            let retval = self.guest.strict_entry(&mut self.store, &args)??;
 
-        use crate::guest::ValueResult;
-        Ok(match retval {
-            Some(ValueResult::String(v)) => v.into_datum().unwrap(),
-            Some(ValueResult::I32(v)) => v.into_datum().unwrap(),
-            Some(ValueResult::I64(v)) => v.into_datum().unwrap(),
-            Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
-            None => Option::<()>::None.into_datum().unwrap(),
-        })
+            use crate::guest::ValueResult;
+            Ok(match retval {
+                ValueResult::String(v) => v.into_datum().unwrap(),
+                ValueResult::I32(v) => v.into_datum().unwrap(),
+                ValueResult::I64(v) => v.into_datum().unwrap(),
+                ValueResult::Bool(v) => v.into_datum().unwrap(),
+            })
+        } else {
+            let args = self
+                .arg_oids
+                .iter()
+                .enumerate()
+                .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo))
+                .collect::<Vec<_>>();
+
+            let retval = self.guest.entry(&mut self.store, &args)??;
+
+            use crate::guest::ValueResult;
+            Ok(match retval {
+                Some(ValueResult::String(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::I32(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::I64(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
+                None => Option::<()>::None.into_datum().unwrap(),
+            })
+        }
     }
 }
 
