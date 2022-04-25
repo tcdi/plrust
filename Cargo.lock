@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.56"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
+checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
 
 [[package]]
 name = "async-trait"
@@ -1512,9 +1512,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "owo-colors"
-version = "3.3.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e72e30578e0d0993c8ae20823dd9cff2bc5517d2f586a8aef462a581e8a03eb"
+checksum = "decf7381921fea4dcb2549c5667eda59b3ec297ab7e2b5fc33eac69d2e7da87b"
 
 [[package]]
 name = "parking_lot"
@@ -1816,9 +1816,9 @@ checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
 name = "prettyplease"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b83ec2d0af5c5c556257ff52c9f98934e243b9fd39604bfb2a9b75ec2e97f18"
+checksum = "d9e07e3a46d0771a8a06b5f4441527802830b43e679ba12f44960f48dd4c6803"
 dependencies = [
  "proc-macro2",
  "syn",
@@ -2531,9 +2531,9 @@ checksum = "42657b1a6f4d817cda8e7a0ace261fe0cc946cf3a80314390b22cc61ae080792"
 
 [[package]]
 name = "tinyvec"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c1c1d5a42b6245520c249549ec267180beaffcc0615401ac8e31853d4b6d8d2"
+checksum = "87cc5ceb3875bb20c2890005a4e226a4651264a5c75edb2421b52861a0a0cb50"
 dependencies = [
  "tinyvec_macros",
 ]
@@ -2651,9 +2651,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-log"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6923477a48e41c1951f1999ef8bb5a3023eb723ceadafe78ffb65dc366761e3"
+checksum = "78ddad33d2d10b1ed7eb9d1f518a5674713876e97e5bb9b7345a7984fbb4f922"
 dependencies = [
  "lazy_static",
  "log",
@@ -3181,7 +3181,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-gen-core"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "anyhow",
  "wit-parser",
@@ -3190,7 +3190,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-gen-rust"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "heck",
  "wit-bindgen-gen-core",
@@ -3199,7 +3199,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-gen-rust-wasm"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "heck",
  "wit-bindgen-gen-core",
@@ -3209,7 +3209,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-gen-wasmtime"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "heck",
  "wit-bindgen-gen-core",
@@ -3219,7 +3219,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-rust"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "async-trait",
  "bitflags",
@@ -3229,7 +3229,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-rust-impl"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "proc-macro2",
  "syn",
@@ -3240,7 +3240,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-wasmtime"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -3253,7 +3253,7 @@ dependencies = [
 [[package]]
 name = "wit-bindgen-wasmtime-impl"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "proc-macro2",
  "syn",
@@ -3264,7 +3264,7 @@ dependencies = [
 [[package]]
 name = "wit-parser"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=bb33644b4fd21ecf43761f63c472cdfffe57e300#bb33644b4fd21ecf43761f63c472cdfffe57e300"
+source = "git+https://github.com/bytecodealliance/wit-bindgen.git?rev=2f422f87d30b888d96ca1eb1db6c1a043cc77490#2f422f87d30b888d96ca1eb1db6c1a043cc77490"
 dependencies = [
  "anyhow",
  "id-arena",

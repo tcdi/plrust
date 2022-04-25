@@ -4,4 +4,4 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "bb33644b4fd21ecf43761f63c472cdfffe57e300" }
+wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen.git", rev = "2f422f87d30b888d96ca1eb1db6c1a043cc77490" }
