@@ -147,18 +147,18 @@ fn build_arg<'a>(
     idx: usize,
     oid: PgOid,
     fcinfo: &'a pg_sys::FunctionCallInfo,
-) -> Option<AlmostValueParam<'a>> {
+) -> Option<OwnedValueParam<'a>> {
     use crate::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::TEXTOID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::String),
-            PgBuiltInOids::TEXTARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<&str>>| AlmostValueParam::StringArray(v)),
-            PgBuiltInOids::BOOLOID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::Bool),
-            PgBuiltInOids::BOOLARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<bool>>| AlmostValueParam::BoolArray(v)),
-            PgBuiltInOids::INT8OID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::I64),
-            PgBuiltInOids::INT8ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i64>>| AlmostValueParam::I64Array(v)),
-            PgBuiltInOids::INT4OID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::I32),
-            PgBuiltInOids::INT4ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i32>>| AlmostValueParam::I32Array(v)),
+            PgBuiltInOids::TEXTOID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::String),
+            PgBuiltInOids::TEXTARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<&str>>| OwnedValueParam::StringArray(v)),
+            PgBuiltInOids::BOOLOID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::Bool),
+            PgBuiltInOids::BOOLARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<bool>>| OwnedValueParam::BoolArray(v)),
+            PgBuiltInOids::INT8OID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::I64),
+            PgBuiltInOids::INT8ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i64>>| OwnedValueParam::I64Array(v)),
+            PgBuiltInOids::INT4OID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::I32),
+            PgBuiltInOids::INT4ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i32>>| OwnedValueParam::I32Array(v)),
             _ => todo!(),
         },
         _ => todo!(),
@@ -167,7 +167,7 @@ fn build_arg<'a>(
 
 // "Almost" a ValueParam, except it owns any buffers it uses.
 #[derive(Debug)]
-enum AlmostValueParam<'a> {
+enum OwnedValueParam<'a> {
     String(&'a str),
     StringArray(Vec<Option<&'a str>>),
     I32(i32),
@@ -178,17 +178,17 @@ enum AlmostValueParam<'a> {
     BoolArray(Vec<Option<bool>>),
 }
 
-impl<'a> AlmostValueParam<'a> {
+impl<'a> OwnedValueParam<'a> {
     fn as_param(&'a self) -> guest::ValueParam<'a> {
         match self {
-            AlmostValueParam::String(v) => guest::ValueParam::String(v),
-            AlmostValueParam::StringArray(v) => guest::ValueParam::StringArray(v),
-            AlmostValueParam::I32(v) => guest::ValueParam::I32(*v),
-            AlmostValueParam::I32Array(v) => guest::ValueParam::I32Array(v),
-            AlmostValueParam::I64(v) => guest::ValueParam::I64(*v),
-            AlmostValueParam::I64Array(v) => guest::ValueParam::I64Array(v),
-            AlmostValueParam::Bool(v) => guest::ValueParam::Bool(*v),
-            AlmostValueParam::BoolArray(v) => guest::ValueParam::BoolArray(v),
+            OwnedValueParam::String(v) => guest::ValueParam::String(v),
+            OwnedValueParam::StringArray(v) => guest::ValueParam::StringArray(v),
+            OwnedValueParam::I32(v) => guest::ValueParam::I32(*v),
+            OwnedValueParam::I32Array(v) => guest::ValueParam::I32Array(v),
+            OwnedValueParam::I64(v) => guest::ValueParam::I64(*v),
+            OwnedValueParam::I64Array(v) => guest::ValueParam::I64Array(v),
+            OwnedValueParam::Bool(v) => guest::ValueParam::Bool(*v),
+            OwnedValueParam::BoolArray(v) => guest::ValueParam::BoolArray(v),
         }
      }
 }
