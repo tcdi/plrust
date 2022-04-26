@@ -399,8 +399,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argnames =
-            Vec::<Option<String>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
+        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
 
         let argtypes_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -408,7 +407,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argtypes = Vec::<pg_sys::Oid>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID);
+        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
 
         let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
@@ -416,21 +415,10 @@ fn extract_code_and_args(
 
         let mut args = Vec::new();
         for i in 0..proc_entry.pronargs as usize {
-            let type_oid = if argtypes.is_some() {
-                argtypes.as_ref().unwrap().get(i)
-            } else {
-                None
-            };
-            let name = if argnames.is_some() {
-                argnames.as_ref().unwrap().get(i).cloned().flatten()
-            } else {
-                None
-            };
+            let type_oid = argtypes.get(i).expect("no type_oid for argument");
+            let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
 
-            args.push((
-                PgOid::from(*type_oid.expect("no type_oid for argument")),
-                name,
-            ));
+            args.push((PgOid::from(*type_oid), name));
         }
 
         let is_strict = proc_entry.proisstrict;
