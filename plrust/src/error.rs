@@ -55,7 +55,7 @@ impl Display for crate::guest::ConversionError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(
             f,
-            "Could not turn value {} into a {}",
+            "Could not turn value {:?} into a {}",
             self.value, self.into
         )
     }
@@ -94,7 +94,7 @@ impl Display for crate::host::ConversionError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(
             f,
-            "Could not turn value {} into a {}",
+            "Could not turn value {:?} into a {}",
             self.value, self.into
         )
     }

@@ -154,6 +154,29 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    fn accepts_and_returns_text_list() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_text_list(input TEXT[]) RETURNS TEXT[]
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_text_list(ARRAY['Nami', 'Brandy']);
+        "#,
+        );
+        pgx::warning!("retval from spi: {:?}", retval);
+
+        assert_eq!(retval, Some(vec![Some("Nami"), Some("Brandy")]));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     fn accepts_and_returns_int() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION accepts_and_returns_int(input INT) RETURNS INT
@@ -172,6 +195,28 @@ mod tests {
         );
         assert_eq!(retval, Some(1));
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_and_returns_int_list() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_int_list(input INT[]) RETURNS INT[]
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_int_list(ARRAY[1, 2]);
+        "#,
+        );
+        assert_eq!(retval, Some(vec![1, 2]));
+    }
+
 
     #[pg_test]
     #[search_path(@extschema@)]
@@ -196,6 +241,27 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    fn accepts_and_returns_bigint_list() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_bigint_list(input BIGINT[]) RETURNS BIGINT[]
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_bigint_list(ARRAY[1, 2]);
+        "#,
+        );
+        assert_eq!(retval, Some(vec![1, 2]));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     fn accepts_and_returns_bool() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION accepts_and_returns_bool(input BOOL) RETURNS BOOL
@@ -213,6 +279,27 @@ mod tests {
         "#,
         );
         assert_eq!(retval, Some(true));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_and_returns_bool_list() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION accepts_and_returns_bool_list(input BOOL[]) RETURNS BOOL[]
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_bool_list(ARRAY[true, false]);
+        "#,
+        );
+        assert_eq!(retval, Some(vec![true, false]));
     }
 
     #[pg_test]

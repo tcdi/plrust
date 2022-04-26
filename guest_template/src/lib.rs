@@ -13,8 +13,13 @@ mod smoke_test {
         fn entry(
             mut args: Vec<Option<guest::Value>>,
         ) -> Result<Option<guest::Value>, guest::Error> {
-            let retval = dummy_user_fn(args.pop().unwrap().map(|v| v.try_into()).transpose()?)?;
-            Ok(retval.map(|v| v.into()))
+            todo!()
+        }
+        #[allow(unused_variables, unused_mut)] // In case of zero args.
+        fn strict_entry(
+            mut args: Vec<guest::Value>,
+        ) -> Result<guest::Value, guest::Error> {
+            todo!()
         }
     }
 

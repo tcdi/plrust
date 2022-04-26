@@ -1,7 +1,7 @@
-use crate::{plrust::crate_name_and_path, plrust_store::PlRustStore, wasm_executor::WasmExecutor};
+use crate::{plrust::crate_name_and_path, plrust_store::PlRustStore, wasm_executor::WasmExecutor, guest};
 use eyre::eyre;
 use pgx::{
-    pg_getarg,
+    pg_getarg, pg_getarg_datum,
     pg_sys::{self, heap_tuple_get_struct},
     FromDatum, IntoDatum, PgBox, PgBuiltInOids, PgOid,
 };
@@ -101,52 +101,94 @@ impl GuestWithOids {
                 .enumerate()
                 .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo).expect("Got null arg in strict entry function"))
                 .collect::<Vec<_>>();
-
-            let retval = self.guest.strict_entry(&mut self.store, &args)??;
-
+            pgx::info!("args: {:?}", args);
+            let params: Vec<_> = args.iter().map(|v| v.as_param()).collect();
+            let retval = self.guest.strict_entry(&mut self.store, params.as_slice())??;
+            pgx::info!("retval: {:?}", retval);
             use crate::guest::ValueResult;
             Ok(match retval {
                 ValueResult::String(v) => v.into_datum().unwrap(),
+                ValueResult::StringArray(v) => v.into_datum().unwrap(),
                 ValueResult::I32(v) => v.into_datum().unwrap(),
+                ValueResult::I32Array(v) => v.into_datum().unwrap(),
                 ValueResult::I64(v) => v.into_datum().unwrap(),
+                ValueResult::I64Array(v) => v.into_datum().unwrap(),
                 ValueResult::Bool(v) => v.into_datum().unwrap(),
+                ValueResult::BoolArray(v) => v.into_datum().unwrap(),
             })
         } else {
-            let args = self
+            let arg_datums = self
                 .arg_oids
                 .iter()
                 .enumerate()
-                .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo))
+                .map(|(idx, _arg_oid)| pg_getarg_datum(*fcinfo, idx))
                 .collect::<Vec<_>>();
-
+            let args = Vec::with_capacity(self.arg_oids.len());
+            pgx::info!("args: {:?}", args);
             let retval = self.guest.entry(&mut self.store, &args)??;
-
+            pgx::info!("retval: {:?}", retval);
             use crate::guest::ValueResult;
             Ok(match retval {
                 Some(ValueResult::String(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::StringArray(v)) => v.into_datum().unwrap(),
                 Some(ValueResult::I32(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::I32Array(v)) => v.into_datum().unwrap(),
                 Some(ValueResult::I64(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::I64Array(v)) => v.into_datum().unwrap(),
                 Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::BoolArray(v)) => v.into_datum().unwrap(),
                 None => Option::<()>::None.into_datum().unwrap(),
             })
         }
     }
 }
 
-fn build_arg(
+fn build_arg<'a>(
     idx: usize,
     oid: PgOid,
-    fcinfo: &pg_sys::FunctionCallInfo,
-) -> Option<crate::guest::ValueParam<'static>> {
+    fcinfo: &'a pg_sys::FunctionCallInfo,
+) -> Option<AlmostValueParam<'a>> {
     use crate::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::TEXTOID => pg_getarg(*fcinfo, idx).map(ValueParam::String),
-            PgBuiltInOids::BOOLOID => pg_getarg(*fcinfo, idx).map(ValueParam::Bool),
-            PgBuiltInOids::INT8OID => pg_getarg(*fcinfo, idx).map(ValueParam::I64),
-            PgBuiltInOids::INT4OID => pg_getarg(*fcinfo, idx).map(ValueParam::I32),
+            PgBuiltInOids::TEXTOID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::String),
+            PgBuiltInOids::TEXTARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<&str>>| AlmostValueParam::StringArray(v)),
+            PgBuiltInOids::BOOLOID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::Bool),
+            PgBuiltInOids::BOOLARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<bool>>| AlmostValueParam::BoolArray(v)),
+            PgBuiltInOids::INT8OID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::I64),
+            PgBuiltInOids::INT8ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i64>>| AlmostValueParam::I64Array(v)),
+            PgBuiltInOids::INT4OID => pg_getarg(*fcinfo, idx).map(AlmostValueParam::I32),
+            PgBuiltInOids::INT4ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i32>>| AlmostValueParam::I32Array(v)),
             _ => todo!(),
         },
         _ => todo!(),
     }
+}
+
+// "Almost" a ValueParam, except it owns any buffers it uses.
+#[derive(Debug)]
+enum AlmostValueParam<'a> {
+    String(&'a str),
+    StringArray(Vec<Option<&'a str>>),
+    I32(i32),
+    I32Array(Vec<Option<i32>>),
+    I64(i64),
+    I64Array(Vec<Option<i64>>),
+    Bool(bool),
+    BoolArray(Vec<Option<bool>>),
+}
+
+impl<'a> AlmostValueParam<'a> {
+    fn as_param(&'a self) -> guest::ValueParam<'a> {
+        match self {
+            AlmostValueParam::String(v) => guest::ValueParam::String(v),
+            AlmostValueParam::StringArray(v) => guest::ValueParam::StringArray(v),
+            AlmostValueParam::I32(v) => guest::ValueParam::I32(*v),
+            AlmostValueParam::I32Array(v) => guest::ValueParam::I32Array(v),
+            AlmostValueParam::I64(v) => guest::ValueParam::I64(*v),
+            AlmostValueParam::I64Array(v) => guest::ValueParam::I64Array(v),
+            AlmostValueParam::Bool(v) => guest::ValueParam::Bool(*v),
+            AlmostValueParam::BoolArray(v) => guest::ValueParam::BoolArray(v),
+        }
+     }
 }

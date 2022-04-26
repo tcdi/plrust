@@ -1,15 +1,23 @@
 variant value {
     %string(string),
+    %string-array(list<option<string>>),
     %i32(s32),
+    %i32-array(list<option<s32>>),
     %i64(s64),
+    %i64-array(list<option<s64>>),
     %bool(bool),
+    %bool-array(list<option<bool>>),
 }
 
 enum value-type {
     %string,
+    %string-array,
     %i32,
+    %i32-array,
     %i64,
+    %i64-array,
     %bool,
+    %bool-array,
 }
 
 variant error {
