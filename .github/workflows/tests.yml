@@ -92,6 +92,11 @@ jobs:
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         cat $GITHUB_ENV
 
+        echo "----- Setting up RUSTFLAGS found in .cargo/config -----"
+        echo "RUSTFLAGS=$RUSTFLAGS $(tomlq --raw-output '.build.rustflags | join(" ")' .cargo/config)" >> $GITHUB_ENV
+        cat $GITHUB_ENV
+        echo ""
+
         echo "----- Set up Postgres permissions -----"
         sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
         ls -lath `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
