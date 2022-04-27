@@ -32,7 +32,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up (Linux) prerequisites and environment
+    - name: Set up prerequisites and environment (Linux)
       if: matrix.os == 'ubuntu-20.04'
       run: |
         echo ""
@@ -93,7 +93,7 @@ jobs:
         cargo --version
         echo ""
 
-    - name: Set up (Mac) prerequisites and environment
+    - name: Set up prerequisites and environment (Mac)
       if: matrix.os == 'macos-11'
       run: |
         echo ""
@@ -140,12 +140,23 @@ jobs:
           ~/.cargo/git
         key: plrust-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
 
-    - name: Cache sccache directory
+
+    - name: Cache sccache directory (Linux)
       uses: actions/cache@v2
+      if: matrix.os == 'ubuntu-20.04'
       continue-on-error: false
       with:
         path: /home/runner/.cache/sccache
         key: plrust-sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
+
+    - name: Cache sccache directory
+      uses: actions/cache@v2
+      if: matrix.os == 'macos-11'
+      continue-on-error: false
+      with:
+        path: /Users/runner/Library/Caches/Mozilla.sccache
+        key: pgx-sccache-macos-11-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
+
 
     - name: Start sccache server
       run: sccache --start-server
