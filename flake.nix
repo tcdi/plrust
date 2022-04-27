@@ -25,85 +25,85 @@
         let
           pkgs = pgx.lib.nixpkgsWithOverlays { inherit system nixpkgs; extraOverlays = [ self.overlay ]; };
         in
-        pkgs."${cargoToml.package.name}_11");
+        pkgs.plrust_11);
 
       packages = pgx.lib.forAllSystems (system:
         let
           pkgs = pgx.lib.nixpkgsWithOverlays { inherit system nixpkgs; extraOverlays = [ self.overlay ]; };
         in
         {
-          "${cargoToml.package.name}_10" = pkgs."${cargoToml.package.name}_10";
-          "${cargoToml.package.name}_10_debug" = pkgs."${cargoToml.package.name}_10_debug";
-          "${cargoToml.package.name}_11" = pkgs."${cargoToml.package.name}_11";
-          "${cargoToml.package.name}_11_debug" = pkgs."${cargoToml.package.name}_11_debug";
-          "${cargoToml.package.name}_12" = pkgs."${cargoToml.package.name}_12";
-          "${cargoToml.package.name}_12_debug" = pkgs."${cargoToml.package.name}_12_debug";
-          "${cargoToml.package.name}_13" = pkgs."${cargoToml.package.name}_13";
-          "${cargoToml.package.name}_13_debug" = pkgs."${cargoToml.package.name}_13_debug";
-          "${cargoToml.package.name}_14" = pkgs."${cargoToml.package.name}_14";
-          "${cargoToml.package.name}_14_debug" = pkgs."${cargoToml.package.name}_14_debug";
+          plrust_10 = pkgs.plrust_10;
+          plrust_10_debug = pkgs.plrust_10_debug;
+          plrust_11 = pkgs.plrust_11;
+          plrust_11_debug = pkgs.plrust_11_debug;
+          plrust_12 = pkgs.plrust_12;
+          plrust_12_debug = pkgs.plrust_12_debug;
+          plrust_13 = pkgs.plrust_13;
+          plrust_13_debug = pkgs.plrust_13_debug;
+          plrust_14 = pkgs.plrust_14;
+          plrust_14_debug = pkgs.plrust_14_debug;
         });
 
       overlay = final: prev: {
-        "${cargoToml.package.name}_10" = pgx.lib.buildPgxExtension {
+        plrust_10 = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_10;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_10_debug" = pgx.lib.buildPgxExtension {
+        plrust_10_debug = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_10;
           release = false;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_11" = pgx.lib.buildPgxExtension {
+        plrust_11 = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_11;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_11_debug" = pgx.lib.buildPgxExtension {
+        plrust_11_debug = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_11;
           release = false;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_12" = pgx.lib.buildPgxExtension {
+        plrust_12 = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_12;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_12_debug" = pgx.lib.buildPgxExtension {
+        plrust_12_debug = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_12;
           release = false;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_13" = pgx.lib.buildPgxExtension {
+        plrust_13 = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_13;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_13_debug" = pgx.lib.buildPgxExtension {
+        plrust_13_debug = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_13;
           release = false;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_14" = pgx.lib.buildPgxExtension {
+        plrust_14 = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_14;
           additionalFeatures = [ "sandboxed" ];
         };
-        "${cargoToml.package.name}_14_debug" = pgx.lib.buildPgxExtension {
+        plrust_14_debug = pgx.lib.buildPgxExtension {
           pkgs = final;
           source = ./.;
           targetPostgres = final.postgresql_14;

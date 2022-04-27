@@ -2,7 +2,6 @@
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
-    use super::*;
     use pgx::*;
 
 
