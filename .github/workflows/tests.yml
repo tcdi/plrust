@@ -121,7 +121,7 @@ jobs:
       run: cargo install cargo-pgx --version $CARGO_PGX_VERSION --force
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
-      run: cargo pgx init --pg$PG_VER /usr/lib/postgresql/$PG_VER/bin/pg_config
+      run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Run PL/Rust tests
       run: |
