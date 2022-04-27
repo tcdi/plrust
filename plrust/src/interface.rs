@@ -2,6 +2,45 @@ use crate::{guest, host};
 use pgx::{IntoDatum, PgOid, pg_sys::Datum};
 use std::fmt::{Display, Formatter};
 
+macro_rules! map_value_type {
+    ($returns:expr, $operation:expr) => {
+        match $returns {
+            host::ValueType::String => {
+                let s: Option<String> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::StringArray => {
+                let s: Option<Vec<Option<String>>> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::I64 => {
+                let s: Option<i64> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::I64Array => {
+                let s: Option<Vec<Option<i64>>> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::I32 => {
+                let s: Option<i32> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::I32Array => {
+                let s: Option<Vec<Option<i32>>> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::Bool => {
+                let s: Option<bool> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+            host::ValueType::BoolArray => {
+                let s: Option<Vec<Option<bool>>> = $operation;
+                Ok(s.map(|i| i.into()))
+            }
+        }
+    };
+}
+
 #[derive(Default)]
 pub struct Host;
 
@@ -17,40 +56,7 @@ impl host::Host for Host {
             .map(host::ValueParam::into_oid_and_datum)
             .collect();
 
-        match returns {
-            host::ValueType::String => {
-                let s: Option<String> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::StringArray => {
-                let s: Option<Vec<Option<String>>> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I64 => {
-                let s: Option<i64> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I64Array => {
-                let s: Option<Vec<Option<i64>>> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I32 => {
-                let s: Option<i32> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I32Array => {
-                let s: Option<Vec<Option<i32>>> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::Bool => {
-                let s: Option<bool> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::BoolArray => {
-                let s: Option<Vec<Option<bool>>> = pgx::spi::Spi::get_one_with_args(query, prepared_args);
-                Ok(s.map(|i| i.into()))
-            }
-        }
+        map_value_type!(returns, pgx::spi::Spi::get_one_with_args(query, prepared_args))
     }
 
     fn get_one(
@@ -58,40 +64,7 @@ impl host::Host for Host {
         query: &str,
         returns: host::ValueType,
     ) -> Result<Option<host::ValueResult>, host::Error> {
-        match returns {
-            host::ValueType::String => {
-                let s: Option<String> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::StringArray => {
-                let s: Option<Vec<Option<String>>> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I64 => {
-                let s: Option<i64> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I64Array => {
-                let s: Option<Vec<Option<i64>>> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I32 => {
-                let s: Option<i32> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::I32Array => {
-                let s: Option<Vec<Option<i32>>> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::Bool => {
-                let s: Option<bool> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-            host::ValueType::BoolArray => {
-                let s: Option<Vec<Option<bool>>> = pgx::spi::Spi::get_one(query);
-                Ok(s.map(|i| i.into()))
-            }
-        }
+        map_value_type!(returns, pgx::spi::Spi::get_one(query))
     }
 }
 
