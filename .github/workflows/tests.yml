@@ -22,7 +22,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'nogha')"
     env:
       RUSTC_WRAPPER: sccache
-      SCCACHE_DIR: /home/runner/.cache/sccache
+      SCCACHE_DIR: ~/.cache/sccache
 
     strategy:
       matrix:
@@ -32,7 +32,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up prerequisites and environment (Linux)
+    - name: Set up (Linux) prerequisites and environment
       if: matrix.os == 'ubuntu-20.04'
       run: |
         echo ""
@@ -43,7 +43,7 @@ jobs:
         chmod +x $HOME/.local/bin/sccache
         echo "$HOME/.local/bin" >> $GITHUB_PATH
         echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
-        mkdir -p /home/runner/.cache/sccache
+        mkdir -p ~/.cache/sccache
         echo ""
 
         echo "----- Set up dynamic variables -----"
@@ -93,7 +93,7 @@ jobs:
         cargo --version
         echo ""
 
-    - name: Set up prerequisites and environment (Mac)
+    - name: Set up (Mac) prerequisites and environment
       if: matrix.os == 'macos-11'
       run: |
         echo ""
@@ -101,7 +101,7 @@ jobs:
         echo "----- Install sccache -----"
         brew update
         brew install sccache
-        mkdir -p /Users/runner/Library/Caches/Mozilla.sccache
+        mkdir -p ~/.cache/sccache
 
         # https://stackoverflow.com/questions/57968497/how-do-i-set-an-env-var-with-a-bash-expression-in-github-actions/57969570#57969570
         echo "----- Getting pre-installed Postgres major version -----"
@@ -138,25 +138,8 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
+          ~/.cache/sccache
         key: plrust-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
-
-
-    - name: Cache sccache directory (Linux)
-      uses: actions/cache@v2
-      if: matrix.os == 'ubuntu-20.04'
-      continue-on-error: false
-      with:
-        path: /home/runner/.cache/sccache
-        key: plrust-sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
-
-    - name: Cache sccache directory
-      uses: actions/cache@v2
-      if: matrix.os == 'macos-11'
-      continue-on-error: false
-      with:
-        path: /Users/runner/Library/Caches/Mozilla.sccache
-        key: pgx-sccache-macos-11-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
-
 
     - name: Start sccache server
       run: sccache --start-server
