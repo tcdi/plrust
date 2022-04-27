@@ -33,7 +33,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Set up (Linux) prerequisites and environment
-      if: ${{ matrix.os }} == "ubuntu-20.04"
+      if: matrix.os == "ubuntu-20.04"
       run: |
         echo ""
         echo "----- Install sccache -----"
@@ -94,7 +94,7 @@ jobs:
         echo ""
 
     - name: Set up (Mac) prerequisites and environment
-      if: ${{ matrix.os }} == "macos-11"
+      if: matrix.os == "macos-11"
       run: |
         echo ""
 
