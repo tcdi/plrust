@@ -1,5 +1,5 @@
 use crate::{guest, host};
-use pgx::IntoDatum;
+use pgx::{IntoDatum, PgOid, pg_sys::Datum};
 use std::fmt::{Display, Formatter};
 
 #[derive(Default)]
@@ -14,32 +14,7 @@ impl host::Host for Host {
     ) -> Result<Option<host::ValueResult>, host::Error> {
         let prepared_args = args
             .into_iter()
-            .map(|v| match v {
-                host::ValueParam::String(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum())
-                },
-                host::ValueParam::StringArray(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::TEXTARRAYOID.oid(), s.into_datum())
-                },
-                host::ValueParam::I32(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::INT4OID.oid(), s.into_datum())
-                },
-                host::ValueParam::I32Array(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::INT4ARRAYOID.oid(), s.into_datum())
-                },
-                host::ValueParam::I64(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), s.into_datum())
-                },
-                host::ValueParam::I64Array(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::INT8ARRAYOID.oid(), s.into_datum())
-                },
-                host::ValueParam::Bool(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::BOOLOID.oid(), s.into_datum())
-                },
-                host::ValueParam::BoolArray(s) => {
-                    (pgx::pg_sys::PgBuiltInOids::BOOLARRAYOID.oid(), s.into_datum())
-                },
-            })
+            .map(host::ValueParam::into_oid_and_datum)
             .collect();
 
         match returns {
@@ -116,6 +91,37 @@ impl host::Host for Host {
                 let s: Option<Vec<Option<bool>>> = pgx::spi::Spi::get_one(query);
                 Ok(s.map(|i| i.into()))
             }
+        }
+    }
+}
+
+impl<'a> host::ValueParam<'a> {
+    fn into_oid_and_datum(self) -> (PgOid, Option<Datum>) {
+        match self {
+            host::ValueParam::String(s) => {
+                (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum())
+            },
+            host::ValueParam::StringArray(s) => {
+                (pgx::pg_sys::PgBuiltInOids::TEXTARRAYOID.oid(), s.into_datum())
+            },
+            host::ValueParam::I32(s) => {
+                (pgx::pg_sys::PgBuiltInOids::INT4OID.oid(), s.into_datum())
+            },
+            host::ValueParam::I32Array(s) => {
+                (pgx::pg_sys::PgBuiltInOids::INT4ARRAYOID.oid(), s.into_datum())
+            },
+            host::ValueParam::I64(s) => {
+                (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), s.into_datum())
+            },
+            host::ValueParam::I64Array(s) => {
+                (pgx::pg_sys::PgBuiltInOids::INT8ARRAYOID.oid(), s.into_datum())
+            },
+            host::ValueParam::Bool(s) => {
+                (pgx::pg_sys::PgBuiltInOids::BOOLOID.oid(), s.into_datum())
+            },
+            host::ValueParam::BoolArray(s) => {
+                (pgx::pg_sys::PgBuiltInOids::BOOLARRAYOID.oid(), s.into_datum())
+            },
         }
     }
 }
