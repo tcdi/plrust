@@ -1,5 +1,5 @@
 use crate::{guest, host};
-use pgx::{IntoDatum, pg_sys::Datum, spi::Spi, SpiHeapTupleDataEntry};
+use pgx::IntoDatum;
 use std::fmt::{Display, Formatter};
 
 #[derive(Default)]

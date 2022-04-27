@@ -55,14 +55,14 @@ mod tests {
         "#;
         Spi::run(definition);
 
-        let retval = Spi::get_one(
+        let retval: Option<Vec<Option<String>>> = Spi::get_one(
             r#"
             SELECT accepts_and_returns_text_list(ARRAY['Nami', 'Brandy']);
         "#,
         );
         pgx::warning!("retval from spi: {:?}", retval);
 
-        assert_eq!(retval, Some(vec![Some("Nami"), Some("Brandy")]));
+        assert_eq!(retval, Some(vec![Some("Nami".to_string()), Some("Brandy".to_string())]));
     }
 
     #[pg_test]

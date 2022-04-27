@@ -1,7 +1,7 @@
 use crate::{plrust::crate_name_and_path, plrust_store::PlRustStore, wasm_executor::WasmExecutor, guest};
 use eyre::eyre;
 use pgx::{
-    pg_getarg, pg_getarg_datum,
+    pg_getarg,
     pg_sys::{self, heap_tuple_get_struct},
     FromDatum, IntoDatum, PgBox, PgBuiltInOids, PgOid,
 };
@@ -13,6 +13,7 @@ pub(crate) struct GuestWithOids {
     store: Store<PlRustStore>,
     guest: crate::guest::Guest<PlRustStore>,
     arg_oids: Vec<PgOid>,
+    #[allow(dead_code)] // This is mostly here for debugging.
     ret_oid: PgOid,
     strict: bool,
 }
@@ -101,8 +102,8 @@ impl GuestWithOids {
                 .enumerate()
                 .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo).expect("Got null arg in strict entry function"))
                 .collect::<Vec<_>>();
-            pgx::info!("args: {:?}", args);
             let params: Vec<_> = args.iter().map(|v| v.as_param()).collect();
+            pgx::info!("params: {:?}", args);
             let retval = self.guest.strict_entry(&mut self.store, params.as_slice())??;
             pgx::info!("retval: {:?}", retval);
             use crate::guest::ValueResult;
@@ -117,15 +118,15 @@ impl GuestWithOids {
                 ValueResult::BoolArray(v) => v.into_datum().unwrap(),
             })
         } else {
-            let arg_datums = self
+            let args = self
                 .arg_oids
                 .iter()
                 .enumerate()
-                .map(|(idx, _arg_oid)| pg_getarg_datum(*fcinfo, idx))
+                .map(|(idx, arg_oid)| build_arg(idx, *arg_oid, fcinfo).expect("Got null arg in strict entry function"))
                 .collect::<Vec<_>>();
-            let args = Vec::with_capacity(self.arg_oids.len());
-            pgx::info!("args: {:?}", args);
-            let retval = self.guest.entry(&mut self.store, &args)??;
+            let params: Vec<_> = args.iter().map(|v| Some(v.as_param())).collect();
+            pgx::info!("params: {:?}", args);
+            let retval = self.guest.entry(&mut self.store, params.as_slice())??;
             pgx::info!("retval: {:?}", retval);
             use crate::guest::ValueResult;
             Ok(match retval {
@@ -148,11 +149,10 @@ fn build_arg<'a>(
     oid: PgOid,
     fcinfo: &'a pg_sys::FunctionCallInfo,
 ) -> Option<OwnedValueParam<'a>> {
-    use crate::guest::ValueParam;
     match oid {
         PgOid::BuiltIn(builtin) => match builtin {
             PgBuiltInOids::TEXTOID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::String),
-            PgBuiltInOids::TEXTARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<&str>>| OwnedValueParam::StringArray(v)),
+            PgBuiltInOids::TEXTARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<String>>| OwnedValueParam::StringArray(v, once_cell::sync::OnceCell::default())),
             PgBuiltInOids::BOOLOID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::Bool),
             PgBuiltInOids::BOOLARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<bool>>| OwnedValueParam::BoolArray(v)),
             PgBuiltInOids::INT8OID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::I64),
@@ -169,7 +169,7 @@ fn build_arg<'a>(
 #[derive(Debug)]
 enum OwnedValueParam<'a> {
     String(&'a str),
-    StringArray(Vec<Option<&'a str>>),
+    StringArray(Vec<Option<String>>, once_cell::sync::OnceCell<Vec<Option<&'a str>>>),
     I32(i32),
     I32Array(Vec<Option<i32>>),
     I64(i64),
@@ -182,7 +182,16 @@ impl<'a> OwnedValueParam<'a> {
     fn as_param(&'a self) -> guest::ValueParam<'a> {
         match self {
             OwnedValueParam::String(v) => guest::ValueParam::String(v),
-            OwnedValueParam::StringArray(v) => guest::ValueParam::StringArray(v),
+            OwnedValueParam::StringArray(owned, cell) => {
+                let param = cell.get_or_init(|| {
+                    let mut str_refs = Vec::with_capacity(owned.len());
+                    for val in owned {
+                        str_refs.push(val.as_ref().map(|v| v.as_str()))
+                    }
+                    str_refs
+                });
+                guest::ValueParam::StringArray(param)
+            },
             OwnedValueParam::I32(v) => guest::ValueParam::I32(*v),
             OwnedValueParam::I32Array(v) => guest::ValueParam::I32Array(v),
             OwnedValueParam::I64(v) => guest::ValueParam::I64(*v),
