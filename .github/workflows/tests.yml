@@ -154,7 +154,7 @@ jobs:
       run: sccache --show-stats
 
     - name: Install cargo-pgx
-      run: cargo install cargo-pgx --version $CARGO_PGX_VERSION --release --force
+      run: cargo install cargo-pgx --version $CARGO_PGX_VERSION --force
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER /usr/lib/postgresql/$PG_VER/bin/pg_config
