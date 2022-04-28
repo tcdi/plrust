@@ -93,7 +93,7 @@ jobs:
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         cat $GITHUB_ENV
 
-        cho "----- Installing yq so .toml files can be parsed and queried -----"
+        echo "----- Installing yq so .toml files can be parsed and queried -----"
         pip3 install yq
         echo ""
 
