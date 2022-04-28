@@ -131,7 +131,7 @@ jobs:
       run: rustup target install wasm32-wasi
 
     - name: Install cargo-pgx
-    continue-on-error: true # We might have it.
+      continue-on-error: true # We might have it.
       run: cargo install cargo-pgx --version $CARGO_PGX_VERSION
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
