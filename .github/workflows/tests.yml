@@ -25,6 +25,7 @@ jobs:
       matrix:
         version: ["postgres-11", "postgres-12", "postgres-13", "postgres-14"]
         os: ["ubuntu-20.04", "macos-11"]
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v2
@@ -91,6 +92,10 @@ jobs:
         PG_VER=$(pg_config --version | awk '{split($2,a,"."); print a[1]}')
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         cat $GITHUB_ENV
+
+        cho "----- Installing yq so .toml files can be parsed and queried -----"
+        pip3 install yq
+        echo ""
 
         echo "----- Setting up RUSTFLAGS found in .cargo/config -----"
         echo "RUSTFLAGS=$RUSTFLAGS $(tomlq --raw-output '.build.rustflags | join(" ")' .cargo/config)" >> $GITHUB_ENV
