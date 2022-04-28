@@ -127,6 +127,9 @@ jobs:
           target/
         key: plrust-cache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
 
+    - name: Add wasm32-wasi target
+      run: rustup target install wasm32-wasi
+
     - name: Install cargo-pgx
       run: cargo install cargo-pgx --version $CARGO_PGX_VERSION --force
 
