@@ -4,13 +4,12 @@
 mod tests {
     use pgx::*;
 
-
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
         r#"   
         CREATE TABLE contributors_pets (
-            id serial8 not null primary key,
-            name text
+            id BIGINT NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            name TEXT NOT NULL
         );
         INSERT INTO contributors_pets (name) VALUES ('Brandy');
         INSERT INTO contributors_pets (name) VALUES ('Nami');
