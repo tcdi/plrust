@@ -138,7 +138,8 @@ jobs:
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Run PL/Rust tests
-      run: |
+      run: | # Force a fresh pl/Rust for any possibly stale `include_dir` cache.
+        touch plrust/src/lib.rs
         cargo test \
           --features "pg$PG_VER" --no-default-features \
           --workspace
