@@ -1,4 +1,4 @@
-use crate::logging::{PgxWarningWriter, PgxLogWriter};
+use crate::logging::PgxGuestWriter;
 use wasi_common::pipe::WritePipe;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 
@@ -12,8 +12,8 @@ impl Default for PlRustStore {
     fn default() -> Self {
         Self {
             wasi: WasiCtxBuilder::new()
-                .stdout(Box::new(WritePipe::new(PgxLogWriter::<false>)))
-                .stderr(Box::new(WritePipe::new(PgxWarningWriter::<false>)))
+                .stdout(Box::new(WritePipe::new(PgxGuestWriter::<false>)))
+                .stderr(Box::new(WritePipe::new(PgxGuestWriter::<true>)))
                 .build(),
             guest_data: crate::guest::GuestData::default(),
             host: crate::interface::Host::default(),
