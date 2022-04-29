@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
+static PLRUST_TRACING_DIRECTIVES: GucSetting<Option<&'static str>> = GucSetting::new(Some("warning"));
 static PLRUST_CLEANUP: GucSetting<bool> = GucSetting::new(true);
 
 pub(crate) fn init() {
@@ -20,6 +21,13 @@ pub(crate) fn init() {
         "The directory where pl/rust will build functions with cargo",
         "The directory where pl/rust will build functions with cargo",
         &PLRUST_WORK_DIR,
+        GucContext::Sighup,
+    );
+    GucRegistry::define_string_guc(
+        "plrust.tracing_directives",
+        "The tracing directives to use while running pl/rust",
+        "The tracing directives to use while running pl/rust. It should be composed of directives (separated by commas) as specified in https://docs.rs/tracing-subscriber/0.3.11/tracing_subscriber/filter/struct.EnvFilter.html#directives",
+        &PLRUST_TRACING_DIRECTIVES,
         GucContext::Sighup,
     );
     GucRegistry::define_bool_guc(
@@ -50,4 +58,8 @@ pub(crate) fn work_dir() -> PathBuf {
 
 pub(crate) fn cleanup() -> bool {
     PLRUST_CLEANUP.get()
+}
+
+pub(crate) fn tracing_filters() -> String {
+    PLRUST_TRACING_DIRECTIVES.get().to_owned().expect("Tracing directives not set (should be defaulted)")
 }

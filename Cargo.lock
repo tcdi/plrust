@@ -1760,6 +1760,8 @@ dependencies = [
  "tempdir",
  "thiserror",
  "toml",
+ "tracing",
+ "tracing-subscriber",
  "wasi-common",
  "wasmtime",
  "wasmtime-wasi",

@@ -1,13 +1,16 @@
 use std::io::Write;
 
-pub(crate) struct StdoutLogger;
+pub(crate) struct PgxLogWriter<const TRIM: bool = true>;
 
-impl Write for StdoutLogger {
+impl<const TRIM: bool> Write for PgxLogWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
-        pgx::log!(
-            "{}",
-            std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8")
-        );
+        let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
+        let content = if TRIM {
+            content.trim_start()
+        } else {
+            content
+        };
+        pgx::elog(pgx::log::PgLogLevel::LOG, content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -15,17 +18,39 @@ impl Write for StdoutLogger {
     }
 }
 
-pub(crate) struct StderrLogger;
+pub(crate) struct PgxNoticeWriter<const TRIM: bool = true>;
 
-impl Write for StderrLogger {
+impl<const TRIM: bool> Write for PgxNoticeWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
-        pgx::warning!(
-            "{}",
-            std::str::from_utf8(data).expect("Could not interpret stderr as UTF-8")
-        );
+        let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
+        let content = if TRIM {
+            content.trim_start()
+        } else {
+            content
+        };
+        pgx::elog(pgx::log::PgLogLevel::NOTICE, content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
         Ok(())
     }
 }
+
+pub(crate) struct PgxWarningWriter<const TRIM: bool = true>;
+
+impl<const TRIM: bool> Write for PgxWarningWriter<TRIM> {
+    fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
+        let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
+        let content = if TRIM {
+            content.trim_start()
+        } else {
+            content
+        };
+        pgx::elog(pgx::log::PgLogLevel::WARNING, content);
+        Ok(data.len())
+    }
+    fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
+        Ok(())
+    }
+}
+

@@ -5,27 +5,27 @@ use std::fmt::{Display, Formatter};
 macro_rules! map_value_type {
     ($returns:expr, $operation:expr) => {
         match $returns {
-            host::ValueType::String => {
+            host::ValueType::Text => {
                 let s: Option<String> = $operation;
                 Ok(s.map(|i| i.into()))
             },
-            host::ValueType::StringArray => {
+            host::ValueType::TextArray => {
                 let s: Option<Vec<Option<String>>> = $operation;
                 Ok(s.map(|i| i.into()))
             },
-            host::ValueType::I64 => {
+            host::ValueType::Bigint => {
                 let s: Option<i64> = $operation;
                 Ok(s.map(|i| i.into()))
             },
-            host::ValueType::I64Array => {
+            host::ValueType::BigintArray => {
                 let s: Option<Vec<Option<i64>>> = $operation;
                 Ok(s.map(|i| i.into()))
             },
-            host::ValueType::I32 => {
+            host::ValueType::Int => {
                 let s: Option<i32> = $operation;
                 Ok(s.map(|i| i.into()))
             },
-            host::ValueType::I32Array => {
+            host::ValueType::IntArray => {
                 let s: Option<Vec<Option<i32>>> = $operation;
                 Ok(s.map(|i| i.into()))
             },
@@ -79,22 +79,22 @@ impl host::Host for Host {
 impl<'a> host::ValueParam<'a> {
     fn into_oid_and_datum(self) -> (PgOid, Option<Datum>) {
         match self {
-            host::ValueParam::String(s) => {
+            host::ValueParam::Text(s) => {
                 (pgx::pg_sys::PgBuiltInOids::TEXTOID.oid(), s.into_datum())
             },
-            host::ValueParam::StringArray(s) => {
+            host::ValueParam::TextArray(s) => {
                 (pgx::pg_sys::PgBuiltInOids::TEXTARRAYOID.oid(), s.into_datum())
             },
-            host::ValueParam::I32(s) => {
+            host::ValueParam::Int(s) => {
                 (pgx::pg_sys::PgBuiltInOids::INT4OID.oid(), s.into_datum())
             },
-            host::ValueParam::I32Array(s) => {
+            host::ValueParam::IntArray(s) => {
                 (pgx::pg_sys::PgBuiltInOids::INT4ARRAYOID.oid(), s.into_datum())
             },
-            host::ValueParam::I64(s) => {
+            host::ValueParam::Bigint(s) => {
                 (pgx::pg_sys::PgBuiltInOids::INT8OID.oid(), s.into_datum())
             },
-            host::ValueParam::I64Array(s) => {
+            host::ValueParam::BigintArray(s) => {
                 (pgx::pg_sys::PgBuiltInOids::INT8ARRAYOID.oid(), s.into_datum())
             },
             host::ValueParam::Bool(s) => {
@@ -116,12 +116,12 @@ impl<'a> host::ValueParam<'a> {
 impl Display for host::ValueType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
-            host::ValueType::String => write!(f, "String"),
-            host::ValueType::StringArray => write!(f, "Vec<String>"),
-            host::ValueType::I32 => write!(f, "i32"),
-            host::ValueType::I32Array => write!(f, "Vec<i32>"),
-            host::ValueType::I64 => write!(f, "i64"),
-            host::ValueType::I64Array => write!(f, "Vec<i64>"),
+            host::ValueType::Text => write!(f, "String"),
+            host::ValueType::TextArray => write!(f, "Vec<String>"),
+            host::ValueType::Int => write!(f, "i32"),
+            host::ValueType::IntArray => write!(f, "Vec<i32>"),
+            host::ValueType::Bigint => write!(f, "i64"),
+            host::ValueType::BigintArray => write!(f, "Vec<i64>"),
             host::ValueType::Bool => write!(f, "bool"),
             host::ValueType::BoolArray => write!(f, "Vec<bool>"),
             host::ValueType::Bytea => write!(f, "Vec<u8>"),
@@ -133,12 +133,12 @@ impl Display for host::ValueType {
 impl Display for guest::ValueType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
-            guest::ValueType::String => write!(f, "String"),
-            guest::ValueType::StringArray => write!(f, "Vec<String>"),
-            guest::ValueType::I32 => write!(f, "i32"),
-            guest::ValueType::I32Array => write!(f, "Vec<i32>"),
-            guest::ValueType::I64 => write!(f, "i64"),
-            guest::ValueType::I64Array => write!(f, "Vec<i64>"),
+            guest::ValueType::Text => write!(f, "String"),
+            guest::ValueType::TextArray => write!(f, "Vec<String>"),
+            guest::ValueType::Int => write!(f, "i32"),
+            guest::ValueType::IntArray => write!(f, "Vec<i32>"),
+            guest::ValueType::Bigint => write!(f, "i64"),
+            guest::ValueType::BigintArray => write!(f, "Vec<i64>"),
             guest::ValueType::Bool => write!(f, "bool"),
             guest::ValueType::BoolArray => write!(f, "Vec<bool>"),
             guest::ValueType::Bytea => write!(f, "Vec<u8>"),
@@ -149,37 +149,37 @@ impl Display for guest::ValueType {
 
 impl From<String> for host::ValueResult {
     fn from(s: String) -> Self {
-        host::ValueResult::String(s)
+        host::ValueResult::Text(s)
     }
 }
 
 impl From<Vec<Option<String>>> for host::ValueResult {
     fn from(s: Vec<Option<String>>) -> Self {
-        host::ValueResult::StringArray(s)
+        host::ValueResult::TextArray(s)
     }
 }
 
 impl From<i64> for host::ValueResult {
     fn from(s: i64) -> Self {
-        host::ValueResult::I64(s)
+        host::ValueResult::Bigint(s)
     }
 }
 
 impl From<Vec<Option<i64>>> for host::ValueResult {
     fn from(s: Vec<Option<i64>>) -> Self {
-        host::ValueResult::I64Array(s)
+        host::ValueResult::BigintArray(s)
     }
 }
 
 impl From<i32> for host::ValueResult {
     fn from(s: i32) -> Self {
-        host::ValueResult::I32(s)
+        host::ValueResult::Int(s)
     }
 }
 
 impl From<Vec<Option<i32>>> for host::ValueResult {
     fn from(s: Vec<Option<i32>>) -> Self {
-        host::ValueResult::I32Array(s)
+        host::ValueResult::IntArray(s)
     }
 }
 

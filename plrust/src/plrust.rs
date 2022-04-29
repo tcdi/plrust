@@ -64,6 +64,7 @@ pub(crate) fn init() {
 /// Executes the wasm related to a given `fn_oid`.
 ///
 /// If this instance of the extension hasn't yet instantiated it, do that first.
+#[tracing::instrument]
 pub(crate) fn execute(
     fn_oid: &pg_sys::Oid,
     fcinfo: &pg_sys::FunctionCallInfo,
@@ -91,6 +92,7 @@ pub(crate) fn unload(fn_oid: &pg_sys::Oid) -> eyre::Result<()> {
 }
 
 /// Compiles the wasm related to a given `fn_oid` and retains the produced artifact in the `gucs::work_dir`.
+#[tracing::instrument]
 pub(crate) fn compile(fn_oid: pg_sys::Oid) -> eyre::Result<PathBuf> {
     let work_dir = gucs::work_dir();
 
@@ -173,6 +175,7 @@ pub(crate) fn compile(fn_oid: pg_sys::Oid) -> eyre::Result<PathBuf> {
     result
 }
 
+#[tracing::instrument(skip_all, fields(%fn_oid))]
 fn create_function_crate(
     fn_oid: pg_sys::Oid,
     crate_dir: &PathBuf,
@@ -247,6 +250,7 @@ pub(crate) fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     (crate_name, crate_dir)
 }
 
+#[tracing::instrument(skip_all, fields(%fn_oid))]
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     code: &str,
@@ -372,6 +376,7 @@ fn generate_function_source(
     Ok(items)
 }
 
+#[tracing::instrument(skip_all, fields(%fn_oid))]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
 ) -> (
@@ -508,6 +513,7 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     (deps_block, code_block)
 }
 
+#[tracing::instrument(skip_all, fields(type_oid = type_oid.value()))]
 fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 

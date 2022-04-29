@@ -5,8 +5,6 @@ use std::{
     process::ExitStatus,
 };
 
-use proc_macro2::TokenStream;
-
 #[derive(thiserror::Error, Debug)]
 pub enum PlRustError {
     #[error("WASM guest error: {0}")]

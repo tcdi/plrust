@@ -42,6 +42,8 @@ include_dir = "0.7"
 cargo_toml = "0.11"
 toml = "0.5"
 once_cell = "1"
+tracing = { version = "0.1", features = [ "valuable" ] }
+tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
 
 [dev-dependencies]
 pgx-tests = "0.4.3"

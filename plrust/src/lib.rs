@@ -41,6 +41,23 @@ fn _PG_init() {
         .unwrap();
 
     gucs::init();
+
+    use tracing_subscriber::{
+        layer::SubscriberExt,
+        util::SubscriberInitExt,
+        EnvFilter,
+    };
+    let filter_layer = EnvFilter::try_new(gucs::tracing_filters()).expect("Invalid tracing filters set");
+    let format_layer = tracing_subscriber::fmt::Layer::new()
+        .with_ansi(false)
+        .with_writer(|| logging::PgxNoticeWriter::<true>)
+        .without_time()
+        .pretty();
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(format_layer)
+        .try_init().expect("Could not initialize tracing registry");
+
     plrust::init();
 }
 
@@ -50,6 +67,7 @@ fn _PG_init() {
 CREATE OR REPLACE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';\
 ")]
+#[tracing::instrument]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     match plrust_call_handler_inner(fcinfo) {
         Ok(datum) => datum,
@@ -72,6 +90,7 @@ unsafe fn plrust_call_handler_inner(
 }
 
 #[pg_extern]
+#[tracing::instrument]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     match plrust_validator_inner(fn_oid, fcinfo) {
         Ok(()) => (),
@@ -84,6 +103,9 @@ unsafe fn plrust_validator_inner(
     fn_oid: pg_sys::Oid,
     fcinfo: pg_sys::FunctionCallInfo,
 ) -> eyre::Result<()> {
+    tracing::error!("Oh no!!!!");
+    tracing::info!("Oh yes?!?!");
+    
     let fcinfo = PgBox::from_pg(fcinfo);
     let flinfo = PgBox::from_pg(fcinfo.flinfo);
     if !pg_sys::CheckFunctionValidatorAccess(
