@@ -166,7 +166,9 @@ pub(crate) fn compile(fn_oid: pg_sys::Oid) -> eyre::Result<PathBuf> {
         }
     };
 
-    std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
+    if gucs::cleanup() {
+        std::fs::remove_dir_all(&crate_dir).map_err(|e| PlRustError::Cleanup(crate_dir.into(), e))?;
+    }
 
     result
 }

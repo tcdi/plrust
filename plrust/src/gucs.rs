@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
+static PLRUST_CLEANUP: GucSetting<bool> = GucSetting::new(true);
 
 pub(crate) fn init() {
     GucRegistry::define_string_guc(
@@ -19,6 +20,13 @@ pub(crate) fn init() {
         "The directory where pl/rust will build functions with cargo",
         "The directory where pl/rust will build functions with cargo",
         &PLRUST_WORK_DIR,
+        GucContext::Sighup,
+    );
+    GucRegistry::define_bool_guc(
+        "plrust.cleanup",
+        "If pl/rust should cleanup generated create code",
+        "If pl/rust should cleanup generated create code. By default it will remove the code after compilation",
+        &PLRUST_CLEANUP,
         GucContext::Sighup,
     );
 }
@@ -38,4 +46,8 @@ pub(crate) fn work_dir() -> PathBuf {
     }
 
     work_dir
+}
+
+pub(crate) fn cleanup() -> bool {
+    PLRUST_CLEANUP.get()
 }
