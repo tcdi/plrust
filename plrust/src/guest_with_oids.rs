@@ -116,6 +116,8 @@ impl GuestWithOids {
                 ValueResult::I64Array(v) => v.into_datum().unwrap(),
                 ValueResult::Bool(v) => v.into_datum().unwrap(),
                 ValueResult::BoolArray(v) => v.into_datum().unwrap(),
+                ValueResult::Bytea(v) => v.into_datum().unwrap(),
+                ValueResult::ByteaArray(v) => v.into_datum().unwrap(),
             })
         } else {
             let args = self
@@ -138,6 +140,8 @@ impl GuestWithOids {
                 Some(ValueResult::I64Array(v)) => v.into_datum().unwrap(),
                 Some(ValueResult::Bool(v)) => v.into_datum().unwrap(),
                 Some(ValueResult::BoolArray(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::Bytea(v)) => v.into_datum().unwrap(),
+                Some(ValueResult::ByteaArray(v)) => v.into_datum().unwrap(),
                 None => Option::<()>::None.into_datum().unwrap(),
             })
         }
@@ -159,6 +163,8 @@ fn build_arg<'a>(
             PgBuiltInOids::INT8ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i64>>| OwnedValueParam::I64Array(v)),
             PgBuiltInOids::INT4OID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::I32),
             PgBuiltInOids::INT4ARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<i32>>| OwnedValueParam::I32Array(v)),
+            PgBuiltInOids::BYTEAOID => pg_getarg(*fcinfo, idx).map(OwnedValueParam::Bytea),
+            PgBuiltInOids::BYTEAARRAYOID => pg_getarg(*fcinfo, idx).map(|v: Vec<Option<Vec<u8>>>| OwnedValueParam::ByteaArray(v, once_cell::sync::OnceCell::default())),
             _ => todo!(),
         },
         _ => todo!(),
@@ -176,6 +182,8 @@ enum OwnedValueParam<'a> {
     I64Array(Vec<Option<i64>>),
     Bool(bool),
     BoolArray(Vec<Option<bool>>),
+    Bytea(Vec<u8>),
+    ByteaArray(Vec<Option<Vec<u8>>>, once_cell::sync::OnceCell<Vec<Option<&'a [u8]>>>),
 }
 
 impl<'a> OwnedValueParam<'a> {
@@ -198,6 +206,17 @@ impl<'a> OwnedValueParam<'a> {
             OwnedValueParam::I64Array(v) => guest::ValueParam::I64Array(v),
             OwnedValueParam::Bool(v) => guest::ValueParam::Bool(*v),
             OwnedValueParam::BoolArray(v) => guest::ValueParam::BoolArray(v),
+            OwnedValueParam::Bytea(v) => guest::ValueParam::Bytea(v),
+            OwnedValueParam::ByteaArray(owned, cell) => {
+                let param = cell.get_or_init(|| {
+                    let mut refs = Vec::with_capacity(owned.len());
+                    for val in owned {
+                        refs.push(val.as_ref().map(|v| v.as_slice()))
+                    }
+                    refs
+                });
+                guest::ValueParam::ByteaArray(param.as_slice())
+            },
         }
      }
 }

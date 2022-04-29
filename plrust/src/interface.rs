@@ -8,35 +8,43 @@ macro_rules! map_value_type {
             host::ValueType::String => {
                 let s: Option<String> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::StringArray => {
                 let s: Option<Vec<Option<String>>> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::I64 => {
                 let s: Option<i64> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::I64Array => {
                 let s: Option<Vec<Option<i64>>> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::I32 => {
                 let s: Option<i32> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::I32Array => {
                 let s: Option<Vec<Option<i32>>> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::Bool => {
                 let s: Option<bool> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
             host::ValueType::BoolArray => {
                 let s: Option<Vec<Option<bool>>> = $operation;
                 Ok(s.map(|i| i.into()))
-            }
+            },
+            host::ValueType::Bytea => {
+                let s: Option<Vec<u8>> = $operation;
+                Ok(s.map(|i| i.into()))
+            },
+            host::ValueType::ByteaArray => {
+                let s: Option<Vec<Option<Vec<u8>>>> = $operation;
+                Ok(s.map(|i| i.into()))
+            },
         }
     };
 }
@@ -95,6 +103,12 @@ impl<'a> host::ValueParam<'a> {
             host::ValueParam::BoolArray(s) => {
                 (pgx::pg_sys::PgBuiltInOids::BOOLARRAYOID.oid(), s.into_datum())
             },
+            host::ValueParam::Bytea(s) => {
+                (pgx::pg_sys::PgBuiltInOids::BYTEAOID.oid(), s.into_datum())
+            },
+            host::ValueParam::ByteaArray(s) => {
+                (pgx::pg_sys::PgBuiltInOids::BYTEAARRAYOID.oid(), s.into_datum())
+            },
         }
     }
 }
@@ -110,6 +124,8 @@ impl Display for host::ValueType {
             host::ValueType::I64Array => write!(f, "Vec<i64>"),
             host::ValueType::Bool => write!(f, "bool"),
             host::ValueType::BoolArray => write!(f, "Vec<bool>"),
+            host::ValueType::Bytea => write!(f, "Vec<u8>"),
+            host::ValueType::ByteaArray => write!(f, "Vec<Vec<u8>>"),
         }
     }
 }
@@ -125,6 +141,8 @@ impl Display for guest::ValueType {
             guest::ValueType::I64Array => write!(f, "Vec<i64>"),
             guest::ValueType::Bool => write!(f, "bool"),
             guest::ValueType::BoolArray => write!(f, "Vec<bool>"),
+            guest::ValueType::Bytea => write!(f, "Vec<u8>"),
+            guest::ValueType::ByteaArray => write!(f, "Vec<Vec<u8>>"),
         }
     }
 }
@@ -174,5 +192,17 @@ impl From<bool> for host::ValueResult {
 impl From<Vec<Option<bool>>> for host::ValueResult {
     fn from(s: Vec<Option<bool>>) -> Self {
         host::ValueResult::BoolArray(s)
+    }
+}
+
+impl From<Vec<u8>> for host::ValueResult {
+    fn from(s: Vec<u8>) -> Self {
+        host::ValueResult::Bytea(s)
+    }
+}
+
+impl From<Vec<Option<Vec<u8>>>> for host::ValueResult {
+    fn from(s: Vec<Option<Vec<u8>>>) -> Self {
+        host::ValueResult::ByteaArray(s)
     }
 }

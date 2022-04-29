@@ -128,6 +128,38 @@ impl From<Vec<Option<bool>>> for Value {
     }
 }
 
+impl TryFrom<Value> for Vec<u8> {
+    type Error = crate::guest::Error;
+    fn try_from(v: Value) -> Result<Vec<u8>, Self::Error> {
+        match v {
+            Value::Bytea(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::Bytea)),
+        }
+    }
+}
+
+impl From<Vec<u8>> for Value {
+    fn from(s: Vec<u8>) -> Self {
+        Value::Bytea(s)
+    }
+}
+
+impl TryFrom<Value> for Vec<Option<Vec<u8>>> {
+    type Error = crate::guest::Error;
+    fn try_from(v: Value) -> Result<Vec<Option<Vec<u8>>>, Self::Error> {
+        match v {
+            Value::ByteaArray(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::ByteaArray)),
+        }
+    }
+}
+
+impl From<Vec<Option<Vec<u8>>>> for Value {
+    fn from(s: Vec<Option<Vec<u8>>>) -> Self {
+        Value::ByteaArray(s)
+    }
+}
+
 impl From<interface::ValueResult> for Value {
     fn from(v: interface::ValueResult) -> Self {
         match v {
@@ -139,6 +171,8 @@ impl From<interface::ValueResult> for Value {
             interface::ValueResult::I32Array(i) => Value::I32Array(i),
             interface::ValueResult::Bool(i) => Value::Bool(i),
             interface::ValueResult::BoolArray(i) => Value::BoolArray(i),
+            interface::ValueResult::Bytea(i) => Value::Bytea(i),
+            interface::ValueResult::ByteaArray(i) => Value::ByteaArray(i),
         }
     }
 }
@@ -154,6 +188,8 @@ impl<'a> From<interface::ValueParam<'a>> for Value {
             interface::ValueParam::I32Array(i) => Value::I32Array(i.to_vec()),
             interface::ValueParam::Bool(i) => Value::Bool(i),
             interface::ValueParam::BoolArray(i) => Value::BoolArray(i.to_vec()),
+            interface::ValueParam::Bytea(i) => Value::Bytea(i.to_vec()),
+            interface::ValueParam::ByteaArray(i) => Value::ByteaArray(i.into_iter().map(|opt_v| opt_v.map(|v| v.to_vec())).collect()),
         }
     }
 }
@@ -169,6 +205,8 @@ impl From<Value> for interface::ValueResult {
             Value::I32Array(i) => interface::ValueResult::I32Array(i),
             Value::Bool(i) => interface::ValueResult::Bool(i),
             Value::BoolArray(i) => interface::ValueResult::BoolArray(i),
+            Value::Bytea(i) => interface::ValueResult::Bytea(i),
+            Value::ByteaArray(i) => interface::ValueResult::ByteaArray(i),
         }
     }
 }

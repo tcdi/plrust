@@ -11,6 +11,8 @@ impl From<interface::ValueType> for ValueType {
             interface::ValueType::I32Array => ValueType::I32Array,
             interface::ValueType::Bool => ValueType::Bool,
             interface::ValueType::BoolArray => ValueType::BoolArray,
+            interface::ValueType::Bytea => ValueType::Bytea,
+            interface::ValueType::ByteaArray => ValueType::ByteaArray,
         }
     }
 }
@@ -26,6 +28,8 @@ impl From<ValueType> for interface::ValueType {
             ValueType::I32Array => interface::ValueType::I32Array,
             ValueType::Bool => interface::ValueType::Bool,
             ValueType::BoolArray => interface::ValueType::BoolArray,
+            ValueType::Bytea => interface::ValueType::Bytea,
+            ValueType::ByteaArray => interface::ValueType::ByteaArray,
         }
     }
 }

@@ -5,6 +5,8 @@ use std::{
     process::ExitStatus,
 };
 
+use proc_macro2::TokenStream;
+
 #[derive(thiserror::Error, Debug)]
 pub enum PlRustError {
     #[error("WASM guest error: {0}")]
@@ -33,6 +35,10 @@ pub enum PlRustError {
     FnOidWasNone,
     #[error("pg_getarg on fn_oid {0} at index {1} was None")]
     PgGetArgWasNone(pgx::pg_sys::Oid, u64),
+    #[error("OID {0} could not be mapped to a Rust type")]
+    NoOidToRustMapping(pgx::pg_sys::Oid),
+    #[error("Mapped OID {0} to `{1}`, but was not parsable by `syn`: {2}")]
+    ParsingRustMapping(pgx::pg_sys::Oid, String, syn::Error)
 }
 
 // Guest

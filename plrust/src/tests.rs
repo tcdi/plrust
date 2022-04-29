@@ -193,6 +193,48 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    fn accepts_and_returns_bytea() {
+        let definition = r#"
+            CREATE FUNCTION accepts_and_returns_bytea(input BYTEA) RETURNS BYTEA
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<Vec<u8>> = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_bytea('\000'::bytea);
+        "#,
+        );
+        assert_eq!(retval, Some(vec![0x00]));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn accepts_and_returns_bytea_list() {
+        let definition = r#"
+            CREATE FUNCTION accepts_and_returns_bytea_list(input BYTEA[]) RETURNS BYTEA[]
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(input)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<Vec<Option<Vec<u8>>>> = Spi::get_one(
+            r#"
+            SELECT accepts_and_returns_bytea_list(ARRAY['\000'::bytea, '\001'::bytea]);
+        "#,
+        );
+        assert_eq!(retval, Some(vec![Some(vec![0x00]), Some(vec![0x01])]));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     fn accepts_multiple_args() {
         let definition = r#"
             CREATE FUNCTION accepts_multiple_args(pet TEXT, food TEXT, times INT) RETURNS TEXT

@@ -7,6 +7,8 @@ variant value {
     %i64-array(list<option<s64>>),
     %bool(bool),
     %bool-array(list<option<bool>>),
+    %bytea(list<u8>),
+    %bytea-array(list<option<list<u8>>>),
 }
 
 enum value-type {
@@ -18,6 +20,8 @@ enum value-type {
     %i64-array,
     %bool,
     %bool-array,
+    %bytea,
+    %bytea-array,
 }
 
 variant error {

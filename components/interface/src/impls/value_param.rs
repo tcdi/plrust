@@ -63,3 +63,35 @@ impl<'a> TryFrom<ValueParam<'a>> for bool {
         }
     }
 }
+
+impl<'a> From<&'a [u8]> for ValueParam<'a> {
+    fn from(s: &'a [u8]) -> Self {
+        ValueParam::Bytea(s)
+    }
+}
+
+impl<'a> TryFrom<ValueParam<'a>> for &'a [u8] {
+    type Error = crate::host::Error;
+    fn try_from(v: ValueParam<'a>) -> Result<&'a [u8], Self::Error> {
+        match v {
+            ValueParam::Bytea(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::Bytea)),
+        }
+    }
+}
+
+impl<'a> From<&'a [Option<&'a [u8]>]> for ValueParam<'a> {
+    fn from(s: &'a [Option<&'a [u8]>]) -> Self {
+        ValueParam::ByteaArray(s)
+    }
+}
+
+impl<'a> TryFrom<ValueParam<'a>> for &'a [Option<&'a [u8]>] {
+    type Error = crate::host::Error;
+    fn try_from(v: ValueParam<'a>) -> Result<&'a [Option<&'a [u8]>], Self::Error> {
+        match v {
+            ValueParam::ByteaArray(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::ByteaArray)),
+        }
+    }
+}
