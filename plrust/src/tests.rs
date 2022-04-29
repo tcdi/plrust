@@ -2,7 +2,6 @@
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
-    use super::*;
     use pgx::*;
 
 
@@ -25,7 +24,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_text() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_text(input TEXT) RETURNS TEXT
+            CREATE FUNCTION accepts_and_returns_text(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -46,7 +45,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_text_list() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_text_list(input TEXT[]) RETURNS TEXT[]
+            CREATE FUNCTION accepts_and_returns_text_list(input TEXT[]) RETURNS TEXT[]
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -69,7 +68,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_int() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_int(input INT) RETURNS INT
+            CREATE FUNCTION accepts_and_returns_int(input INT) RETURNS INT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -90,7 +89,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_int_list() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_int_list(input INT[]) RETURNS INT[]
+            CREATE FUNCTION accepts_and_returns_int_list(input INT[]) RETURNS INT[]
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -112,7 +111,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_bigint() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_bigint(input BIGINT) RETURNS BIGINT
+            CREATE FUNCTION accepts_and_returns_bigint(input BIGINT) RETURNS BIGINT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -133,7 +132,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_bigint_list() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_bigint_list(input BIGINT[]) RETURNS BIGINT[]
+            CREATE FUNCTION accepts_and_returns_bigint_list(input BIGINT[]) RETURNS BIGINT[]
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -154,7 +153,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_bool() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_bool(input BOOL) RETURNS BOOL
+            CREATE FUNCTION accepts_and_returns_bool(input BOOL) RETURNS BOOL
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -175,7 +174,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_and_returns_bool_list() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_and_returns_bool_list(input BOOL[]) RETURNS BOOL[]
+            CREATE FUNCTION accepts_and_returns_bool_list(input BOOL[]) RETURNS BOOL[]
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -196,7 +195,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn accepts_multiple_args() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION accepts_multiple_args(pet TEXT, food TEXT, times INT) RETURNS TEXT
+            CREATE FUNCTION accepts_multiple_args(pet TEXT, food TEXT, times INT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -216,36 +215,11 @@ mod tests {
         assert_eq!(retval, Some("Nami eats duck 2 times."));
     }
 
-    // #[pg_test]
-    // #[search_path(@extschema@)]
-    // fn test_lists() {
-    //     let definition = r#"
-    //         CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
-    //             IMMUTABLE STRICT
-    //             LANGUAGE PLRUST AS
-    //         $$
-    //             Ok(a.into_iter().map(|v| v.unwrap_or_default()).sum())
-    //         $$;
-    //     "#;
-    //     Spi::run(definition);
-
-    //     let retval = Spi::get_one_with_args(
-    //         r#"
-    //         SELECT sum_array($1);
-    //     "#,
-    //         vec![(
-    //             PgBuiltInOids::INT4ARRAYOID.oid(),
-    //             vec![1, 2, 3].into_datum(),
-    //         )],
-    //     );
-    //     assert_eq!(retval, Some(6));
-    // }
-
     #[pg_test]
     #[search_path(@extschema@)]
     fn update() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
+            CREATE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -284,7 +258,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn spi() {
         let random_definition = r#"
-            CREATE OR REPLACE FUNCTION random_contributor_pet() RETURNS TEXT
+            CREATE FUNCTION random_contributor_pet() RETURNS TEXT
                 STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -304,7 +278,7 @@ mod tests {
         assert!(retval.is_some());
 
         let specific_definition = r#"
-            CREATE OR REPLACE FUNCTION contributor_pet(name TEXT) RETURNS INT
+            CREATE FUNCTION contributor_pet(name TEXT) RETURNS INT
                 STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -327,11 +301,39 @@ mod tests {
     }
 
     #[pg_test]
+    #[search_path(@extschema@)]
+    fn aggregate() {
+        let definition = r#"
+            CREATE FUNCTION plrust_sum_state(state INT, next INT) RETURNS INT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Ok(state + next)
+            $$;
+
+            CREATE AGGREGATE plrust_sum(INT)
+            (
+                SFUNC    = plrust_sum_state,
+                STYPE    = INT,
+                INITCOND = '0'
+            );            
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<i32> = Spi::get_one(
+            r#"
+            SELECT plrust_sum(value) FROM UNNEST(ARRAY [1, 2, 3]) as value;
+        "#);
+        assert_eq!(retval, Some(6));
+    }
+
+    
+    #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
     fn deps() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION colorize(input TEXT) RETURNS TEXT
+            CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$

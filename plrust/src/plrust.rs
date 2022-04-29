@@ -107,6 +107,7 @@ pub(crate) fn compile(fn_oid: pg_sys::Oid) -> eyre::Result<PathBuf> {
         .arg("wasm32-wasi")
         .arg("--release")
         .arg("--message-format=json-render-diagnostics")
+        .env_remove("RUSTFLAGS") // We don't want the pgx related rustflags.
         .output()
         .map_err(|e| PlRustError::ModuleBuildExecution(e))?;
 
