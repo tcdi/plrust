@@ -1,4 +1,4 @@
-name: PL/Rust tests
+name: PL/Rust
 
 on:
   push:
@@ -141,7 +141,7 @@ jobs:
       run: |
         cargo test \
           --features "pg$PG_VER" --no-default-features \
-          --package plrust
+          --workspace
 
     # Attempt to make the cache payload slightly smaller.
     - name: Clean up built PGX files
