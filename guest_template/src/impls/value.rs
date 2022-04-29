@@ -4,15 +4,15 @@ impl TryFrom<Value> for String {
     type Error = crate::guest::Error;
     fn try_from(v: Value) -> Result<String, Self::Error> {
         match v {
-            Value::String(s) => Ok(s),
-            v => Err(crate::guest::Error::conversion(v.into(), ValueType::String)),
+            Value::Text(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::Text)),
         }
     }
 }
 
 impl From<String> for Value {
     fn from(s: String) -> Self {
-        Value::String(s)
+        Value::Text(s)
     }
 }
 
@@ -20,15 +20,15 @@ impl TryFrom<Value> for Vec<Option<String>> {
     type Error = crate::guest::Error;
     fn try_from(v: Value) -> Result<Vec<Option<String>>, Self::Error> {
         match v {
-            Value::StringArray(s) => Ok(s),
-            v => Err(crate::guest::Error::conversion(v.into(), ValueType::StringArray)),
+            Value::TextArray(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::TextArray)),
         }
     }
 }
 
 impl From<Vec<Option<String>>> for Value {
     fn from(s: Vec<Option<String>>) -> Self {
-        Value::StringArray(s)
+        Value::TextArray(s)
     }
 }
 
@@ -36,15 +36,15 @@ impl TryFrom<Value> for i64 {
     type Error = crate::guest::Error;
     fn try_from(v: Value) -> Result<i64, Self::Error> {
         match v {
-            Value::I64(s) => Ok(s),
-            v => Err(crate::guest::Error::conversion(v.into(), ValueType::I64)),
+            Value::Bigint(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::Bigint)),
         }
     }
 }
 
 impl From<i64> for Value {
     fn from(s: i64) -> Self {
-        Value::I64(s)
+        Value::Bigint(s)
     }
 }
 
@@ -52,15 +52,15 @@ impl TryFrom<Value> for Vec<Option<i64>> {
     type Error = crate::guest::Error;
     fn try_from(v: Value) -> Result<Vec<Option<i64>>, Self::Error> {
         match v {
-            Value::I64Array(s) => Ok(s),
-            v => Err(crate::guest::Error::conversion(v.into(), ValueType::I64Array)),
+            Value::BigintArray(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::BigintArray)),
         }
     }
 }
 
 impl From<Vec<Option<i64>>> for Value {
     fn from(s: Vec<Option<i64>>) -> Self {
-        Value::I64Array(s)
+        Value::BigintArray(s)
     }
 }
 
@@ -68,15 +68,15 @@ impl TryFrom<Value> for i32 {
     type Error = crate::guest::Error;
     fn try_from(v: Value) -> Result<i32, Self::Error> {
         match v {
-            Value::I32(s) => Ok(s),
-            v => Err(crate::guest::Error::conversion(v.into(), ValueType::I32)),
+            Value::Int(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::Int)),
         }
     }
 }
 
 impl From<i32> for Value {
     fn from(s: i32) -> Self {
-        Value::I32(s)
+        Value::Int(s)
     }
 }
 
@@ -84,15 +84,15 @@ impl TryFrom<Value> for Vec<Option<i32>> {
     type Error = crate::guest::Error;
     fn try_from(v: Value) -> Result<Vec<Option<i32>>, Self::Error> {
         match v {
-            Value::I32Array(s) => Ok(s),
-            v => Err(crate::guest::Error::conversion(v.into(), ValueType::I32Array)),
+            Value::IntArray(s) => Ok(s),
+            v => Err(crate::guest::Error::conversion(v.into(), ValueType::IntArray)),
         }
     }
 }
 
 impl From<Vec<Option<i32>>> for Value {
     fn from(s: Vec<Option<i32>>) -> Self {
-        Value::I32Array(s)
+        Value::IntArray(s)
     }
 }
 
@@ -163,12 +163,12 @@ impl From<Vec<Option<Vec<u8>>>> for Value {
 impl From<interface::ValueResult> for Value {
     fn from(v: interface::ValueResult) -> Self {
         match v {
-            interface::ValueResult::String(i) => Value::String(i),
-            interface::ValueResult::StringArray(i) => Value::StringArray(i),
-            interface::ValueResult::I64(i) => Value::I64(i),
-            interface::ValueResult::I64Array(i) => Value::I64Array(i),
-            interface::ValueResult::I32(i) => Value::I32(i),
-            interface::ValueResult::I32Array(i) => Value::I32Array(i),
+            interface::ValueResult::Text(i) => Value::Text(i),
+            interface::ValueResult::TextArray(i) => Value::TextArray(i),
+            interface::ValueResult::Bigint(i) => Value::Bigint(i),
+            interface::ValueResult::BigintArray(i) => Value::BigintArray(i),
+            interface::ValueResult::Int(i) => Value::Int(i),
+            interface::ValueResult::IntArray(i) => Value::IntArray(i),
             interface::ValueResult::Bool(i) => Value::Bool(i),
             interface::ValueResult::BoolArray(i) => Value::BoolArray(i),
             interface::ValueResult::Bytea(i) => Value::Bytea(i),
@@ -180,12 +180,12 @@ impl From<interface::ValueResult> for Value {
 impl<'a> From<interface::ValueParam<'a>> for Value {
     fn from(v: interface::ValueParam) -> Self {
         match v {
-            interface::ValueParam::String(i) => Value::String(i.to_string()),
-            interface::ValueParam::StringArray(i) => Value::StringArray(i.into_iter().map(|opt_v| opt_v.map(|v| v.to_string())).collect()),
-            interface::ValueParam::I64(i) => Value::I64(i),
-            interface::ValueParam::I64Array(i) => Value::I64Array(i.to_vec()),
-            interface::ValueParam::I32(i) => Value::I32(i),
-            interface::ValueParam::I32Array(i) => Value::I32Array(i.to_vec()),
+            interface::ValueParam::Text(i) => Value::Text(i.to_string()),
+            interface::ValueParam::TextArray(i) => Value::TextArray(i.into_iter().map(|opt_v| opt_v.map(|v| v.to_string())).collect()),
+            interface::ValueParam::Bigint(i) => Value::Bigint(i),
+            interface::ValueParam::BigintArray(i) => Value::BigintArray(i.to_vec()),
+            interface::ValueParam::Int(i) => Value::Int(i),
+            interface::ValueParam::IntArray(i) => Value::IntArray(i.to_vec()),
             interface::ValueParam::Bool(i) => Value::Bool(i),
             interface::ValueParam::BoolArray(i) => Value::BoolArray(i.to_vec()),
             interface::ValueParam::Bytea(i) => Value::Bytea(i.to_vec()),
@@ -197,12 +197,12 @@ impl<'a> From<interface::ValueParam<'a>> for Value {
 impl From<Value> for interface::ValueResult {
     fn from(v: Value) -> Self {
         match v {
-            Value::String(i) => interface::ValueResult::String(i),
-            Value::StringArray(i) => interface::ValueResult::StringArray(i),
-            Value::I64(i) => interface::ValueResult::I64(i),
-            Value::I64Array(i) => interface::ValueResult::I64Array(i),
-            Value::I32(i) => interface::ValueResult::I32(i),
-            Value::I32Array(i) => interface::ValueResult::I32Array(i),
+            Value::Text(i) => interface::ValueResult::Text(i),
+            Value::TextArray(i) => interface::ValueResult::TextArray(i),
+            Value::Bigint(i) => interface::ValueResult::Bigint(i),
+            Value::BigintArray(i) => interface::ValueResult::BigintArray(i),
+            Value::Int(i) => interface::ValueResult::Int(i),
+            Value::IntArray(i) => interface::ValueResult::IntArray(i),
             Value::Bool(i) => interface::ValueResult::Bool(i),
             Value::BoolArray(i) => interface::ValueResult::BoolArray(i),
             Value::Bytea(i) => interface::ValueResult::Bytea(i),

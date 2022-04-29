@@ -4,15 +4,15 @@ impl TryFrom<ValueResult> for i64 {
     type Error = crate::host::Error;
     fn try_from(v: ValueResult) -> Result<i64, Self::Error> {
         match v {
-            ValueResult::I64(s) => Ok(s),
-            v => Err(crate::host::Error::conversion(v.into(), ValueType::I64)),
+            ValueResult::Bigint(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::Bigint)),
         }
     }
 }
 
 impl From<i64> for ValueResult {
     fn from(s: i64) -> Self {
-        ValueResult::I64(s)
+        ValueResult::Bigint(s)
     }
 }
 
@@ -20,15 +20,15 @@ impl TryFrom<ValueResult> for Vec<Option<i64>> {
     type Error = crate::host::Error;
     fn try_from(v: ValueResult) -> Result<Vec<Option<i64>>, Self::Error> {
         match v {
-            ValueResult::I64Array(s) => Ok(s),
-            v => Err(crate::host::Error::conversion(v.into(), ValueType::I64Array)),
+            ValueResult::BigintArray(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::BigintArray)),
         }
     }
 }
 
 impl From<Vec<Option<i64>>> for ValueResult {
     fn from(s: Vec<Option<i64>>) -> Self {
-        ValueResult::I64Array(s)
+        ValueResult::BigintArray(s)
     }
 }
 
@@ -36,15 +36,15 @@ impl TryFrom<ValueResult> for i32 {
     type Error = crate::host::Error;
     fn try_from(v: ValueResult) -> Result<i32, Self::Error> {
         match v {
-            ValueResult::I32(s) => Ok(s),
-            v => Err(crate::host::Error::conversion(v.into(), ValueType::I32)),
+            ValueResult::Int(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::Int)),
         }
     }
 }
 
 impl From<i32> for ValueResult {
     fn from(s: i32) -> Self {
-        ValueResult::I32(s)
+        ValueResult::Int(s)
     }
 }
 
@@ -52,15 +52,15 @@ impl TryFrom<ValueResult> for Vec<Option<i32>> {
     type Error = crate::host::Error;
     fn try_from(v: ValueResult) -> Result<Vec<Option<i32>>, Self::Error> {
         match v {
-            ValueResult::I32Array(s) => Ok(s),
-            v => Err(crate::host::Error::conversion(v.into(), ValueType::I32Array)),
+            ValueResult::IntArray(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::IntArray)),
         }
     }
 }
 
 impl From<Vec<Option<i32>>> for ValueResult {
     fn from(s: Vec<Option<i32>>) -> Self {
-        ValueResult::I32Array(s)
+        ValueResult::IntArray(s)
     }
 }
 
@@ -100,15 +100,15 @@ impl TryFrom<ValueResult> for String {
     type Error = crate::host::Error;
     fn try_from(v: ValueResult) -> Result<String, Self::Error> {
         match v {
-            ValueResult::String(s) => Ok(s),
-            v => Err(crate::host::Error::conversion(v.into(), ValueType::String)),
+            ValueResult::Text(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::Text)),
         }
     }
 }
 
 impl From<String> for ValueResult {
     fn from(s: String) -> Self {
-        ValueResult::String(s)
+        ValueResult::Text(s)
     }
 }
 
@@ -116,15 +116,15 @@ impl TryFrom<ValueResult> for Vec<Option<String>> {
     type Error = crate::host::Error;
     fn try_from(v: ValueResult) -> Result<Vec<Option<String>>, Self::Error> {
         match v {
-            ValueResult::StringArray(s) => Ok(s),
-            v => Err(crate::host::Error::conversion(v.into(), ValueType::StringArray)),
+            ValueResult::TextArray(s) => Ok(s),
+            v => Err(crate::host::Error::conversion(v.into(), ValueType::TextArray)),
         }
     }
 }
 
 impl From<Vec<Option<String>>> for ValueResult {
     fn from(s: Vec<Option<String>>) -> Self {
-        ValueResult::StringArray(s)
+        ValueResult::TextArray(s)
     }
 }
 
@@ -164,12 +164,12 @@ impl From<Vec<Option<Vec<u8>>>> for ValueResult {
 impl<'a> From<ValueParam<'a>> for ValueResult {
     fn from(v: ValueParam) -> Self {
         match v {
-            ValueParam::String(i) => ValueResult::String(i.to_string()),
-            ValueParam::StringArray(i) => ValueResult::StringArray(i.into_iter().map(|opt_v| opt_v.map(|v| v.to_string())).collect()),
-            ValueParam::I64(i) => ValueResult::I64(i),
-            ValueParam::I64Array(i) => ValueResult::I64Array(i.to_vec()),
-            ValueParam::I32(i) => ValueResult::I32(i),
-            ValueParam::I32Array(i) => ValueResult::I32Array(i.to_vec()),
+            ValueParam::Text(i) => ValueResult::Text(i.to_string()),
+            ValueParam::TextArray(i) => ValueResult::TextArray(i.into_iter().map(|opt_v| opt_v.map(|v| v.to_string())).collect()),
+            ValueParam::Int(i) => ValueResult::Int(i),
+            ValueParam::IntArray(i) => ValueResult::IntArray(i.to_vec()),
+            ValueParam::Bigint(i) => ValueResult::Bigint(i),
+            ValueParam::BigintArray(i) => ValueResult::BigintArray(i.to_vec()),
             ValueParam::Bool(i) => ValueResult::Bool(i),
             ValueParam::BoolArray(i) => ValueResult::BoolArray(i.to_vec()),
             ValueParam::Bytea(i) => ValueResult::Bytea(i.to_vec()),

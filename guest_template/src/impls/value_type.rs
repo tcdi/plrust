@@ -3,12 +3,12 @@ use crate::guest::ValueType;
 impl From<interface::ValueType> for ValueType {
     fn from(v: interface::ValueType) -> Self {
         match v {
-            interface::ValueType::String => ValueType::String,
-            interface::ValueType::StringArray => ValueType::StringArray,
-            interface::ValueType::I64 => ValueType::I64,
-            interface::ValueType::I64Array => ValueType::I64Array,
-            interface::ValueType::I32 => ValueType::I32,
-            interface::ValueType::I32Array => ValueType::I32Array,
+            interface::ValueType::Text => ValueType::Text,
+            interface::ValueType::TextArray => ValueType::TextArray,
+            interface::ValueType::Bigint => ValueType::Bigint,
+            interface::ValueType::BigintArray => ValueType::BigintArray,
+            interface::ValueType::Int => ValueType::Int,
+            interface::ValueType::IntArray => ValueType::IntArray,
             interface::ValueType::Bool => ValueType::Bool,
             interface::ValueType::BoolArray => ValueType::BoolArray,
             interface::ValueType::Bytea => ValueType::Bytea,
@@ -20,12 +20,12 @@ impl From<interface::ValueType> for ValueType {
 impl From<ValueType> for interface::ValueType {
     fn from(v: ValueType) -> Self {
         match v {
-            ValueType::String => interface::ValueType::String,
-            ValueType::StringArray => interface::ValueType::StringArray,
-            ValueType::I64 => interface::ValueType::I64,
-            ValueType::I64Array => interface::ValueType::I64Array,
-            ValueType::I32 => interface::ValueType::I32,
-            ValueType::I32Array => interface::ValueType::I32Array,
+            ValueType::Text => interface::ValueType::Text,
+            ValueType::TextArray => interface::ValueType::TextArray,
+            ValueType::Bigint => interface::ValueType::Bigint,
+            ValueType::BigintArray => interface::ValueType::BigintArray,
+            ValueType::Int => interface::ValueType::Int,
+            ValueType::IntArray => interface::ValueType::IntArray,
             ValueType::Bool => interface::ValueType::Bool,
             ValueType::BoolArray => interface::ValueType::BoolArray,
             ValueType::Bytea => interface::ValueType::Bytea,

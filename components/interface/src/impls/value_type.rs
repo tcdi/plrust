@@ -6,27 +6,27 @@ pub trait HasValueType {
 }
 
 impl HasValueType for String {
-    const VALUE_TYPE: ValueType = ValueType::String;
+    const VALUE_TYPE: ValueType = ValueType::Text;
 }
 
 impl HasValueType for Vec<Option<String>> {
-    const VALUE_TYPE: ValueType = ValueType::StringArray;
+    const VALUE_TYPE: ValueType = ValueType::TextArray;
 }
 
 impl HasValueType for i64 {
-    const VALUE_TYPE: ValueType = ValueType::I64;
+    const VALUE_TYPE: ValueType = ValueType::Bigint;
 }
 
 impl HasValueType for Vec<Option<i64>> {
-    const VALUE_TYPE: ValueType = ValueType::I64Array;
+    const VALUE_TYPE: ValueType = ValueType::BigintArray;
 }
 
 impl HasValueType for i32 {
-    const VALUE_TYPE: ValueType = ValueType::I32;
+    const VALUE_TYPE: ValueType = ValueType::Int;
 }
 
 impl HasValueType for Vec<Option<i32>> {
-    const VALUE_TYPE: ValueType = ValueType::I32Array;
+    const VALUE_TYPE: ValueType = ValueType::IntArray;
 }
 
 impl HasValueType for bool {
