@@ -300,17 +300,19 @@ fn generate_function_source(
     is_strict: bool,
 ) -> String {
     let mut source = String::new();
-/*
-    source.push_str(r#"
+    // #[cfg_attr()]
+    source.push_str(
+        r#"
 #![no_std]
 extern crate alloc;
 #[allow(unused_imports)]
-use alloc::{format,
+use alloc::{
     string::String,
     vec,
     vec::Vec};
-"#);
-*/
+"#,
+    );
+
     source.push_str(include_str!("./postalloc.rs"));
 
     // source header
