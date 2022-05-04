@@ -253,7 +253,8 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_naughty() {
         if let Ok(path) = std::env::var("experimental_crates") {
-            let definition = format!(r#"
+            let definition = format!(
+                r#"
                 CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
                     IMMUTABLE STRICT
                     LANGUAGE PLRUST AS
@@ -273,7 +274,8 @@ mod tests {
 
                     Some(out)
                 $$;
-            "#);
+            "#
+            );
             Spi::run(&definition);
 
             let retval: Option<String> = Spi::get_one_with_args(
@@ -284,7 +286,7 @@ mod tests {
             );
             assert!(retval.is_some());
         } else {
-            return
+            return;
         }
     }
 }
