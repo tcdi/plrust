@@ -1,7 +1,8 @@
+extern crate std;
 use core::alloc::{GlobalAlloc, Layout};
 use core::sync::atomic::{AtomicUsize, Ordering};
-// use std::io::Write;
-use pgx::pg_sys::{self, SPI_palloc, SPI_pfree};
+use std::io::Write;
+use pgx::pg_sys::{self, SPI_palloc, pfree};
 use pgx::log;
 
 // SPI_palloc:
@@ -46,6 +47,6 @@ unsafe impl GlobalAlloc for PostAlloc {
             // msg[255] = 0; // Guarantee null termination for the C writer.
             // pg_sys::write_stderr(msg as *const _ as *const i8);
         // }
-        SPI_pfree(ptr.cast())
+        pfree(ptr.cast())
     }
 }

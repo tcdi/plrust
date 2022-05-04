@@ -175,7 +175,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
-        .arg("build")
+        .arg("rustc")
         .arg("--release")
         .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
@@ -231,7 +231,7 @@ fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &
     std::fs::write(
         &cargo_toml,
         &format!(
-            r#"[package]
+                r#"[package]
 name = "{crate_name}"
 version = "0.0.0"
 edition = "2021"
@@ -245,6 +245,7 @@ default = ["pgx/pg{major_version}"]
 [dependencies]
 pgx = "0.4.3"
 {deps}
+{experimental_deps}
 
 [profile.release]
 panic = "unwind"
@@ -252,7 +253,16 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 "#,
-        ),
+        experimental_deps = match std::env::var("experimental_crates") {
+            Err(_) => String::from(""),
+            Ok(path) => format!(
+                r#"
+[dependencies.std]
+path = "{path}/post-std"
+version = "*"
+"#)
+        },
+            ),
     )
     .expect("failed to write Cargo.toml");
 
