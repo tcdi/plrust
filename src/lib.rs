@@ -112,7 +112,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_basic() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
+            CREATE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -137,7 +137,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_update() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
+            CREATE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -175,7 +175,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_spi() {
         let random_definition = r#"
-            CREATE OR REPLACE FUNCTION random_contributor_pet() RETURNS TEXT
+            CREATE FUNCTION random_contributor_pet() RETURNS TEXT
                 STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -193,7 +193,7 @@ mod tests {
         assert!(retval.is_some());
 
         let specific_definition = r#"
-            CREATE OR REPLACE FUNCTION contributor_pet(name TEXT) RETURNS INT
+            CREATE FUNCTION contributor_pet(name TEXT) RETURNS INT
                 STRICT
                 LANGUAGE PLRUST AS
             $$
@@ -219,7 +219,7 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_deps() {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION zalgo(input TEXT) RETURNS TEXT
+            CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
