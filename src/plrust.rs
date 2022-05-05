@@ -176,7 +176,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
         .arg("rustc")
-        .arg("--release")
+        // .arg("--release")
         .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
@@ -292,7 +292,7 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
 }
 
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
-    let target_dir = gucs::work_dir().join("release");
+    let target_dir = gucs::work_dir().join("debug");
     let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
 
     if so.exists() {
@@ -324,8 +324,7 @@ use alloc::{
 "#,
     );
 
-    source.push_str(include_str!("./postalloc.rs"));
-
+    // source.push_str(include_str!("./postalloc.rs"));
     // source header
     source.push_str("\nuse pgx::*;\n");
 
