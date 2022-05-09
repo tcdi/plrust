@@ -1,4 +1,3 @@
-extern crate std;
 use core::alloc::{GlobalAlloc, Layout};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use std::io::Write;

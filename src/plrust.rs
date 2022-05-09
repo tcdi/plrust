@@ -176,7 +176,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
         .arg("rustc")
-        // .arg("--release")
+        .arg("--release")
         .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
@@ -196,7 +196,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     let result = if !cargo_output.status.success() {
         output_string.push_str("-----------------\n");
         output_string.push_str(&source_code);
-        Err(output_string)
+        Err(output_string + "\ncargo did not succeed")
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
@@ -209,7 +209,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
                 Ok((final_path, output_string))
             }
-            None => Err(output_string),
+            None => Err(output_string + "\nmissing shared library"),
         }
     };
 
@@ -260,6 +260,10 @@ codegen-units = 1
 [dependencies.std]
 path = "{path}/post-std"
 version = "*"
+
+
+[patch.crates-io.pgx]
+path = "{path}/pgx-hack/pgx"
 "#
                 ),
             },
@@ -292,7 +296,7 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
 }
 
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
-    let target_dir = gucs::work_dir().join("debug");
+    let target_dir = gucs::work_dir().join("release");
     let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
 
     if so.exists() {
