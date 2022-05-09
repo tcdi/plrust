@@ -1,6 +1,6 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::sync::atomic::{AtomicUsize, Ordering};
-use std::io::Write;
+// use std::io::Write;
 use pgx::pg_sys::{self, SPI_palloc, pfree};
 use pgx::log;
 
