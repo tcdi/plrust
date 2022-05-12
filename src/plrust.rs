@@ -330,7 +330,7 @@ use alloc::{
 "#,
     );
 
-    // source.push_str(include_str!("./postalloc.rs"));
+    source.push_str(include_str!("./postalloc.rs"));
     // source header
     source.push_str("\nuse pgx::*;\n");
 

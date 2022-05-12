@@ -36,7 +36,7 @@ unsafe impl GlobalAlloc for PostAlloc {
         if !pg_sys::CurrentMemoryContext.is_null() {
             pg_sys::SPI_palloc(layout.size()).cast()
         } else {
-            pg_sys::SPI_palloc(layout.size()).cast()
+            pg_sys::palloc(layout.size()).cast()
         }
     }
 
