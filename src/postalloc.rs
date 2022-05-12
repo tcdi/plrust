@@ -1,7 +1,7 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::sync::atomic::{AtomicUsize, Ordering};
 // use std::io::Write;
-use pgx::pg_sys::{self, SPI_palloc, pfree};
+use pgx::pg_sys;
 use pgx::log;
 
 // SPI_palloc:
@@ -33,8 +33,13 @@ unsafe impl GlobalAlloc for PostAlloc {
             // msg[255] = 0; // Guarantee null termination for the C writer.
             // pg_sys::write_stderr(msg as *const _ as *const i8);
         // }
-        SPI_palloc(layout.size()).cast()
+        if !pg_sys::CurrentMemoryContext.is_null() {
+            pg_sys::SPI_palloc(layout.size()).cast()
+        } else {
+            pg_sys::SPI_palloc(layout.size()).cast()
+        }
     }
+
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         // if let Ok(&mut txt) = ALLOC_REPORT.get_mut() {
         // #[cfg(feature = "std")]
@@ -46,6 +51,6 @@ unsafe impl GlobalAlloc for PostAlloc {
             // msg[255] = 0; // Guarantee null termination for the C writer.
             // pg_sys::write_stderr(msg as *const _ as *const i8);
         // }
-        pfree(ptr.cast())
+        pg_sys::pfree(ptr.cast())
     }
 }

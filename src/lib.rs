@@ -310,6 +310,7 @@ pub mod pg_test {
     });
 
     pub fn setup(_options: Vec<&str>) {
+        pgx::initialize();
         // perform one-off initialization when the pg_test framework starts
     }
 

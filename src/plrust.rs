@@ -248,6 +248,7 @@ pgx = "0.4.3"
 {experimental_deps}
 
 [profile.release]
+debug-assertions = true
 panic = "unwind"
 opt-level = 3
 lto = "fat"
@@ -318,6 +319,7 @@ fn generate_function_source(
     // #[cfg_attr()]
     source.push_str(
         r#"
+#![feature(c_unwind)]
 #![no_std]
 extern crate alloc;
 #[allow(unused_imports)]
@@ -328,7 +330,7 @@ use alloc::{
 "#,
     );
 
-    source.push_str(include_str!("./postalloc.rs"));
+    // source.push_str(include_str!("./postalloc.rs"));
     // source header
     source.push_str("\nuse pgx::*;\n");
 
