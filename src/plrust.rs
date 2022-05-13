@@ -179,7 +179,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
     std::fs::create_dir_all(&crate_dir).map_err(PlRustError::CrateDirectory)?;
 
-    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
+    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name)?;
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -224,11 +224,11 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
     result
 }
 
-fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> String {
+fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> Result<String, PlRustError> {
     let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
-        extract_code_and_args(fn_oid);
+        extract_code_and_args(fn_oid)?;
     let source_code =
-        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
+        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict)?;
 
     // cargo.toml first
     let cargo_toml = crate_dir.join("Cargo.toml");
@@ -258,18 +258,17 @@ lto = "fat"
 codegen-units = 1
 "#,
         ),
-    )
-    .expect("failed to write Cargo.toml");
+    ).map_err(PlRustError::WritingCargoToml)?;
 
     // the src/ directory
     let src = crate_dir.join("src");
-    std::fs::create_dir_all(&src).expect("failed to create src directory");
+    std::fs::create_dir_all(&src).map_err(PlRustError::CreatingSourceDirectory)?;
 
     // the actual source code in src/lib.rs
     let lib_rs = src.join("lib.rs");
-    std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
+    std::fs::write(&lib_rs, &source_code).map_err(PlRustError::WritingLibRs)?;
 
-    source_code
+    Ok(source_code)
 }
 
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
@@ -303,7 +302,7 @@ fn generate_function_source(
     return_type: &PgOid,
     is_set: bool,
     is_strict: bool,
-) -> String {
+) -> Result<String, PlRustError> {
     let mut source = String::new();
 
     // source header
@@ -323,7 +322,7 @@ fn plrust_fn_{fn_oid}"#
             source.push_str(", ");
         }
 
-        let mut rust_type = make_rust_type(type_oid, false).to_string();
+        let mut rust_type = make_rust_type(type_oid, false).ok_or(PlRustError::UnsupportedSqlType(type_oid.value()))?.to_string();
 
         if !is_strict {
             // non-STRICT functions need all arguments as an Option<T> as any of them could be NULL
@@ -339,7 +338,7 @@ fn plrust_fn_{fn_oid}"#
 
     // return type
     source.push_str(" -> ");
-    let ret = make_rust_type(return_type, true);
+    let ret = make_rust_type(return_type, true).ok_or(PlRustError::UnsupportedSqlType(return_type.value()))?;
     if is_set {
         source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
     } else {
@@ -350,19 +349,19 @@ fn plrust_fn_{fn_oid}"#
     source.push_str(" {\n");
     source.push_str(&code);
     source.push_str("\n}");
-    source
+    Ok(source)
 }
 
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
-) -> (
+) -> Result<(
     pg_sys::Oid,
     String,
     String,
     Vec<(PgOid, Option<String>)>,
     (PgOid, bool),
     bool,
-) {
+), PlRustError> {
     unsafe {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -372,7 +371,7 @@ fn extract_code_and_args(
             0,
         );
         if proc_tuple.is_null() {
-            panic!("cache lookup failed for function oid {}", fn_oid);
+            return Err(PlRustError::NullProcTuple);
         }
 
         let mut is_null = false;
@@ -386,7 +385,8 @@ fn extract_code_and_args(
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
         let plrust = std::ffi::CString::new("plrust").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
-            panic!("function {} is not a plrust function", fn_oid);
+
+            return Err(PlRustError::NotPlRustFunction(fn_oid));
         }
 
         let prosrc_datum = pg_sys::SysCacheGetAttr(
@@ -397,7 +397,7 @@ fn extract_code_and_args(
         );
         let (deps, source_code) = parse_source_and_deps(
             &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
-                .expect("source code was null"),
+                .ok_or(PlRustError::NullSourceCode)?,
         );
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -432,7 +432,7 @@ fn extract_code_and_args(
 
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        (fn_oid, deps, source_code, args, return_type, is_strict)
+        Ok((fn_oid, deps, source_code, args, return_type, is_strict))
     }
 }
 
@@ -459,7 +459,7 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     (deps_block, code_block)
 }
 
-fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
+fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
     let array = array_type != pg_sys::InvalidOid;
     let type_oid = if array {
@@ -492,17 +492,17 @@ fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
             PgBuiltInOids::VARCHAROID if owned => "String",
             PgBuiltInOids::VARCHAROID => "&str",
             PgBuiltInOids::VOIDOID => "()",
-            _ => panic!("unsupported argument type: {:?}", type_oid),
+            _ => return None,
         },
-        _ => panic!("unsupported argument type: {:?}", type_oid),
+        _ => return None,
     }
     .to_string();
 
-    if array && owned {
+    Some(if array && owned {
         format!("Vec<Option<{rust_type}>>")
     } else if array {
         format!("Array<{rust_type}>")
     } else {
         rust_type
-    }
+    })
 }
