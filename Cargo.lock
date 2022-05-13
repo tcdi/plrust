@@ -1216,6 +1216,7 @@ dependencies = [
  "thiserror",
  "toml",
  "tracing",
+ "tracing-error",
  "tracing-subscriber",
 ]
 

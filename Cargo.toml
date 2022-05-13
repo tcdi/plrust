@@ -30,6 +30,7 @@ eyre = "0.6"
 color-eyre = "0.6"
 tracing = { version = "0.1", features = [ "valuable" ] }
 tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
+tracing-error = "0.2"
 
 [dev-dependencies]
 pgx-tests = "0.4.4"

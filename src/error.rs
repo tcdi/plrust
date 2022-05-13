@@ -20,8 +20,8 @@ pub enum PlRustError {
     CrateDirectory(std::io::Error),
     #[error("Executing `cargo build`: {0}")]
     CargoBuildExec(std::io::Error),
-    #[error("`cargo build` failed: {0}")]
-    CargoBuildFail(String),
+    #[error("`cargo build` failed")]
+    CargoBuildFail,
     #[error("Produced shared object not found")]
     SharedObjectNotFound,
     #[error("Cargo output was not UTF-8: {0}")]

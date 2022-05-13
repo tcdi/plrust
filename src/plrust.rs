@@ -16,7 +16,8 @@ use std::{
     path::PathBuf, process::Command,
     env::consts::DLL_SUFFIX
 };
-use eyre::Result;
+use color_eyre::section::{Section, SectionExt};
+use eyre::{eyre, Result};
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -119,10 +120,12 @@ mod generation {
     }
 }
 
+#[tracing::instrument(level = "info")]
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.remove(&fn_oid);
 }
 
+#[tracing::instrument(level = "info")]
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
 ) -> Result<&'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>, PlRustError> {
@@ -155,17 +158,18 @@ pub(crate) unsafe fn lookup_function(
         Some(symbol) => Ok(symbol),
         None => {
             let symbol_name = format!("plrust_fn_{}_wrapper", fn_oid);
-            symbol.replace(
+            let inserted_symbol = symbol.insert(
                 library
-                    .get(&symbol_name.as_bytes())
-                    .expect("failed to find function"),
+                    .get(&symbol_name.as_bytes())?,
             );
-            Ok(symbol.as_ref().unwrap())
+
+            Ok(inserted_symbol)
         }
     }
 }
 
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), PlRustError> {
+#[tracing::instrument(level = "info")]
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String, String)> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
@@ -194,14 +198,15 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
         .output()
         .map_err(PlRustError::CargoBuildExec)?;
 
-    let mut output_string = String::new();
-    output_string.push_str(&String::from_utf8(cargo_output.stdout).map_err(PlRustError::CargoOutputNotUtf8)?);
-    output_string.push_str(&String::from_utf8(cargo_output.stderr).map_err(PlRustError::CargoOutputNotUtf8)?);
+    let stdout = String::from_utf8(cargo_output.stdout).map_err(PlRustError::CargoOutputNotUtf8)?;
+    let stderr = String::from_utf8(cargo_output.stderr).map_err(PlRustError::CargoOutputNotUtf8)?;
 
-    let result = if !cargo_output.status.success() {
-        output_string.push_str("-----------------\n");
-        output_string.push_str(&source_code);
-        Err(PlRustError::CargoBuildFail(output_string))
+    let (final_path, stdout, stderr) = if !cargo_output.status.success() {
+        return Err(eyre!(PlRustError::CargoBuildFail)
+                .section(stdout.header("`cargo build` stdout:"))
+                .section(stderr.header("`cargo build` stderr:"))
+                .section(source_code.header("Source Code:"))
+        )?;
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
@@ -212,18 +217,20 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
                 std::fs::rename(&shared_library, &final_path)
                     .expect("unable to rename shared_library");
 
-                Ok((final_path, output_string))
+                (final_path, stdout, stderr)
             }
-            None => Err(PlRustError::SharedObjectNotFound),
+            None => return Err(PlRustError::SharedObjectNotFound)?,
         }
     };
 
     // no matter what happened, remove our crate directory, ignoring any error that might generate
     std::fs::remove_dir_all(&crate_dir).ok();
 
-    result
+    Ok((final_path, stdout, stderr))
 }
 
+
+#[tracing::instrument(level = "info")]
 fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> Result<String, PlRustError> {
     let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid)?;
@@ -271,12 +278,16 @@ codegen-units = 1
     Ok(source_code)
 }
 
+
+#[tracing::instrument(level = "info")]
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let db_oid = unsafe { pg_sys::MyDatabaseId };
     let ns_oid = unsafe { pg_sys::get_func_namespace(fn_oid) };
     format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
 }
 
+
+#[tracing::instrument(level = "info")]
 fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     let crate_name = crate_name(fn_oid);
     let crate_dir = gucs::work_dir().join(&crate_name);
@@ -284,6 +295,8 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     (crate_name, crate_dir)
 }
 
+
+#[tracing::instrument(level = "info")]
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     let target_dir = gucs::work_dir().join("release");
     let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
@@ -295,6 +308,8 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     }
 }
 
+
+#[tracing::instrument(level = "info")]
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     code: &str,
@@ -352,6 +367,8 @@ fn plrust_fn_{fn_oid}"#
     Ok(source)
 }
 
+
+#[tracing::instrument(level = "info")]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
 ) -> Result<(
@@ -436,6 +453,8 @@ fn extract_code_and_args(
     }
 }
 
+
+#[tracing::instrument(level = "info")]
 fn parse_source_and_deps(code: &str) -> (String, String) {
     enum Parse {
         Code,
@@ -459,6 +478,8 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     (deps_block, code_block)
 }
 
+
+#[tracing::instrument(level = "info")]
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
     let array = array_type != pg_sys::InvalidOid;

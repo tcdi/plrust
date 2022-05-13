@@ -15,7 +15,6 @@ mod logging;
 use error::PlRustError;
 use pgx::*;
 use std::error::Error;
-use eyre::Result;
 
 pg_module_magic!();
 
@@ -51,6 +50,8 @@ fn _PG_init() {
         }
     }.add_directive(gucs::tracing_level().into());
 
+    let error_layer = tracing_error::ErrorLayer::default();
+
     let format_layer = tracing_subscriber::fmt::Layer::new()
         .with_ansi(false)
         .with_writer(|| logging::PgxNoticeWriter::<true>)
@@ -59,6 +60,7 @@ fn _PG_init() {
     tracing_subscriber::registry()
         .with(filter_layer)
         .with(format_layer)
+        .with(error_layer)
         .try_init().expect("Could not initialize tracing registry");
 
     plrust::init();
@@ -72,7 +74,7 @@ CREATE FUNCTION plrust_call_handler() RETURNS language_handler
 ")]
 #[tracing::instrument(level = "info")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    unsafe fn plrust_call_handler_inner(fcinfo: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, PlRustError> {
+    unsafe fn plrust_call_handler_inner(fcinfo: pg_sys::FunctionCallInfo) -> eyre::Result<pg_sys::Datum> {
         let fn_oid = fcinfo.as_ref()
             .ok_or(PlRustError::NullFunctionCallInfo)?
             .flinfo.as_ref()
@@ -86,26 +88,25 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
     match plrust_call_handler_inner(fcinfo) {
         Ok(datum) => datum,
         // Panic into the pgx guard.
-        Err(e) => panic!("{:?}", e),
+        Err(err) => panic!("{:?}", err),
     }
 }
 
 #[pg_extern]
 #[tracing::instrument(level = "info")]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
-    unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> Result<(), PlRustError> {
+    unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> eyre::Result<()> {
         let fcinfo = PgBox::from_pg(fcinfo);
         let flinfo = PgBox::from_pg(fcinfo.flinfo);
         if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
         {
-            return Err(PlRustError::CheckFunctionValidatorAccess);
+            return Err(PlRustError::CheckFunctionValidatorAccess)?;
         }
 
         plrust::unload_function(fn_oid);
         // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
         // compile the function when it's created to avoid locking during function execution
-        let (_, output) =
-            plrust::compile_function(fn_oid).unwrap_or_else(|e| panic!("compilation failed\n{}", e));
+        let (_, _, stderr) = plrust::compile_function(fn_oid)?;
 
         // however, we'll use it to decide if we should go ahead and dynamically load our function
         if pg_sys::check_function_bodies {
@@ -114,8 +115,8 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         }
 
         // if the compilation had warnings we'll display them
-        if output.contains("warning: ") {
-            pgx::warning!("\n{}", output);
+        if stderr.contains("warning: ") {
+            pgx::warning!("\n{}", stderr);
         }
 
         Ok(())
@@ -124,7 +125,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
     match plrust_validator_inner(fn_oid, fcinfo) {
         Ok(()) => (),
         // Panic into the pgx guard.
-        Err(e) => panic!("{:?}", e),
+        Err(err) => panic!("{:?}", err),
     }
 }
 
@@ -133,15 +134,17 @@ fn recompile_function(
     fn_oid: pg_sys::Oid,
 ) -> (
     name!(library_path, Option<String>),
-    name!(cargo_output, String),
+    name!(stdout, Option<String>),
+    name!(stderr, Option<String>),
+    name!(plrust_error, Option<String>),
 ) {
     tracing::error!("Swoop de woop");
     unsafe {
         plrust::unload_function(fn_oid);
     }
     match plrust::compile_function(fn_oid) {
-        Ok((work_dir, output)) => (Some(work_dir.display().to_string()), output),
-        Err(e) => (None, e.to_string()),
+        Ok((work_dir, stdout, stderr)) => (Some(work_dir.display().to_string()), Some(stdout), Some(stderr), None),
+        Err(err) => (None, None, None, Some(format!("{:?}", err))),
     }
 }
 
