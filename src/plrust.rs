@@ -7,13 +7,16 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::gucs;
+use crate::{gucs, error::PlRustError};
 use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
-use pgx::pg_sys::heap_tuple_get_struct;
-use pgx::*;
-use std::env::consts::DLL_SUFFIX;
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use pgx::{*, pg_sys::heap_tuple_get_struct};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    path::PathBuf, process::Command,
+    env::consts::DLL_SUFFIX
+};
+use eyre::Result;
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -56,10 +59,18 @@ mod generation {
     use super::*;
     use std::{fs, io};
 
+    #[derive(thiserror::Error, Debug)]
+    enum Error {
+        #[error("No generations found (Mac OS x86_64 specific)")]
+        NoGenerations,
+        #[error("std::io::Error: {0}")]
+        StdIoError(std::io::Error),
+    }
+
     /// Find existing generations of a given prefix.
     pub(crate) fn all_generations(
         prefix: &str,
-    ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, io::Error> {
+    ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, Error> {
         let work_dir = gucs::work_dir();
         let filtered = fs::read_dir(work_dir)?
             .flat_map(|entry| {
@@ -80,7 +91,7 @@ mod generation {
     /// Get the next generation number to be created.
     ///
     /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
-    pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, std::io::Error> {
+    pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, Error> {
         let latest = latest_generation(prefix, vacuum);
         Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
     }
@@ -91,7 +102,7 @@ mod generation {
     pub(crate) fn latest_generation(
         prefix: &str,
         vacuum: bool,
-    ) -> Result<(usize, PathBuf), std::io::Error> {
+    ) -> Result<(usize, PathBuf), Error> {
         let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
         // We could use max_by, but might need to vacuum.
         generations.sort_by_key(|(generation, _path)| *generation);
@@ -104,9 +115,7 @@ mod generation {
             }
         }
 
-        latest.ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "No generations found.")
-        })
+        latest.ok_or(Error::NoGenerations)
     }
 }
 
@@ -116,34 +125,34 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
-) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
-    let (library, symbol) = LOADED_SYMBOLS.entry(fn_oid).or_insert_with(|| {
-        let crate_name = crate_name(fn_oid);
+) -> Result<&'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>, PlRustError> {
+    let &mut (ref mut library, ref mut symbol) =  match LOADED_SYMBOLS.entry(fn_oid) {
+        entry @ Entry::Occupied(_) => {
+            entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
+        },
+        entry @ Entry::Vacant(_) => {
+            let crate_name = crate_name(fn_oid);
 
-        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let latest = generation::latest_generation(&crate_name, true)
-                .expect("Could not find latest generation.")
-                .0;
-
-            crate_name.push_str(&format!("_{}", latest));
-            crate_name
-        };
-
-        let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
-        let library = Library::new(&shared_library).unwrap_or_else(|e| {
-            panic!(
-                "failed to open shared library at `{so}`: {e}",
-                so = shared_library.display()
-            )
-        });
-
-        (library, None)
-    });
+            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let latest = generation::latest_generation(&crate_name, true)
+                    .expect("Could not find latest generation.")
+                    .0;
+    
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+    
+            let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
+            let library = Library::new(&shared_library)?;
+    
+            entry.or_insert((library, None))
+        },
+    };
 
     match symbol {
-        Some(symbol) => symbol,
+        Some(symbol) => Ok(symbol),
         None => {
             let symbol_name = format!("plrust_fn_{}_wrapper", fn_oid);
             symbol.replace(
@@ -151,25 +160,24 @@ pub(crate) unsafe fn lookup_function(
                     .get(&symbol_name.as_bytes())
                     .expect("failed to find function"),
             );
-            symbol.as_ref().unwrap()
+            Ok(symbol.as_ref().unwrap())
         }
     }
 }
 
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), PlRustError> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let crate_name = {
         let mut crate_name = crate_name;
-        let latest = generation::next_generation(&crate_name, true)
-            .expect("Could not find latest generation.");
+        let latest = generation::next_generation(&crate_name, true)?;
         crate_name.push_str(&format!("_{}", latest));
         crate_name
     };
 
-    std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
+    std::fs::create_dir_all(&crate_dir).map_err(PlRustError::CrateDirectory)?;
 
     let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
 
@@ -184,18 +192,16 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
             "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
         )
         .output()
-        .expect("failed to build function shared library");
+        .map_err(PlRustError::CargoBuildExec)?;
 
     let mut output_string = String::new();
-    unsafe {
-        output_string.push_str(&String::from_utf8_unchecked(cargo_output.stdout));
-        output_string.push_str(&String::from_utf8_unchecked(cargo_output.stderr));
-    }
+    output_string.push_str(&String::from_utf8(cargo_output.stdout).map_err(PlRustError::CargoOutputNotUtf8)?);
+    output_string.push_str(&String::from_utf8(cargo_output.stderr).map_err(PlRustError::CargoOutputNotUtf8)?);
 
     let result = if !cargo_output.status.success() {
         output_string.push_str("-----------------\n");
         output_string.push_str(&source_code);
-        Err(output_string)
+        Err(PlRustError::CargoBuildFail(output_string))
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
@@ -208,7 +214,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
 
                 Ok((final_path, output_string))
             }
-            None => Err(output_string),
+            None => Err(PlRustError::SharedObjectNotFound),
         }
     };
 

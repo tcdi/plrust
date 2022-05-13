@@ -13,6 +13,7 @@ use std::str::FromStr;
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None);
+static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 
 pub(crate) fn init() {
     GucRegistry::define_string_guc(
@@ -28,6 +29,14 @@ pub(crate) fn init() {
         "What is the full path to the `pg_config` tool for this Postgres installation?",
         "What is the full path to the `pg_config` tool for this Postgres installation?",
         &PLRUST_PG_CONFIG,
+        GucContext::Sighup,
+    );
+
+    GucRegistry::define_string_guc(
+        "plrust.tracing_level",
+        "The tracing level to use while running pl/rust",
+        "The tracing level to use while running pl/rust. Should be `error`, `warn`, `info`, `debug`, or `trace`",
+        &PLRUST_TRACING_LEVEL,
         GucContext::Sighup,
     );
 }
@@ -53,4 +62,11 @@ pub(crate) fn pg_config() -> String {
     PLRUST_PG_CONFIG
         .get()
         .expect("plrust.pg_config is not set in postgresql.conf")
+}
+
+pub(crate) fn tracing_level() -> tracing::Level {
+    PLRUST_TRACING_LEVEL
+        .get()
+        .map(|v| v.parse().expect("plrust.tracing_level was invalid"))
+        .unwrap_or(tracing::Level::INFO)
 }

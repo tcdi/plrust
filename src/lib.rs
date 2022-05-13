@@ -7,16 +7,60 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use pgx::*;
-
 mod gucs;
 mod plrust;
+mod error;
+mod logging;
+
+use error::PlRustError;
+use pgx::*;
+use std::error::Error;
+use eyre::Result;
 
 pg_module_magic!();
 
 #[pg_guard]
 fn _PG_init() {
+    color_eyre::config::HookBuilder::default()
+        .theme(color_eyre::config::Theme::new())
+        .into_hooks()
+        .1
+        .install()
+        .unwrap();
+
     gucs::init();
+
+    use tracing_subscriber::{
+        layer::SubscriberExt,
+        util::SubscriberInitExt,
+        EnvFilter,
+    };
+
+    let filter_layer = match EnvFilter::try_from_default_env() {
+        Ok(layer) => layer,
+        Err(e) => {
+            // Catch a parse error and report it, ignore a missing env.
+            if let Some(source) = e.source() {
+                match source.downcast_ref::<std::env::VarError>() {
+                    Some(std::env::VarError::NotPresent) => (),
+                    Some(e) => panic!("Error parsing RUST_LOG directives: {}", e),
+                    None => panic!("Error parsing RUST_LOG directives")
+                }
+            }
+            EnvFilter::try_new(&format!("{}=info", env!("CARGO_PKG_NAME"))).expect("Error parsing default log level")
+        }
+    }.add_directive(gucs::tracing_level().into());
+
+    let format_layer = tracing_subscriber::fmt::Layer::new()
+        .with_ansi(false)
+        .with_writer(|| logging::PgxNoticeWriter::<true>)
+        .without_time()
+        .pretty();
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(format_layer)
+        .try_init().expect("Could not initialize tracing registry");
+
     plrust::init();
 }
 
@@ -26,37 +70,61 @@ fn _PG_init() {
 CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
+#[tracing::instrument(level = "info")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let fn_oid = fcinfo.as_ref().unwrap().flinfo.as_ref().unwrap().fn_oid;
-    let func = plrust::lookup_function(fn_oid);
+    unsafe fn plrust_call_handler_inner(fcinfo: pg_sys::FunctionCallInfo) -> Result<pg_sys::Datum, PlRustError> {
+        let fn_oid = fcinfo.as_ref()
+            .ok_or(PlRustError::NullFunctionCallInfo)?
+            .flinfo.as_ref()
+            .ok_or(PlRustError::NullFmgrInfo)?
+            .fn_oid;
+        let func = plrust::lookup_function(fn_oid)?;
+    
+        Ok(func(fcinfo))
+    }
 
-    func(fcinfo)
+    match plrust_call_handler_inner(fcinfo) {
+        Ok(datum) => datum,
+        // Panic into the pgx guard.
+        Err(e) => panic!("{:?}", e),
+    }
 }
 
 #[pg_extern]
+#[tracing::instrument(level = "info")]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
-    let fcinfo = PgBox::from_pg(fcinfo);
-    let flinfo = PgBox::from_pg(fcinfo.flinfo);
-    if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
-    {
-        return;
+    unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> Result<(), PlRustError> {
+        let fcinfo = PgBox::from_pg(fcinfo);
+        let flinfo = PgBox::from_pg(fcinfo.flinfo);
+        if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
+        {
+            return Err(PlRustError::CheckFunctionValidatorAccess);
+        }
+
+        plrust::unload_function(fn_oid);
+        // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
+        // compile the function when it's created to avoid locking during function execution
+        let (_, output) =
+            plrust::compile_function(fn_oid).unwrap_or_else(|e| panic!("compilation failed\n{}", e));
+
+        // however, we'll use it to decide if we should go ahead and dynamically load our function
+        if pg_sys::check_function_bodies {
+            // it's on, so lets go ahead and load our function
+            // plrust::lookup_function(fn_oid);
+        }
+
+        // if the compilation had warnings we'll display them
+        if output.contains("warning: ") {
+            pgx::warning!("\n{}", output);
+        }
+
+        Ok(())
     }
-
-    plrust::unload_function(fn_oid);
-    // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
-    // compile the function when it's created to avoid locking during function execution
-    let (_, output) =
-        plrust::compile_function(fn_oid).unwrap_or_else(|e| panic!("compilation failed\n{}", e));
-
-    // however, we'll use it to decide if we should go ahead and dynamically load our function
-    if pg_sys::check_function_bodies {
-        // it's on, so lets go ahead and load our function
-        // plrust::lookup_function(fn_oid);
-    }
-
-    // if the compilation had warnings we'll display them
-    if output.contains("warning: ") {
-        pgx::warning!("\n{}", output);
+    
+    match plrust_validator_inner(fn_oid, fcinfo) {
+        Ok(()) => (),
+        // Panic into the pgx guard.
+        Err(e) => panic!("{:?}", e),
     }
 }
 
@@ -67,12 +135,13 @@ fn recompile_function(
     name!(library_path, Option<String>),
     name!(cargo_output, String),
 ) {
+    tracing::error!("Swoop de woop");
     unsafe {
         plrust::unload_function(fn_oid);
     }
     match plrust::compile_function(fn_oid) {
         Ok((work_dir, output)) => (Some(work_dir.display().to_string()), output),
-        Err(e) => (None, e),
+        Err(e) => (None, e.to_string()),
     }
 }
 
