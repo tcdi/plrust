@@ -246,49 +246,6 @@ mod tests {
         );
         assert!(retval.is_some());
     }
-
-    /// This is currently just a copy of test_deps
-    #[pg_test]
-    #[cfg(not(feature = "sandboxed"))]
-    #[search_path(@extschema@)]
-    fn test_naughty() {
-        if let Ok(path) = std::env::var("experimental_crates") {
-            let definition = format!(
-                r#"
-                CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
-                    IMMUTABLE STRICT
-                    LANGUAGE PLRUST AS
-                $$
-                [dependencies]
-                    zalgo = "0.2.0"
-                    malicious-dep = {{ path = "{path}/malicious-dep" }}
-                [code]
-                    use zalgo::{{Generator, GeneratorArgs, ZalgoSize}};
-                    use malicious_dep::naughty_api;
-
-                    naughty_api();
-                    let mut generator = Generator::new();
-                    let mut out = String::new();
-                    let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
-                    let _result = generator.gen(input, &mut out, &args);
-
-                    Some(out)
-                $$;
-            "#
-            );
-            Spi::run(&definition);
-
-            let retval: Option<String> = Spi::get_one_with_args(
-                r#"
-                SELECT zalgo($1);
-            "#,
-                vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
-            );
-            assert!(retval.is_some());
-        } else {
-            return;
-        }
-    }
 }
 
 #[cfg(test)]

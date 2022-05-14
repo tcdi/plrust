@@ -256,17 +256,7 @@ codegen-units = 1
 "#,
             experimental_deps = match std::env::var("experimental_crates") {
                 Err(_) => String::from(""),
-                Ok(path) => format!(
-                    r#"
-[dependencies.std]
-path = "{path}/post-std"
-version = "*"
-
-
-[patch.crates-io.pgx]
-path = "{path}/pgx-hack/pgx"
-"#
-                ),
+                Ok(path) => format!("[patch.crates-io.pgx]\npath = \"{path}/pgx\"\n"),
             },
         ),
     )
@@ -319,7 +309,6 @@ fn generate_function_source(
     // #[cfg_attr()]
     source.push_str(
         r#"
-#![feature(c_unwind)]
 #![no_std]
 extern crate alloc;
 #[allow(unused_imports)]
