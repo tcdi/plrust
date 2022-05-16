@@ -37,7 +37,7 @@ pub(crate) fn init() {
 }
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-mod generation {
+pub(crate) mod generation {
     /*!
         Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
         `CREATE OR REPLACE FUNCTION`.
