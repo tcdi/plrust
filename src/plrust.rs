@@ -21,7 +21,6 @@ use std::{
     path::PathBuf,
     process::Command,
 };
-use tracing::info;
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -438,12 +437,16 @@ fn generate_function_source(
     }
 
     let user_fn_return_type = oid_to_syn_type(return_type).wrap_err("Mapping return type")?;
+    let user_fn_return_type_wrapped: syn::Type = match is_set {
+        true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>>> }).wrap_err("Wrapping return type")?,
+        false => syn::parse2(quote! { Option<#user_fn_return_type> }).wrap_err("Wrapping return type")?,
+    };
 
     file.items.push(syn::parse2(quote! {
         #[pg_extern]
         fn #user_fn_ident(
             #( #user_fn_arg_idents: #user_fn_arg_types ),*
-        ) -> Option<#user_fn_return_type>
+        ) -> #user_fn_return_type_wrapped
         #user_code
     })?);
 
