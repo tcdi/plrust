@@ -232,7 +232,11 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
                 // move the shared_library into its final location, which is
                 // at the root of the configured `work_dir`
                 std::fs::rename(&shared_library, &final_path)
-                    .expect("unable to rename shared_library");
+                    .wrap_err_with(|| format!(
+                        "Moving shared library `{}` to final path `{}`",
+                        shared_library.display(),
+                        final_path.display(),
+                    ))?;
 
                 (final_path, stdout, stderr)
             }
