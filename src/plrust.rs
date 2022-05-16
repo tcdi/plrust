@@ -320,7 +320,7 @@ fn generate_cargo_toml(
                         toml::value::Entry::Occupied(ref mut occupied) => {
                             match occupied.get_mut() {
                                 toml::Value::Array(default) => {
-                                    default.push(format!("pgx/pg{major_version}").into());
+                                    default.push(format!("pgx/pg{major_version}").into())
                                 }
                                 _ => {
                                     return Err(PlRustError::GeneratingCargoToml).wrap_err(
@@ -452,13 +452,16 @@ fn generate_function_source(
         }
     };
 
-    file.items.push(syn::parse2(quote! {
-        #[pg_extern]
-        fn #user_fn_ident(
-            #( #user_fn_arg_idents: #user_fn_arg_types ),*
-        ) -> #user_fn_return_type_wrapped
-        #user_code
-    })?);
+    file.items.push(
+        syn::parse2(quote! {
+            #[pg_extern]
+            fn #user_fn_ident(
+                #( #user_fn_arg_idents: #user_fn_arg_types ),*
+            ) -> #user_fn_return_type_wrapped
+            #user_code
+        })
+        .wrap_err("Parsing generated user function")?,
+    );
 
     Ok(file)
 }
