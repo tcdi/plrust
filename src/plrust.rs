@@ -66,7 +66,7 @@ mod generation {
         #[error("No generations found (Mac OS x86_64 specific)")]
         NoGenerations,
         #[error("std::io::Error: {0}")]
-        StdIoError(std::io::Error),
+        StdIoError(#[from] std::io::Error),
     }
 
     /// Find existing generations of a given prefix.
