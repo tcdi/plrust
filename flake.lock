@@ -78,11 +78,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1651574473,
-        "narHash": "sha256-wQhFORvRjo8LB2hTmETmv6cbyKGDPbfWqvZ/0chnDE4=",
+        "lastModified": 1652722411,
+        "narHash": "sha256-FxzNgYiH9c91hUVAntcjrqY//KOTUPP2a4e8Wyuysxg=",
         "ref": "master",
-        "rev": "f21309b38e1da0d61b881b6b6d41b81c1aed4e1d",
-        "revCount": 290,
+        "rev": "94beb7a3edfeb3bcda65fa3f2ebc48ec6b40bf72",
+        "revCount": 292,
         "type": "git",
         "url": "https://github.com/nix-community/naersk"
       },

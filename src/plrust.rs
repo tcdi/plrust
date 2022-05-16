@@ -406,7 +406,7 @@ fn generate_function_source(
         #[pg_extern]
         fn #user_fn_ident(
             #( #user_fn_arg_idents: #user_fn_arg_types ),*
-        ) -> #user_fn_return_type
+        ) -> Option<#user_fn_return_type>
         #user_code
     })?);
     
@@ -497,8 +497,8 @@ fn extract_code_and_args(
     }
 }
 
-#[tracing::instrument(level = "info")]
-fn parse_source_and_deps(code: &str) -> Result<(syn::Block, toml::value::Table)> {
+#[tracing::instrument(level = "info", skip_all)]
+fn parse_source_and_deps(code_and_deps: &str) -> Result<(syn::Block, toml::value::Table)> {
     enum Parse {
         Code,
         Deps,
@@ -507,7 +507,7 @@ fn parse_source_and_deps(code: &str) -> Result<(syn::Block, toml::value::Table)>
     let mut code_block = String::new();
     let mut parse = Parse::Code;
 
-    for line in code.trim().split_inclusive('\n') {
+    for line in code_and_deps.trim().split_inclusive('\n') {
         match line.trim() {
             "[dependencies]" => parse = Parse::Deps,
             "[code]" => parse = Parse::Code,
@@ -520,7 +520,7 @@ fn parse_source_and_deps(code: &str) -> Result<(syn::Block, toml::value::Table)>
 
     let user_dependencies: toml::value::Table = toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
 
-    let user_code: syn::Block = syn::parse_str(&format!("{{ {code} }}")).map_err(PlRustError::ParsingCodeBlock)?;
+    let user_code: syn::Block = syn::parse_str(&format!("{{ {code_block} }}")).map_err(PlRustError::ParsingCodeBlock)?;
 
     Ok((user_code, user_dependencies))
 }
