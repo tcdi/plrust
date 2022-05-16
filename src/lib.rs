@@ -7,10 +7,10 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-mod gucs;
-mod plrust;
 mod error;
+mod gucs;
 mod logging;
+mod plrust;
 
 use error::PlRustError;
 use pgx::*;
@@ -29,11 +29,7 @@ fn _PG_init() {
 
     gucs::init();
 
-    use tracing_subscriber::{
-        layer::SubscriberExt,
-        util::SubscriberInitExt,
-        EnvFilter,
-    };
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
     let filter_layer = match EnvFilter::try_from_default_env() {
         Ok(layer) => layer,
@@ -43,12 +39,14 @@ fn _PG_init() {
                 match source.downcast_ref::<std::env::VarError>() {
                     Some(std::env::VarError::NotPresent) => (),
                     Some(e) => panic!("Error parsing RUST_LOG directives: {}", e),
-                    None => panic!("Error parsing RUST_LOG directives")
+                    None => panic!("Error parsing RUST_LOG directives"),
                 }
             }
-            EnvFilter::try_new(&format!("{}=info", env!("CARGO_PKG_NAME"))).expect("Error parsing default log level")
+            EnvFilter::try_new(&format!("{}=info", env!("CARGO_PKG_NAME")))
+                .expect("Error parsing default log level")
         }
-    }.add_directive(gucs::tracing_level().into());
+    }
+    .add_directive(gucs::tracing_level().into());
 
     let error_layer = tracing_error::ErrorLayer::default();
 
@@ -61,7 +59,8 @@ fn _PG_init() {
         .with(filter_layer)
         .with(format_layer)
         .with(error_layer)
-        .try_init().expect("Could not initialize tracing registry");
+        .try_init()
+        .expect("Could not initialize tracing registry");
 
     plrust::init();
 }
@@ -74,14 +73,18 @@ CREATE FUNCTION plrust_call_handler() RETURNS language_handler
 ")]
 #[tracing::instrument(level = "info")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    unsafe fn plrust_call_handler_inner(fcinfo: pg_sys::FunctionCallInfo) -> eyre::Result<pg_sys::Datum> {
-        let fn_oid = fcinfo.as_ref()
+    unsafe fn plrust_call_handler_inner(
+        fcinfo: pg_sys::FunctionCallInfo,
+    ) -> eyre::Result<pg_sys::Datum> {
+        let fn_oid = fcinfo
+            .as_ref()
             .ok_or(PlRustError::NullFunctionCallInfo)?
-            .flinfo.as_ref()
+            .flinfo
+            .as_ref()
             .ok_or(PlRustError::NullFmgrInfo)?
             .fn_oid;
         let func = plrust::lookup_function(fn_oid)?;
-    
+
         Ok(func(fcinfo))
     }
 
@@ -95,11 +98,16 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
 #[pg_extern]
 #[tracing::instrument(level = "info")]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
-    unsafe fn plrust_validator_inner(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) -> eyre::Result<()> {
+    unsafe fn plrust_validator_inner(
+        fn_oid: pg_sys::Oid,
+        fcinfo: pg_sys::FunctionCallInfo,
+    ) -> eyre::Result<()> {
         let fcinfo = PgBox::from_pg(fcinfo);
         let flinfo = PgBox::from_pg(fcinfo.flinfo);
-        if !pg_sys::CheckFunctionValidatorAccess(flinfo.fn_oid, pg_getarg(fcinfo.as_ptr(), 0).unwrap())
-        {
+        if !pg_sys::CheckFunctionValidatorAccess(
+            flinfo.fn_oid,
+            pg_getarg(fcinfo.as_ptr(), 0).unwrap(),
+        ) {
             return Err(PlRustError::CheckFunctionValidatorAccess)?;
         }
 
@@ -121,7 +129,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 
         Ok(())
     }
-    
+
     match plrust_validator_inner(fn_oid, fcinfo) {
         Ok(()) => (),
         // Panic into the pgx guard.
@@ -143,7 +151,12 @@ fn recompile_function(
         plrust::unload_function(fn_oid);
     }
     match plrust::compile_function(fn_oid) {
-        Ok((work_dir, stdout, stderr)) => (Some(work_dir.display().to_string()), Some(stdout), Some(stderr), None),
+        Ok((work_dir, stdout, stderr)) => (
+            Some(work_dir.display().to_string()),
+            Some(stdout),
+            Some(stderr),
+            None,
+        ),
         Err(err) => (None, None, None, Some(format!("{:?}", err))),
     }
 }

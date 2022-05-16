@@ -1,4 +1,3 @@
-
 #[derive(thiserror::Error, Debug)]
 pub enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]

@@ -7,17 +7,18 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::{gucs, error::PlRustError};
-use libloading::{Library, Symbol};
-use once_cell::unsync::Lazy;
-use pgx::{*, pg_sys::heap_tuple_get_struct};
-use std::{
-    collections::{HashMap, hash_map::Entry},
-    path::PathBuf, process::Command,
-    env::consts::DLL_SUFFIX
-};
+use crate::{error::PlRustError, gucs};
 use color_eyre::section::{Section, SectionExt};
 use eyre::{eyre, Result};
+use libloading::{Library, Symbol};
+use once_cell::unsync::Lazy;
+use pgx::{pg_sys::heap_tuple_get_struct, *};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    env::consts::DLL_SUFFIX,
+    path::PathBuf,
+    process::Command,
+};
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -100,10 +101,7 @@ mod generation {
     /// Get the latest created generation night.
     ///
     /// If `vacuum` is set, this garbage collect old `so` files.
-    pub(crate) fn latest_generation(
-        prefix: &str,
-        vacuum: bool,
-    ) -> Result<(usize, PathBuf), Error> {
+    pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, PathBuf), Error> {
         let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
         // We could use max_by, but might need to vacuum.
         generations.sort_by_key(|(generation, _path)| *generation);
@@ -128,11 +126,14 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 #[tracing::instrument(level = "info")]
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
-) -> Result<&'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>, PlRustError> {
-    let &mut (ref mut library, ref mut symbol) =  match LOADED_SYMBOLS.entry(fn_oid) {
+) -> Result<
+    &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
+    PlRustError,
+> {
+    let &mut (ref mut library, ref mut symbol) = match LOADED_SYMBOLS.entry(fn_oid) {
         entry @ Entry::Occupied(_) => {
             entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
-        },
+        }
         entry @ Entry::Vacant(_) => {
             let crate_name = crate_name(fn_oid);
 
@@ -142,26 +143,23 @@ pub(crate) unsafe fn lookup_function(
                 let latest = generation::latest_generation(&crate_name, true)
                     .expect("Could not find latest generation.")
                     .0;
-    
+
                 crate_name.push_str(&format!("_{}", latest));
                 crate_name
             };
-    
+
             let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
             let library = Library::new(&shared_library)?;
-    
+
             entry.or_insert((library, None))
-        },
+        }
     };
 
     match symbol {
         Some(symbol) => Ok(symbol),
         None => {
             let symbol_name = format!("plrust_fn_{}_wrapper", fn_oid);
-            let inserted_symbol = symbol.insert(
-                library
-                    .get(&symbol_name.as_bytes())?,
-            );
+            let inserted_symbol = symbol.insert(library.get(&symbol_name.as_bytes())?);
 
             Ok(inserted_symbol)
         }
@@ -203,10 +201,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     let (final_path, stdout, stderr) = if !cargo_output.status.success() {
         return Err(eyre!(PlRustError::CargoBuildFail)
-                .section(stdout.header("`cargo build` stdout:"))
-                .section(stderr.header("`cargo build` stderr:"))
-                .section(source_code.header("Source Code:"))
-        )?;
+            .section(stdout.header("`cargo build` stdout:"))
+            .section(stderr.header("`cargo build` stderr:"))
+            .section(source_code.header("Source Code:")))?;
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
@@ -229,9 +226,12 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
     Ok((final_path, stdout, stderr))
 }
 
-
 #[tracing::instrument(level = "info")]
-fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> Result<String, PlRustError> {
+fn create_function_crate(
+    fn_oid: pg_sys::Oid,
+    crate_dir: &PathBuf,
+    crate_name: &str,
+) -> Result<String, PlRustError> {
     let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid)?;
     let source_code =
@@ -265,7 +265,8 @@ lto = "fat"
 codegen-units = 1
 "#,
         ),
-    ).map_err(PlRustError::WritingCargoToml)?;
+    )
+    .map_err(PlRustError::WritingCargoToml)?;
 
     // the src/ directory
     let src = crate_dir.join("src");
@@ -278,14 +279,12 @@ codegen-units = 1
     Ok(source_code)
 }
 
-
 #[tracing::instrument(level = "info")]
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let db_oid = unsafe { pg_sys::MyDatabaseId };
     let ns_oid = unsafe { pg_sys::get_func_namespace(fn_oid) };
     format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
 }
-
 
 #[tracing::instrument(level = "info")]
 fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
@@ -294,7 +293,6 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
 
     (crate_name, crate_dir)
 }
-
 
 #[tracing::instrument(level = "info")]
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
@@ -307,7 +305,6 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
         (None, crate_name)
     }
 }
-
 
 #[tracing::instrument(level = "info")]
 fn generate_function_source(
@@ -337,7 +334,9 @@ fn plrust_fn_{fn_oid}"#
             source.push_str(", ");
         }
 
-        let mut rust_type = make_rust_type(type_oid, false).ok_or(PlRustError::UnsupportedSqlType(type_oid.value()))?.to_string();
+        let mut rust_type = make_rust_type(type_oid, false)
+            .ok_or(PlRustError::UnsupportedSqlType(type_oid.value()))?
+            .to_string();
 
         if !is_strict {
             // non-STRICT functions need all arguments as an Option<T> as any of them could be NULL
@@ -353,7 +352,8 @@ fn plrust_fn_{fn_oid}"#
 
     // return type
     source.push_str(" -> ");
-    let ret = make_rust_type(return_type, true).ok_or(PlRustError::UnsupportedSqlType(return_type.value()))?;
+    let ret = make_rust_type(return_type, true)
+        .ok_or(PlRustError::UnsupportedSqlType(return_type.value()))?;
     if is_set {
         source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
     } else {
@@ -367,18 +367,20 @@ fn plrust_fn_{fn_oid}"#
     Ok(source)
 }
 
-
 #[tracing::instrument(level = "info")]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
-) -> Result<(
-    pg_sys::Oid,
-    String,
-    String,
-    Vec<(PgOid, Option<String>)>,
-    (PgOid, bool),
-    bool,
-), PlRustError> {
+) -> Result<
+    (
+        pg_sys::Oid,
+        String,
+        String,
+        Vec<(PgOid, Option<String>)>,
+        (PgOid, bool),
+        bool,
+    ),
+    PlRustError,
+> {
     unsafe {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -402,7 +404,6 @@ fn extract_code_and_args(
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
         let plrust = std::ffi::CString::new("plrust").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
-
             return Err(PlRustError::NotPlRustFunction(fn_oid));
         }
 
@@ -453,7 +454,6 @@ fn extract_code_and_args(
     }
 }
 
-
 #[tracing::instrument(level = "info")]
 fn parse_source_and_deps(code: &str) -> (String, String) {
     enum Parse {
@@ -477,7 +477,6 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
 
     (deps_block, code_block)
 }
-
 
 #[tracing::instrument(level = "info")]
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {

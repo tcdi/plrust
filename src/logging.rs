@@ -23,11 +23,7 @@ pub(crate) struct PgxLogWriter<const TRIM: bool = true>;
 impl<const TRIM: bool> Write for PgxLogWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
-        let content = if TRIM {
-            content.trim_start()
-        } else {
-            content
-        };
+        let content = if TRIM { content.trim_start() } else { content };
         pgx::elog(pgx::log::PgLogLevel::LOG, content);
         Ok(data.len())
     }
@@ -41,11 +37,7 @@ pub(crate) struct PgxNoticeWriter<const TRIM: bool = true>;
 impl<const TRIM: bool> Write for PgxNoticeWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
-        let content = if TRIM {
-            content.trim_start()
-        } else {
-            content
-        };
+        let content = if TRIM { content.trim_start() } else { content };
         pgx::elog(pgx::log::PgLogLevel::NOTICE, content);
         Ok(data.len())
     }
@@ -59,11 +51,7 @@ pub(crate) struct PgxWarningWriter<const TRIM: bool = true>;
 impl<const TRIM: bool> Write for PgxWarningWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
-        let content = if TRIM {
-            content.trim_start()
-        } else {
-            content
-        };
+        let content = if TRIM { content.trim_start() } else { content };
         pgx::elog(pgx::log::PgLogLevel::WARNING, content);
         Ok(data.len())
     }
@@ -71,4 +59,3 @@ impl<const TRIM: bool> Write for PgxWarningWriter<TRIM> {
         Ok(())
     }
 }
-
