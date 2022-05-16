@@ -71,7 +71,7 @@ fn _PG_init() {
 CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     unsafe fn plrust_call_handler_inner(
         fcinfo: pg_sys::FunctionCallInfo,
@@ -96,7 +96,7 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
 }
 
 #[pg_extern]
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     unsafe fn plrust_validator_inner(
         fn_oid: pg_sys::Oid,
@@ -138,6 +138,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 }
 
 #[pg_extern]
+#[tracing::instrument(level = "debug")]
 fn recompile_function(
     fn_oid: pg_sys::Oid,
 ) -> (
@@ -146,7 +147,6 @@ fn recompile_function(
     name!(stderr, Option<String>),
     name!(plrust_error, Option<String>),
 ) {
-    tracing::error!("Swoop de woop");
     unsafe {
         plrust::unload_function(fn_oid);
     }
