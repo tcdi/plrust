@@ -25,8 +25,6 @@ pub enum PlRustError {
     SharedObjectNotFound,
     #[error("Cargo output was not UTF-8: {0}")]
     CargoOutputNotUtf8(std::string::FromUtf8Error),
-    #[error("Creating source directory: {0}")]
-    CreatingSourceDirectory(std::io::Error),
     #[error("Writing source code to `src/lib.rs`: {0}")]
     WritingLibRs(std::io::Error),
     #[error("Generating `Cargo.toml`")]

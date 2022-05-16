@@ -186,7 +186,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     // We need a `src` dir, so do it all at once
     let src = crate_dir.join("src");
-    std::fs::create_dir_all(&src).map_err(PlRustError::CreatingSourceDirectory)?;
+    std::fs::create_dir_all(&src).map_err(PlRustError::CrateDirectory)?;
 
     let (user_code, user_dependencies, args, (return_type, is_set), is_strict) = extract_code_and_args(fn_oid)?;
     
@@ -573,7 +573,7 @@ fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
     syn::parse2(rust_type.clone()).map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
 }
 
-#[tracing::instrument(level = "debug", level = "info")]
+#[tracing::instrument(level = "debug")]
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
     let array = array_type != pg_sys::InvalidOid;
