@@ -14,7 +14,7 @@ pub enum PlRustError {
     LibLoading(#[from] libloading::Error),
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     #[error("Generation error (Mac OS x86_64 specific): {0}")]
-    Generation(#[from] crate::generation::Error),
+    Generation(#[from] crate::plrust::generation::Error),
     #[error("Creating crate directory in plrust.work_dir GUC location: {0}")]
     CrateDirectory(std::io::Error),
     #[error("Executing `cargo build`: {0}")]

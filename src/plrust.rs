@@ -59,7 +59,7 @@ mod generation {
     !*/
 
     use super::*;
-    use std::{fs, io};
+    use std::fs;
 
     #[derive(thiserror::Error, Debug)]
     enum Error {
