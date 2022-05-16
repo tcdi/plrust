@@ -72,6 +72,7 @@ mod generation {
     }
 
     /// Find existing generations of a given prefix.
+    #[tracing::instrument(level = "debug")]
     pub(crate) fn all_generations(
         prefix: &str,
     ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, Error> {
@@ -95,6 +96,7 @@ mod generation {
     /// Get the next generation number to be created.
     ///
     /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
+    #[tracing::instrument(level = "debug")]
     pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, Error> {
         let latest = latest_generation(prefix, vacuum);
         Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
@@ -103,6 +105,7 @@ mod generation {
     /// Get the latest created generation night.
     ///
     /// If `vacuum` is set, this garbage collect old `so` files.
+    #[tracing::instrument(level = "debug")]
     pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, PathBuf), Error> {
         let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
         // We could use max_by, but might need to vacuum.
@@ -120,12 +123,12 @@ mod generation {
     }
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.remove(&fn_oid);
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
 ) -> Result<
@@ -168,7 +171,7 @@ pub(crate) unsafe fn lookup_function(
     }
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String, String)> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
@@ -243,7 +246,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
     Ok((final_path, stdout, stderr))
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 fn generate_cargo_toml(
     fn_oid: pg_sys::Oid,
     user_deps: &toml::value::Table,
@@ -336,14 +339,14 @@ fn generate_cargo_toml(
     Ok(cargo_toml)
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let db_oid = unsafe { pg_sys::MyDatabaseId };
     let ns_oid = unsafe { pg_sys::get_func_namespace(fn_oid) };
     format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     let crate_name = crate_name(fn_oid);
     let crate_dir = gucs::work_dir().join(&crate_name);
@@ -351,7 +354,7 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     (crate_name, crate_dir)
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     let target_dir = gucs::work_dir().join("release");
     let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
@@ -363,7 +366,7 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     }
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     user_code: &syn::Block,
@@ -413,7 +416,7 @@ fn generate_function_source(
     Ok(file)
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug")]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
 ) -> eyre::Result<
@@ -497,7 +500,7 @@ fn extract_code_and_args(
     }
 }
 
-#[tracing::instrument(level = "info", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 fn parse_source_and_deps(code_and_deps: &str) -> Result<(syn::Block, toml::value::Table)> {
     enum Parse {
         Code,
@@ -525,7 +528,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> Result<(syn::Block, toml::value
     Ok((user_code, user_dependencies))
 }
 
-#[tracing::instrument(skip_all, fields(type_oid = type_oid.value()))]
+#[tracing::instrument(level = "debug", skip_all, fields(type_oid = type_oid.value()))]
 fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 
@@ -570,7 +573,7 @@ fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
     syn::parse2(rust_type.clone()).map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
 }
 
-#[tracing::instrument(level = "info")]
+#[tracing::instrument(level = "debug", level = "info")]
 fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
     let array = array_type != pg_sys::InvalidOid;
