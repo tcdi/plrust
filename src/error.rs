@@ -29,10 +29,22 @@ pub enum PlRustError {
     CreatingSourceDirectory(std::io::Error),
     #[error("Writing source code to `src/lib.rs`: {0}")]
     WritingLibRs(std::io::Error),
+    #[error("Generating `Cargo.toml`")]
+    GeneratingCargoToml,
+    #[error("Stringifying `Cargo.toml`")]
+    StringifyingCargoToml(#[from] toml::ser::Error),
     #[error("Writing `Cargo.toml`: {0}")]
     WritingCargoToml(std::io::Error),
-    #[error("Unsupported SQL type OID: {0}")]
-    UnsupportedSqlType(pgx::pg_sys::Oid),
     #[error("Function `{0}` was not a PL/Rust function")]
     NotPlRustFunction(pgx::pg_sys::Oid),
+    #[error("Oid `{0}` was not mappable to a Rust type")]
+    NoOidToRustMapping(pgx::pg_sys::Oid),
+    #[error("Generated Rust type (`{1}`) for `{0}` was unparsable: {2}")]
+    ParsingRustMapping(pgx::pg_sys::Oid, String, syn::Error),
+    #[error("Parsing `[dependencies]` block: {0}")]
+    ParsingDependenciesBlock(toml::de::Error),
+    #[error("Parsing `[code]` block: {0}")]
+    ParsingCodeBlock(syn::Error),
+    #[error("Parsing error: {0}")]
+    Parse(#[from] syn::Error),
 }

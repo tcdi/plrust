@@ -9,7 +9,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use crate::{error::PlRustError, gucs};
 use color_eyre::section::{Section, SectionExt};
-use eyre::{eyre, Result};
+use eyre::{eyre, Result, WrapErr};
 use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
 use pgx::{pg_sys::heap_tuple_get_struct, *};
@@ -19,6 +19,8 @@ use std::{
     path::PathBuf,
     process::Command,
 };
+use proc_macro2::TokenStream;
+use quote::quote;
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -179,9 +181,24 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         crate_name
     };
 
-    std::fs::create_dir_all(&crate_dir).map_err(PlRustError::CrateDirectory)?;
+    // We need a `src` dir, so do it all at once
+    let src = crate_dir.join("src");
+    std::fs::create_dir_all(&src).map_err(PlRustError::CreatingSourceDirectory)?;
 
-    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name)?;
+    let (user_code, user_dependencies, args, (return_type, is_set), is_strict) = extract_code_and_args(fn_oid)?;
+    
+    // the actual source code in src/lib.rs
+    let source_code = generate_function_source(fn_oid, &user_code, &args, &return_type, is_set, is_strict)?;
+    let lib_rs = src.join("lib.rs");
+    std::fs::write(&lib_rs, &prettyplease::unparse(&source_code)).map_err(PlRustError::WritingLibRs)?;
+
+    let source_cargo_toml = generate_cargo_toml(fn_oid, &user_dependencies, &crate_dir, &crate_name)?;
+    let cargo_toml = crate_dir.join("Cargo.toml");
+    std::fs::write(
+        &cargo_toml, 
+        &toml::to_string(&source_cargo_toml).map_err(PlRustError::StringifyingCargoToml)?,
+    ).map_err(PlRustError::WritingCargoToml)?;
+
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -203,7 +220,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         return Err(eyre!(PlRustError::CargoBuildFail)
             .section(stdout.header("`cargo build` stdout:"))
             .section(stderr.header("`cargo build` stderr:"))
-            .section(source_code.header("Source Code:")))?;
+            .section(prettyplease::unparse(&source_code).header("Source Code:")))?;
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
@@ -227,56 +244,96 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 }
 
 #[tracing::instrument(level = "info")]
-fn create_function_crate(
+fn generate_cargo_toml(
     fn_oid: pg_sys::Oid,
+    user_deps: &toml::value::Table,
     crate_dir: &PathBuf,
     crate_name: &str,
-) -> Result<String, PlRustError> {
-    let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
-        extract_code_and_args(fn_oid)?;
-    let source_code =
-        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict)?;
-
-    // cargo.toml first
-    let cargo_toml = crate_dir.join("Cargo.toml");
+) -> eyre::Result<toml::Value> {
     let major_version = pg_sys::get_pg_major_version_num();
-    std::fs::write(
-        &cargo_toml,
-        &format!(
-            r#"[package]
-name = "{crate_name}"
-version = "0.0.0"
-edition = "2021"
 
-[lib]
-crate-type = ["cdylib"]
+    let mut cargo_toml = toml::toml! {
+        [package]
+        /* Crate name here */
+        version = "0.0.0"
+        edition = "2021"
+        
+        [lib]
+        crate-type = ["cdylib"]
+        
+        [features]
+        default = [ /* PG major version feature here */ ]
+        
+        [dependencies]
+        pgx = "0.4.3"
+        /* User deps here */
+        
+        [profile.release]
+        panic = "unwind"
+        opt-level = 3_usize
+        lto = "fat"
+        codegen-units = 1_usize
+    };
+    
+    match cargo_toml {
+        toml::Value::Table(ref mut cargo_manifest) => {
+            match cargo_manifest.entry("package") {
+                toml::value::Entry::Occupied(ref mut occupied) => {
+                    match occupied.get_mut() {
+                        toml::Value::Table(package) => {
+                            match package.entry("name") {
+                                entry @ toml::value::Entry::Vacant(_) => {
+                                    let _ = entry.or_insert(crate_name.into());
+                                },
+                                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[package]` field `name` as vacant")?,
+                            }
+                        },
+                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` as table")?,
+                    }
+                },
+                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]`")?,
+            };
+            
+            match cargo_manifest.entry("features") {
+                toml::value::Entry::Occupied(ref mut occupied) => {
+                    match occupied.get_mut() {
+                        toml::Value::Table(dependencies) => {
+                            match dependencies.entry("default") {
+                                toml::value::Entry::Occupied(ref mut occupied) => {
+                                    match occupied.get_mut() {
+                                        toml::Value::Array(default) => {
+                                            default.push(format!("pgx/pg{major_version}").into());
+                                        },
+                                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` field `default` as array")?,
+                                    }
+                                },
+                                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` field `default`")?,
+                            }
+                        },
+                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` as table")?,
+                    }
+                },
+                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]`")?,
+            };
 
-[features]
-default = ["pgx/pg{major_version}"]
+            match cargo_manifest.entry("dependencies") {
+                toml::value::Entry::Occupied(ref mut occupied) => {
+                    match occupied.get_mut() {
+                        toml::Value::Table(dependencies) => {
+                            for (user_dep_name, user_dep_version) in user_deps {
+                                dependencies.insert(user_dep_name.clone(), user_dep_version.clone());
+                            }
+                        },
+                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]` as table")?,
+                    }
+                },
+                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]`")?,
+            };
+        },
+        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `Cargo.toml` as table")?,
+}
 
-[dependencies]
-pgx = "0.4.3"
-{deps}
-
-[profile.release]
-panic = "unwind"
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-"#,
-        ),
-    )
-    .map_err(PlRustError::WritingCargoToml)?;
-
-    // the src/ directory
-    let src = crate_dir.join("src");
-    std::fs::create_dir_all(&src).map_err(PlRustError::CreatingSourceDirectory)?;
-
-    // the actual source code in src/lib.rs
-    let lib_rs = src.join("lib.rs");
-    std::fs::write(&lib_rs, &source_code).map_err(PlRustError::WritingLibRs)?;
-
-    Ok(source_code)
+    Ok(cargo_toml)
 }
 
 #[tracing::instrument(level = "info")]
@@ -309,78 +366,64 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
 #[tracing::instrument(level = "info")]
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
-    code: &str,
+    user_code: &syn::Block,
     args: &Vec<(PgOid, Option<String>)>,
     return_type: &PgOid,
     is_set: bool,
     is_strict: bool,
-) -> Result<String, PlRustError> {
-    let mut source = String::new();
+) -> eyre::Result<syn::File> {
+    let mut file = syn::File {
+        shebang: Default::default(),
+        attrs: Default::default(),
+        items: Default::default(),
+    };
 
-    // source header
-    source.push_str("\nuse pgx::*;\n");
+    let use_pgx = syn::parse2(quote! {
+        use pgx::*;
+    })?;
+    file.items.push(syn::Item::Use(use_pgx));
 
-    // function name
-    source.push_str(&format!(
-        r#"
-#[pg_extern]
-fn plrust_fn_{fn_oid}"#
-    ));
+    let user_fn_name = &format!("plrust_fn_{}", fn_oid);
+    let user_fn_ident = syn::Ident::new(user_fn_name, proc_macro2::Span::call_site());
 
-    // function args
-    source.push('(');
-    for (idx, (type_oid, name)) in args.iter().enumerate() {
-        if idx > 0 {
-            source.push_str(", ");
-        }
+    let mut user_fn_arg_idents: Vec<syn::Ident> = Vec::default();
+    let mut user_fn_arg_types: Vec<syn::Type> = Vec::default();
+    for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
+        let arg_ty = oid_to_syn_type(arg_type_oid).wrap_err("Mapping argument type")?;
+        let arg_name = match arg_name {
+            Some(name) if name.len() > 0 => name.clone(),
+            _ => format!("arg{}", arg_idx),
+        };
+        let arg_ident: syn::Ident = syn::parse_str(&arg_name).wrap_err("Invalid ident")?;
 
-        let mut rust_type = make_rust_type(type_oid, false)
-            .ok_or(PlRustError::UnsupportedSqlType(type_oid.value()))?
-            .to_string();
-
-        if !is_strict {
-            // non-STRICT functions need all arguments as an Option<T> as any of them could be NULL
-            rust_type = format!("Option<{}>", rust_type);
-        }
-
-        match name {
-            Some(name) if name.len() > 0 => source.push_str(&format!("{}: {}", name, rust_type)),
-            _ => source.push_str(&format!("arg{}: {}", idx + 1, rust_type)),
-        }
-    }
-    source.push(')');
-
-    // return type
-    source.push_str(" -> ");
-    let ret = make_rust_type(return_type, true)
-        .ok_or(PlRustError::UnsupportedSqlType(return_type.value()))?;
-    if is_set {
-        source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
-    } else {
-        source.push_str(&format!("Option<{ret}>"));
+        user_fn_arg_idents.push(arg_ident);
+        user_fn_arg_types.push(arg_ty);
     }
 
-    // body
-    source.push_str(" {\n");
-    source.push_str(&code);
-    source.push_str("\n}");
-    Ok(source)
+    let user_fn_return_type = oid_to_syn_type(return_type).wrap_err("Mapping return type")?;
+
+    file.items.push(syn::parse2(quote! {
+        #[pg_extern]
+        fn #user_fn_ident(
+            #( #user_fn_arg_idents: #user_fn_arg_types ),*
+        ) -> #user_fn_return_type
+        #user_code
+    })?);
+    
+    Ok(file)
 }
 
 #[tracing::instrument(level = "info")]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
-) -> Result<
+) -> eyre::Result<
     (
-        pg_sys::Oid,
-        String,
-        String,
+        syn::Block,
+        toml::value::Table,
         Vec<(PgOid, Option<String>)>,
         (PgOid, bool),
         bool,
-    ),
-    PlRustError,
-> {
+    )> {
     unsafe {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -390,7 +433,7 @@ fn extract_code_and_args(
             0,
         );
         if proc_tuple.is_null() {
-            return Err(PlRustError::NullProcTuple);
+            return Err(PlRustError::NullProcTuple)?;
         }
 
         let mut is_null = false;
@@ -404,7 +447,7 @@ fn extract_code_and_args(
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
         let plrust = std::ffi::CString::new("plrust").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
-            return Err(PlRustError::NotPlRustFunction(fn_oid));
+            return Err(PlRustError::NotPlRustFunction(fn_oid))?;
         }
 
         let prosrc_datum = pg_sys::SysCacheGetAttr(
@@ -413,10 +456,10 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_prosrc as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let (deps, source_code) = parse_source_and_deps(
+        let (user_code, user_dependencies) = parse_source_and_deps(
             &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
                 .ok_or(PlRustError::NullSourceCode)?,
-        );
+        )?;
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             proc_tuple,
@@ -450,12 +493,12 @@ fn extract_code_and_args(
 
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        Ok((fn_oid, deps, source_code, args, return_type, is_strict))
+        Ok((user_code, user_dependencies, args, return_type, is_strict))
     }
 }
 
 #[tracing::instrument(level = "info")]
-fn parse_source_and_deps(code: &str) -> (String, String) {
+fn parse_source_and_deps(code: &str) -> Result<(syn::Block, toml::value::Table)> {
     enum Parse {
         Code,
         Deps,
@@ -475,7 +518,56 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
         }
     }
 
-    (deps_block, code_block)
+    let user_dependencies: toml::value::Table = toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
+
+    let user_code: syn::Block = syn::parse_str(&format!("{{ {code} }}")).map_err(PlRustError::ParsingCodeBlock)?;
+
+    Ok((user_code, user_dependencies))
+}
+
+#[tracing::instrument(skip_all, fields(type_oid = type_oid.value()))]
+fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
+    let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
+
+    let (base_oid, array) = if array_type != pg_sys::InvalidOid {
+        (PgOid::from(array_type), true)
+    } else {
+        (type_oid.clone(), false)
+    };
+
+    let base_rust_type: TokenStream = match base_oid {
+        PgOid::BuiltIn(builtin) => match builtin {
+            PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
+            PgBuiltInOids::BOOLOID => quote! { bool },
+            PgBuiltInOids::BYTEAOID => quote! { Vec<u8> },
+            PgBuiltInOids::CHAROID => quote! { u8 },
+            PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
+            PgBuiltInOids::FLOAT4OID => quote! { f32 },
+            PgBuiltInOids::FLOAT8OID => quote! { f64 },
+            PgBuiltInOids::INETOID => quote! { Inet },
+            PgBuiltInOids::INT2OID => quote! { i16 },
+            PgBuiltInOids::INT4OID => quote! { i32 },
+            PgBuiltInOids::INT8OID => quote! { i64 },
+            PgBuiltInOids::JSONBOID => quote! { JsonB },
+            PgBuiltInOids::JSONOID => quote! { Json },
+            PgBuiltInOids::NUMERICOID => quote! { Numeric },
+            PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
+            PgBuiltInOids::TEXTOID => quote! { String },
+            PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
+            PgBuiltInOids::VARCHAROID => quote! { String },
+            PgBuiltInOids::VOIDOID => quote! { () },
+            _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
+        },
+        _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
+    };
+
+    let rust_type = if array {
+        quote! { Vec<Option<#base_rust_type>> }
+    } else {
+        base_rust_type
+    };
+
+    syn::parse2(rust_type.clone()).map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
 }
 
 #[tracing::instrument(level = "info")]
