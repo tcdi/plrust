@@ -62,7 +62,7 @@ pub(crate) mod generation {
     use std::fs;
 
     #[derive(thiserror::Error, Debug)]
-    enum Error {
+    pub(crate) enum Error {
         #[error("No generations found (Mac OS x86_64 specific)")]
         NoGenerations,
         #[error("std::io::Error: {0}")]
