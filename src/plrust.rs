@@ -13,14 +13,14 @@ use eyre::{eyre, Result, WrapErr};
 use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
 use pgx::{pg_sys::heap_tuple_get_struct, *};
+use proc_macro2::TokenStream;
+use quote::quote;
 use std::{
     collections::{hash_map::Entry, HashMap},
     env::consts::DLL_SUFFIX,
     path::PathBuf,
     process::Command,
 };
-use proc_macro2::TokenStream;
-use quote::quote;
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -188,20 +188,24 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
     let src = crate_dir.join("src");
     std::fs::create_dir_all(&src).map_err(PlRustError::CrateDirectory)?;
 
-    let (user_code, user_dependencies, args, (return_type, is_set), is_strict) = extract_code_and_args(fn_oid)?;
-    
-    // the actual source code in src/lib.rs
-    let source_code = generate_function_source(fn_oid, &user_code, &args, &return_type, is_set, is_strict)?;
-    let lib_rs = src.join("lib.rs");
-    std::fs::write(&lib_rs, &prettyplease::unparse(&source_code)).map_err(PlRustError::WritingLibRs)?;
+    let (user_code, user_dependencies, args, (return_type, is_set), is_strict) =
+        extract_code_and_args(fn_oid)?;
 
-    let source_cargo_toml = generate_cargo_toml(fn_oid, &user_dependencies, &crate_dir, &crate_name)?;
+    // the actual source code in src/lib.rs
+    let source_code =
+        generate_function_source(fn_oid, &user_code, &args, &return_type, is_set, is_strict)?;
+    let lib_rs = src.join("lib.rs");
+    std::fs::write(&lib_rs, &prettyplease::unparse(&source_code))
+        .map_err(PlRustError::WritingLibRs)?;
+
+    let source_cargo_toml =
+        generate_cargo_toml(fn_oid, &user_dependencies, &crate_dir, &crate_name)?;
     let cargo_toml = crate_dir.join("Cargo.toml");
     std::fs::write(
-        &cargo_toml, 
+        &cargo_toml,
         &toml::to_string(&source_cargo_toml).map_err(PlRustError::StringifyingCargoToml)?,
-    ).map_err(PlRustError::WritingCargoToml)?;
-
+    )
+    .map_err(PlRustError::WritingCargoToml)?;
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -231,12 +235,13 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
                 // move the shared_library into its final location, which is
                 // at the root of the configured `work_dir`
-                std::fs::rename(&shared_library, &final_path)
-                    .wrap_err_with(|| format!(
+                std::fs::rename(&shared_library, &final_path).wrap_err_with(|| {
+                    format!(
                         "Moving shared library `{}` to final path `{}`",
                         shared_library.display(),
                         final_path.display(),
-                    ))?;
+                    )
+                })?;
 
                 (final_path, stdout, stderr)
             }
@@ -264,81 +269,102 @@ fn generate_cargo_toml(
         /* Crate name here */
         version = "0.0.0"
         edition = "2021"
-        
+
         [lib]
         crate-type = ["cdylib"]
-        
+
         [features]
         default = [ /* PG major version feature here */ ]
-        
+
         [dependencies]
         pgx = "0.4.3"
         /* User deps here */
-        
+
         [profile.release]
         panic = "unwind"
         opt-level = 3_usize
         lto = "fat"
         codegen-units = 1_usize
     };
-    
+
     match cargo_toml {
         toml::Value::Table(ref mut cargo_manifest) => {
             match cargo_manifest.entry("package") {
-                toml::value::Entry::Occupied(ref mut occupied) => {
-                    match occupied.get_mut() {
-                        toml::Value::Table(package) => {
-                            match package.entry("name") {
-                                entry @ toml::value::Entry::Vacant(_) => {
-                                    let _ = entry.or_insert(crate_name.into());
-                                },
-                                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[package]` field `name` as vacant")?,
-                            }
-                        },
-                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` as table")?,
+                toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
+                    toml::Value::Table(package) => match package.entry("name") {
+                        entry @ toml::value::Entry::Vacant(_) => {
+                            let _ = entry.or_insert(crate_name.into());
+                        }
+                        _ => {
+                            return Err(PlRustError::GeneratingCargoToml)
+                                .wrap_err("Getting `#[package]` field `name` as vacant")?
+                        }
+                    },
+                    _ => {
+                        return Err(PlRustError::GeneratingCargoToml)
+                            .wrap_err("Getting `#[features]` as table")?
                     }
                 },
-                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]`")?,
+                _ => {
+                    return Err(PlRustError::GeneratingCargoToml)
+                        .wrap_err("Getting `#[dependencies]`")?
+                }
             };
-            
+
             match cargo_manifest.entry("features") {
-                toml::value::Entry::Occupied(ref mut occupied) => {
-                    match occupied.get_mut() {
-                        toml::Value::Table(dependencies) => {
-                            match dependencies.entry("default") {
-                                toml::value::Entry::Occupied(ref mut occupied) => {
-                                    match occupied.get_mut() {
-                                        toml::Value::Array(default) => {
-                                            default.push(format!("pgx/pg{major_version}").into());
-                                        },
-                                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` field `default` as array")?,
-                                    }
-                                },
-                                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` field `default`")?,
+                toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
+                    toml::Value::Table(dependencies) => match dependencies.entry("default") {
+                        toml::value::Entry::Occupied(ref mut occupied) => {
+                            match occupied.get_mut() {
+                                toml::Value::Array(default) => {
+                                    default.push(format!("pgx/pg{major_version}").into());
+                                }
+                                _ => {
+                                    return Err(PlRustError::GeneratingCargoToml).wrap_err(
+                                        "Getting `#[features]` field `default` as array",
+                                    )?
+                                }
                             }
-                        },
-                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[features]` as table")?,
+                        }
+                        _ => {
+                            return Err(PlRustError::GeneratingCargoToml)
+                                .wrap_err("Getting `#[features]` field `default`")?
+                        }
+                    },
+                    _ => {
+                        return Err(PlRustError::GeneratingCargoToml)
+                            .wrap_err("Getting `#[features]` as table")?
                     }
                 },
-                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]`")?,
+                _ => {
+                    return Err(PlRustError::GeneratingCargoToml)
+                        .wrap_err("Getting `#[dependencies]`")?
+                }
             };
 
             match cargo_manifest.entry("dependencies") {
-                toml::value::Entry::Occupied(ref mut occupied) => {
-                    match occupied.get_mut() {
-                        toml::Value::Table(dependencies) => {
-                            for (user_dep_name, user_dep_version) in user_deps {
-                                dependencies.insert(user_dep_name.clone(), user_dep_version.clone());
-                            }
-                        },
-                        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]` as table")?,
+                toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
+                    toml::Value::Table(dependencies) => {
+                        for (user_dep_name, user_dep_version) in user_deps {
+                            dependencies.insert(user_dep_name.clone(), user_dep_version.clone());
+                        }
+                    }
+                    _ => {
+                        return Err(PlRustError::GeneratingCargoToml)
+                            .wrap_err("Getting `#[dependencies]` as table")?
                     }
                 },
-                _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `#[dependencies]`")?,
+                _ => {
+                    return Err(PlRustError::GeneratingCargoToml)
+                        .wrap_err("Getting `#[dependencies]`")?
+                }
             };
-        },
-        _ => return Err(PlRustError::GeneratingCargoToml).wrap_err("Getting `Cargo.toml` as table")?,
-}
+        }
+        _ => {
+            return Err(PlRustError::GeneratingCargoToml)
+                .wrap_err("Getting `Cargo.toml` as table")?
+        }
+    }
 
     Ok(cargo_toml)
 }
@@ -416,21 +442,20 @@ fn generate_function_source(
         ) -> Option<#user_fn_return_type>
         #user_code
     })?);
-    
+
     Ok(file)
 }
 
 #[tracing::instrument(level = "debug")]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
-) -> eyre::Result<
-    (
-        syn::Block,
-        toml::value::Table,
-        Vec<(PgOid, Option<String>)>,
-        (PgOid, bool),
-        bool,
-    )> {
+) -> eyre::Result<(
+    syn::Block,
+    toml::value::Table,
+    Vec<(PgOid, Option<String>)>,
+    (PgOid, bool),
+    bool,
+)> {
     unsafe {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -525,9 +550,11 @@ fn parse_source_and_deps(code_and_deps: &str) -> Result<(syn::Block, toml::value
         }
     }
 
-    let user_dependencies: toml::value::Table = toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
+    let user_dependencies: toml::value::Table =
+        toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
 
-    let user_code: syn::Block = syn::parse_str(&format!("{{ {code_block} }}")).map_err(PlRustError::ParsingCodeBlock)?;
+    let user_code: syn::Block =
+        syn::parse_str(&format!("{{ {code_block} }}")).map_err(PlRustError::ParsingCodeBlock)?;
 
     Ok((user_code, user_dependencies))
 }
@@ -574,7 +601,8 @@ fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
         base_rust_type
     };
 
-    syn::parse2(rust_type.clone()).map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
+    syn::parse2(rust_type.clone())
+        .map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
 }
 
 #[tracing::instrument(level = "debug")]
