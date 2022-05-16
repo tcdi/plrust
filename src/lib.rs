@@ -322,7 +322,7 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn test_setof() {
+    fn test_returns_setof() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION boop_srf(names TEXT[]) RETURNS SETOF TEXT
                 IMMUTABLE STRICT
@@ -334,9 +334,12 @@ mod tests {
         Spi::run(definition);
 
         let retval = Spi::connect(|client| {
-            let mut table =
-                client.select("SELECT * FROM boop_srf(ARRAY['Nami', 'Brandy'])", None, None);
-            
+            let mut table = client.select(
+                "SELECT * FROM boop_srf(ARRAY['Nami', 'Brandy'])",
+                None,
+                None,
+            );
+
             let mut found = vec![];
             while table.next().is_some() {
                 let value = table.get_one::<String>();
@@ -346,10 +349,13 @@ mod tests {
             Ok(Some(found))
         });
 
-        assert_eq!(retval, Some(vec![
-            Some("Nami was booped!".into()),
-            Some("Brandy was booped!".into()),
-        ]));
+        assert_eq!(
+            retval,
+            Some(vec![
+                Some("Nami was booped!".into()),
+                Some("Brandy was booped!".into()),
+            ])
+        );
     }
 }
 

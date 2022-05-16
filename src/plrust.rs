@@ -399,7 +399,7 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     }
 }
 
-#[tracing::instrument(level = "debug")]
+#[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %fn_oid, args = ?args, return_type = ?return_type))]
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     user_code: &syn::Block,
@@ -426,6 +426,13 @@ fn generate_function_source(
     let mut user_fn_arg_types: Vec<syn::Type> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
         let arg_ty = oid_to_syn_type(arg_type_oid).wrap_err("Mapping argument type")?;
+        let arg_ty_wrapped = match is_strict {
+            true => arg_ty,
+            false => syn::parse2(quote! {
+                Option<#arg_ty>
+            })
+            .wrap_err("Wrapping argument type")?,
+        };
         let arg_name = match arg_name {
             Some(name) if name.len() > 0 => name.clone(),
             _ => format!("arg{}", arg_idx),
@@ -433,13 +440,16 @@ fn generate_function_source(
         let arg_ident: syn::Ident = syn::parse_str(&arg_name).wrap_err("Invalid ident")?;
 
         user_fn_arg_idents.push(arg_ident);
-        user_fn_arg_types.push(arg_ty);
+        user_fn_arg_types.push(arg_ty_wrapped);
     }
 
     let user_fn_return_type = oid_to_syn_type(return_type).wrap_err("Mapping return type")?;
     let user_fn_return_type_wrapped: syn::Type = match is_set {
-        true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>>> }).wrap_err("Wrapping return type")?,
-        false => syn::parse2(quote! { Option<#user_fn_return_type> }).wrap_err("Wrapping return type")?,
+        true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>>> })
+            .wrap_err("Wrapping return type")?,
+        false => {
+            syn::parse2(quote! { Option<#user_fn_return_type> }).wrap_err("Wrapping return type")?
+        }
     };
 
     file.items.push(syn::parse2(quote! {
