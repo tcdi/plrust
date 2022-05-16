@@ -37,7 +37,7 @@ pub(crate) fn init() {
 }
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-pub(crate) mod generation {
+pub mod generation {
     /*!
         Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
         `CREATE OR REPLACE FUNCTION`.
@@ -62,7 +62,7 @@ pub(crate) mod generation {
     use std::fs;
 
     #[derive(thiserror::Error, Debug)]
-    pub(crate) enum Error {
+    pub enum Error {
         #[error("No generations found (Mac OS x86_64 specific)")]
         NoGenerations,
         #[error("std::io::Error: {0}")]
