@@ -21,6 +21,7 @@ use std::{
     path::PathBuf,
     process::Command,
 };
+use tracing::info;
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -125,7 +126,10 @@ mod generation {
 
 #[tracing::instrument(level = "debug")]
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
-    LOADED_SYMBOLS.remove(&fn_oid);
+    let removed = LOADED_SYMBOLS.remove(&fn_oid);
+    if let Some(_symbol) = removed {
+        tracing::info!("unloaded function");
+    }
 }
 
 #[tracing::instrument(level = "debug")]

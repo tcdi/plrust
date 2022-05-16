@@ -31,22 +31,10 @@ fn _PG_init() {
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-    let filter_layer = match EnvFilter::try_from_default_env() {
-        Ok(layer) => layer,
-        Err(e) => {
-            // Catch a parse error and report it, ignore a missing env.
-            if let Some(source) = e.source() {
-                match source.downcast_ref::<std::env::VarError>() {
-                    Some(std::env::VarError::NotPresent) => (),
-                    Some(e) => panic!("Error parsing RUST_LOG directives: {}", e),
-                    None => panic!("Error parsing RUST_LOG directives"),
-                }
-            }
-            EnvFilter::try_new(&format!("{}=info", env!("CARGO_PKG_NAME")))
-                .expect("Error parsing default log level")
-        }
-    }
-    .add_directive(gucs::tracing_level().into());
+    let filter_layer = EnvFilter::builder()
+        .with_default_directive(gucs::tracing_level().into())
+        .from_env()
+        .expect("Error parsing default log level");
 
     let error_layer = tracing_error::ErrorLayer::default();
 
