@@ -361,9 +361,9 @@ fn extract_code_and_args(
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             fn_oid.into_datum().unwrap(),
-            0,
-            0,
-            0,
+            0.into(),
+            0.into(),
+            0.into(),
         );
         if proc_tuple.is_null() {
             panic!("cache lookup failed for function oid {}", fn_oid);
@@ -377,7 +377,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
+        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null);
         let plrust = std::ffi::CString::new("plrust").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
             panic!("function {} is not a plrust function", fn_oid);
@@ -390,7 +390,7 @@ fn extract_code_and_args(
             &mut is_null,
         );
         let (deps, source_code) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
+            &String::from_datum(prosrc_datum, is_null)
                 .expect("source code was null"),
         );
         let argnames_datum = pg_sys::SysCacheGetAttr(
@@ -399,7 +399,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
+        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
 
         let argtypes_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -407,7 +407,7 @@ fn extract_code_and_args(
             pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
+        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
 
         let proc_entry = PgBox::from_pg(heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
