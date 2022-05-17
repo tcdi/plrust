@@ -21,7 +21,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_basic() {
+    fn basic() {
         let definition = r#"
             CREATE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
                 IMMUTABLE STRICT
@@ -46,7 +46,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_update() {
+    fn update() {
         let definition = r#"
             CREATE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
@@ -84,7 +84,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_spi() {
+    fn spi() {
         let random_definition = r#"
             CREATE FUNCTION random_contributor_pet() RETURNS TEXT
                 STRICT
@@ -128,7 +128,7 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn test_deps() {
+    fn deps() {
         let definition = r#"
             CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
@@ -159,9 +159,8 @@ mod tests {
     }
 
     #[pg_test]
-    #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn test_returns_setof() {
+    fn returns_setof() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION boop_srf(names TEXT[]) RETURNS SETOF TEXT
                 IMMUTABLE STRICT
@@ -196,6 +195,33 @@ mod tests {
             ])
         );
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn aggregate() {
+        let definition = r#"
+            CREATE FUNCTION plrust_sum_state(state INT, next INT) RETURNS INT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Some(state + next)
+            $$;
+            CREATE AGGREGATE plrust_sum(INT)
+            (
+                SFUNC    = plrust_sum_state,
+                STYPE    = INT,
+                INITCOND = '0'
+            );            
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<i32> = Spi::get_one(
+            r#"
+            SELECT plrust_sum(value) FROM UNNEST(ARRAY [1, 2, 3]) as value;
+        "#);
+        assert_eq!(retval, Some(6));
+    }
+
 }
 
 #[cfg(any(test, feature = "pg_test"))]
