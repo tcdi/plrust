@@ -189,7 +189,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     // We need a `src` dir, so do it all at once
     let src = crate_dir.join("src");
-    std::fs::create_dir_all(&src).map_err(PlRustError::CrateDirectory)?;
+    std::fs::create_dir_all(&src).wrap_err("Could not create crate directory in configured `plrust.work_dir` location")?;
 
     let (user_code, user_dependencies, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid)?;
@@ -199,16 +199,15 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         generate_function_source(fn_oid, &user_code, &args, &return_type, is_set, is_strict)?;
     let lib_rs = src.join("lib.rs");
     std::fs::write(&lib_rs, &prettyplease::unparse(&source_code))
-        .map_err(PlRustError::WritingLibRs)?;
+        .wrap_err("Writing generated `lib.rs`")?;
 
     let source_cargo_toml =
         generate_cargo_toml(fn_oid, &user_dependencies, &crate_dir, &crate_name)?;
     let cargo_toml = crate_dir.join("Cargo.toml");
     std::fs::write(
         &cargo_toml,
-        &toml::to_string(&source_cargo_toml).map_err(PlRustError::StringifyingCargoToml)?,
-    )
-    .map_err(PlRustError::WritingCargoToml)?;
+        &toml::to_string(&source_cargo_toml).wrap_err("Stringifying generated `Cargo.toml`")?,
+    ).wrap_err("Writing generated `Cargo.toml`")?;
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -221,10 +220,10 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
             "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
         )
         .output()
-        .map_err(PlRustError::CargoBuildExec)?;
+        .wrap_err("`cargo` execution failure")?;
 
-    let stdout = String::from_utf8(cargo_output.stdout).map_err(PlRustError::CargoOutputNotUtf8)?;
-    let stderr = String::from_utf8(cargo_output.stderr).map_err(PlRustError::CargoOutputNotUtf8)?;
+    let stdout = String::from_utf8(cargo_output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
+    let stderr = String::from_utf8(cargo_output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
 
     let (final_path, stdout, stderr) = if !cargo_output.status.success() {
         return Err(eyre!(PlRustError::CargoBuildFail)
