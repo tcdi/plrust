@@ -1,6 +1,9 @@
-use pgx::{pg_sys, PgOid};
+use pgx::{pg_sys, PgOid, PgBuiltInOids};
 use std::{collections::HashMap, path::PathBuf};
 use crate::PlRustError;
+use quote::quote;
+use proc_macro2::TokenStream;
+use eyre::WrapErr;
 
 pub struct GeneratableCrate<P: CratePhase>(P);
 
@@ -96,7 +99,7 @@ impl GeneratableCrate<CrateBuilt> {
 #[must_use]
 pub enum CrateVariant {
     Function {
-        arguments: HashMap<(PgOid, Option<String>), syn::PatType>,
+        arguments: HashMap<(PgOid, Option<String>), syn::FnArg>,
         return_oid: PgOid,
         return_type: syn::Type,
         return_set: bool,
@@ -106,22 +109,22 @@ pub enum CrateVariant {
 }
 
 impl CrateVariant {
-    #[cfg(test)]
-    fn function_for_tests(
+    fn function(
         argument_oids: Vec<(PgOid, Option<String>)>,
         return_oid: PgOid,
         return_set: bool,
         is_strict: bool,
-        is_set: bool,
     ) -> eyre::Result<Self> {
-        let arguments = Default::default();
+        let mut arguments = HashMap::default();
         for (argument_oid, argument_name) in argument_oids {
-            let rust_type = oid_to_syn_type(&argument_oid, false);
-            arguments.insert((argument_oid, argument_name), rust_type);
+            let rust_type = oid_to_syn_type(&argument_oid, false)?;
+            let rust_pat_type: syn::FnArg = syn::parse2(quote! {
+                #argument_name: #rust_type
+            }).wrap_err("Making argument pattern type")?;
+            arguments.insert((argument_oid, argument_name), rust_pat_type);
         }
 
-        let return_type = make_rust_type(&return_oid, true)
-            .ok_or(PlRustError::NoOidToRustMapping(return_oid))?;
+        let return_type = oid_to_syn_type(&return_oid, true)?;
 
         Ok(Self::Function {
             arguments,
@@ -133,8 +136,9 @@ impl CrateVariant {
     }
 }
 
+
 #[tracing::instrument(level = "debug", skip_all, fields(type_oid = type_oid.value()))]
-fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {
+pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 
     let (base_oid, array) = if array_type != pg_sys::InvalidOid {
@@ -148,7 +152,7 @@ fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustErr
             PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
             PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
-            PgBuiltInOids::BYTEAOID => quote! { &[u8] },
+            PgBuiltInOids::BYTEAOID if !owned => quote! { &[u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
@@ -161,8 +165,8 @@ fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustErr
             PgBuiltInOids::JSONOID => quote! { Json },
             PgBuiltInOids::NUMERICOID => quote! { Numeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
-            PgBuiltInOids::TEXTOID => quote! { &str },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
+            PgBuiltInOids::TEXTOID if !owned => quote! { &str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
@@ -187,16 +191,19 @@ mod test {
     use super::*;
     use eyre::WrapErr;
     use quote::quote;
+    use toml::toml;
+    use syn::parse_quote;
 
     #[test]
-    fn workflow() -> eyre::Result<()> {
+    fn function_workflow() -> eyre::Result<()> {
         let fn_oid = 0 as pg_sys::Oid;
 
         let variant = {
             let argument_oids_and_names = vec![(PgOid::Custom(0), None)];
             let return_oid = PgOid::Custom(0);
             let is_strict = true;
-            CrateVariant::function_for_tests(argument_oids_and_names, return_oid, is_strict)?
+            let return_set = false;
+            CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
         };
         let user_deps = toml::value::Table::default();
         let user_code = syn::parse2(quote ! {
@@ -210,8 +217,19 @@ mod test {
             variant,
         );
 
+        let generated_lib_rs = generated.lib_rs();
+        assert_eq!(generated_lib_rs, parse_quote! {
+            // Boop
+        });
+
+        let generated_cargo_toml = generated.cargo_toml();
+        assert_eq!(generated_cargo_toml, *toml! {
+            value = "boop"
+        }.as_table().unwrap());
+
+
         let parent_dir =
-            tempdir::TempDir::new("plrust-generated-crate-workflow").wrap_err("Creating temp dir")?;
+            tempdir::TempDir::new("plrust-generated-crate-function-workflow").wrap_err("Creating temp dir")?;
         let provisioned = generated.provision(parent_dir.into_path())?;
 
         let built = provisioned.build()?;
