@@ -1,4 +1,3 @@
-
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
@@ -218,10 +217,10 @@ mod tests {
         let retval: Option<i32> = Spi::get_one(
             r#"
             SELECT plrust_sum(value) FROM UNNEST(ARRAY [1, 2, 3]) as value;
-        "#);
+        "#,
+        );
         assert_eq!(retval, Some(6));
     }
-
 }
 
 #[cfg(any(test, feature = "pg_test"))]

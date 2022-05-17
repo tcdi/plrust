@@ -189,7 +189,8 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     // We need a `src` dir, so do it all at once
     let src = crate_dir.join("src");
-    std::fs::create_dir_all(&src).wrap_err("Could not create crate directory in configured `plrust.work_dir` location")?;
+    std::fs::create_dir_all(&src)
+        .wrap_err("Could not create crate directory in configured `plrust.work_dir` location")?;
 
     let (user_code, user_dependencies, args, (return_type, is_set), is_strict) =
         extract_code_and_args(fn_oid)?;
@@ -207,7 +208,8 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
     std::fs::write(
         &cargo_toml,
         &toml::to_string(&source_cargo_toml).wrap_err("Stringifying generated `Cargo.toml`")?,
-    ).wrap_err("Writing generated `Cargo.toml`")?;
+    )
+    .wrap_err("Writing generated `Cargo.toml`")?;
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -222,8 +224,10 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         .output()
         .wrap_err("`cargo` execution failure")?;
 
-    let stdout = String::from_utf8(cargo_output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
-    let stderr = String::from_utf8(cargo_output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
+    let stdout =
+        String::from_utf8(cargo_output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
+    let stderr =
+        String::from_utf8(cargo_output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
 
     let (final_path, stdout, stderr) = if !cargo_output.status.success() {
         return Err(eyre!(PlRustError::CargoBuildFail)
