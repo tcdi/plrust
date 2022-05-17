@@ -8,6 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 mod error;
+mod generated_crate;
 mod gucs;
 mod logging;
 mod plrust;
