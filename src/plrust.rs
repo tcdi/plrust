@@ -7,13 +7,18 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::gucs;
+use crate::{error::PlRustError, gucs};
+use color_eyre::section::{Section, SectionExt};
+use eyre::{eyre, Result};
 use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
-use pgx::pg_sys::heap_tuple_get_struct;
-use pgx::*;
-use std::env::consts::DLL_SUFFIX;
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use pgx::{pg_sys::heap_tuple_get_struct, *};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    env::consts::DLL_SUFFIX,
+    path::PathBuf,
+    process::Command,
+};
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
@@ -32,7 +37,7 @@ pub(crate) fn init() {
 }
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-mod generation {
+pub mod generation {
     /*!
         Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
         `CREATE OR REPLACE FUNCTION`.
@@ -54,12 +59,21 @@ mod generation {
     !*/
 
     use super::*;
-    use std::{fs, io};
+    use std::fs;
+
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
+        #[error("No generations found (Mac OS x86_64 specific)")]
+        NoGenerations,
+        #[error("std::io::Error: {0}")]
+        StdIoError(#[from] std::io::Error),
+    }
 
     /// Find existing generations of a given prefix.
+    #[tracing::instrument(level = "debug")]
     pub(crate) fn all_generations(
         prefix: &str,
-    ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, io::Error> {
+    ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, Error> {
         let work_dir = gucs::work_dir();
         let filtered = fs::read_dir(work_dir)?
             .flat_map(|entry| {
@@ -80,7 +94,8 @@ mod generation {
     /// Get the next generation number to be created.
     ///
     /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
-    pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, std::io::Error> {
+    #[tracing::instrument(level = "debug")]
+    pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, Error> {
         let latest = latest_generation(prefix, vacuum);
         Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
     }
@@ -88,10 +103,8 @@ mod generation {
     /// Get the latest created generation night.
     ///
     /// If `vacuum` is set, this garbage collect old `so` files.
-    pub(crate) fn latest_generation(
-        prefix: &str,
-        vacuum: bool,
-    ) -> Result<(usize, PathBuf), std::io::Error> {
+    #[tracing::instrument(level = "debug")]
+    pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, PathBuf), Error> {
         let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
         // We could use max_by, but might need to vacuum.
         generations.sort_by_key(|(generation, _path)| *generation);
@@ -104,74 +117,74 @@ mod generation {
             }
         }
 
-        latest.ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "No generations found.")
-        })
+        latest.ok_or(Error::NoGenerations)
     }
 }
 
+#[tracing::instrument(level = "debug")]
 pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.remove(&fn_oid);
 }
 
+#[tracing::instrument(level = "debug")]
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
-) -> &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum> {
-    let (library, symbol) = LOADED_SYMBOLS.entry(fn_oid).or_insert_with(|| {
-        let crate_name = crate_name(fn_oid);
+) -> Result<
+    &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
+    PlRustError,
+> {
+    let &mut (ref mut library, ref mut symbol) = match LOADED_SYMBOLS.entry(fn_oid) {
+        entry @ Entry::Occupied(_) => {
+            entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
+        }
+        entry @ Entry::Vacant(_) => {
+            let crate_name = crate_name(fn_oid);
 
-        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let latest = generation::latest_generation(&crate_name, true)
-                .expect("Could not find latest generation.")
-                .0;
+            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let latest = generation::latest_generation(&crate_name, true)
+                    .expect("Could not find latest generation.")
+                    .0;
 
-            crate_name.push_str(&format!("_{}", latest));
-            crate_name
-        };
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
 
-        let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
-        let library = Library::new(&shared_library).unwrap_or_else(|e| {
-            panic!(
-                "failed to open shared library at `{so}`: {e}",
-                so = shared_library.display()
-            )
-        });
+            let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
+            let library = Library::new(&shared_library)?;
 
-        (library, None)
-    });
+            entry.or_insert((library, None))
+        }
+    };
 
     match symbol {
-        Some(symbol) => symbol,
+        Some(symbol) => Ok(symbol),
         None => {
             let symbol_name = format!("plrust_fn_{}_wrapper", fn_oid);
-            symbol.replace(
-                library
-                    .get(&symbol_name.as_bytes())
-                    .expect("failed to find function"),
-            );
-            symbol.as_ref().unwrap()
+            let inserted_symbol = symbol.insert(library.get(&symbol_name.as_bytes())?);
+
+            Ok(inserted_symbol)
         }
     }
 }
 
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String), String> {
+#[tracing::instrument(level = "info")]
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String, String)> {
     let work_dir = gucs::work_dir();
     let (crate_name, crate_dir) = crate_name_and_path(fn_oid);
 
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let crate_name = {
         let mut crate_name = crate_name;
-        let latest = generation::next_generation(&crate_name, true)
-            .expect("Could not find latest generation.");
+        let latest = generation::next_generation(&crate_name, true)?;
         crate_name.push_str(&format!("_{}", latest));
         crate_name
     };
 
-    std::fs::create_dir_all(&crate_dir).expect("failed to create crate directory");
+    std::fs::create_dir_all(&crate_dir).map_err(PlRustError::CrateDirectory)?;
 
-    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name);
+    let source_code = create_function_crate(fn_oid, &crate_dir, &crate_name)?;
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
@@ -184,18 +197,16 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
             "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
         )
         .output()
-        .expect("failed to build function shared library");
+        .map_err(PlRustError::CargoBuildExec)?;
 
-    let mut output_string = String::new();
-    unsafe {
-        output_string.push_str(&String::from_utf8_unchecked(cargo_output.stdout));
-        output_string.push_str(&String::from_utf8_unchecked(cargo_output.stderr));
-    }
+    let stdout = String::from_utf8(cargo_output.stdout).map_err(PlRustError::CargoOutputNotUtf8)?;
+    let stderr = String::from_utf8(cargo_output.stderr).map_err(PlRustError::CargoOutputNotUtf8)?;
 
-    let result = if !cargo_output.status.success() {
-        output_string.push_str("-----------------\n");
-        output_string.push_str(&source_code);
-        Err(output_string)
+    let (final_path, stdout, stderr) = if !cargo_output.status.success() {
+        return Err(eyre!(PlRustError::CargoBuildFail)
+            .section(stdout.header("`cargo build` stdout:"))
+            .section(stderr.header("`cargo build` stderr:"))
+            .section(source_code.header("Source Code:")))?;
     } else {
         match find_shared_library(&crate_name).0 {
             Some(shared_library) => {
@@ -206,23 +217,28 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> Result<(PathBuf, String),
                 std::fs::rename(&shared_library, &final_path)
                     .expect("unable to rename shared_library");
 
-                Ok((final_path, output_string))
+                (final_path, stdout, stderr)
             }
-            None => Err(output_string),
+            None => return Err(PlRustError::SharedObjectNotFound)?,
         }
     };
 
     // no matter what happened, remove our crate directory, ignoring any error that might generate
     std::fs::remove_dir_all(&crate_dir).ok();
 
-    result
+    Ok((final_path, stdout, stderr))
 }
 
-fn create_function_crate(fn_oid: pg_sys::Oid, crate_dir: &PathBuf, crate_name: &str) -> String {
+#[tracing::instrument(level = "debug")]
+fn create_function_crate(
+    fn_oid: pg_sys::Oid,
+    crate_dir: &PathBuf,
+    crate_name: &str,
+) -> Result<String, PlRustError> {
     let (fn_oid, deps, code, args, (return_type, is_set), is_strict) =
-        extract_code_and_args(fn_oid);
+        extract_code_and_args(fn_oid)?;
     let source_code =
-        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict);
+        generate_function_source(fn_oid, &code, &args, &return_type, is_set, is_strict)?;
 
     // cargo.toml first
     let cargo_toml = crate_dir.join("Cargo.toml");
@@ -253,25 +269,27 @@ codegen-units = 1
 "#,
         ),
     )
-    .expect("failed to write Cargo.toml");
+    .map_err(PlRustError::WritingCargoToml)?;
 
     // the src/ directory
     let src = crate_dir.join("src");
-    std::fs::create_dir_all(&src).expect("failed to create src directory");
+    std::fs::create_dir_all(&src).map_err(PlRustError::CreatingSourceDirectory)?;
 
     // the actual source code in src/lib.rs
     let lib_rs = src.join("lib.rs");
-    std::fs::write(&lib_rs, &source_code).expect("failed to write source code to lib.rs");
+    std::fs::write(&lib_rs, &source_code).map_err(PlRustError::WritingLibRs)?;
 
-    source_code
+    Ok(source_code)
 }
 
+#[tracing::instrument(level = "debug")]
 fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let db_oid = unsafe { pg_sys::MyDatabaseId };
     let ns_oid = unsafe { pg_sys::get_func_namespace(fn_oid) };
     format!("fn{}_{}_{}", db_oid, ns_oid, fn_oid)
 }
 
+#[tracing::instrument(level = "debug")]
 fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     let crate_name = crate_name(fn_oid);
     let crate_dir = gucs::work_dir().join(&crate_name);
@@ -279,6 +297,7 @@ fn crate_name_and_path(fn_oid: pg_sys::Oid) -> (String, PathBuf) {
     (crate_name, crate_dir)
 }
 
+#[tracing::instrument(level = "debug")]
 fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     let target_dir = gucs::work_dir().join("release");
     let so = target_dir.join(&format!("lib{crate_name}{DLL_SUFFIX}"));
@@ -290,6 +309,7 @@ fn find_shared_library(crate_name: &str) -> (Option<PathBuf>, &str) {
     }
 }
 
+#[tracing::instrument(level = "debug")]
 fn generate_function_source(
     fn_oid: pg_sys::Oid,
     code: &str,
@@ -297,7 +317,7 @@ fn generate_function_source(
     return_type: &PgOid,
     is_set: bool,
     is_strict: bool,
-) -> String {
+) -> Result<String, PlRustError> {
     let mut source = String::new();
 
     // source header
@@ -317,7 +337,9 @@ fn plrust_fn_{fn_oid}"#
             source.push_str(", ");
         }
 
-        let mut rust_type = make_rust_type(type_oid, false).to_string();
+        let mut rust_type = make_rust_type(type_oid, false)
+            .ok_or(PlRustError::UnsupportedSqlType(type_oid.value()))?
+            .to_string();
 
         if !is_strict {
             // non-STRICT functions need all arguments as an Option<T> as any of them could be NULL
@@ -333,7 +355,8 @@ fn plrust_fn_{fn_oid}"#
 
     // return type
     source.push_str(" -> ");
-    let ret = make_rust_type(return_type, true);
+    let ret = make_rust_type(return_type, true)
+        .ok_or(PlRustError::UnsupportedSqlType(return_type.value()))?;
     if is_set {
         source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
     } else {
@@ -344,19 +367,23 @@ fn plrust_fn_{fn_oid}"#
     source.push_str(" {\n");
     source.push_str(&code);
     source.push_str("\n}");
-    source
+    Ok(source)
 }
 
+#[tracing::instrument(level = "debug")]
 fn extract_code_and_args(
     fn_oid: pg_sys::Oid,
-) -> (
-    pg_sys::Oid,
-    String,
-    String,
-    Vec<(PgOid, Option<String>)>,
-    (PgOid, bool),
-    bool,
-) {
+) -> Result<
+    (
+        pg_sys::Oid,
+        String,
+        String,
+        Vec<(PgOid, Option<String>)>,
+        (PgOid, bool),
+        bool,
+    ),
+    PlRustError,
+> {
     unsafe {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -366,7 +393,7 @@ fn extract_code_and_args(
             0,
         );
         if proc_tuple.is_null() {
-            panic!("cache lookup failed for function oid {}", fn_oid);
+            return Err(PlRustError::NullProcTuple);
         }
 
         let mut is_null = false;
@@ -380,7 +407,7 @@ fn extract_code_and_args(
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
         let plrust = std::ffi::CString::new("plrust").unwrap();
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
-            panic!("function {} is not a plrust function", fn_oid);
+            return Err(PlRustError::NotPlRustFunction(fn_oid));
         }
 
         let prosrc_datum = pg_sys::SysCacheGetAttr(
@@ -391,7 +418,7 @@ fn extract_code_and_args(
         );
         let (deps, source_code) = parse_source_and_deps(
             &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
-                .expect("source code was null"),
+                .ok_or(PlRustError::NullSourceCode)?,
         );
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -426,10 +453,11 @@ fn extract_code_and_args(
 
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        (fn_oid, deps, source_code, args, return_type, is_strict)
+        Ok((fn_oid, deps, source_code, args, return_type, is_strict))
     }
 }
 
+#[tracing::instrument(level = "debug")]
 fn parse_source_and_deps(code: &str) -> (String, String) {
     enum Parse {
         Code,
@@ -453,7 +481,8 @@ fn parse_source_and_deps(code: &str) -> (String, String) {
     (deps_block, code_block)
 }
 
-fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
+#[tracing::instrument(level = "debug")]
+fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
     let array = array_type != pg_sys::InvalidOid;
     let type_oid = if array {
@@ -486,17 +515,17 @@ fn make_rust_type(type_oid: &PgOid, owned: bool) -> String {
             PgBuiltInOids::VARCHAROID if owned => "String",
             PgBuiltInOids::VARCHAROID => "&str",
             PgBuiltInOids::VOIDOID => "()",
-            _ => panic!("unsupported argument type: {:?}", type_oid),
+            _ => return None,
         },
-        _ => panic!("unsupported argument type: {:?}", type_oid),
+        _ => return None,
     }
     .to_string();
 
-    if array && owned {
+    Some(if array && owned {
         format!("Vec<Option<{rust_type}>>")
     } else if array {
         format!("Array<{rust_type}>")
     } else {
         rust_type
-    }
+    })
 }

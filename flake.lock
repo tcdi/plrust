@@ -78,11 +78,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1639947939,
-        "narHash": "sha256-pGsM8haJadVP80GFq4xhnSpNitYNQpaXk4cnA796Cso=",
+        "lastModified": 1651574473,
+        "narHash": "sha256-wQhFORvRjo8LB2hTmETmv6cbyKGDPbfWqvZ/0chnDE4=",
         "ref": "master",
-        "rev": "2fc8ce9d3c025d59fee349c1f80be9785049d653",
-        "revCount": 282,
+        "rev": "f21309b38e1da0d61b881b6b6d41b81c1aed4e1d",
+        "revCount": 290,
         "type": "git",
         "url": "https://github.com/nix-community/naersk"
       },
@@ -93,11 +93,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1646506091,
-        "narHash": "sha256-sWNAJE2m+HOh1jtXlHcnhxsj6/sXrHgbqVNcVRlveK4=",
+        "lastModified": 1652692103,
+        "narHash": "sha256-ygRLh8g0F/WkVCSfQcxMoVaaD45i6Ky+f+b4wCOazag=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "3e644bd62489b516292c816f70bf0052c693b3c7",
+        "rev": "556ce9a40abde33738e6c9eac65f965a8be3b623",
         "type": "github"
       },
       "original": {
@@ -117,11 +117,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1647454589,
-        "narHash": "sha256-vqIXsOA7XSq+QedZ//JiabBw9/KluipSy87R4cfVKEc=",
+        "lastModified": 1652033309,
+        "narHash": "sha256-a8R1KhbwZvtXYKx0TeD8y+7gBJfpfKM5N5fhPalHj9s=",
         "ref": "master",
-        "rev": "a96c1b75380cfda210029bc4671b342c4e904fe7",
-        "revCount": 1056,
+        "rev": "52e40fbc88a99e7cdd23d940b43529fa1625b128",
+        "revCount": 1097,
         "type": "git",
         "url": "https://github.com/zombodb/pgx"
       },
@@ -169,11 +169,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1646965545,
-        "narHash": "sha256-TnOdd6d+5QeF2JkCvpEi7JbRampCZXCBUraukJI743U=",
+        "lastModified": 1652668492,
+        "narHash": "sha256-IkkheO8APgbJp7XO5DbYb2MynTJs6smE9EvDjrWA488=",
         "ref": "master",
-        "rev": "f540e0001088700f72a3b2a178c9d8e70616a4a9",
-        "revCount": 545,
+        "rev": "ea19353ab585e3b35611368bad781aa3d10d973f",
+        "revCount": 612,
         "type": "git",
         "url": "https://github.com/oxalica/rust-overlay"
       },
