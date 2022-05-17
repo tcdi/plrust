@@ -428,7 +428,7 @@ fn generate_function_source(
     let mut user_fn_arg_idents: Vec<syn::Ident> = Vec::default();
     let mut user_fn_arg_types: Vec<syn::Type> = Vec::default();
     for (arg_idx, (arg_type_oid, arg_name)) in args.iter().enumerate() {
-        let arg_ty = oid_to_syn_type(arg_type_oid).wrap_err("Mapping argument type")?;
+        let arg_ty = oid_to_syn_type(arg_type_oid, false).wrap_err("Mapping argument type")?;
         let arg_ty_wrapped = match is_strict {
             true => arg_ty,
             false => syn::parse2(quote! {
@@ -446,9 +446,9 @@ fn generate_function_source(
         user_fn_arg_types.push(arg_ty_wrapped);
     }
 
-    let user_fn_return_type = oid_to_syn_type(return_type).wrap_err("Mapping return type")?;
+    let user_fn_return_type = oid_to_syn_type(return_type, true).wrap_err("Mapping return type")?;
     let user_fn_return_type_wrapped: syn::Type = match is_set {
-        true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>>> })
+        true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>> + '_> })
             .wrap_err("Wrapping return type")?,
         false => {
             syn::parse2(quote! { Option<#user_fn_return_type> }).wrap_err("Wrapping return type")?
@@ -583,7 +583,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> Result<(syn::Block, toml::value
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(type_oid = type_oid.value()))]
-fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
+fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 
     let (base_oid, array) = if array_type != pg_sys::InvalidOid {
@@ -596,7 +596,8 @@ fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
         PgOid::BuiltIn(builtin) => match builtin {
             PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
-            PgBuiltInOids::BYTEAOID => quote! { Vec<u8> },
+            PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
+            PgBuiltInOids::BYTEAOID if !owned => quote! { &[u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
@@ -609,7 +610,8 @@ fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
             PgBuiltInOids::JSONOID => quote! { Json },
             PgBuiltInOids::NUMERICOID => quote! { Numeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
-            PgBuiltInOids::TEXTOID => quote! { String },
+            PgBuiltInOids::TEXTOID if owned => quote! { String },
+            PgBuiltInOids::TEXTOID if !owned => quote! { &str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
@@ -626,53 +628,4 @@ fn oid_to_syn_type(type_oid: &PgOid) -> Result<syn::Type, PlRustError> {
 
     syn::parse2(rust_type.clone())
         .map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
-}
-
-#[tracing::instrument(level = "debug")]
-fn make_rust_type(type_oid: &PgOid, owned: bool) -> Option<String> {
-    let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
-    let array = array_type != pg_sys::InvalidOid;
-    let type_oid = if array {
-        PgOid::from(array_type)
-    } else {
-        *type_oid
-    };
-
-    let rust_type = match type_oid {
-        PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::ANYELEMENTOID => "AnyElement",
-            PgBuiltInOids::BOOLOID => "bool",
-            PgBuiltInOids::BYTEAOID if owned => "Vec<Option<[u8]]>>",
-            PgBuiltInOids::BYTEAOID => "&[u8]",
-            PgBuiltInOids::CHAROID => "u8",
-            PgBuiltInOids::CSTRINGOID => "std::ffi::CStr",
-            PgBuiltInOids::FLOAT4OID => "f32",
-            PgBuiltInOids::FLOAT8OID => "f64",
-            PgBuiltInOids::INETOID => "Inet",
-            PgBuiltInOids::INT2OID => "i16",
-            PgBuiltInOids::INT4OID => "i32",
-            PgBuiltInOids::INT8OID => "i64",
-            PgBuiltInOids::JSONBOID => "JsonB",
-            PgBuiltInOids::JSONOID => "Json",
-            PgBuiltInOids::NUMERICOID => "Numeric",
-            PgBuiltInOids::OIDOID => "pg_sys::Oid",
-            PgBuiltInOids::TEXTOID if owned => "String",
-            PgBuiltInOids::TEXTOID => "&str",
-            PgBuiltInOids::TIDOID => "pg_sys::ItemPointer",
-            PgBuiltInOids::VARCHAROID if owned => "String",
-            PgBuiltInOids::VARCHAROID => "&str",
-            PgBuiltInOids::VOIDOID => "()",
-            _ => return None,
-        },
-        _ => return None,
-    }
-    .to_string();
-
-    Some(if array && owned {
-        format!("Vec<Option<{rust_type}>>")
-    } else if array {
-        format!("Array<{rust_type}>")
-    } else {
-        rust_type
-    })
 }
