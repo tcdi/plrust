@@ -31,6 +31,6 @@ pub enum PlRustError {
     ParsingDependenciesBlock(toml::de::Error),
     #[error("Parsing `[code]` block: {0}")]
     ParsingCodeBlock(syn::Error),
-    #[error("Parsing error: {0}")]
+    #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
 }
