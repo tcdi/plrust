@@ -308,8 +308,10 @@ mod tests {
             let fn_oid = 0 as pg_sys::Oid;
 
             let variant = {
-                let argument_oids_and_names =
-                    vec![(PgOid::from(PgBuiltInOids::INT4OID.value()), Some("val".into()))];
+                let argument_oids_and_names = vec![(
+                    PgOid::from(PgBuiltInOids::INT4OID.value()),
+                    Some("val".into()),
+                )];
                 let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
                 let is_strict = false;
                 let return_set = false;
@@ -348,8 +350,10 @@ mod tests {
             let fn_oid = 0 as pg_sys::Oid;
 
             let variant = {
-                let argument_oids_and_names =
-                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), Some("val".into()))];
+                let argument_oids_and_names = vec![(
+                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
+                    Some("val".into()),
+                )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = true;
