@@ -376,10 +376,11 @@ fn generate_cargo_toml(
                         let mut crates_io_table = toml::value::Table::new();
                         crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
                         entry.or_insert(toml::Value::Table(crates_io_table));
-                    },
+                    }
                     _ => {
-                        return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Setting `[patch]`, already existed (and wasn't expected to)")?
+                        return Err(PlRustError::GeneratingCargoToml).wrap_err(
+                            "Setting `[patch]`, already existed (and wasn't expected to)",
+                        )?
                     }
                 },
             };
