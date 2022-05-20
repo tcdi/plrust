@@ -259,7 +259,7 @@ crate-type = ["cdylib"]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = "0.4.3"
+pgx = "=0.4.5"
 {deps}
 {experimental_deps}
 
