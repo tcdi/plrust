@@ -270,7 +270,7 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 "#,
-            experimental_deps = match std::env::var("experimental_crates") {
+            experimental_deps = match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
                 Err(_) => String::from(""),
                 Ok(path) => format!("[patch.crates-io.pgx]\npath = \"{path}/pgx\"\n"),
             },
