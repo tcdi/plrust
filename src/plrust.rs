@@ -213,8 +213,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
-        .arg("build")
+        .arg("rustc")
         .arg("--release")
+        .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
         .env(
@@ -357,13 +358,30 @@ fn generate_cargo_toml(
                     }
                     _ => {
                         return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `#[dependencies]` as table")?
+                            .wrap_err("Getting `[dependencies]` as table")?
                     }
                 },
                 _ => {
                     return Err(PlRustError::GeneratingCargoToml)
-                        .wrap_err("Getting `#[dependencies]`")?
+                        .wrap_err("Getting `[dependencies]`")?
                 }
+            };
+
+            match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
+                Err(_) => (),
+                Ok(path) => match cargo_manifest.entry("patch") {
+                    entry @ toml::value::Entry::Vacant(_) => {
+                        let mut pgx_table = toml::value::Table::new();
+                        pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
+                        let mut crates_io_table = toml::value::Table::new();
+                        crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
+                        entry.or_insert(toml::Value::Table(crates_io_table));
+                    },
+                    _ => {
+                        return Err(PlRustError::GeneratingCargoToml)
+                            .wrap_err("Setting `[patch]`, already existed (and wasn't expected to)")?
+                    }
+                },
             };
         }
         _ => {
@@ -411,16 +429,7 @@ fn generate_function_source(
     is_set: bool,
     is_strict: bool,
 ) -> eyre::Result<syn::File> {
-    let mut file = syn::File {
-        shebang: Default::default(),
-        attrs: Default::default(),
-        items: Default::default(),
-    };
-
-    let use_pgx = syn::parse2(quote! {
-        use pgx::*;
-    })?;
-    file.items.push(syn::Item::Use(use_pgx));
+    let mut file = syn::parse_file(include_str!("./postalloc.rs"))?;
 
     let user_fn_name = &format!("plrust_fn_{}", fn_oid);
     let user_fn_ident = syn::Ident::new(user_fn_name, proc_macro2::Span::call_site());
