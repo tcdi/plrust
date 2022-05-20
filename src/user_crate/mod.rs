@@ -1,19 +1,17 @@
+mod crate_variant;
+mod state_built;
 mod state_generated;
 mod state_provisioned;
-mod state_built;
-mod crate_variant;
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;
 
+use crate_variant::CrateVariant;
+pub use state_built::StateBuilt;
 pub use state_generated::StateGenerated;
 pub use state_provisioned::StateProvisioned;
-pub use state_built::StateBuilt;
-use crate_variant::CrateVariant;
 
 use crate::PlRustError;
-use pgx::{
-    pg_sys, PgBuiltInOids, PgOid,
-};
+use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::{
@@ -21,12 +19,9 @@ use std::{
     process::Output,
 };
 
-
-
 pub struct UserCrate<P: CrateState>(P);
 
 pub trait CrateState {}
-
 
 impl UserCrate<StateGenerated> {
     #[cfg(any(test, feature = "pg_test"))]
@@ -71,7 +66,9 @@ impl UserCrate<StateProvisioned> {
         pg_config: PathBuf,
         target_dir: Option<&Path>,
     ) -> eyre::Result<UserCrate<StateBuilt>> {
-        self.0.build(artifact_dir, pg_config, target_dir).map(UserCrate)
+        self.0
+            .build(artifact_dir, pg_config, target_dir)
+            .map(UserCrate)
     }
 }
 
@@ -85,7 +82,6 @@ impl UserCrate<StateBuilt> {
         &self.0.output()
     }
 }
-
 
 #[tracing::instrument(level = "debug", skip_all, fields(type_oid = type_oid.value()))]
 pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {

@@ -1,4 +1,3 @@
-
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
@@ -30,8 +29,7 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated =
-                UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {

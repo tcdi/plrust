@@ -1,9 +1,9 @@
-use eyre::WrapErr;
 use crate::{user_crate::oid_to_syn_type, PlRustError};
-use proc_macro2::{Span, Ident};
-use std::collections::HashMap;
+use eyre::WrapErr;
 use pgx::PgOid;
+use proc_macro2::{Ident, Span};
 use quote::quote;
+use std::collections::HashMap;
 
 #[must_use]
 pub enum CrateVariant {

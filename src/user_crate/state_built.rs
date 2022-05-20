@@ -1,6 +1,6 @@
-use std::path::{PathBuf, Path};
-use std::process::Output;
 use crate::user_crate::CrateState;
+use std::path::{Path, PathBuf};
+use std::process::Output;
 
 #[must_use]
 pub struct StateBuilt {

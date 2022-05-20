@@ -1,12 +1,12 @@
-use std::path::Path;
 use crate::{
-    user_crate::{StateProvisioned, CrateState, CrateVariant, parse_source_and_deps},
+    user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateProvisioned},
     PlRustError,
 };
 use eyre::WrapErr;
-use pgx::{PgOid, FromDatum, IntoDatum, PgBox, pg_sys};
+use pgx::{pg_sys, FromDatum, IntoDatum, PgBox, PgOid};
 use proc_macro2::{Ident, Span};
 use quote::quote;
+use std::path::Path;
 
 impl CrateState for StateGenerated {}
 
@@ -34,7 +34,6 @@ impl StateGenerated {
         }
     }
 
-    
     #[tracing::instrument(level = "debug", skip_all)]
     pub unsafe fn try_from_fn_oid(fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         let proc_tuple = pg_sys::SearchSysCache(
@@ -251,10 +250,6 @@ impl StateGenerated {
         )
         .wrap_err("Writing generated `Cargo.toml`")?;
 
-        Ok(StateProvisioned::new(
-            crate_name,
-            crate_dir,
-        ))
+        Ok(StateProvisioned::new(crate_name, crate_dir))
     }
 }
-

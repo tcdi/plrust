@@ -7,7 +7,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::{error::PlRustError, user_crate::UserCrate, gucs};
+use crate::{error::PlRustError, gucs, user_crate::UserCrate};
 use eyre::{Result, WrapErr};
 use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;

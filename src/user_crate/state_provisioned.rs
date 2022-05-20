@@ -1,10 +1,13 @@
-use std::{path::{Path, PathBuf}, process::Command};
 use crate::{
-    user_crate::{StateBuilt, CrateState},
+    user_crate::{CrateState, StateBuilt},
     PlRustError,
 };
-use eyre::{WrapErr, eyre};
-use color_eyre::{SectionExt, Section};
+use color_eyre::{Section, SectionExt};
+use eyre::{eyre, WrapErr};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 #[must_use]
 pub struct StateProvisioned {
@@ -52,20 +55,24 @@ impl StateProvisioned {
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
                 .map(|d| d.join("release").join(&built_shared_object_name))
-                .unwrap_or_else(|| self.crate_dir.join("target").join("release").join(built_shared_object_name));
+                .unwrap_or_else(|| {
+                    self.crate_dir
+                        .join("target")
+                        .join("release")
+                        .join(built_shared_object_name)
+                });
             let shared_object_name = &format!("{crate_name}{DLL_SUFFIX}");
             let shared_object = artifact_dir.join(&shared_object_name);
 
-            std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| eyre!(
-                "renaming shared object from `{}` to `{}`",
-                built_shared_object.display(),
-                shared_object.display()
-            ))?;
+            std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {
+                eyre!(
+                    "renaming shared object from `{}` to `{}`",
+                    built_shared_object.display(),
+                    shared_object.display()
+                )
+            })?;
 
-            Ok(StateBuilt::new(
-                shared_object,
-                output,
-            ))
+            Ok(StateBuilt::new(shared_object, output))
         } else {
             let stdout =
                 String::from_utf8(output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;

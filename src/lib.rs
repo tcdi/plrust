@@ -8,10 +8,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 mod error;
-mod user_crate;
 mod gucs;
 mod logging;
 mod plrust;
+mod user_crate;
 
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;
