@@ -188,8 +188,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     let cargo_output = Command::new("cargo")
         .current_dir(&crate_dir)
-        .arg("build")
+        .arg("rustc")
         .arg("--release")
+        .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
         .env(
@@ -258,15 +259,21 @@ crate-type = ["cdylib"]
 default = ["pgx/pg{major_version}"]
 
 [dependencies]
-pgx = "0.4.3"
+pgx = "=0.4.5"
 {deps}
+{experimental_deps}
 
 [profile.release]
+debug-assertions = true
 panic = "unwind"
 opt-level = 3
 lto = "fat"
 codegen-units = 1
 "#,
+            experimental_deps = match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
+                Err(_) => String::from(""),
+                Ok(path) => format!("[patch.crates-io.pgx]\npath = \"{path}/pgx\"\n"),
+            },
         ),
     )
     .map_err(PlRustError::WritingCargoToml)?;
@@ -319,7 +326,20 @@ fn generate_function_source(
     is_strict: bool,
 ) -> Result<String, PlRustError> {
     let mut source = String::new();
+    // #[cfg_attr()]
+    source.push_str(
+        r#"
+#![no_std]
+extern crate alloc;
+#[allow(unused_imports)]
+use alloc::{
+    string::String,
+    vec,
+    vec::Vec};
+"#,
+    );
 
+    source.push_str(include_str!("./postalloc.rs"));
     // source header
     source.push_str("\nuse pgx::*;\n");
 
@@ -358,7 +378,7 @@ fn plrust_fn_{fn_oid}"#
     let ret = make_rust_type(return_type, true)
         .ok_or(PlRustError::UnsupportedSqlType(return_type.value()))?;
     if is_set {
-        source.push_str(&format!("impl std::iter::Iterator<Item = Option<{ret}>>"));
+        source.push_str(&format!("impl core::iter::Iterator<Item = Option<{ret}>>"));
     } else {
         source.push_str(&format!("Option<{ret}>"));
     }

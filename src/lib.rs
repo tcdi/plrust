@@ -316,7 +316,7 @@ mod tests {
                 let mut generator = Generator::new();
                 let mut out = String::new();
                 let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
-                let result = generator.gen(input, &mut out, &args);
+                let _result = generator.gen(input, &mut out, &args);
 
                 Some(out)
             $$;
