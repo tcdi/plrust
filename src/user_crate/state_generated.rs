@@ -253,3 +253,132 @@ impl StateGenerated {
         Ok(StateProvisioned::new(crate_name, crate_dir))
     }
 }
+
+#[cfg(any(test, feature = "pg_test"))]
+#[pgx::pg_schema]
+mod tests {
+    use super::*;
+    use crate::user_crate::UserCrate;
+    use pgx::*;
+    use syn::parse_quote;
+
+    #[pg_test]
+    fn strict_string() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+
+            let variant = {
+                let argument_oids_and_names =
+                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
+                let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
+                let is_strict = true;
+                let return_set = false;
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            };
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { Some(arg0.to_string()) }
+            })?;
+
+            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                use pgx::*;
+                #[pg_extern]
+                fn plrust_fn_oid_0(arg0: &str) -> Option<String> {
+                    Some(arg0.to_string())
+                }
+            };
+            assert_eq!(
+                generated_lib_rs,
+                fixture_lib_rs,
+                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs)
+            );
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+
+    #[pg_test]
+    fn non_strict_integer() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+
+            let variant = {
+                let argument_oids_and_names =
+                    vec![(PgOid::from(PgBuiltInOids::INT4OID.value()), Some("val".into()))];
+                let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
+                let is_strict = false;
+                let return_set = false;
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            };
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { val.map(|v| v as i64) }
+            })?;
+
+            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                use pgx::*;
+                #[pg_extern]
+                fn plrust_fn_oid_0(val: Option<i32>) -> Option<i64> {
+                    val.map(|v| v as i64)
+                }
+            };
+            assert_eq!(
+                generated_lib_rs,
+                fixture_lib_rs,
+                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs)
+            );
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+
+    #[pg_test]
+    fn strict_string_set() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+
+            let variant = {
+                let argument_oids_and_names =
+                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), Some("val".into()))];
+                let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
+                let is_strict = true;
+                let return_set = true;
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            };
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { Some(std::iter::repeat(val).take(5)) }
+            })?;
+
+            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                use pgx::*;
+                #[pg_extern]
+                fn plrust_fn_oid_0(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
+                    Some(std::iter::repeat(val).take(5))
+                }
+            };
+            assert_eq!(
+                generated_lib_rs,
+                fixture_lib_rs,
+                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs)
+            );
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+}
