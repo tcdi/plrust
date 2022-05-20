@@ -186,9 +186,14 @@ impl GeneratableCrate<CrateGenerated> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
+        let major_version = pgx::pg_sys::get_pg_major_version_num();
+        let version_feature = format!("pgx/pg{major_version}");
+        let crate_name = self.crate_name();
+        let user_dependencies = &self.0.user_dependencies;
+
         let cargo_toml = toml::toml! {
             [package]
-            /* Crate name here */
+            name = crate_name
             version = "0.0.0"
             edition = "2021"
 
@@ -196,11 +201,11 @@ impl GeneratableCrate<CrateGenerated> {
             crate-type = ["cdylib"]
 
             [features]
-            default = [ /* PG major version feature here */ ]
+            default = [ version_feature ]
 
             [dependencies]
             pgx = "0.4.3"
-            /* User deps here */
+            /* User deps added here */
 
             [profile.release]
             panic = "unwind"
@@ -211,28 +216,7 @@ impl GeneratableCrate<CrateGenerated> {
 
         match cargo_toml {
             toml::Value::Table(mut cargo_manifest) => {
-                match cargo_manifest.entry("package") {
-                    toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
-                        toml::Value::Table(package) => match package.entry("name") {
-                            entry @ toml::value::Entry::Vacant(_) => {
-                                let _ = entry.or_insert(self.crate_name().into());
-                            }
-                            _ => {
-                                return Err(PlRustError::GeneratingCargoToml)
-                                    .wrap_err("Getting `[package]` field `name` as vacant")?
-                            }
-                        },
-                        _ => {
-                            return Err(PlRustError::GeneratingCargoToml)
-                                .wrap_err("Getting `[package]` as table")?
-                        }
-                    },
-                    _ => {
-                        return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `[package]`")?
-                    }
-                };
-
+                // We have to add the user deps now before we return it.
                 match cargo_manifest.entry("dependencies") {
                     toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
                         toml::Value::Table(dependencies) => {
@@ -244,38 +228,6 @@ impl GeneratableCrate<CrateGenerated> {
                         _ => {
                             return Err(PlRustError::GeneratingCargoToml)
                                 .wrap_err("Getting `[dependencies]` as table")?
-                        }
-                    },
-                    _ => {
-                        return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `[dependencies]`")?
-                    }
-                };
-
-                match cargo_manifest.entry("features") {
-                    toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
-                        toml::Value::Table(dependencies) => match dependencies.entry("default") {
-                            toml::value::Entry::Occupied(ref mut occupied) => {
-                                match occupied.get_mut() {
-                                    toml::Value::Array(default) => {
-                                        let major_version = pgx::pg_sys::get_pg_major_version_num();
-                                        default.push(format!("pgx/pg{major_version}").into())
-                                    }
-                                    _ => {
-                                        return Err(PlRustError::GeneratingCargoToml).wrap_err(
-                                            "Getting `[features]` field `default` as array",
-                                        )?
-                                    }
-                                }
-                            }
-                            _ => {
-                                return Err(PlRustError::GeneratingCargoToml)
-                                    .wrap_err("Getting `[features]` field `default`")?
-                            }
-                        },
-                        _ => {
-                            return Err(PlRustError::GeneratingCargoToml)
-                                .wrap_err("Getting `[features]` as table")?
                         }
                     },
                     _ => {
