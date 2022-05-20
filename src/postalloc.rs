@@ -14,4 +14,8 @@ unsafe impl GlobalAlloc for PostAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
         pg_sys::pfree(ptr.cast());
     }
+
+    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+        pg_sys::repalloc(ptr.cast(), new_size).cast()
+    }
 }
