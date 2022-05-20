@@ -7,7 +7,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::{error::PlRustError, generated_crate::GeneratableCrate, gucs};
+use crate::{error::PlRustError, user_crate::UserCrate, gucs};
 use eyre::{Result, WrapErr};
 use libloading::{Library, Symbol};
 use once_cell::unsync::Lazy;
@@ -176,7 +176,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
     let pg_config = gucs::pg_config();
     let target_dir = work_dir.join("target");
 
-    let generated = unsafe { GeneratableCrate::try_from_fn_oid(fn_oid)? };
+    let generated = unsafe { UserCrate::try_from_fn_oid(fn_oid)? };
     let provisioned = generated.provision(&work_dir)?;
     let built = provisioned.build(&work_dir, pg_config, Some(target_dir.as_path()))?;
 

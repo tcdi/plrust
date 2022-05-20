@@ -17,8 +17,6 @@ pub enum PlRustError {
     Generation(#[from] crate::plrust::generation::Error),
     #[error("`cargo build` failed")]
     CargoBuildFail,
-    #[error("Produced shared object not found")]
-    SharedObjectNotFound,
     #[error("Generating `Cargo.toml`")]
     GeneratingCargoToml,
     #[error("Function `{0}` was not a PL/Rust function")]
