@@ -448,8 +448,10 @@ fn generate_function_source(
 
     let user_fn_return_type = oid_to_syn_type(return_type, true).wrap_err("Mapping return type")?;
     let user_fn_return_type_wrapped: syn::Type = match is_set {
-        true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>> + '_> })
-            .wrap_err("Wrapping return type")?,
+        true => {
+            syn::parse2(quote! { Option<impl Iterator<Item=Option<#user_fn_return_type>> + '_> })
+                .wrap_err("Wrapping return type")?
+        }
         false => {
             syn::parse2(quote! { Option<#user_fn_return_type> }).wrap_err("Wrapping return type")?
         }
