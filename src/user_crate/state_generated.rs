@@ -205,7 +205,8 @@ impl StateGenerated {
                         {
                             entry @ toml::value::Entry::Vacant(_) => {
                                 let mut pgx_table = toml::value::Table::new();
-                                pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
+                                pgx_table
+                                    .insert("path".into(), toml::Value::String(path.to_string()));
                                 let mut crates_io_table = toml::value::Table::new();
                                 crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
                                 entry.or_insert(toml::Value::Table(crates_io_table));
