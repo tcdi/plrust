@@ -178,10 +178,9 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
 
     let generated = unsafe { UserCrate::try_from_fn_oid(fn_oid)? };
     let provisioned = generated.provision(&work_dir)?;
-    let built = provisioned.build(&work_dir, pg_config, Some(target_dir.as_path()))?;
+    let (built, output) = provisioned.build(&work_dir, pg_config, Some(target_dir.as_path()))?;
 
     let shared_object = built.shared_object();
-    let output = built.output();
     let stdout =
         String::from_utf8(output.stdout.clone()).wrap_err("`cargo`'s stdout was not  UTF-8")?;
     let stderr =

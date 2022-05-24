@@ -63,10 +63,10 @@ impl UserCrate<StateProvisioned> {
         artifact_dir: &Path,
         pg_config: PathBuf,
         target_dir: Option<&Path>,
-    ) -> eyre::Result<UserCrate<StateBuilt>> {
+    ) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
         self.0
             .build(artifact_dir, pg_config, target_dir)
-            .map(UserCrate)
+            .map(|(state, output)| (UserCrate(state), output))
     }
 }
 
@@ -74,10 +74,6 @@ impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn shared_object(&self) -> &Path {
         self.0.shared_object()
-    }
-    #[tracing::instrument(level = "debug", skip_all)]
-    pub fn output(&self) -> &Output {
-        &self.0.output()
     }
 }
 
@@ -242,7 +238,7 @@ mod tests {
                 .wrap_err("Creating temp dir")?;
             let provisioned = generated.provision(parent_dir.path())?;
 
-            let built =
+            let (built, _output) =
                 provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
 
             let _shared_object = built.shared_object();
