@@ -157,44 +157,6 @@ mod tests {
         assert!(retval.is_some());
     }
 
-    // #[pg_test]
-    // #[search_path(@extschema@)]
-    // fn returns_setof() {
-    //     let definition = r#"
-    //         CREATE OR REPLACE FUNCTION boop_srf(names TEXT[]) RETURNS SETOF TEXT
-    //             IMMUTABLE STRICT
-    //             LANGUAGE PLRUST AS
-    //         $$
-    //             Some(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))
-    //         $$;
-    //     "#;
-    //     Spi::run(definition);
-
-    //     let retval = Spi::connect(|client| {
-    //         let mut table = client.select(
-    //             "SELECT * FROM boop_srf(ARRAY['Nami', 'Brandy'])",
-    //             None,
-    //             None,
-    //         );
-
-    //         let mut found = vec![];
-    //         while table.next().is_some() {
-    //             let value = table.get_one::<String>();
-    //             found.push(value)
-    //         }
-
-    //         Ok(Some(found))
-    //     });
-
-    //     assert_eq!(
-    //         retval,
-    //         Some(vec![
-    //             Some("Nami was booped!".into()),
-    //             Some("Brandy was booped!".into()),
-    //         ])
-    //     );
-    // }
-
     #[pg_test]
     #[search_path(@extschema@)]
     fn aggregate() {
