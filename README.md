@@ -43,7 +43,7 @@ Option | Description
 
 > **PL/Rust is a [`pgx`][github-pgx] extension.**
 >
-> If you're already familiar with [`pgx`][github-pgx] you'll find already know how to hack on, package, and use PL/Rust.
+> If you're already familiar with [`pgx`][github-pgx] you'll find you already know how to hack on, package, and use PL/Rust.
 
 First, ensure `cargo pgx` installed & initialized:
 
