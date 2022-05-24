@@ -304,17 +304,17 @@ fn generate_cargo_toml(
                         }
                         _ => {
                             return Err(PlRustError::GeneratingCargoToml)
-                                .wrap_err("Getting `#[package]` field `name` as vacant")?
+                                .wrap_err("Getting `[package]` field `name` as vacant")?
                         }
                     },
                     _ => {
                         return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `#[features]` as table")?
+                            .wrap_err("Getting `[dependencies]` as table")?
                     }
                 },
                 _ => {
                     return Err(PlRustError::GeneratingCargoToml)
-                        .wrap_err("Getting `#[dependencies]`")?
+                        .wrap_err("Getting `[dependencies]`")?
                 }
             };
 
@@ -328,24 +328,24 @@ fn generate_cargo_toml(
                                 }
                                 _ => {
                                     return Err(PlRustError::GeneratingCargoToml).wrap_err(
-                                        "Getting `#[features]` field `default` as array",
+                                        "Getting `[features]` field `default` as array",
                                     )?
                                 }
                             }
                         }
                         _ => {
                             return Err(PlRustError::GeneratingCargoToml)
-                                .wrap_err("Getting `#[features]` field `default`")?
+                                .wrap_err("Getting `[features]` field `default`")?
                         }
                     },
                     _ => {
                         return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `#[features]` as table")?
+                            .wrap_err("Getting `[features]` as table")?
                     }
                 },
                 _ => {
                     return Err(PlRustError::GeneratingCargoToml)
-                        .wrap_err("Getting `#[dependencies]`")?
+                        .wrap_err("Getting `[features]`")?
                 }
             };
 
