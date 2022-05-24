@@ -369,20 +369,28 @@ fn generate_cargo_toml(
 
             match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
                 Err(_) => (),
-                Ok(path) => match cargo_manifest.entry("patch") {
-                    entry @ toml::value::Entry::Vacant(_) => {
-                        let mut pgx_table = toml::value::Table::new();
-                        pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
-                        let mut crates_io_table = toml::value::Table::new();
-                        crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
-                        entry.or_insert(toml::Value::Table(crates_io_table));
+                Ok(path) => {
+                    match cargo_manifest
+                        .entry("patch")
+                        .or_insert(toml::Value::Table(Default::default()))
+                        .as_table_mut()
+                        .unwrap() // infallible
+                        .entry("crates-io")
+                    {
+                        entry @ toml::value::Entry::Vacant(_) => {
+                            let mut pgx_table = toml::value::Table::new();
+                            pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
+                            let mut crates_io_table = toml::value::Table::new();
+                            crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
+                            entry.or_insert(toml::Value::Table(crates_io_table));
+                        }
+                        _ => {
+                            return Err(PlRustError::GeneratingCargoToml).wrap_err(
+                                "Setting `[patch]`, already existed (and wasn't expected to)",
+                            )?
+                        }
                     }
-                    _ => {
-                        return Err(PlRustError::GeneratingCargoToml).wrap_err(
-                            "Setting `[patch]`, already existed (and wasn't expected to)",
-                        )?
-                    }
-                },
+                }
             };
         }
         _ => {
