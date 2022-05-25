@@ -12,9 +12,14 @@ mod gucs;
 mod logging;
 mod plrust;
 
+#[cfg(any(test, feature = "pg_test"))]
+pub mod tests;
+
 use error::PlRustError;
 use pgx::*;
-use std::error::Error;
+
+#[cfg(any(test, feature = "pg_test"))]
+pub use tests::pg_test;
 
 pg_module_magic!();
 
@@ -31,22 +36,10 @@ fn _PG_init() {
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-    let filter_layer = match EnvFilter::try_from_default_env() {
-        Ok(layer) => layer,
-        Err(e) => {
-            // Catch a parse error and report it, ignore a missing env.
-            if let Some(source) = e.source() {
-                match source.downcast_ref::<std::env::VarError>() {
-                    Some(std::env::VarError::NotPresent) => (),
-                    Some(e) => panic!("Error parsing RUST_LOG directives: {}", e),
-                    None => panic!("Error parsing RUST_LOG directives"),
-                }
-            }
-            EnvFilter::try_new(&format!("{}=info", env!("CARGO_PKG_NAME")))
-                .expect("Error parsing default log level")
-        }
-    }
-    .add_directive(gucs::tracing_level().into());
+    let filter_layer = EnvFilter::builder()
+        .with_default_directive(gucs::tracing_level().into())
+        .from_env()
+        .expect("Error parsing default log level");
 
     let error_layer = tracing_error::ErrorLayer::default();
 
@@ -172,190 +165,3 @@ COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
     name = "language_handler",
     requires = [plrust_call_handler, plrust_validator]
 );
-
-#[cfg(any(test, feature = "pg_test"))]
-#[pg_schema]
-mod tests {
-    use super::*;
-
-    // Bootstrap a testing table for non-immutable functions
-    extension_sql!(
-        r#"
-        CREATE TABLE contributors_pets (
-            id serial8 not null primary key,
-            name text
-        );
-        INSERT INTO contributors_pets (name) VALUES ('Brandy');
-        INSERT INTO contributors_pets (name) VALUES ('Nami');
-        INSERT INTO contributors_pets (name) VALUES ('Sally');
-        INSERT INTO contributors_pets (name) VALUES ('Anchovy');
-    "#,
-        name = "create_contributors_pets",
-    );
-
-    #[pg_test]
-    #[search_path(@extschema@)]
-    fn test_basic() {
-        let definition = r#"
-            CREATE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
-                IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
-            $$
-                Some(a.into_iter().map(|v| v.unwrap_or_default()).sum())
-            $$;
-        "#;
-        Spi::run(definition);
-
-        let retval = Spi::get_one_with_args(
-            r#"
-            SELECT sum_array($1);
-        "#,
-            vec![(
-                PgBuiltInOids::INT4ARRAYOID.oid(),
-                vec![1, 2, 3].into_datum(),
-            )],
-        );
-        assert_eq!(retval, Some(6));
-    }
-
-    #[pg_test]
-    #[search_path(@extschema@)]
-    fn test_update() {
-        let definition = r#"
-            CREATE FUNCTION update_me() RETURNS TEXT
-                IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
-            $$
-                String::from("booper").into()
-            $$;
-        "#;
-        Spi::run(definition);
-
-        let retval = Spi::get_one(
-            r#"
-            SELECT update_me();
-        "#,
-        );
-        assert_eq!(retval, Some("booper"));
-
-        let definition = r#"
-            CREATE OR REPLACE FUNCTION update_me() RETURNS TEXT
-                IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
-            $$
-                String::from("swooper").into()
-            $$;
-        "#;
-        Spi::run(definition);
-
-        let retval = Spi::get_one(
-            r#"
-            SELECT update_me();
-        "#,
-        );
-        assert_eq!(retval, Some("swooper"));
-    }
-
-    #[pg_test]
-    #[search_path(@extschema@)]
-    fn test_spi() {
-        let random_definition = r#"
-            CREATE FUNCTION random_contributor_pet() RETURNS TEXT
-                STRICT
-                LANGUAGE PLRUST AS
-            $$
-                let name = Spi::get_one("SELECT name FROM contributors_pets ORDER BY random() LIMIT 1");
-                name
-            $$;
-        "#;
-        Spi::run(random_definition);
-
-        let retval: Option<String> = Spi::get_one(
-            r#"
-            SELECT random_contributor_pet();
-        "#,
-        );
-        assert!(retval.is_some());
-
-        let specific_definition = r#"
-            CREATE FUNCTION contributor_pet(name TEXT) RETURNS INT
-                STRICT
-                LANGUAGE PLRUST AS
-            $$
-                let id = Spi::get_one_with_args(
-                    "SELECT id FROM contributors_pets WHERE name = $1",
-                    vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
-                );
-                id
-            $$;
-        "#;
-        Spi::run(specific_definition);
-
-        let retval: Option<i32> = Spi::get_one(
-            r#"
-            SELECT contributor_pet('Nami');
-        "#,
-        );
-        assert_eq!(retval, Some(2));
-    }
-
-    #[pg_test]
-    #[cfg(not(feature = "sandboxed"))]
-    #[search_path(@extschema@)]
-    fn test_deps() {
-        let definition = r#"
-            CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
-                IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
-            $$
-            [dependencies]
-                zalgo = "0.2.0"
-            [code]
-                use zalgo::{Generator, GeneratorArgs, ZalgoSize};
-
-                let mut generator = Generator::new();
-                let mut out = String::new();
-                let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
-                let _result = generator.gen(input, &mut out, &args);
-
-                Some(out)
-            $$;
-        "#;
-        Spi::run(definition);
-
-        let retval: Option<String> = Spi::get_one_with_args(
-            r#"
-            SELECT zalgo($1);
-        "#,
-            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
-        );
-        assert!(retval.is_some());
-    }
-}
-
-#[cfg(test)]
-pub mod pg_test {
-    use once_cell::sync::Lazy;
-    use pgx::utils::pg_config::Pgx;
-    use tempdir::TempDir;
-
-    static WORK_DIR: Lazy<String> = Lazy::new(|| {
-        let work_dir = TempDir::new("plrust-tests").expect("Couldn't create tempdir");
-        format!("plrust.work_dir='{}'", work_dir.path().display())
-    });
-    static PG_CONFIG: Lazy<String> = Lazy::new(|| {
-        let pgx_config = Pgx::from_config().unwrap();
-        let version = format!("pg{}", pgx::pg_sys::get_pg_major_version_num());
-        let pg_config = pgx_config.get(&version).unwrap();
-        let path = pg_config.path().unwrap();
-        format!("plrust.pg_config='{}'", path.as_path().display())
-    });
-
-    pub fn setup(_options: Vec<&str>) {
-        // perform one-off initialization when the pg_test framework starts
-    }
-
-    pub fn postgresql_conf_options() -> Vec<&'static str> {
-        vec![&*WORK_DIR, &*PG_CONFIG]
-    }
-}
