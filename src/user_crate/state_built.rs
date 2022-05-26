@@ -1,8 +1,10 @@
-use crate::user_crate::CrateState;
+use crate::{user_crate::{CrateState, StateLoaded}};
 use std::path::{Path, PathBuf};
+use pgx::pg_sys;
 
 #[must_use]
-pub struct StateBuilt {
+pub(crate) struct StateBuilt {
+    fn_oid: pg_sys::Oid,
     shared_object: PathBuf,
 }
 
@@ -10,13 +12,19 @@ impl CrateState for StateBuilt {}
 
 impl StateBuilt {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn new(shared_object: PathBuf) -> Self {
+    pub fn new(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
         Self {
+            fn_oid,
             shared_object,
         }
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn shared_object(&self) -> &Path {
         self.shared_object.as_path()
+    }
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub unsafe fn load(&self) -> eyre::Result<StateLoaded> {
+        StateLoaded::load(self.fn_oid, &self.shared_object)
     }
 }

@@ -7,26 +7,20 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::{error::PlRustError, gucs, user_crate::UserCrate};
-use eyre::{Result, WrapErr};
-use libloading::{Library, Symbol};
+use crate::{gucs, user_crate::{UserCrate, StateLoaded}};
 use once_cell::unsync::Lazy;
 use pgx::*;
 use std::{
     collections::{hash_map::Entry, HashMap},
     env::consts::DLL_SUFFIX,
     path::PathBuf,
+    process::Output,
 };
 
 static mut LOADED_SYMBOLS: Lazy<
     HashMap<
         pg_sys::Oid,
-        (
-            Library,
-            Option<
-                Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
-            >,
-        ),
+        UserCrate<StateLoaded>,
     >,
 > = Lazy::new(|| Default::default());
 
@@ -130,13 +124,10 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 #[tracing::instrument(level = "debug")]
 pub(crate) unsafe fn lookup_function(
     fn_oid: pg_sys::Oid,
-) -> Result<
-    &'static Symbol<'static, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
-    PlRustError,
-> {
-    let &mut (ref mut library, ref mut symbol) = match LOADED_SYMBOLS.entry(fn_oid) {
+) -> eyre::Result<&'static mut UserCrate<StateLoaded<'static>>> {
+    match LOADED_SYMBOLS.entry(fn_oid) {
         entry @ Entry::Occupied(_) => {
-            entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
+            Ok(entry.or_insert_with(|| unreachable!("Occupied entry was vacant")))
         }
         entry @ Entry::Vacant(_) => {
             let crate_name = crate_name(fn_oid);
@@ -153,25 +144,19 @@ pub(crate) unsafe fn lookup_function(
             };
 
             let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
-            let library = Library::new(&shared_library)?;
+            let user_crate = UserCrate::load_file(fn_oid, &shared_library)?;
 
-            entry.or_insert((library, None))
-        }
-    };
-
-    match symbol {
-        Some(symbol) => Ok(symbol),
-        None => {
-            let symbol_name = format!("plrust_fn_oid_{}_wrapper", fn_oid);
-            let inserted_symbol = symbol.insert(library.get(&symbol_name.as_bytes())?);
-
-            Ok(inserted_symbol)
+            Ok(entry.or_insert(user_crate))
         }
     }
 }
 
+pub(crate) fn symbol_name(fn_oid: pg_sys::Oid) -> String {
+    format!("plrust_fn_oid_{}_wrapper", fn_oid)
+}
+
 #[tracing::instrument(level = "debug")]
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, String, String)> {
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Output)> {
     let work_dir = gucs::work_dir();
     let pg_config = gucs::pg_config();
     let target_dir = work_dir.join("target");
@@ -181,12 +166,8 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
     let (built, output) = provisioned.build(&work_dir, pg_config, Some(target_dir.as_path()))?;
 
     let shared_object = built.shared_object();
-    let stdout =
-        String::from_utf8(output.stdout.clone()).wrap_err("`cargo`'s stdout was not  UTF-8")?;
-    let stderr =
-        String::from_utf8(output.stderr.clone()).wrap_err("`cargo`'s stderr was not  UTF-8")?;
 
-    Ok((shared_object.into(), stdout, stderr))
+    Ok((shared_object.into(), output))
 }
 
 pub fn crate_name(fn_oid: pg_sys::Oid) -> String {

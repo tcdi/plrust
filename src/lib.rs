@@ -77,9 +77,9 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
             .as_ref()
             .ok_or(PlRustError::NullFmgrInfo)?
             .fn_oid;
-        let func = plrust::lookup_function(fn_oid)?;
-
-        Ok(func(fcinfo))
+        let user_crate = plrust::lookup_function(fn_oid)?;
+        let user_symbol = user_crate.symbol()?;
+        Ok(user_symbol(fcinfo))
     }
 
     match plrust_call_handler_inner(fcinfo) {
@@ -108,7 +108,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         plrust::unload_function(fn_oid);
         // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
         // compile the function when it's created to avoid locking during function execution
-        let (_, _, stderr) = plrust::compile_function(fn_oid)?;
+        let (_, output) = plrust::compile_function(fn_oid)?;
 
         // however, we'll use it to decide if we should go ahead and dynamically load our function
         if pg_sys::check_function_bodies {
@@ -117,6 +117,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         }
 
         // if the compilation had warnings we'll display them
+        let stderr = String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8");
         if stderr.contains("warning: ") {
             pgx::warning!("\n{}", stderr);
         }
@@ -145,10 +146,10 @@ fn recompile_function(
         plrust::unload_function(fn_oid);
     }
     match plrust::compile_function(fn_oid) {
-        Ok((work_dir, stdout, stderr)) => (
+        Ok((work_dir, output)) => (
             Some(work_dir.display().to_string()),
-            Some(stdout),
-            Some(stderr),
+            Some(String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8")),
+            Some(String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not  UTF-8")),
             None,
         ),
         Err(err) => (None, None, None, Some(format!("{:?}", err))),

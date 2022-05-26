@@ -11,11 +11,11 @@ use std::path::Path;
 impl CrateState for StateGenerated {}
 
 #[must_use]
-pub struct StateGenerated {
-    pub fn_oid: pg_sys::Oid,
-    pub user_dependencies: toml::value::Table,
-    pub user_code: syn::Block,
-    pub variant: CrateVariant,
+pub(crate) struct StateGenerated {
+    fn_oid: pg_sys::Oid,
+    user_dependencies: toml::value::Table,
+    user_code: syn::Block,
+    variant: CrateVariant,
 }
 
 impl StateGenerated {
@@ -251,7 +251,7 @@ impl StateGenerated {
         )
         .wrap_err("Writing generated `Cargo.toml`")?;
 
-        Ok(StateProvisioned::new(crate_name, crate_dir))
+        Ok(StateProvisioned::new(self.fn_oid, crate_name, crate_dir))
     }
 }
 

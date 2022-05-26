@@ -2,11 +2,13 @@ mod crate_variant;
 mod state_built;
 mod state_generated;
 mod state_provisioned;
+mod state_loaded;
 
 use crate_variant::CrateVariant;
-pub use state_built::StateBuilt;
-pub use state_generated::StateGenerated;
-pub use state_provisioned::StateProvisioned;
+pub(crate) use state_built::StateBuilt;
+pub(crate) use state_generated::StateGenerated;
+pub(crate) use state_provisioned::StateProvisioned;
+pub(crate) use state_loaded::StateLoaded;
 
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
@@ -16,10 +18,11 @@ use std::{
     path::{Path, PathBuf},
     process::Output,
 };
+use libloading::Symbol;
 
-pub struct UserCrate<P: CrateState>(P);
+pub(crate) struct UserCrate<P: CrateState>(P);
 
-pub trait CrateState {}
+pub(crate) trait CrateState {}
 
 impl UserCrate<StateGenerated> {
     #[cfg(any(test, feature = "pg_test"))]
@@ -74,6 +77,24 @@ impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn shared_object(&self) -> &Path {
         self.0.shared_object()
+    }
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub unsafe fn load(&self) -> eyre::Result<UserCrate<StateLoaded>> {
+        self.0.load().map(UserCrate)
+    }
+}
+
+impl<'a> UserCrate<StateLoaded<'a>> {
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) unsafe fn load_file(
+        fn_oid: pg_sys::Oid,
+        shared_object: &Path,
+    ) -> eyre::Result<Self> {
+        StateLoaded::load(fn_oid, shared_object).map(UserCrate)
+    }
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub unsafe fn symbol(&'a self) -> eyre::Result<&'a Symbol<'a, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>> {
+        self.0.symbol()
     }
 }
 
@@ -242,6 +263,12 @@ mod tests {
                 provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
 
             let _shared_object = built.shared_object();
+            // TODO: Assert
+
+            let loaded = unsafe { built.load()? };
+
+            // Without an fcinfo, we can't call this.
+            let _symbol = unsafe { loaded.symbol()? };
 
             Ok(())
         }
