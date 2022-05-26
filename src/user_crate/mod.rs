@@ -75,23 +75,23 @@ impl UserCrate<StateProvisioned> {
 
 impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) fn built(
+        fn_oid: pg_sys::Oid,
+        shared_object: PathBuf,
+    ) -> Self {
+        UserCrate(StateBuilt::new(fn_oid, shared_object))
+    }
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn shared_object(&self) -> &Path {
         self.0.shared_object()
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load(&self) -> eyre::Result<UserCrate<StateLoaded>> {
+    pub unsafe fn load<'a>(self) -> eyre::Result<UserCrate<StateLoaded<'a>>> {
         self.0.load().map(UserCrate)
     }
 }
 
 impl<'a> UserCrate<StateLoaded<'a>> {
-    #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) unsafe fn load_file(
-        fn_oid: pg_sys::Oid,
-        shared_object: &Path,
-    ) -> eyre::Result<Self> {
-        StateLoaded::load(fn_oid, shared_object).map(UserCrate)
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub unsafe fn symbol(
         &'a self,

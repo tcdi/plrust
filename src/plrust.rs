@@ -143,9 +143,10 @@ pub(crate) unsafe fn lookup_function(
             };
 
             let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
-            let user_crate = UserCrate::load_file(fn_oid, &shared_library)?;
+            let user_crate_built = UserCrate::built(fn_oid, shared_library);
+            let user_crate_loaded = user_crate_built.load()?;
 
-            Ok(entry.or_insert(user_crate))
+            Ok(entry.or_insert(user_crate_loaded))
         }
     }
 }
