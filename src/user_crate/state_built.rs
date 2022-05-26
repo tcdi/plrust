@@ -1,6 +1,6 @@
-use crate::{user_crate::{CrateState, StateLoaded}};
-use std::path::{Path, PathBuf};
+use crate::user_crate::{CrateState, StateLoaded};
 use pgx::pg_sys;
+use std::path::{Path, PathBuf};
 
 #[must_use]
 pub(crate) struct StateBuilt {

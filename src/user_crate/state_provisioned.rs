@@ -4,11 +4,11 @@ use crate::{
 };
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
+use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
     process::{Command, Output},
 };
-use pgx::pg_sys;
 
 #[must_use]
 pub(crate) struct StateProvisioned {

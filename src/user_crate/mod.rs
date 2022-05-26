@@ -1,16 +1,17 @@
 mod crate_variant;
 mod state_built;
 mod state_generated;
-mod state_provisioned;
 mod state_loaded;
+mod state_provisioned;
 
 use crate_variant::CrateVariant;
 pub(crate) use state_built::StateBuilt;
 pub(crate) use state_generated::StateGenerated;
-pub(crate) use state_provisioned::StateProvisioned;
 pub(crate) use state_loaded::StateLoaded;
+pub(crate) use state_provisioned::StateProvisioned;
 
 use crate::PlRustError;
+use libloading::Symbol;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -18,7 +19,6 @@ use std::{
     path::{Path, PathBuf},
     process::Output,
 };
-use libloading::Symbol;
 
 pub(crate) struct UserCrate<P: CrateState>(P);
 
@@ -93,7 +93,10 @@ impl<'a> UserCrate<StateLoaded<'a>> {
         StateLoaded::load(fn_oid, shared_object).map(UserCrate)
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn symbol(&'a self) -> eyre::Result<&'a Symbol<'a, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>> {
+    pub unsafe fn symbol(
+        &'a self,
+    ) -> eyre::Result<&'a Symbol<'a, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>>
+    {
         self.0.symbol()
     }
 }

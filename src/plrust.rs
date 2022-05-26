@@ -7,7 +7,10 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::{gucs, user_crate::{UserCrate, StateLoaded}};
+use crate::{
+    gucs,
+    user_crate::{StateLoaded, UserCrate},
+};
 use once_cell::unsync::Lazy;
 use pgx::*;
 use std::{
@@ -17,12 +20,8 @@ use std::{
     process::Output,
 };
 
-static mut LOADED_SYMBOLS: Lazy<
-    HashMap<
-        pg_sys::Oid,
-        UserCrate<StateLoaded>,
-    >,
-> = Lazy::new(|| Default::default());
+static mut LOADED_SYMBOLS: Lazy<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> =
+    Lazy::new(|| Default::default());
 
 pub(crate) fn init() {
     ()
