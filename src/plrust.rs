@@ -97,7 +97,6 @@ pub(crate) fn crate_name(fn_oid: pg_sys::Oid) -> String {
     crate_name
 }
 
-
 pub(crate) fn symbol_name(fn_oid: pg_sys::Oid) -> String {
     format!("plrust_fn_oid_{}_wrapper", fn_oid)
 }
