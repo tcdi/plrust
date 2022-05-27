@@ -24,7 +24,7 @@ impl StateBuilt {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load<'a>(self) -> eyre::Result<StateLoaded<'a>> {
+    pub unsafe fn load(self) -> eyre::Result<StateLoaded> {
         StateLoaded::load(self.fn_oid, &self.shared_object)
     }
 }

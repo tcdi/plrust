@@ -11,7 +11,6 @@ pub(crate) use state_loaded::StateLoaded;
 pub(crate) use state_provisioned::StateProvisioned;
 
 use crate::PlRustError;
-use libloading::Symbol;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -75,10 +74,7 @@ impl UserCrate<StateProvisioned> {
 
 impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn built(
-        fn_oid: pg_sys::Oid,
-        shared_object: PathBuf,
-    ) -> Self {
+    pub(crate) fn built(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
         UserCrate(StateBuilt::new(fn_oid, shared_object))
     }
     #[tracing::instrument(level = "debug", skip_all)]
@@ -86,18 +82,15 @@ impl UserCrate<StateBuilt> {
         self.0.shared_object()
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load<'a>(self) -> eyre::Result<UserCrate<StateLoaded<'a>>> {
+    pub unsafe fn load(self) -> eyre::Result<UserCrate<StateLoaded>> {
         self.0.load().map(UserCrate)
     }
 }
 
-impl<'a> UserCrate<StateLoaded<'a>> {
+impl UserCrate<StateLoaded> {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn symbol(
-        &'a self,
-    ) -> eyre::Result<&'a Symbol<'a, unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>>
-    {
-        self.0.symbol()
+    pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+        self.0.evaluate(fcinfo)
     }
 }
 
@@ -268,10 +261,8 @@ mod tests {
             let _shared_object = built.shared_object();
             // TODO: Assert
 
-            let loaded = unsafe { built.load()? };
-
             // Without an fcinfo, we can't call this.
-            let _symbol = unsafe { loaded.symbol()? };
+            let _loaded = unsafe { built.load()? };
 
             Ok(())
         }

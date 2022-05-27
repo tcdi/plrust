@@ -12,6 +12,8 @@ mod gucs;
 mod logging;
 mod plrust;
 mod user_crate;
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+mod generation;
 
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;
@@ -77,9 +79,8 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
             .as_ref()
             .ok_or(PlRustError::NullFmgrInfo)?
             .fn_oid;
-        let user_crate = plrust::lookup_function(fn_oid)?;
-        let user_symbol = user_crate.symbol()?;
-        Ok(user_symbol(fcinfo))
+        let retval = plrust::evaluate_function(fn_oid, fcinfo)?;
+        Ok(retval)
     }
 
     match plrust_call_handler_inner(fcinfo) {
