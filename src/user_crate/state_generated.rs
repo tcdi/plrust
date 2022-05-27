@@ -92,12 +92,12 @@ impl StateGenerated {
             proc_tuple,
         ));
 
-        let mut arguement_oids_and_names = Vec::new();
+        let mut argument_oids_and_names = Vec::new();
         for i in 0..proc_entry.pronargs as usize {
             let type_oid = argtypes.get(i).expect("no type_oid for argument");
             let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
 
-            arguement_oids_and_names.push((PgOid::from(*type_oid), name));
+            argument_oids_and_names.push((PgOid::from(*type_oid), name));
         }
 
         let is_strict = proc_entry.proisstrict;
@@ -106,7 +106,7 @@ impl StateGenerated {
         pg_sys::ReleaseSysCache(proc_tuple);
 
         let variant =
-            CrateVariant::function(arguement_oids_and_names, return_oid, return_set, is_strict)?;
+            CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?;
         Ok(Self {
             fn_oid,
             user_code,
