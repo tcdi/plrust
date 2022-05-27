@@ -39,9 +39,9 @@ impl StateGenerated {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             fn_oid.into_datum().unwrap(), // TODO: try_from_datum
-            0,
-            0,
-            0,
+            pg_sys::Datum::from(0_u64),
+            pg_sys::Datum::from(0_u64),
+            pg_sys::Datum::from(0_u64),
         );
         if proc_tuple.is_null() {
             return Err(PlRustError::NullProcTuple)?;
@@ -55,7 +55,7 @@ impl StateGenerated {
             pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
+        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null);
         let plrust =
             std::ffi::CString::new("plrust").expect("Expected `\"plrust\"` to be a valid CString");
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
@@ -69,44 +69,56 @@ impl StateGenerated {
             &mut is_null,
         );
         let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
+            &String::from_datum(prosrc_datum, is_null)
                 .ok_or(PlRustError::NullSourceCode)?,
         )?;
-        let argnames_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
-
-        let argtypes_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
 
         let proc_entry = PgBox::from_pg(pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
         ));
 
-        let mut argument_oids_and_names = Vec::new();
-        for i in 0..proc_entry.pronargs as usize {
-            let type_oid = argtypes.get(i).expect("no type_oid for argument");
-            let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
+        let return_oid = PgOid::from(proc_entry.prorettype);
 
-            argument_oids_and_names.push((PgOid::from(*type_oid), name));
-        }
 
-        let is_strict = proc_entry.proisstrict;
-        let (return_oid, return_set) = (PgOid::from(proc_entry.prorettype), proc_entry.proretset);
+        let variant = match return_oid == pgx::PgBuiltInOids::TRIGGEROID.oid() {
+            true => {
+                CrateVariant::trigger()
+            },
+            false => {
+                let argnames_datum = pg_sys::SysCacheGetAttr(
+                    pg_sys::SysCacheIdentifier_PROCOID as i32,
+                    proc_tuple,
+                    pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
+                    &mut is_null,
+                );
+                let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
+        
+                let argtypes_datum = pg_sys::SysCacheGetAttr(
+                    pg_sys::SysCacheIdentifier_PROCOID as i32,
+                    proc_tuple,
+                    pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
+                    &mut is_null,
+                );
+                let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
+        
 
+                let mut argument_oids_and_names = Vec::new();
+                for i in 0..proc_entry.pronargs as usize {
+                    let type_oid = argtypes.get(i).expect("no type_oid for argument");
+                    let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
+        
+                    argument_oids_and_names.push((PgOid::from(*type_oid), name));
+                }
+        
+                let is_strict = proc_entry.proisstrict;
+                let return_set = proc_entry.proretset;
+                
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            }
+        };
+        
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        let variant =
-            CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?;
         Ok(Self {
             fn_oid,
             user_code,
@@ -119,15 +131,15 @@ impl StateGenerated {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
+        let fn_ident = Ident::new(&self.crate_name(), Span::call_site());
+        let user_code = &self.user_code;
         match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
                 ..
             } => {
-                let fn_ident = Ident::new(&self.crate_name(), Span::call_site());
                 let arguments = arguments.values();
-                let user_code = &self.user_code;
                 let file: syn::File = syn::parse2(quote! {
                     use pgx::*;
 
@@ -138,6 +150,20 @@ impl StateGenerated {
                     #user_code
                 })
                 .wrap_err("Parsing generated user function")?;
+                Ok(file)
+            },
+            CrateVariant::Trigger => {
+                let file: syn::File = syn::parse2(quote! {
+                    use pgx::*;
+                    #[pg_trigger]
+                    fn #fn_ident(
+                        trigger: &::pgx::PgTrigger,
+                    ) -> std::result::Result<
+                        ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                        ::pgx::PgHeapTupleError,
+                    > #user_code
+                })
+                .wrap_err("Parsing generated user trigger")?;
                 Ok(file)
             }
         }
@@ -373,6 +399,44 @@ mod tests {
                 #[pg_extern]
                 fn plrust_fn_oid_0(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
                     Some(std::iter::repeat(val).take(5))
+                }
+            };
+            assert_eq!(
+                generated_lib_rs,
+                fixture_lib_rs,
+                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs)
+            );
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+
+    #[pg_test]
+    fn trigger() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+
+            let variant = CrateVariant::trigger();
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { Ok(trigger.current().unwrap().into_owned()) }
+            })?;
+
+            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                use pgx::*;
+                #[pg_trigger]
+                fn plrust_fn_oid_0(
+                    trigger: &::pgx::PgTrigger,
+                ) -> std::result::Result<
+                        ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<pgx::pg_sys::HeapTupleData>>,
+                        ::pgx::PgHeapTupleError,
+                    > {
+                    Ok(trigger.current().unwrap().into_owned())
                 }
             };
             assert_eq!(

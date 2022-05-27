@@ -17,7 +17,7 @@ pub(crate) enum CrateVariant {
         #[allow(dead_code)] // For debugging
         is_strict: bool,
     },
-    // Trigger,
+    Trigger,
 }
 
 impl CrateVariant {
@@ -71,5 +71,9 @@ impl CrateVariant {
             return_set,
             is_strict,
         })
+    }
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) fn trigger() -> Self {
+        Self::Trigger
     }
 }

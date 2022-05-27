@@ -1045,15 +1045,15 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00f3f571b70d230cba9ec46c530000469710ef2c1ea3eadf56d7bc8a62b3510c"
+version = "0.4.3"
+source = "git+https://github.com/tcdi/pgx.git?branch=develop-v0.5.0#cbfb4dd5ceeab5ec93836e4856593830b44de749"
 dependencies = [
  "atomic-traits",
  "bitflags",
  "cstr_core",
  "enum-primitive-derive",
  "eyre",
+ "hash32",
  "heapless",
  "num-traits",
  "once_cell",
@@ -1065,6 +1065,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
+ "thiserror",
  "time",
  "tracing",
  "tracing-error",
@@ -1073,9 +1074,8 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b854e9b42fa8940b5fa393915df75db559384f14663c8966eb5161b554ff5842"
+version = "0.4.3"
+source = "git+https://github.com/tcdi/pgx.git?branch=develop-v0.5.0#cbfb4dd5ceeab5ec93836e4856593830b44de749"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1086,9 +1086,8 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57be652efd8d69525ba4ec04743b2aa2feb024ef7c5d39d35f9bf5638bf64d48"
+version = "0.4.3"
+source = "git+https://github.com/tcdi/pgx.git?branch=develop-v0.5.0#cbfb4dd5ceeab5ec93836e4856593830b44de749"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1103,14 +1102,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rayon",
+ "rustversion",
+ "sptr",
  "syn",
 ]
 
 [[package]]
 name = "pgx-tests"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9012d509f69898cc15762c3feb78b6a61b3a66a533084351f6afe89c78b8e47"
+version = "0.4.3"
+source = "git+https://github.com/tcdi/pgx.git?branch=develop-v0.5.0#cbfb4dd5ceeab5ec93836e4856593830b44de749"
 dependencies = [
  "eyre",
  "libc",
@@ -1124,14 +1124,14 @@ dependencies = [
  "serde",
  "serde_json",
  "shutdown_hooks",
+ "thiserror",
  "time",
 ]
 
 [[package]]
 name = "pgx-utils"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5d334b177a9cd741521d01ebea505417adddaef4d368753b34ac4a43052674"
+version = "0.4.3"
+source = "git+https://github.com/tcdi/pgx.git?branch=develop-v0.5.0#cbfb4dd5ceeab5ec93836e4856593830b44de749"
 dependencies = [
  "atty",
  "convert_case",
@@ -1567,6 +1567,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
+
+[[package]]
 name = "ryu"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1772,6 +1778,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sptr"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e0d4365121b91e8522958da77ce29c004333daeaf0711225c4727c8c5f49941"
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1806,9 +1818,9 @@ dependencies = [
 
 [[package]]
 name = "syntect"
-version = "5.0.0"
+version = "4.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6c454c27d9d7d9a84c7803aaa3c50cd088d2906fe3c6e42da3209aa623576a8"
+checksum = "8b20815bbe80ee0be06e6957450a841185fcf690fe0178f14d77a05ce2caa031"
 dependencies = [
  "bincode",
  "bitflags",
@@ -1816,13 +1828,12 @@ dependencies = [
  "flate2",
  "fnv",
  "lazy_static",
- "once_cell",
+ "lazycell",
  "plist",
  "regex-syntax",
  "serde",
  "serde_derive",
  "serde_json",
- "thiserror",
  "walkdir",
  "yaml-rust",
 ]
@@ -2094,9 +2105,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.0.0"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
  "getrandom 0.2.6",
 ]
