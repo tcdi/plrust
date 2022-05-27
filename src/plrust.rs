@@ -53,17 +53,6 @@ pub(crate) unsafe fn evaluate_function(
             entry @ Entry::Vacant(_) => {
                 let crate_name = crate_name(fn_oid);
     
-                #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-                let crate_name = {
-                    let mut crate_name = crate_name;
-                    let latest = generation::latest_generation(&crate_name, true)
-                        .expect("Could not find latest generation.")
-                        .0;
-    
-                    crate_name.push_str(&format!("_{}", latest));
-                    crate_name
-                };
-    
                 let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
                 let user_crate_built = UserCrate::built(fn_oid, shared_library);
                 let user_crate_loaded = user_crate_built.load()?;
@@ -96,5 +85,18 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
 }
 
 pub fn crate_name(fn_oid: pg_sys::Oid) -> String {
-    format!("plrust_fn_oid_{}", fn_oid)
+    let crate_name = format!("plrust_fn_oid_{}", fn_oid);
+    
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    let crate_name = {
+        let mut crate_name = crate_name;
+        let latest = generation::latest_generation(&crate_name, true)
+            .expect("Could not find latest generation.")
+            .0;
+
+        crate_name.push_str(&format!("_{}", latest));
+        crate_name
+    };
+
+    crate_name
 }
