@@ -35,7 +35,7 @@ impl StateGenerated {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn try_from_fn_oid(fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
+    pub(crate) unsafe fn try_from_fn_oid(fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             fn_oid.into_datum().unwrap(), // TODO: try_from_datum
@@ -114,11 +114,11 @@ impl StateGenerated {
             variant,
         })
     }
-    pub fn crate_name(&self) -> String {
+    pub(crate) fn crate_name(&self) -> String {
         crate::plrust::crate_name(self.fn_oid)
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn lib_rs(&self) -> eyre::Result<syn::File> {
+    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         match &self.variant {
             CrateVariant::Function {
                 ref arguments,
@@ -143,7 +143,7 @@ impl StateGenerated {
         }
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
+    pub(crate) fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
         let major_version = pgx::pg_sys::get_pg_major_version_num();
         let version_feature = format!("pgx/pg{major_version}");
         let crate_name = self.crate_name();
@@ -230,7 +230,7 @@ impl StateGenerated {
     }
     /// Provision into a given folder and return the crate directory.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn provision(&self, parent_dir: &Path) -> eyre::Result<StateProvisioned> {
+    pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<StateProvisioned> {
         let crate_name = self.crate_name();
         let crate_dir = parent_dir.join(&crate_name);
         let src_dir = crate_dir.join("src");

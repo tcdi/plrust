@@ -29,7 +29,7 @@ impl StateProvisioned {
         }
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn build(
+    pub(crate) fn build(
         self,
         artifact_dir: &Path,
         pg_config: PathBuf,

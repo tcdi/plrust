@@ -23,7 +23,6 @@ use pgx::*;
 
 #[cfg(any(test, feature = "pg_test"))]
 pub use tests::pg_test;
-
 pg_module_magic!();
 
 #[pg_guard]

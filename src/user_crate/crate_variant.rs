@@ -6,12 +6,15 @@ use quote::quote;
 use std::collections::HashMap;
 
 #[must_use]
-pub enum CrateVariant {
+pub(crate) enum CrateVariant {
     Function {
         arguments: HashMap<(PgOid, Option<String>), syn::FnArg>,
-        return_oid: PgOid,
         return_type: syn::Type,
+        #[allow(dead_code)] // For debugging
+        return_oid: PgOid,
+        #[allow(dead_code)] // For debugging
         return_set: bool,
+        #[allow(dead_code)] // For debugging
         is_strict: bool,
     },
     // Trigger,
@@ -19,7 +22,7 @@ pub enum CrateVariant {
 
 impl CrateVariant {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn function(
+    pub(crate) fn function(
         arguement_oids_and_names: Vec<(PgOid, Option<String>)>,
         return_oid: PgOid,
         return_set: bool,

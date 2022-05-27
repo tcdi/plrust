@@ -21,7 +21,7 @@ use std::{
 };
 
 thread_local! {
-    static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> = Default::default();
+    pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> = Default::default();
 }
 
 pub(crate) fn init() {
@@ -65,10 +65,6 @@ pub(crate) unsafe fn evaluate_function(
     })
 }
 
-pub(crate) fn symbol_name(fn_oid: pg_sys::Oid) -> String {
-    format!("plrust_fn_oid_{}_wrapper", fn_oid)
-}
-
 #[tracing::instrument(level = "debug")]
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Output)> {
     let work_dir = gucs::work_dir();
@@ -84,7 +80,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
     Ok((shared_object.into(), output))
 }
 
-pub fn crate_name(fn_oid: pg_sys::Oid) -> String {
+pub(crate) fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let crate_name = format!("plrust_fn_oid_{}", fn_oid);
 
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -99,4 +95,9 @@ pub fn crate_name(fn_oid: pg_sys::Oid) -> String {
     };
 
     crate_name
+}
+
+
+pub(crate) fn symbol_name(fn_oid: pg_sys::Oid) -> String {
+    format!("plrust_fn_oid_{}_wrapper", fn_oid)
 }

@@ -1,5 +1,5 @@
 #[derive(thiserror::Error, Debug)]
-pub enum PlRustError {
+pub(crate) enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]
     CheckFunctionValidatorAccess,
     #[error("pgx::pg_sys::FunctionCallInfo was Null")]

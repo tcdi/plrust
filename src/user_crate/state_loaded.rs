@@ -6,7 +6,7 @@ use std::path::Path;
 impl CrateState for StateLoaded {}
 
 #[must_use]
-pub struct StateLoaded {
+pub(crate) struct StateLoaded {
     #[allow(dead_code)] // Mostly for debugging
     fn_oid: pg_sys::Oid,
     #[allow(dead_code)] // We must hold this handle for `symbol`
@@ -28,7 +28,7 @@ impl StateLoaded {
         })
     }
 
-    pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    pub(crate) unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         (self.symbol)(fcinfo)
     }
 }

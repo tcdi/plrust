@@ -12,19 +12,19 @@ impl CrateState for StateBuilt {}
 
 impl StateBuilt {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn new(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
+    pub(crate) fn new(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
         Self {
             fn_oid,
             shared_object,
         }
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn shared_object(&self) -> &Path {
+    pub(crate) fn shared_object(&self) -> &Path {
         self.shared_object.as_path()
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load(self) -> eyre::Result<StateLoaded> {
+    pub(crate) unsafe fn load(self) -> eyre::Result<StateLoaded> {
         StateLoaded::load(self.fn_oid, &self.shared_object)
     }
 }
