@@ -19,7 +19,7 @@
     https://developer.apple.com/videos/play/wwdc2017/413/?time=1776.
 !*/
 
-use std::fs;
+use std::{fs, path::PathBuf};
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum Error {
@@ -34,7 +34,7 @@ pub(crate) enum Error {
 pub(crate) fn all_generations(
     prefix: &str,
 ) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, Error> {
-    let work_dir = gucs::work_dir();
+    let work_dir = crate::gucs::work_dir();
     let filtered = fs::read_dir(work_dir)?
         .flat_map(|entry| {
             let path = entry.ok()?.path();
