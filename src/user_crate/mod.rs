@@ -222,6 +222,7 @@ mod tests {
             );
 
             let generated_cargo_toml = generated.cargo_toml()?;
+            let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
             let fixture_cargo_toml = toml! {
                 [package]
                 edition = "2021"
@@ -229,7 +230,7 @@ mod tests {
                 version = "0.0.0"
 
                 [features]
-                default = ["pgx/pg14"]
+                default = [version_feature]
 
                 [lib]
                 crate-type = ["cdylib"]
