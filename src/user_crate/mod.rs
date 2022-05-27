@@ -207,7 +207,29 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_extern]
                 fn plrust_fn_oid_0(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
@@ -239,6 +261,7 @@ mod tests {
                 pgx = "0.4.3"
 
                 [profile.release]
+                debug-assertions = true
                 codegen-units = 1_usize
                 lto = "fat"
                 opt-level = 3_usize

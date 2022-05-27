@@ -38,7 +38,8 @@ impl StateProvisioned {
         let mut command = Command::new("cargo");
 
         command.current_dir(&self.crate_dir);
-        command.arg("build");
+        command.arg("rustc");
+        command.arg("--offline");
         command.arg("--release");
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {
