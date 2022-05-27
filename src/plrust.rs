@@ -11,13 +11,13 @@ use crate::{
     gucs,
     user_crate::{StateLoaded, UserCrate},
 };
-use pgx::{*, pg_sys::FunctionCallInfo};
+use pgx::{pg_sys::FunctionCallInfo, *};
 use std::{
+    cell::RefCell,
     collections::{hash_map::Entry, HashMap},
     env::consts::DLL_SUFFIX,
     path::PathBuf,
     process::Output,
-    cell::RefCell,
 };
 
 thread_local! {
@@ -52,11 +52,11 @@ pub(crate) unsafe fn evaluate_function(
             }
             entry @ Entry::Vacant(_) => {
                 let crate_name = crate_name(fn_oid);
-    
+
                 let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
                 let user_crate_built = UserCrate::built(fn_oid, shared_library);
                 let user_crate_loaded = user_crate_built.load()?;
-    
+
                 entry.or_insert(user_crate_loaded)
             }
         };
@@ -86,7 +86,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
 
 pub fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let crate_name = format!("plrust_fn_oid_{}", fn_oid);
-    
+
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let crate_name = {
         let mut crate_name = crate_name;

@@ -1,4 +1,4 @@
-use crate::{user_crate::CrateState};
+use crate::user_crate::CrateState;
 use libloading::os::unix::{Library, Symbol};
 use pgx::pg_sys;
 use std::path::Path;

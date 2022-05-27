@@ -8,12 +8,12 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 mod error;
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+mod generation;
 mod gucs;
 mod logging;
 mod plrust;
 mod user_crate;
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-mod generation;
 
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;
