@@ -160,7 +160,7 @@ impl StateGenerated {
                         trigger: &::pgx::PgTrigger,
                     ) -> std::result::Result<
                         ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
-                        ::pgx::PgHeapTupleError,
+                        Box<dyn std::error::Error>,
                     > #user_code
                 })
                 .wrap_err("Parsing generated user trigger")?;
@@ -424,7 +424,7 @@ mod tests {
                 { Ok(trigger.current().unwrap().into_owned()) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
@@ -434,7 +434,7 @@ mod tests {
                     trigger: &::pgx::PgTrigger,
                 ) -> std::result::Result<
                         ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
-                        ::pgx::PgHeapTupleError,
+                        Box<dyn std::error::Error>,
                     > {
                     Ok(trigger.current().unwrap().into_owned())
                 }
