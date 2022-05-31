@@ -261,7 +261,6 @@ impl StateGenerated {
 #[pgx::pg_schema]
 mod tests {
     use super::*;
-    use crate::user_crate::UserCrate;
     use pgx::*;
     use syn::parse_quote;
 
@@ -283,7 +282,7 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
@@ -347,7 +346,7 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
@@ -411,7 +410,7 @@ mod tests {
                 { Some(std::iter::repeat(val).take(5)) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
