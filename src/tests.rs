@@ -20,7 +20,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn basic() {
+    fn test_basic() {
         let definition = r#"
             CREATE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
                 IMMUTABLE STRICT
@@ -45,7 +45,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn update() {
+    fn test_update() {
         let definition = r#"
             CREATE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
@@ -83,7 +83,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn spi() {
+    fn test_spi() {
         let random_definition = r#"
             CREATE FUNCTION random_contributor_pet() RETURNS TEXT
                 STRICT
@@ -127,7 +127,7 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn deps() {
+    fn test_deps() {
         let definition = r#"
             CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
@@ -159,7 +159,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn aggregate() {
+    fn test_aggregate() {
         let definition = r#"
             CREATE FUNCTION plrust_sum_state(state INT, next INT) RETURNS INT
                 IMMUTABLE STRICT
@@ -183,6 +183,44 @@ mod tests {
         );
         assert_eq!(retval, Some(6));
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn test_trigger() {
+        let definition = r#"
+            CREATE TABLE dogs (
+                name TEXT,
+                scritches INT NOT NULL DEFAULT 0
+            );
+            
+            CREATE FUNCTION pet_trigger() RETURNS trigger AS $$
+                let current = trigger.current().unwrap();
+                let mut current = current.into_owned();
+            
+                let field = "scritches";
+            
+                match current.get_by_name::<i32>(field).unwrap() {
+                    Some(val) => current.set_by_name(field, val + 1).unwrap(),
+                    None => (),
+                }
+            
+                Ok(current)
+            $$ LANGUAGE plrust;
+            
+            CREATE TRIGGER pet_trigger BEFORE INSERT OR UPDATE ON dogs
+                FOR EACH ROW EXECUTE FUNCTION pet_trigger();
+            
+            INSERT INTO dogs (name) VALUES ('Nami');     
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<i32> = Spi::get_one(
+            r#"
+            SELECT scritches FROM dogs;
+        "#,
+        );
+        assert_eq!(retval, Some(1));
+    }    
 }
 
 #[cfg(any(test, feature = "pg_test"))]

@@ -433,7 +433,7 @@ mod tests {
                 fn plrust_fn_oid_0(
                     trigger: &::pgx::PgTrigger,
                 ) -> std::result::Result<
-                        ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<pgx::pg_sys::HeapTupleData>>,
+                        ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                         ::pgx::PgHeapTupleError,
                     > {
                     Ok(trigger.current().unwrap().into_owned())
