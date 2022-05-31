@@ -119,7 +119,8 @@ impl StateGenerated {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
+        let mut skeleton: syn::File =
+            syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
         let user_function = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
