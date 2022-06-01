@@ -532,8 +532,7 @@ fn extract_code_and_args(
             &mut is_null,
         );
         let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null)
-                .ok_or(PlRustError::NullSourceCode)?,
+            &String::from_datum(prosrc_datum, is_null).ok_or(PlRustError::NullSourceCode)?,
         )?;
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
