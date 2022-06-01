@@ -86,7 +86,7 @@ pub(crate) fn crate_name(fn_oid: pg_sys::Oid) -> String {
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let crate_name = {
         let mut crate_name = crate_name;
-        let latest = generation::latest_generation(&crate_name, true)
+        let latest = crate::generation::latest_generation(&crate_name, true)
             .expect("Could not find latest generation.")
             .0;
 
