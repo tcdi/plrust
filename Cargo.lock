@@ -1045,9 +1045,9 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00f3f571b70d230cba9ec46c530000469710ef2c1ea3eadf56d7bc8a62b3510c"
+checksum = "d660bd98f47af4531fdf038cf8af018e34a7726a0151f873ce2e7d1cb9248122"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1065,6 +1065,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
+ "thiserror",
  "time",
  "tracing",
  "tracing-error",
@@ -1073,9 +1074,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b854e9b42fa8940b5fa393915df75db559384f14663c8966eb5161b554ff5842"
+checksum = "df4a9ca0e812ae0c6426e393bd4888c72ebc89bbaf2d850b8327a9b929464f25"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1086,9 +1087,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57be652efd8d69525ba4ec04743b2aa2feb024ef7c5d39d35f9bf5638bf64d48"
+checksum = "fd3bb39bbed59466817f6befb459218d738baa469bdbe3ef4dcfe87938ea0283"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1103,14 +1104,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rayon",
+ "rustversion",
+ "sptr",
  "syn",
 ]
 
 [[package]]
 name = "pgx-tests"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9012d509f69898cc15762c3feb78b6a61b3a66a533084351f6afe89c78b8e47"
+checksum = "936a690c11dd26c60e1da2749e689ed9c5b2ad56ad1a4364bcad65605b322b3b"
 dependencies = [
  "eyre",
  "libc",
@@ -1124,14 +1127,15 @@ dependencies = [
  "serde",
  "serde_json",
  "shutdown_hooks",
+ "thiserror",
  "time",
 ]
 
 [[package]]
 name = "pgx-utils"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5d334b177a9cd741521d01ebea505417adddaef4d368753b34ac4a43052674"
+checksum = "078a275c1304e22a509c64c7a6612a6f2d011ef60f8f8811e3ac44b64b31c794"
 dependencies = [
  "atty",
  "convert_case",
@@ -1567,6 +1571,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
+
+[[package]]
 name = "ryu"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1770,6 +1780,12 @@ checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
 dependencies = [
  "lock_api",
 ]
+
+[[package]]
+name = "sptr"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e0d4365121b91e8522958da77ce29c004333daeaf0711225c4727c8c5f49941"
 
 [[package]]
 name = "stable_deref_trait"

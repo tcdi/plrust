@@ -284,7 +284,7 @@ fn generate_cargo_toml(
         default = [ /* PG major version feature here */ ]
 
         [dependencies]
-        pgx = "0.4.3"
+        pgx = { version = "~0.5.0-beta", features = ["postgrestd"] }
         /* User deps here */
 
         [profile.release]
