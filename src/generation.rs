@@ -33,29 +33,35 @@ pub(crate) enum Error {
 #[tracing::instrument(level = "debug")]
 pub(crate) fn all_generations(
     prefix: &str,
-) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, Error> {
+) -> eyre::Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>> {
     let work_dir = crate::gucs::work_dir();
-    let filtered = fs::read_dir(work_dir)?
-        .flat_map(|entry| {
-            let path = entry.ok()?.path();
-            let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
-            Some((stem, path))
-        })
-        .filter(move |(stem, _path)| stem.starts_with(prefix))
-        .flat_map(|(stem, path)| {
-            let generation = stem.split('_').last()?;
-            let generation = generation.parse::<usize>().ok()?;
-            Some((generation, path))
-        });
-
-    Ok(Box::from(filtered))
+    let read_dir = fs::read_dir(work_dir).ok();
+    match read_dir {
+        Some(read_dir) => {
+            let filtered = read_dir
+                .flat_map(|entry| {
+                    let path = entry.ok()?.path();
+                    let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
+                    Some((stem, path))
+                })
+                .filter(move |(stem, _path)| stem.starts_with(prefix))
+                .flat_map(|(stem, path)| {
+                    let generation = stem.split('_').last()?;
+                    let generation = generation.parse::<usize>().ok()?;
+                    Some((generation, path))
+                });
+        
+            Ok(Box::from(filtered))
+        },
+        None => Ok(Box::from(std::iter::empty())),
+    }
 }
 
 /// Get the next generation number to be created.
 ///
 /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
 #[tracing::instrument(level = "debug")]
-pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, Error> {
+pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> eyre::Result<usize> {
     let latest = latest_generation(prefix, vacuum);
     Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
 }
@@ -64,7 +70,7 @@ pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, Error
 ///
 /// If `vacuum` is set, this garbage collect old `so` files.
 #[tracing::instrument(level = "debug")]
-pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, PathBuf), Error> {
+pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> eyre::Result<(usize, PathBuf)> {
     let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
     // We could use max_by, but might need to vacuum.
     generations.sort_by_key(|(generation, _path)| *generation);
@@ -77,5 +83,7 @@ pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, Pa
         }
     }
 
-    latest.ok_or(Error::NoGenerations)
+    let latest = latest.ok_or(Error::NoGenerations)?;
+
+    Ok(latest)
 }

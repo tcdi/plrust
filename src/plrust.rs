@@ -87,7 +87,7 @@ pub(crate) fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let crate_name = {
         let mut crate_name = crate_name;
         let latest = crate::generation::latest_generation(&crate_name, true)
-            .expect("Could not find latest generation.")
+            .expect("Could not find latest generation")
             .0;
 
         crate_name.push_str(&format!("_{}", latest));
