@@ -65,7 +65,18 @@ impl StateProvisioned {
                         .join("release")
                         .join(built_shared_object_name)
                 });
-            let shared_object_name = &format!("{crate_name}{DLL_SUFFIX}");
+
+            let mut shared_object_name = crate_name.clone();
+            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+            {
+                let latest = crate::generation::latest_generation(&crate_name, true)
+                    .map(|(gen_num, _)| gen_num)
+                    .unwrap_or_default();
+
+                shared_object_name.push_str(&format!("_{}", latest));
+            };
+            shared_object_name.push_str(DLL_SUFFIX);
+
             let shared_object = artifact_dir.join(&shared_object_name);
 
             std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {

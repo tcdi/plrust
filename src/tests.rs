@@ -202,12 +202,13 @@ pub mod pg_test {
         let path = pg_config.path().unwrap();
         format!("plrust.pg_config='{}'", path.as_path().display())
     });
+    static LOG_LEVEL: &str = "plrust.tracing_level=trace";
 
     pub fn setup(_options: Vec<&str>) {
         // perform one-off initialization when the pg_test framework starts
     }
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
-        vec![&*WORK_DIR, &*PG_CONFIG]
+        vec![&*WORK_DIR, &*PG_CONFIG, &*LOG_LEVEL]
     }
 }

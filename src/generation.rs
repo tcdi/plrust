@@ -40,7 +40,11 @@ pub(crate) fn all_generations(
         Some(read_dir) => {
             let filtered = read_dir
                 .flat_map(|entry| {
-                    let path = entry.ok()?.path();
+                    let entry = entry.ok()?;
+                    if !entry.file_type().ok()?.is_file() {
+                        return None;
+                    }
+                    let path = entry.path();
                     let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
                     Some((stem, path))
                 })
@@ -48,6 +52,7 @@ pub(crate) fn all_generations(
                 .flat_map(|(stem, path)| {
                     let generation = stem.split('_').last()?;
                     let generation = generation.parse::<usize>().ok()?;
+                    tracing::trace!(%generation, path = %path.display(), "Got generation");
                     Some((generation, path))
                 });
 
