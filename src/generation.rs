@@ -50,9 +50,9 @@ pub(crate) fn all_generations(
                     let generation = generation.parse::<usize>().ok()?;
                     Some((generation, path))
                 });
-        
+
             Ok(Box::from(filtered))
-        },
+        }
         None => Ok(Box::from(std::iter::empty())),
     }
 }
