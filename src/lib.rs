@@ -7,6 +7,8 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+#![doc = include_str!("../README.md")]
+
 mod error;
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 mod generation;

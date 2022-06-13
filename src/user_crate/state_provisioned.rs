@@ -39,7 +39,6 @@ impl StateProvisioned {
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
-        command.arg("--offline");
         command.arg("--release");
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {

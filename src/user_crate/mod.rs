@@ -258,7 +258,7 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = "0.4.3"
+                pgx = { version = "0.5.0-beta.0", features = [ "postgrestd" ] }
 
                 [profile.release]
                 debug-assertions = true

@@ -39,9 +39,9 @@ impl StateGenerated {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             fn_oid.into_datum().unwrap(), // TODO: try_from_datum
-            0,
-            0,
-            0,
+            0.into(),
+            0.into(),
+            0.into(),
         );
         if proc_tuple.is_null() {
             return Err(PlRustError::NullProcTuple)?;
@@ -55,7 +55,7 @@ impl StateGenerated {
             pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
+        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null);
         let plrust =
             std::ffi::CString::new("plrust").expect("Expected `\"plrust\"` to be a valid CString");
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
@@ -69,8 +69,7 @@ impl StateGenerated {
             &mut is_null,
         );
         let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
-                .ok_or(PlRustError::NullSourceCode)?,
+            &String::from_datum(prosrc_datum, is_null).ok_or(PlRustError::NullSourceCode)?,
         )?;
         let argnames_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -78,7 +77,7 @@ impl StateGenerated {
             pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
+        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
 
         let argtypes_datum = pg_sys::SysCacheGetAttr(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -86,7 +85,7 @@ impl StateGenerated {
             pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
+        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
 
         let proc_entry = PgBox::from_pg(pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
@@ -163,7 +162,7 @@ impl StateGenerated {
             default = [ version_feature ]
 
             [dependencies]
-            pgx = "0.4.3"
+            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"] }
             /* User deps added here */
 
             [profile.release]
