@@ -7,6 +7,8 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+#![doc = include_str!("../README.md")]
+
 mod error;
 mod gucs;
 mod logging;
