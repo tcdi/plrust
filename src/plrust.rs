@@ -53,7 +53,7 @@ pub(crate) unsafe fn evaluate_function(
             entry @ Entry::Vacant(_) => {
                 let crate_name = crate_name(fn_oid);
                 let mut shared_object_name = crate_name;
-                #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+                #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
                 {
                     let latest = crate::generation::latest_generation(&shared_object_name, true)
                         .map(|(gen_num, _)| gen_num)

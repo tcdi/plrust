@@ -21,6 +21,8 @@ pg14 = ["pgx/pg14", "pgx-tests/pg14"]
 pg_test = []
 # Be accomodating to sandboxed builds with no network.
 sandboxed = []
+# Forcibly enable a feature used by x86_64 MacOS machines because they're bad at `dlclose()`
+force_enable_x86_64_darwin_generations = []
 
 [dependencies]
 pgx = { git = "https://github.com/tcdi/pgx.git", rev = "7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87" }

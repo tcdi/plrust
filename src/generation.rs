@@ -1,4 +1,4 @@
-#![cfg(all(target_os = "macos", target_arch = "x86_64"))]
+#![cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
 /*!
     Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
     `CREATE OR REPLACE FUNCTION`.
@@ -52,7 +52,7 @@ pub(crate) fn all_generations(
                 .flat_map(|(stem, path)| {
                     let generation = stem.split('_').last()?;
                     let generation = generation.parse::<usize>().ok()?;
-                    tracing::trace!(%generation, path = %path.display(), "Got generation");
+                    tracing::trace!(%generation, path = %path.display(), "Found generation");
                     Some((generation, path))
                 });
 
@@ -68,7 +68,9 @@ pub(crate) fn all_generations(
 #[tracing::instrument(level = "debug")]
 pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> eyre::Result<usize> {
     let latest = latest_generation(prefix, vacuum);
-    Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
+    let next = latest.map(|this| this.0 + 1).unwrap_or_default();
+    tracing::trace!("Determined next generation to be {next}");
+    Ok(next)
 }
 
 /// Get the latest created generation night.

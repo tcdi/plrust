@@ -66,10 +66,10 @@ impl StateProvisioned {
                 });
 
             let mut shared_object_name = crate_name.clone();
-            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
             {
-                let latest = crate::generation::latest_generation(&crate_name, true)
-                    .map(|(gen_num, _)| gen_num)
+                let latest = crate::generation::next_generation(&crate_name, true)
+                    .map(|gen_num| gen_num)
                     .unwrap_or_default();
 
                 shared_object_name.push_str(&format!("_{}", latest));
