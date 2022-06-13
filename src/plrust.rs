@@ -215,7 +215,6 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, St
         .current_dir(&crate_dir)
         .arg("rustc")
         .arg("--release")
-        // .arg("--offline")
         .env("PGX_PG_CONFIG_PATH", gucs::pg_config())
         .env("CARGO_TARGET_DIR", &work_dir)
         .env(
