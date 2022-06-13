@@ -85,7 +85,7 @@ pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> eyre::Result<(usi
 
     if vacuum {
         for (_index, old_path) in generations {
-            pgx::info!("Vacuuming {:?}", old_path);
+            tracing::info!("Vacuuming {:?}", old_path);
             std::fs::remove_file(old_path)?;
         }
     }

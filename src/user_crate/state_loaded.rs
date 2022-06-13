@@ -15,10 +15,12 @@ pub(crate) struct StateLoaded {
 }
 
 impl StateLoaded {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug")]
     pub(crate) unsafe fn load(fn_oid: pg_sys::Oid, shared_object: &Path) -> eyre::Result<Self> {
+        tracing::trace!("Loading {shared_object}");
         let library = Library::new(shared_object)?;
         let symbol_name = crate::plrust::symbol_name(fn_oid);
+        tracing::trace!("Getting symbol {symbol_name}");
         let symbol = library.get(symbol_name.as_bytes())?;
 
         Ok(Self {

@@ -55,10 +55,9 @@ pub(crate) unsafe fn evaluate_function(
                 let mut shared_object_name = crate_name;
                 #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
                 {
-                    let latest = crate::generation::latest_generation(&shared_object_name, true)
-                        .map(|(gen_num, _)| gen_num)
+                    let (latest, path) = crate::generation::latest_generation(&shared_object_name, true)
                         .unwrap_or_default();
-                    tracing::info!("Got generation {latest}");
+                    tracing::info!(path = %path.display(), "Got generation {latest}");
 
                     shared_object_name.push_str(&format!("_{}", latest));
                 };
