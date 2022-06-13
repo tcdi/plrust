@@ -92,6 +92,18 @@ impl UserCrate<StateLoaded> {
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         self.0.evaluate(fcinfo)
     }
+
+    pub(crate) fn close(self) -> eyre::Result<()> {
+        self.0.close()
+    }
+
+    pub(crate) fn symbol_name(&self) -> String {
+        self.0.symbol_name()
+    }
+
+    pub(crate) fn shared_object(&self) -> &Path {
+        self.0.shared_object()
+    }
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(type_oid = type_oid.value()))]

@@ -33,8 +33,9 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.with(|loaded_symbols| {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
         let removed = loaded_symbols_handle.remove(&fn_oid);
-        if let Some(_symbol) = removed {
+        if let Some(user_crate) = removed {
             tracing::info!("unloaded function");
+            user_crate.close().unwrap();
         }
     })
 }
@@ -70,6 +71,8 @@ pub(crate) unsafe fn evaluate_function(
                 entry.or_insert(user_crate_loaded)
             }
         };
+
+        tracing::trace!("Evaluating symbol {:?} from {}", user_crate_loaded.symbol_name(), user_crate_loaded.shared_object().display());
 
         Ok(user_crate_loaded.evaluate(fcinfo))
     })
