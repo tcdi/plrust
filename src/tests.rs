@@ -155,6 +155,15 @@ mod tests {
             vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
         );
         assert!(retval.is_some());
+
+        // Regression test: A previous version of PL/Rust would abort if this was called twice, so call it twice:
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT zalgo($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
     }
 
     #[pg_test]
