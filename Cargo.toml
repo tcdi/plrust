@@ -25,7 +25,7 @@ sandboxed = []
 force_enable_x86_64_darwin_generations = []
 
 [dependencies]
-pgx = { version = "0.5.0-beta.0", features = ["postgrestd"] }
+pgx = { version = "0.5.0-beta.0" }
 libloading = "0.7.2"
 thiserror = "1.0"
 eyre = "0.6"

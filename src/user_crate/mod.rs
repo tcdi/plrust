@@ -97,7 +97,7 @@ impl UserCrate<StateLoaded> {
         self.0.close()
     }
 
-    pub(crate) fn symbol_name(&self) -> String {
+    pub(crate) fn symbol_name(&self) -> &str {
         self.0.symbol_name()
     }
 

@@ -120,18 +120,32 @@ impl StateGenerated {
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File =
             syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
+        let crate_name = self.crate_name();
+
+        #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+        let crate_name = {
+            let mut crate_name = crate_name;
+            let next = crate::generation::next_generation(&crate_name, true)
+                .unwrap_or_default();
+            
+            tracing::info!("Next generation is {next}");
+    
+            crate_name.push_str(&format!("_{}", next));
+            crate_name
+        };
+        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
         let user_function = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
                 ..
             } => {
-                let fn_ident = Ident::new(&self.crate_name(), Span::call_site());
                 let arguments = arguments.values();
                 let user_code = &self.user_code;
                 let file: syn::ItemFn = syn::parse2(quote! {
                     #[pg_extern]
-                    fn #fn_ident(
+                    fn #symbol_ident(
                         #( #arguments ),*
                     ) -> #return_type
                     #user_code
