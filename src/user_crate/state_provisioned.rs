@@ -52,28 +52,31 @@ impl StateProvisioned {
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
         if output.status.success() {
-            let crate_name = &self.crate_name;
             use std::env::consts::DLL_SUFFIX;
 
-            let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
-            let built_shared_object = target_dir
-                .map(|d| d.join("release").join(&built_shared_object_name))
-                .unwrap_or_else(|| {
-                    self.crate_dir
-                        .join("target")
-                        .join("release")
-                        .join(built_shared_object_name)
-                });
+            let crate_name = self.crate_name;
 
-            let mut shared_object_name = crate_name.clone();
             #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
-            {
+            let crate_name = {
+                let mut crate_name = crate_name;
                 let latest = crate::generation::next_generation(&crate_name, true)
                     .map(|gen_num| gen_num)
                     .unwrap_or_default();
 
-                shared_object_name.push_str(&format!("_{}", latest));
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
             };
+
+            let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
+            let built_shared_object = target_dir
+                .map(|d| d.join("release").join(&built_shared_object_name))
+                .unwrap_or(self.crate_dir
+                        .join("target")
+                        .join("release")
+                        .join(built_shared_object_name));
+
+            let mut shared_object_name = crate_name.clone();
+            
             shared_object_name.push_str(DLL_SUFFIX);
 
             let shared_object = artifact_dir.join(&shared_object_name);
