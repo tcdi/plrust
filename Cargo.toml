@@ -42,7 +42,7 @@ tempdir = "0.3.7"
 once_cell = "1.7.2"
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/tcdi/pgx.git", rev = "7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87" }
+pgx-tests = "0.5.0-beta.0"
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"

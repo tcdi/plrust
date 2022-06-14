@@ -1057,37 +1057,9 @@ dependencies = [
  "heapless",
  "num-traits",
  "once_cell",
- "pgx-macros 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-pg-sys 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-utils 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "quote",
- "seahash",
- "serde",
- "serde_cbor",
- "serde_json",
- "thiserror",
- "time",
- "tracing",
- "tracing-error",
- "uuid",
-]
-
-[[package]]
-name = "pgx"
-version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
-dependencies = [
- "atomic-traits",
- "bitflags",
- "cstr_core",
- "enum-primitive-derive",
- "eyre",
- "heapless",
- "num-traits",
- "once_cell",
- "pgx-macros 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
- "pgx-pg-sys 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
- "pgx-utils 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
+ "pgx-macros",
+ "pgx-pg-sys",
+ "pgx-utils",
  "quote",
  "seahash",
  "serde",
@@ -1106,19 +1078,7 @@ version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df4a9ca0e812ae0c6426e393bd4888c72ebc89bbaf2d850b8327a9b929464f25"
 dependencies = [
- "pgx-utils 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2",
- "quote",
- "syn",
- "unescape",
-]
-
-[[package]]
-name = "pgx-macros"
-version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
-dependencies = [
- "pgx-utils 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
+ "pgx-utils",
  "proc-macro2",
  "quote",
  "syn",
@@ -1139,31 +1099,8 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "owo-colors",
- "pgx-macros 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-utils 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2",
- "quote",
- "rayon",
- "rustversion",
- "sptr",
- "syn",
-]
-
-[[package]]
-name = "pgx-pg-sys"
-version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
-dependencies = [
- "bindgen",
- "build-deps",
- "color-eyre",
- "eyre",
- "memoffset",
- "num_cpus",
- "once_cell",
- "owo-colors",
- "pgx-macros 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
- "pgx-utils 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
+ "pgx-macros",
+ "pgx-utils",
  "proc-macro2",
  "quote",
  "rayon",
@@ -1175,15 +1112,16 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "936a690c11dd26c60e1da2749e689ed9c5b2ad56ad1a4364bcad65605b322b3b"
 dependencies = [
  "eyre",
  "libc",
  "once_cell",
  "owo-colors",
- "pgx 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
- "pgx-macros 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
- "pgx-utils 0.5.0-beta.0 (git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87)",
+ "pgx",
+ "pgx-macros",
+ "pgx-utils",
  "postgres",
  "regex",
  "serde",
@@ -1198,37 +1136,6 @@ name = "pgx-utils"
 version = "0.5.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078a275c1304e22a509c64c7a6612a6f2d011ef60f8f8811e3ac44b64b31c794"
-dependencies = [
- "atty",
- "convert_case",
- "dirs",
- "env_proxy",
- "eyre",
- "owo-colors",
- "petgraph",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rttp_client",
- "serde",
- "serde-xml-rs",
- "serde_derive",
- "serde_json",
- "syn",
- "syntect",
- "toml",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "unescape",
- "url",
-]
-
-[[package]]
-name = "pgx-utils"
-version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
 dependencies = [
  "atty",
  "convert_case",
@@ -1308,7 +1215,7 @@ dependencies = [
  "eyre",
  "libloading",
  "once_cell",
- "pgx 0.5.0-beta.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pgx",
  "pgx-tests",
  "prettyplease",
  "proc-macro2",
