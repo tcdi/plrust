@@ -56,7 +56,10 @@ impl StateProvisioned {
 
             let crate_name = self.crate_name;
 
-            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
             let crate_name = {
                 let mut crate_name = crate_name;
                 let next = crate::generation::next_generation(&crate_name, true)
@@ -70,13 +73,15 @@ impl StateProvisioned {
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
                 .map(|d| d.join("release").join(&built_shared_object_name))
-                .unwrap_or(self.crate_dir
+                .unwrap_or(
+                    self.crate_dir
                         .join("target")
                         .join("release")
-                        .join(built_shared_object_name));
+                        .join(built_shared_object_name),
+                );
 
             let mut shared_object_name = crate_name.clone();
-            
+
             shared_object_name.push_str(DLL_SUFFIX);
 
             let shared_object = artifact_dir.join(&shared_object_name);

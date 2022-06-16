@@ -1,4 +1,7 @@
-#![cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+#![cfg(any(
+    all(target_os = "macos", target_arch = "x86_64"),
+    feature = "force_enable_x86_64_darwin_generations"
+))]
 /*!
     Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
     `CREATE OR REPLACE FUNCTION`.

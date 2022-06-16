@@ -20,18 +20,24 @@ pub(crate) struct StateLoaded {
 impl StateLoaded {
     #[tracing::instrument(level = "debug")]
     pub(crate) unsafe fn load(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> eyre::Result<Self> {
-        tracing::trace!("Loading {shared_object}", shared_object = shared_object.display());
+        tracing::trace!(
+            "Loading {shared_object}",
+            shared_object = shared_object.display()
+        );
         let library = Library::new(&shared_object)?;
         let crate_name = crate::plrust::crate_name(fn_oid);
 
-        #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "x86_64"),
+            feature = "force_enable_x86_64_darwin_generations"
+        ))]
         let crate_name = {
             let mut crate_name = crate_name;
-            let (latest, path) = crate::generation::latest_generation(&crate_name, true)
-                .unwrap_or_default();
-            
+            let (latest, path) =
+                crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
             tracing::info!(path = %path.display(), "Got generation {latest}");
-    
+
             crate_name.push_str(&format!("_{}", latest));
             crate_name
         };
@@ -54,7 +60,13 @@ impl StateLoaded {
     }
 
     pub(crate) fn close(self) -> eyre::Result<()> {
-        let Self { fn_oid: _, library, symbol: _, shared_object: _, symbol_name: _ } = self;
+        let Self {
+            fn_oid: _,
+            library,
+            symbol: _,
+            shared_object: _,
+            symbol_name: _,
+        } = self;
         library.close()?;
         Ok(())
     }

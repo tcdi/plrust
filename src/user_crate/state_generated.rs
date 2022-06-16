@@ -4,7 +4,6 @@ use crate::{
 };
 use eyre::WrapErr;
 use pgx::{pg_sys, FromDatum, IntoDatum, PgBox, PgOid};
-use proc_macro2::{Ident, Span};
 use quote::quote;
 use std::path::Path;
 
@@ -122,14 +121,16 @@ impl StateGenerated {
             syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
         let crate_name = self.crate_name();
 
-        #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "x86_64"),
+            feature = "force_enable_x86_64_darwin_generations"
+        ))]
         let crate_name = {
             let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true)
-                .unwrap_or_default();
-            
+            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
+
             tracing::info!("Next generation is {next}");
-    
+
             crate_name.push_str(&format!("_{}", next));
             crate_name
         };
@@ -163,11 +164,13 @@ impl StateGenerated {
         let version_feature = format!("pgx/pg{major_version}");
         let crate_name = self.crate_name();
 
-        #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "x86_64"),
+            feature = "force_enable_x86_64_darwin_generations"
+        ))]
         let crate_name = {
             let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true)
-                .unwrap_or_default();
+            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
             tracing::info!("Got generation {next}");
 
             crate_name.push_str(&format!("_{}", next));
@@ -310,11 +313,14 @@ mod tests {
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(fn_oid);
-            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
-                    .unwrap_or_default();
+                let (latest, path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
                 tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));
@@ -387,11 +393,14 @@ mod tests {
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(fn_oid);
-            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
-                    .unwrap_or_default();
+                let (latest, path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
                 tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));
@@ -464,11 +473,14 @@ mod tests {
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(fn_oid);
-            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
-                    .unwrap_or_default();
+                let (latest, path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
                 tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));

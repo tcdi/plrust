@@ -217,11 +217,14 @@ mod tests {
 
             let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
             let crate_name = crate::plrust::crate_name(fn_oid);
-            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
-                    .unwrap_or_default();
+                let (latest, path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
                 tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));

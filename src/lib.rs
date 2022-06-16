@@ -10,7 +10,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #![doc = include_str!("../README.md")]
 
 mod error;
-#[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+#[cfg(any(
+    all(target_os = "macos", target_arch = "x86_64"),
+    feature = "force_enable_x86_64_darwin_generations"
+))]
 mod generation;
 mod gucs;
 mod logging;

@@ -54,10 +54,14 @@ pub(crate) unsafe fn evaluate_function(
             entry @ Entry::Vacant(_) => {
                 let crate_name = crate_name(fn_oid);
                 let mut shared_object_name = crate_name;
-                #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+                #[cfg(any(
+                    all(target_os = "macos", target_arch = "x86_64"),
+                    feature = "force_enable_x86_64_darwin_generations"
+                ))]
                 {
-                    let (latest, path) = crate::generation::latest_generation(&shared_object_name, true)
-                        .unwrap_or_default();
+                    let (latest, path) =
+                        crate::generation::latest_generation(&shared_object_name, true)
+                            .unwrap_or_default();
                     tracing::info!(path = %path.display(), "Got generation {latest}");
 
                     shared_object_name.push_str(&format!("_{}", latest));
@@ -72,7 +76,11 @@ pub(crate) unsafe fn evaluate_function(
             }
         };
 
-        tracing::trace!("Evaluating symbol {:?} from {}", user_crate_loaded.symbol_name(), user_crate_loaded.shared_object().display());
+        tracing::trace!(
+            "Evaluating symbol {:?} from {}",
+            user_crate_loaded.symbol_name(),
+            user_crate_loaded.shared_object().display()
+        );
 
         Ok(user_crate_loaded.evaluate(fcinfo))
     })
