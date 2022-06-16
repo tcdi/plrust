@@ -166,11 +166,11 @@ impl StateGenerated {
         #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
         let crate_name = {
             let mut crate_name = crate_name;
-            let (latest, path) = crate::generation::latest_generation(&crate_name, true)
+            let next = crate::generation::next_generation(&crate_name, true)
                 .unwrap_or_default();
-            tracing::info!(path = %path.display(), "Got generation {latest}");
+            tracing::info!("Got generation {next}");
 
-            crate_name.push_str(&format!("_{}", latest));
+            crate_name.push_str(&format!("_{}", next));
             crate_name
         };
 
@@ -309,6 +309,19 @@ mod tests {
 
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
+                    .unwrap_or_default();
+                tracing::info!(path = %path.display(), "Got generation {latest}");
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
                 #![no_std]
@@ -335,7 +348,7 @@ mod tests {
                     }
                 }
                 #[pg_extern]
-                fn plrust_fn_oid_0(arg0: &str) -> Option<String> {
+                fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
             };
@@ -373,6 +386,19 @@ mod tests {
 
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
+                    .unwrap_or_default();
+                tracing::info!(path = %path.display(), "Got generation {latest}");
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
                 #![no_std]
@@ -399,7 +425,7 @@ mod tests {
                     }
                 }
                 #[pg_extern]
-                fn plrust_fn_oid_0(val: Option<i32>) -> Option<i64> {
+                fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
                 }
             };
@@ -437,6 +463,19 @@ mod tests {
 
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, path) = crate::generation::latest_generation(&crate_name, true)
+                    .unwrap_or_default();
+                tracing::info!(path = %path.display(), "Got generation {latest}");
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
                 #![no_std]
@@ -463,7 +502,7 @@ mod tests {
                     }
                 }
                 #[pg_extern]
-                fn plrust_fn_oid_0(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
+                fn #symbol_ident(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
                     Some(std::iter::repeat(val).take(5))
                 }
             };

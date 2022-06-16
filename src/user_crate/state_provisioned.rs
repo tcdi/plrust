@@ -59,11 +59,11 @@ impl StateProvisioned {
             #[cfg(any(all(target_os = "macos", target_arch = "x86_64"), feature = "force_enable_x86_64_darwin_generations"))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let latest = crate::generation::next_generation(&crate_name, true)
+                let next = crate::generation::next_generation(&crate_name, true)
                     .map(|gen_num| gen_num)
                     .unwrap_or_default();
 
-                crate_name.push_str(&format!("_{}", latest));
+                crate_name.push_str(&format!("_{}", next));
                 crate_name
             };
 
