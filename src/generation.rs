@@ -55,7 +55,7 @@ pub(crate) fn all_generations(
                 .flat_map(|(stem, path)| {
                     let generation = stem.split('_').last()?;
                     let generation = generation.parse::<usize>().ok()?;
-                    tracing::trace!(%generation, path = %path.display(), "Found generation");
+                    
                     Some((generation, path))
                 });
 
@@ -72,7 +72,7 @@ pub(crate) fn all_generations(
 pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> eyre::Result<usize> {
     let latest = latest_generation(prefix, vacuum);
     let next = latest.map(|this| this.0 + 1).unwrap_or_default();
-    tracing::trace!("Determined next generation to be {next}");
+    
     Ok(next)
 }
 
@@ -88,7 +88,7 @@ pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> eyre::Result<(usi
 
     if vacuum {
         for (_index, old_path) in generations {
-            tracing::info!("Vacuuming {:?}", old_path);
+            tracing::debug!("Vacuuming {:?}", old_path);
             std::fs::remove_file(old_path)?;
         }
     }

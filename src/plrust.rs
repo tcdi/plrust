@@ -59,10 +59,9 @@ pub(crate) unsafe fn evaluate_function(
                     feature = "force_enable_x86_64_darwin_generations"
                 ))]
                 {
-                    let (latest, path) =
+                    let (latest, _path) =
                         crate::generation::latest_generation(&shared_object_name, true)
                             .unwrap_or_default();
-                    tracing::info!(path = %path.display(), "Got generation {latest}");
 
                     shared_object_name.push_str(&format!("_{}", latest));
                 };

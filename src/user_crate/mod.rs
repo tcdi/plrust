@@ -52,14 +52,21 @@ impl UserCrate<StateGenerated> {
         self.0.cargo_toml()
     }
     /// Provision into a given folder and return the crate directory.
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
     pub fn provision(&self, parent_dir: &Path) -> eyre::Result<UserCrate<StateProvisioned>> {
         self.0.provision(parent_dir).map(UserCrate)
     }
 }
 
 impl UserCrate<StateProvisioned> {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            fn_oid = %self.0.fn_oid(),
+            crate_dir = %self.0.crate_dir().display(),
+            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+        ))]
     pub fn build(
         self,
         artifact_dir: &Path,
@@ -73,22 +80,22 @@ impl UserCrate<StateProvisioned> {
 }
 
 impl UserCrate<StateBuilt> {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug")]
     pub(crate) fn built(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
         UserCrate(StateBuilt::new(fn_oid, shared_object))
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
     pub fn shared_object(&self) -> &Path {
         self.0.shared_object()
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
     pub unsafe fn load(self) -> eyre::Result<UserCrate<StateLoaded>> {
         self.0.load().map(UserCrate)
     }
 }
 
 impl UserCrate<StateLoaded> {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid()))]
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         self.0.evaluate(fcinfo)
     }
@@ -100,6 +107,11 @@ impl UserCrate<StateLoaded> {
     pub(crate) fn symbol_name(&self) -> &str {
         self.0.symbol_name()
     }
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        self.0.fn_oid()
+    }
+
 
     pub(crate) fn shared_object(&self) -> &Path {
         self.0.shared_object()
@@ -223,9 +235,8 @@ mod tests {
             ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) =
+                let (latest, _path) =
                     crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-                tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));
                 crate_name

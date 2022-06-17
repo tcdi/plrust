@@ -18,7 +18,7 @@ pub(crate) struct StateLoaded {
 }
 
 impl StateLoaded {
-    #[tracing::instrument(level = "debug")]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %fn_oid, shared_object = %shared_object.display()))]
     pub(crate) unsafe fn load(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> eyre::Result<Self> {
         tracing::trace!(
             "Loading {shared_object}",
@@ -33,10 +33,8 @@ impl StateLoaded {
         ))]
         let crate_name = {
             let mut crate_name = crate_name;
-            let (latest, path) =
+            let (latest, _path) =
                 crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-            tracing::info!(path = %path.display(), "Got generation {latest}");
 
             crate_name.push_str(&format!("_{}", latest));
             crate_name
@@ -55,10 +53,19 @@ impl StateLoaded {
         })
     }
 
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid, ?fcinfo))]
     pub(crate) unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         (self.symbol)(fcinfo)
     }
 
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            fn_oid = %self.fn_oid,
+            shared_object = %self.shared_object.display(),
+            symbol_name = %self.symbol_name,
+        ))]
     pub(crate) fn close(self) -> eyre::Result<()> {
         let Self {
             fn_oid: _,
@@ -73,6 +80,11 @@ impl StateLoaded {
 
     pub(crate) fn symbol_name(&self) -> &str {
         &self.symbol_name
+    }
+
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        &self.fn_oid
     }
 
     pub(crate) fn shared_object(&self) -> &Path {

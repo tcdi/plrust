@@ -33,7 +33,7 @@ impl StateGenerated {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug")]
     pub(crate) unsafe fn try_from_fn_oid(fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -115,7 +115,8 @@ impl StateGenerated {
     pub(crate) fn crate_name(&self) -> String {
         crate::plrust::crate_name(self.fn_oid)
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File =
             syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
@@ -129,12 +130,12 @@ impl StateGenerated {
             let mut crate_name = crate_name;
             let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
 
-            tracing::info!("Next generation is {next}");
-
             crate_name.push_str(&format!("_{}", next));
             crate_name
         };
         let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs`");
 
         let user_function = match &self.variant {
             CrateVariant::Function {
@@ -158,7 +159,8 @@ impl StateGenerated {
         skeleton.items.push(syn::Item::Fn(user_function));
         Ok(skeleton)
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid))]
     pub(crate) fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
         let major_version = pgx::pg_sys::get_pg_major_version_num();
         let version_feature = format!("pgx/pg{major_version}");
@@ -171,11 +173,16 @@ impl StateGenerated {
         let crate_name = {
             let mut crate_name = crate_name;
             let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
-            tracing::info!("Got generation {next}");
 
             crate_name.push_str(&format!("_{}", next));
             crate_name
         };
+
+        tracing::trace!(
+            crate_name = %crate_name,
+            user_dependencies = ?self.user_dependencies.keys().cloned().collect::<Vec<String>>(),
+            "Generating `Cargo.toml`"
+        );
 
         let cargo_toml = toml::toml! {
             [package]
@@ -259,7 +266,7 @@ impl StateGenerated {
         }
     }
     /// Provision into a given folder and return the crate directory.
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid, parent_dir = %parent_dir.display()))]
     pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<StateProvisioned> {
         let crate_name = self.crate_name();
         let crate_dir = parent_dir.join(&crate_name);
@@ -282,6 +289,10 @@ impl StateGenerated {
         .wrap_err("Writing generated `Cargo.toml`")?;
 
         Ok(StateProvisioned::new(self.fn_oid, crate_name, crate_dir))
+    }
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        &self.fn_oid
     }
 }
 
@@ -319,9 +330,8 @@ mod tests {
             ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) =
+                let (latest, _path) =
                     crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-                tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));
                 crate_name
@@ -399,9 +409,8 @@ mod tests {
             ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) =
+                let (latest, _path) =
                     crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-                tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));
                 crate_name
@@ -479,9 +488,8 @@ mod tests {
             ))]
             let crate_name = {
                 let mut crate_name = crate_name;
-                let (latest, path) =
+                let (latest, _path) =
                     crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-                tracing::info!(path = %path.display(), "Got generation {latest}");
 
                 crate_name.push_str(&format!("_{}", latest));
                 crate_name

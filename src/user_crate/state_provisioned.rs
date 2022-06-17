@@ -20,7 +20,7 @@ pub(crate) struct StateProvisioned {
 impl CrateState for StateProvisioned {}
 
 impl StateProvisioned {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(fn_oid: pg_sys::Oid, crate_name: String, crate_dir: PathBuf) -> Self {
         Self {
             fn_oid,
@@ -28,7 +28,14 @@ impl StateProvisioned {
             crate_dir,
         }
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            fn_oid = %self.fn_oid,
+            crate_dir = %self.crate_dir.display(),
+            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+        ))]
     pub(crate) fn build(
         self,
         artifact_dir: &Path,
@@ -111,5 +118,13 @@ impl StateProvisioned {
                         .header("Source Code:")
                 }))?
         }
+    }
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        &self.fn_oid
+    }
+
+    pub(crate) fn crate_dir(&self) -> &Path {
+        &self.crate_dir
     }
 }
