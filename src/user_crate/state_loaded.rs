@@ -41,7 +41,7 @@ impl StateLoaded {
         };
         let symbol_name = crate_name + "_wrapper";
 
-        tracing::trace!("Getting symbol {symbol_name}");
+        tracing::trace!("Getting symbol `{symbol_name}`");
         let symbol = library.get(symbol_name.as_bytes())?;
 
         Ok(Self {
