@@ -7,9 +7,7 @@ impl CrateState for StateLoaded {}
 
 #[must_use]
 pub(crate) struct StateLoaded {
-    #[allow(dead_code)] // Mostly for debugging
     fn_oid: pg_sys::Oid,
-    #[allow(dead_code)] // Mostly for debugging
     symbol_name: String,
     #[allow(dead_code)] // We must hold this handle for `symbol`
     library: Library,
