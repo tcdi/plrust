@@ -1,4 +1,7 @@
-#![cfg(all(target_os = "macos", target_arch = "x86_64"))]
+#![cfg(any(
+    all(target_os = "macos", target_arch = "x86_64"),
+    feature = "force_enable_x86_64_darwin_generations"
+))]
 /*!
     Darwin x86_64 is a peculiar platform for `dlclose`, this exists for a workaround to support
     `CREATE OR REPLACE FUNCTION`.
@@ -19,7 +22,7 @@
     https://developer.apple.com/videos/play/wwdc2017/413/?time=1776.
 !*/
 
-use std::fs;
+use std::{fs, path::PathBuf};
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum Error {
@@ -33,38 +36,51 @@ pub(crate) enum Error {
 #[tracing::instrument(level = "debug")]
 pub(crate) fn all_generations(
     prefix: &str,
-) -> Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>, Error> {
-    let work_dir = gucs::work_dir();
-    let filtered = fs::read_dir(work_dir)?
-        .flat_map(|entry| {
-            let path = entry.ok()?.path();
-            let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
-            Some((stem, path))
-        })
-        .filter(move |(stem, _path)| stem.starts_with(prefix))
-        .flat_map(|(stem, path)| {
-            let generation = stem.split('_').last()?;
-            let generation = generation.parse::<usize>().ok()?;
-            Some((generation, path))
-        });
+) -> eyre::Result<Box<dyn Iterator<Item = (usize, PathBuf)> + '_>> {
+    let work_dir = crate::gucs::work_dir();
+    let read_dir = fs::read_dir(work_dir).ok();
+    match read_dir {
+        Some(read_dir) => {
+            let filtered = read_dir
+                .flat_map(|entry| {
+                    let entry = entry.ok()?;
+                    if !entry.file_type().ok()?.is_file() {
+                        return None;
+                    }
+                    let path = entry.path();
+                    let stem = path.file_stem().and_then(|f| f.to_str())?.to_string();
+                    Some((stem, path))
+                })
+                .filter(move |(stem, _path)| stem.starts_with(prefix))
+                .flat_map(|(stem, path)| {
+                    let generation = stem.split('_').last()?;
+                    let generation = generation.parse::<usize>().ok()?;
+                    
+                    Some((generation, path))
+                });
 
-    Ok(Box::from(filtered))
+            Ok(Box::from(filtered))
+        }
+        None => Ok(Box::from(std::iter::empty())),
+    }
 }
 
 /// Get the next generation number to be created.
 ///
 /// If `vacuum` is set, this will pass the setting on to [`latest_generation`].
 #[tracing::instrument(level = "debug")]
-pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> Result<usize, Error> {
+pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> eyre::Result<usize> {
     let latest = latest_generation(prefix, vacuum);
-    Ok(latest.map(|this| this.0 + 1).unwrap_or_default())
+    let next = latest.map(|this| this.0 + 1).unwrap_or_default();
+    
+    Ok(next)
 }
 
 /// Get the latest created generation night.
 ///
 /// If `vacuum` is set, this garbage collect old `so` files.
 #[tracing::instrument(level = "debug")]
-pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, PathBuf), Error> {
+pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> eyre::Result<(usize, PathBuf)> {
     let mut generations = all_generations(prefix)?.collect::<Vec<_>>();
     // We could use max_by, but might need to vacuum.
     generations.sort_by_key(|(generation, _path)| *generation);
@@ -72,10 +88,12 @@ pub(crate) fn latest_generation(prefix: &str, vacuum: bool) -> Result<(usize, Pa
 
     if vacuum {
         for (_index, old_path) in generations {
-            pgx::info!("Vacuuming {:?}", old_path);
+            tracing::debug!("Vacuuming {:?}", old_path);
             std::fs::remove_file(old_path)?;
         }
     }
 
-    latest.ok_or(Error::NoGenerations)
+    let latest = latest.ok_or(Error::NoGenerations)?;
+
+    Ok(latest)
 }

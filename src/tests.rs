@@ -129,32 +129,73 @@ mod tests {
     #[search_path(@extschema@)]
     fn test_deps() {
         let definition = r#"
-            CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
+                CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
             [dependencies]
-                zalgo = "0.2.0"
+                owo-colors = "3"
             [code]
-                use zalgo::{Generator, GeneratorArgs, ZalgoSize};
-
-                let mut generator = Generator::new();
-                let mut out = String::new();
-                let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
-                let result = generator.gen(input, &mut out, &args);
-
-                Some(out)
+                use owo_colors::OwoColorize;
+                Some(input.purple().to_string())
             $$;
         "#;
         Spi::run(definition);
 
         let retval: Option<String> = Spi::get_one_with_args(
             r#"
-            SELECT zalgo($1);
+            SELECT colorize($1);
         "#,
             vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
         );
         assert!(retval.is_some());
+
+        // Regression test: A previous version of PL/Rust would abort if this was called twice, so call it twice:
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT colorize($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn returns_setof() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION boop_srf(names TEXT[]) RETURNS SETOF TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                Some(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::connect(|client| {
+            let mut table = client.select(
+                "SELECT * FROM boop_srf(ARRAY['Nami', 'Brandy'])",
+                None,
+                None,
+            );
+
+            let mut found = vec![];
+            while table.next().is_some() {
+                let value = table.get_one::<String>();
+                found.push(value)
+            }
+
+            Ok(Some(found))
+        });
+
+        assert_eq!(
+            retval,
+            Some(vec![
+                Some("Nami was booped!".into()),
+                Some("Brandy was booped!".into()),
+            ])
+        );
     }
 
     #[pg_test]
@@ -240,12 +281,13 @@ pub mod pg_test {
         let path = pg_config.path().unwrap();
         format!("plrust.pg_config='{}'", path.as_path().display())
     });
+    static LOG_LEVEL: &str = "plrust.tracing_level=trace";
 
     pub fn setup(_options: Vec<&str>) {
         // perform one-off initialization when the pg_test framework starts
     }
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
-        vec![&*WORK_DIR, &*PG_CONFIG]
+        vec![&*WORK_DIR, &*PG_CONFIG, &*LOG_LEVEL]
     }
 }

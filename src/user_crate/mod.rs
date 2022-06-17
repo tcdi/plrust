@@ -52,14 +52,21 @@ impl UserCrate<StateGenerated> {
         self.0.cargo_toml()
     }
     /// Provision into a given folder and return the crate directory.
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
     pub fn provision(&self, parent_dir: &Path) -> eyre::Result<UserCrate<StateProvisioned>> {
         self.0.provision(parent_dir).map(UserCrate)
     }
 }
 
 impl UserCrate<StateProvisioned> {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            fn_oid = %self.0.fn_oid(),
+            crate_dir = %self.0.crate_dir().display(),
+            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+        ))]
     pub fn build(
         self,
         artifact_dir: &Path,
@@ -73,24 +80,41 @@ impl UserCrate<StateProvisioned> {
 }
 
 impl UserCrate<StateBuilt> {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug")]
     pub(crate) fn built(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
         UserCrate(StateBuilt::new(fn_oid, shared_object))
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
     pub fn shared_object(&self) -> &Path {
         self.0.shared_object()
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
     pub unsafe fn load(self) -> eyre::Result<UserCrate<StateLoaded>> {
         self.0.load().map(UserCrate)
     }
 }
 
 impl UserCrate<StateLoaded> {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid()))]
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         self.0.evaluate(fcinfo)
+    }
+
+    pub(crate) fn close(self) -> eyre::Result<()> {
+        self.0.close()
+    }
+
+    pub(crate) fn symbol_name(&self) -> &str {
+        self.0.symbol_name()
+    }
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        self.0.fn_oid()
+    }
+
+
+    pub(crate) fn shared_object(&self) -> &Path {
+        self.0.shared_object()
     }
 }
 
@@ -204,12 +228,48 @@ mod tests {
             })?;
 
             let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_extern]
-                fn plrust_fn_oid_0(arg0: &str) -> Option<String> {
+                fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
             };
@@ -226,7 +286,7 @@ mod tests {
             let fixture_cargo_toml = toml! {
                 [package]
                 edition = "2021"
-                name = "plrust_fn_oid_0"
+                name = crate_name
                 version = "0.0.0"
 
                 [features]
@@ -236,9 +296,10 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = "0.4.3"
+                pgx = { version = "0.5.0-beta.0", features = [ "postgrestd" ] }
 
                 [profile.release]
+                debug-assertions = true
                 codegen-units = 1_usize
                 lto = "fat"
                 opt-level = 3_usize

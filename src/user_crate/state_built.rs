@@ -18,13 +18,17 @@ impl StateBuilt {
             shared_object,
         }
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+
     pub(crate) fn shared_object(&self) -> &Path {
-        self.shared_object.as_path()
+        &self.shared_object
     }
 
-    #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        &self.fn_oid
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid, shared_object = %self.shared_object.display()))]
     pub(crate) unsafe fn load(self) -> eyre::Result<StateLoaded> {
-        StateLoaded::load(self.fn_oid, &self.shared_object)
+        StateLoaded::load(self.fn_oid, self.shared_object)
     }
 }

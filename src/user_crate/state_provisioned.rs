@@ -20,7 +20,7 @@ pub(crate) struct StateProvisioned {
 impl CrateState for StateProvisioned {}
 
 impl StateProvisioned {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(fn_oid: pg_sys::Oid, crate_name: String, crate_dir: PathBuf) -> Self {
         Self {
             fn_oid,
@@ -28,7 +28,14 @@ impl StateProvisioned {
             crate_dir,
         }
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            fn_oid = %self.fn_oid,
+            crate_dir = %self.crate_dir.display(),
+            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+        ))]
     pub(crate) fn build(
         self,
         artifact_dir: &Path,
@@ -38,7 +45,7 @@ impl StateProvisioned {
         let mut command = Command::new("cargo");
 
         command.current_dir(&self.crate_dir);
-        command.arg("build");
+        command.arg("rustc");
         command.arg("--release");
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {
@@ -52,19 +59,38 @@ impl StateProvisioned {
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
         if output.status.success() {
-            let crate_name = &self.crate_name;
             use std::env::consts::DLL_SUFFIX;
+
+            let crate_name = self.crate_name;
+
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let next = crate::generation::next_generation(&crate_name, true)
+                    .map(|gen_num| gen_num)
+                    .unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", next));
+                crate_name
+            };
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
                 .map(|d| d.join("release").join(&built_shared_object_name))
-                .unwrap_or_else(|| {
+                .unwrap_or(
                     self.crate_dir
                         .join("target")
                         .join("release")
-                        .join(built_shared_object_name)
-                });
-            let shared_object_name = &format!("{crate_name}{DLL_SUFFIX}");
+                        .join(built_shared_object_name),
+                );
+
+            let mut shared_object_name = crate_name.clone();
+
+            shared_object_name.push_str(DLL_SUFFIX);
+
             let shared_object = artifact_dir.join(&shared_object_name);
 
             std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {
@@ -92,5 +118,13 @@ impl StateProvisioned {
                         .header("Source Code:")
                 }))?
         }
+    }
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        &self.fn_oid
+    }
+
+    pub(crate) fn crate_dir(&self) -> &Path {
+        &self.crate_dir
     }
 }

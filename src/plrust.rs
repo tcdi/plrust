@@ -33,8 +33,9 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
     LOADED_SYMBOLS.with(|loaded_symbols| {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
         let removed = loaded_symbols_handle.remove(&fn_oid);
-        if let Some(_symbol) = removed {
+        if let Some(user_crate) = removed {
             tracing::info!("unloaded function");
+            user_crate.close().unwrap();
         }
     })
 }
@@ -52,14 +53,33 @@ pub(crate) unsafe fn evaluate_function(
             }
             entry @ Entry::Vacant(_) => {
                 let crate_name = crate_name(fn_oid);
+                let mut shared_object_name = crate_name;
+                #[cfg(any(
+                    all(target_os = "macos", target_arch = "x86_64"),
+                    feature = "force_enable_x86_64_darwin_generations"
+                ))]
+                {
+                    let (latest, _path) =
+                        crate::generation::latest_generation(&shared_object_name, true)
+                            .unwrap_or_default();
 
-                let shared_library = gucs::work_dir().join(&format!("{crate_name}{DLL_SUFFIX}"));
+                    shared_object_name.push_str(&format!("_{}", latest));
+                };
+                shared_object_name.push_str(DLL_SUFFIX);
+
+                let shared_library = gucs::work_dir().join(&shared_object_name);
                 let user_crate_built = UserCrate::built(fn_oid, shared_library);
                 let user_crate_loaded = user_crate_built.load()?;
 
                 entry.or_insert(user_crate_loaded)
             }
         };
+
+        tracing::trace!(
+            "Evaluating symbol {:?} from {}",
+            user_crate_loaded.symbol_name(),
+            user_crate_loaded.shared_object().display()
+        );
 
         Ok(user_crate_loaded.evaluate(fcinfo))
     })
@@ -83,20 +103,5 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
 pub(crate) fn crate_name(fn_oid: pg_sys::Oid) -> String {
     let crate_name = format!("plrust_fn_oid_{}", fn_oid);
 
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-    let crate_name = {
-        let mut crate_name = crate_name;
-        let latest = generation::latest_generation(&crate_name, true)
-            .expect("Could not find latest generation.")
-            .0;
-
-        crate_name.push_str(&format!("_{}", latest));
-        crate_name
-    };
-
     crate_name
-}
-
-pub(crate) fn symbol_name(fn_oid: pg_sys::Oid) -> String {
-    format!("plrust_fn_oid_{}_wrapper", fn_oid)
 }

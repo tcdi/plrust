@@ -4,7 +4,6 @@ use crate::{
 };
 use eyre::WrapErr;
 use pgx::{pg_sys, FromDatum, IntoDatum, PgBox, PgOid};
-use proc_macro2::{Ident, Span};
 use quote::quote;
 use std::path::Path;
 
@@ -34,7 +33,7 @@ impl StateGenerated {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug")]
     pub(crate) unsafe fn try_from_fn_oid(fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -129,50 +128,88 @@ impl StateGenerated {
     pub(crate) fn crate_name(&self) -> String {
         crate::plrust::crate_name(self.fn_oid)
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let fn_ident = Ident::new(&self.crate_name(), Span::call_site());
+        let mut skeleton: syn::File =
+            syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
+
+        let crate_name = self.crate_name();
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "x86_64"),
+            feature = "force_enable_x86_64_darwin_generations"
+        ))]
+        let crate_name = {
+            let mut crate_name = crate_name;
+            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
+
+            crate_name.push_str(&format!("_{}", next));
+            crate_name
+        };
+        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs`");
+
         let user_code = &self.user_code;
-        match &self.variant {
+        let user_function = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
                 ..
             } => {
                 let arguments = arguments.values();
-                let file: syn::File = syn::parse2(quote! {
-                    use pgx::*;
-
+                let user_fn: syn::ItemFn = syn::parse2(quote! {
                     #[pg_extern]
-                    fn #fn_ident(
+                    fn #symbol_ident(
                         #( #arguments ),*
                     ) -> #return_type
                     #user_code
                 })
                 .wrap_err("Parsing generated user function")?;
-                Ok(file)
+                user_fn
             },
             CrateVariant::Trigger => {
-                let file: syn::File = syn::parse2(quote! {
-                    use pgx::*;
+                let user_fn: syn::ItemFn = syn::parse2(quote! {
                     #[pg_trigger]
-                    fn #fn_ident(
+                    fn #symbol_ident(
                         trigger: &::pgx::PgTrigger,
-                    ) -> std::result::Result<
+                    ) -> core::result::Result<
                         ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                         Box<dyn std::error::Error>,
                     > #user_code
                 })
                 .wrap_err("Parsing generated user trigger")?;
-                Ok(file)
+                user_fn
             }
-        }
+        };
+
+        skeleton.items.push(syn::Item::Fn(user_function));
+        Ok(skeleton)
     }
-    #[tracing::instrument(level = "debug", skip_all)]
+
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid))]
     pub(crate) fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
         let major_version = pgx::pg_sys::get_pg_major_version_num();
         let version_feature = format!("pgx/pg{major_version}");
         let crate_name = self.crate_name();
+
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "x86_64"),
+            feature = "force_enable_x86_64_darwin_generations"
+        ))]
+        let crate_name = {
+            let mut crate_name = crate_name;
+            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
+
+            crate_name.push_str(&format!("_{}", next));
+            crate_name
+        };
+
+        tracing::trace!(
+            crate_name = %crate_name,
+            user_dependencies = ?self.user_dependencies.keys().cloned().collect::<Vec<String>>(),
+            "Generating `Cargo.toml`"
+        );
 
         let cargo_toml = toml::toml! {
             [package]
@@ -187,10 +224,11 @@ impl StateGenerated {
             default = [ version_feature ]
 
             [dependencies]
-            pgx = "0.4.3"
+            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"] }
             /* User deps added here */
 
             [profile.release]
+            debug-assertions = true
             panic = "unwind"
             opt-level = 3_usize
             lto = "fat"
@@ -255,7 +293,7 @@ impl StateGenerated {
         }
     }
     /// Provision into a given folder and return the crate directory.
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid, parent_dir = %parent_dir.display()))]
     pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<StateProvisioned> {
         let crate_name = self.crate_name();
         let crate_dir = parent_dir.join(&crate_name);
@@ -279,13 +317,16 @@ impl StateGenerated {
 
         Ok(StateProvisioned::new(self.fn_oid, crate_name, crate_dir))
     }
+
+    pub(crate) fn fn_oid(&self) -> &u32 {
+        &self.fn_oid
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
     use super::*;
-    use crate::user_crate::UserCrate;
     use pgx::*;
     use syn::parse_quote;
 
@@ -307,13 +348,50 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
+
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_extern]
-                fn plrust_fn_oid_0(arg0: &str) -> Option<String> {
+                fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
             };
@@ -349,13 +427,50 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
+
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_extern]
-                fn plrust_fn_oid_0(val: Option<i32>) -> Option<i64> {
+                fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
                 }
             };
@@ -391,13 +506,50 @@ mod tests {
                 { Some(std::iter::repeat(val).take(5)) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
+
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_extern]
-                fn plrust_fn_oid_0(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
+                fn #symbol_ident(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
                     Some(std::iter::repeat(val).take(5))
                 }
             };
@@ -426,16 +578,53 @@ mod tests {
 
             let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
 
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_trigger]
-                fn plrust_fn_oid_0(
+                fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
-                ) -> std::result::Result<
-                        ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
-                        Box<dyn std::error::Error>,
-                    > {
+                ) -> core::result::Result<
+                    ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                    Box<dyn std::error::Error>,
+                > {
                     Ok(trigger.current().unwrap().into_owned())
                 }
             };
