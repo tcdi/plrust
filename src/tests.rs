@@ -129,28 +129,31 @@ mod tests {
     #[search_path(@extschema@)]
     fn deps() {
         let definition = r#"
-            CREATE FUNCTION zalgo(input TEXT) RETURNS TEXT
+                CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
             [dependencies]
-                zalgo = "0.2.0"
+                owo-colors = "3"
             [code]
-                use zalgo::{Generator, GeneratorArgs, ZalgoSize};
-
-                let mut generator = Generator::new();
-                let mut out = String::new();
-                let args = GeneratorArgs::new(true, false, false, ZalgoSize::Maxi);
-                let result = generator.gen(input, &mut out, &args);
-
-                Some(out)
+                use owo_colors::OwoColorize;
+                Some(input.purple().to_string())
             $$;
         "#;
         Spi::run(definition);
 
         let retval: Option<String> = Spi::get_one_with_args(
             r#"
-            SELECT zalgo($1);
+            SELECT colorize($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+
+        // Regression test: A previous version of PL/Rust would abort if this was called twice, so call it twice:
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT colorize($1);
         "#,
             vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
         );
