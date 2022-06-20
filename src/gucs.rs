@@ -42,26 +42,21 @@ pub(crate) fn init() {
 }
 
 pub(crate) fn work_dir() -> PathBuf {
-    let work_dir = PathBuf::from_str(
+    PathBuf::from_str(
         &PLRUST_WORK_DIR
             .get()
             .expect("plrust.work_dir is not set in postgresql.conf"),
     )
-    .expect("plrust.work_dir is not a valid path");
-
-    // create the work dir if it doesn't exist
-    if !work_dir.exists() {
-        std::fs::create_dir_all(&work_dir)
-            .expect("failed to create directory specified by plrust.work_dir");
-    }
-
-    work_dir
+    .expect("plrust.work_dir is not a valid path")
 }
 
-pub(crate) fn pg_config() -> String {
-    PLRUST_PG_CONFIG
-        .get()
-        .expect("plrust.pg_config is not set in postgresql.conf")
+pub(crate) fn pg_config() -> PathBuf {
+    PathBuf::from_str(
+        &PLRUST_PG_CONFIG
+            .get()
+            .expect("plrust.pg_config is not set in postgresql.conf"),
+    )
+    .expect("plrust.pg_config is not a valid path")
 }
 
 pub(crate) fn tracing_level() -> tracing::Level {

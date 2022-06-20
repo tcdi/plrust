@@ -1024,7 +1024,8 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d660bd98f47af4531fdf038cf8af018e34a7726a0151f873ce2e7d1cb9248122"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1052,7 +1053,8 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df4a9ca0e812ae0c6426e393bd4888c72ebc89bbaf2d850b8327a9b929464f25"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1064,7 +1066,8 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd3bb39bbed59466817f6befb459218d738baa469bdbe3ef4dcfe87938ea0283"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1087,7 +1090,8 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "936a690c11dd26c60e1da2749e689ed9c5b2ad56ad1a4364bcad65605b322b3b"
 dependencies = [
  "eyre",
  "libc",
@@ -1108,7 +1112,8 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx.git?rev=7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87#7b62c9c2b45f772e2188fc3b2aefd8e120e4cc87"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "078a275c1304e22a509c64c7a6612a6f2d011ef60f8f8811e3ac44b64b31c794"
 dependencies = [
  "atty",
  "convert_case",

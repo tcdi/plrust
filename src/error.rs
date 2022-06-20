@@ -1,5 +1,5 @@
 #[derive(thiserror::Error, Debug)]
-pub enum PlRustError {
+pub(crate) enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]
     CheckFunctionValidatorAccess,
     #[error("pgx::pg_sys::FunctionCallInfo was Null")]
@@ -12,13 +12,14 @@ pub enum PlRustError {
     NullSourceCode,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_os = "macos", target_arch = "x86_64"),
+        feature = "force_enable_x86_64_darwin_generations"
+    ))]
     #[error("Generation error (Mac OS x86_64 specific): {0}")]
-    Generation(#[from] crate::plrust::generation::Error),
+    Generation(#[from] crate::generation::Error),
     #[error("`cargo build` failed")]
     CargoBuildFail,
-    #[error("Produced shared object not found")]
-    SharedObjectNotFound,
     #[error("Generating `Cargo.toml`")]
     GeneratingCargoToml,
     #[error("Function `{0}` was not a PL/Rust function")]
@@ -31,6 +32,6 @@ pub enum PlRustError {
     ParsingDependenciesBlock(toml::de::Error),
     #[error("Parsing `[code]` block: {0}")]
     ParsingCodeBlock(syn::Error),
-    #[error("Parsing error: {0}")]
+    #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
 }
