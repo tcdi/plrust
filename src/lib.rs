@@ -123,7 +123,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 
         // if the compilation had warnings we'll display them
         let stderr =
-            String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8");
+            String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8");
         if stderr.contains("warning: ") {
             pgx::warning!("\n{}", stderr);
         }

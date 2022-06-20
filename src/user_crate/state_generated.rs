@@ -68,8 +68,7 @@ impl StateGenerated {
             &mut is_null,
         );
         let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null)
-                .ok_or(PlRustError::NullSourceCode)?,
+            &String::from_datum(prosrc_datum, is_null).ok_or(PlRustError::NullSourceCode)?,
         )?;
 
         let proc_entry = PgBox::from_pg(pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
@@ -78,11 +77,8 @@ impl StateGenerated {
 
         let return_oid = PgOid::from(proc_entry.prorettype);
 
-
         let variant = match return_oid == pgx::PgBuiltInOids::TRIGGEROID.oid() {
-            true => {
-                CrateVariant::trigger()
-            },
+            true => CrateVariant::trigger(),
             false => {
                 let argnames_datum = pg_sys::SysCacheGetAttr(
                     pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -91,7 +87,7 @@ impl StateGenerated {
                     &mut is_null,
                 );
                 let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
-        
+
                 let argtypes_datum = pg_sys::SysCacheGetAttr(
                     pg_sys::SysCacheIdentifier_PROCOID as i32,
                     proc_tuple,
@@ -99,23 +95,22 @@ impl StateGenerated {
                     &mut is_null,
                 );
                 let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
-        
 
                 let mut argument_oids_and_names = Vec::new();
                 for i in 0..proc_entry.pronargs as usize {
                     let type_oid = argtypes.get(i).expect("no type_oid for argument");
                     let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
-        
+
                     argument_oids_and_names.push((PgOid::from(*type_oid), name));
                 }
-        
+
                 let is_strict = proc_entry.proisstrict;
                 let return_set = proc_entry.proretset;
-                
+
                 CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
             }
         };
-        
+
         pg_sys::ReleaseSysCache(proc_tuple);
 
         Ok(Self {
@@ -167,14 +162,14 @@ impl StateGenerated {
                 })
                 .wrap_err("Parsing generated user function")?;
                 user_fn
-            },
+            }
             CrateVariant::Trigger => {
                 let user_fn: syn::ItemFn = syn::parse2(quote! {
                     #[pg_trigger]
                     fn #symbol_ident(
                         trigger: &::pgx::PgTrigger,
                     ) -> core::result::Result<
-                        ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                        ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                         Box<dyn std::error::Error>,
                     > #user_code
                 })
@@ -622,7 +617,7 @@ mod tests {
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
                 ) -> core::result::Result<
-                    ::pgx::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())

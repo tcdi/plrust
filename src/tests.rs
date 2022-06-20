@@ -261,7 +261,7 @@ mod tests {
         "#,
         );
         assert_eq!(retval, Some(1));
-    }    
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
