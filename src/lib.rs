@@ -123,7 +123,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 
         // if the compilation had warnings we'll display them
         let stderr =
-            String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8");
+            String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8");
         if stderr.contains("warning: ") {
             pgx::warning!("\n{}", stderr);
         }
@@ -154,12 +154,8 @@ fn recompile_function(
     match plrust::compile_function(fn_oid) {
         Ok((work_dir, output)) => (
             Some(work_dir.display().to_string()),
-            Some(
-                String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8"),
-            ),
-            Some(
-                String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not  UTF-8"),
-            ),
+            Some(String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8")),
+            Some(String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not UTF-8")),
             None,
         ),
         Err(err) => (None, None, None, Some(format!("{:?}", err))),

@@ -55,7 +55,7 @@ pub(crate) fn all_generations(
                 .flat_map(|(stem, path)| {
                     let generation = stem.split('_').last()?;
                     let generation = generation.parse::<usize>().ok()?;
-                    
+
                     Some((generation, path))
                 });
 
@@ -72,7 +72,7 @@ pub(crate) fn all_generations(
 pub(crate) fn next_generation(prefix: &str, vacuum: bool) -> eyre::Result<usize> {
     let latest = latest_generation(prefix, vacuum);
     let next = latest.map(|this| this.0 + 1).unwrap_or_default();
-    
+
     Ok(next)
 }
 

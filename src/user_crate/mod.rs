@@ -112,7 +112,6 @@ impl UserCrate<StateLoaded> {
         self.0.fn_oid()
     }
 
-
     pub(crate) fn shared_object(&self) -> &Path {
         self.0.shared_object()
     }
@@ -321,7 +320,6 @@ mod tests {
                 provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
 
             let _shared_object = built.shared_object();
-            // TODO: Assert
 
             // Without an fcinfo, we can't call this.
             let _loaded = unsafe { built.load()? };

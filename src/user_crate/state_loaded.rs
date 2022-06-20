@@ -80,7 +80,6 @@ impl StateLoaded {
         &self.symbol_name
     }
 
-
     pub(crate) fn fn_oid(&self) -> &u32 {
         &self.fn_oid
     }
