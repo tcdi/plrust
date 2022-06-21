@@ -55,3 +55,6 @@ panic = "unwind"
 opt-level = 3
 lto = "fat"
 codegen-units = 1
+
+[patch.crates-io]
+libc = { path = '/home/atelier/tcdi/postgrestd/libc' }
