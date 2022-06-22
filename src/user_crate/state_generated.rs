@@ -197,7 +197,7 @@ impl StateGenerated {
             default = [ version_feature ]
 
             [dependencies]
-            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"],  git = "https://github.com/tcdi/pgx.git", rev = "aa69519a8f3aaa9f205b1df3ef5dc7c37126c900" }
+            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"] }
             /* User deps added here */
 
             [profile.release]
@@ -206,7 +206,12 @@ impl StateGenerated {
             opt-level = 3_usize
             lto = "fat"
             codegen-units = 1_usize
-        };
+
+            [patch.crates-io]
+            libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
+            getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
+            ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
+};
 
         match cargo_toml {
             toml::Value::Table(mut cargo_manifest) => {
