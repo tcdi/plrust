@@ -17,6 +17,8 @@ pub(crate) struct StateProvisioned {
     crate_dir: PathBuf,
 }
 
+const CUSTOM_TARGET: &str = "x86_64-postgres-linux-gnu";
+
 impl CrateState for StateProvisioned {}
 
 impl StateProvisioned {
@@ -48,7 +50,7 @@ impl StateProvisioned {
         command.arg("rustc");
         command.arg("--release");
         command.arg("--target");
-        command.arg("x86_64-postgres-linux-gnu");
+        command.arg(CUSTOM_TARGET);
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {
             command.env("CARGO_TARGET_DIR", &target_dir);
@@ -81,10 +83,11 @@ impl StateProvisioned {
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
-                .map(|d| d.join("release").join(&built_shared_object_name))
+                .map(|d| d.join(CUSTOM_TARGET).join("release").join(&built_shared_object_name))
                 .unwrap_or(
                     self.crate_dir
                         .join("target")
+                        .join(CUSTOM_TARGET)
                         .join("release")
                         .join(built_shared_object_name),
                 );
@@ -94,6 +97,7 @@ impl StateProvisioned {
             shared_object_name.push_str(DLL_SUFFIX);
 
             let shared_object = artifact_dir.join(&shared_object_name);
+
 
             std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {
                 eyre!(
