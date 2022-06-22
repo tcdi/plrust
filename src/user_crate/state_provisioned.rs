@@ -47,6 +47,8 @@ impl StateProvisioned {
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
         command.arg("--release");
+        command.arg("--target");
+        command.arg("x86_64-postgres-linux-gnu");
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {
             command.env("CARGO_TARGET_DIR", &target_dir);
