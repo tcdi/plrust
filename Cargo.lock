@@ -1004,7 +1004,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
+source = "git+https://github.com/tcdi/pgx?branch=develop#31e70059e6c48924fc493eda69bc795cc2b37fcf"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1032,7 +1032,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
+source = "git+https://github.com/tcdi/pgx?branch=develop#31e70059e6c48924fc493eda69bc795cc2b37fcf"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1044,7 +1044,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
+source = "git+https://github.com/tcdi/pgx?branch=develop#31e70059e6c48924fc493eda69bc795cc2b37fcf"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1067,7 +1067,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
+source = "git+https://github.com/tcdi/pgx?branch=develop#31e70059e6c48924fc493eda69bc795cc2b37fcf"
 dependencies = [
  "eyre",
  "libc",
@@ -1088,7 +1088,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
+source = "git+https://github.com/tcdi/pgx?branch=develop#31e70059e6c48924fc493eda69bc795cc2b37fcf"
 dependencies = [
  "atty",
  "convert_case",

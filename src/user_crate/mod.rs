@@ -296,7 +296,8 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = { version = "0.5.0-beta.0", features = [ "postgrestd" ] }
+                pgx = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/tcdi/pgx", branch = "develop" }
+                /* User deps added here */
 
                 [profile.release]
                 debug-assertions = true
@@ -304,6 +305,11 @@ mod tests {
                 lto = "fat"
                 opt-level = 3_usize
                 panic = "unwind"
+
+                [patch.crates-io]
+                libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
+                getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
+                ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
             };
             assert_eq!(
                 generated_cargo_toml,

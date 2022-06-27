@@ -185,33 +185,33 @@ impl StateGenerated {
         );
 
         let cargo_toml = toml::toml! {
-            [package]
-            name = crate_name
-            version = "0.0.0"
-            edition = "2021"
+                    [package]
+                    edition = "2021"
+                    name = crate_name
+                    version = "0.0.0"
 
-            [lib]
-            crate-type = ["cdylib"]
+                    [features]
+                    default = [version_feature]
 
-            [features]
-            default = [ version_feature ]
+                    [lib]
+                    crate-type = ["cdylib"]
 
-            [dependencies]
-            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/workingjubilee/pgx", branch = "sigsetjmp-postgrestd" }
-            /* User deps added here */
+                    [dependencies]
+                    pgx = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/tcdi/pgx", branch = "develop" }
+                    /* User deps added here */
 
-            [profile.release]
-            debug-assertions = true
-            panic = "unwind"
-            opt-level = 3_usize
-            lto = "fat"
-            codegen-units = 1_usize
+                    [profile.release]
+                    debug-assertions = true
+                    codegen-units = 1_usize
+                    lto = "fat"
+                    opt-level = 3_usize
+                    panic = "unwind"
 
-            [patch.crates-io]
-            libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
-            getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
-            ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
-};
+                    [patch.crates-io]
+                    libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
+                    getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
+                    ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
+        };
 
         match cargo_toml {
             toml::Value::Table(mut cargo_manifest) => {
