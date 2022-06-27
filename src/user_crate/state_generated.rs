@@ -197,7 +197,7 @@ impl StateGenerated {
             default = [ version_feature ]
 
             [dependencies]
-            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"] }
+            pgx = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/tcdi/pgx", branch = "develop" }
             /* User deps added here */
 
             [profile.release]
