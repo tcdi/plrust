@@ -17,8 +17,6 @@ pub(crate) struct StateProvisioned {
     crate_dir: PathBuf,
 }
 
-const CUSTOM_TARGET: &str = "x86_64-postgres-linux-gnu";
-
 impl CrateState for StateProvisioned {}
 
 impl StateProvisioned {
@@ -45,12 +43,19 @@ impl StateProvisioned {
         target_dir: Option<&Path>,
     ) -> eyre::Result<(StateBuilt, Output)> {
         let mut command = Command::new("cargo");
+        let target = if let Ok(v) = std::env::var("PLRUST_TARGET") {
+            v
+        } else {
+            "x86_64-postgres-linux-gnu".to_string()
+        };
+
+        let target_str = &target;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
         command.arg("--release");
         command.arg("--target");
-        command.arg(CUSTOM_TARGET);
+        command.arg(target_str);
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {
             command.env("CARGO_TARGET_DIR", &target_dir);
@@ -61,6 +66,7 @@ impl StateProvisioned {
         );
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
+
 
         if output.status.success() {
             use std::env::consts::DLL_SUFFIX;
@@ -83,11 +89,11 @@ impl StateProvisioned {
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
-                .map(|d| d.join(CUSTOM_TARGET).join("release").join(&built_shared_object_name))
+                .map(|d| d.join(target_str).join("release").join(&built_shared_object_name))
                 .unwrap_or(
                     self.crate_dir
                         .join("target")
-                        .join(CUSTOM_TARGET)
+                        .join(target_str)
                         .join("release")
                         .join(built_shared_object_name),
                 );
