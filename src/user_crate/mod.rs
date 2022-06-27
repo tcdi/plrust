@@ -196,138 +196,137 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     Ok((user_code, user_dependencies))
 }
 
-// #[cfg(any(test, feature = "pg_test"))]
-// #[pgx::pg_schema]
-// mod tests {
-//     use pgx::*;
+#[cfg(any(test, feature = "pg_test"))]
+#[pgx::pg_schema]
+mod tests {
+    use pgx::*;
 
-//     use crate::user_crate::*;
-//     use eyre::WrapErr;
-//     use quote::quote;
-//     use syn::parse_quote;
-//     use toml::toml;
+    use crate::user_crate::*;
+    use eyre::WrapErr;
+    use quote::quote;
+    use syn::parse_quote;
+    use toml::toml;
 
-//     #[pg_test]
-//     #[ignore]
-//     fn full_workflow() {
-//         fn wrapped() -> eyre::Result<()> {
-//             let fn_oid = 0 as pg_sys::Oid;
-//             let target_dir = crate::gucs::work_dir();
-//             let pg_config = PathBuf::from(crate::gucs::pg_config());
+    #[pg_test]
+    fn full_workflow() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+            let target_dir = crate::gucs::work_dir();
+            let pg_config = PathBuf::from(crate::gucs::pg_config());
 
-//             let variant = {
-//                 let argument_oids_and_names =
-//                     vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
-//                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
-//                 let is_strict = true;
-//                 let return_set = false;
-//                 CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
-//             };
-//             let user_deps = toml::value::Table::default();
-//             let user_code = syn::parse2(quote! {
-//                 { Some(arg0.to_string()) }
-//             })?;
+            let variant = {
+                let argument_oids_and_names =
+                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
+                let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
+                let is_strict = true;
+                let return_set = false;
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            };
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { Some(arg0.to_string()) }
+            })?;
 
-//             let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
-//             let crate_name = crate::plrust::crate_name(fn_oid);
-//             #[cfg(any(
-//                 all(target_os = "macos", target_arch = "x86_64"),
-//                 feature = "force_enable_x86_64_darwin_generations"
-//             ))]
-//             let crate_name = {
-//                 let mut crate_name = crate_name;
-//                 let (latest, _path) =
-//                     crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
 
-//                 crate_name.push_str(&format!("_{}", latest));
-//                 crate_name
-//             };
-//             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-//             let generated_lib_rs = generated.lib_rs()?;
-//             let fixture_lib_rs = parse_quote! {
-//                 #![no_std]
-//                 extern crate alloc;
-//                 use ::core::alloc::{GlobalAlloc, Layout};
-//                 #[allow(dead_code, unused_imports)]
-//                 use ::alloc::{
-//                     string::{String, ToString},
-//                     vec, vec::Vec, boxed::Box,
-//                 };
-//                 use ::pgx::{*, pg_sys};
-//                 struct PostAlloc;
-//                 #[global_allocator]
-//                 static PALLOC: PostAlloc = PostAlloc;
-//                 unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
-//                     unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-//                         ::pgx::pg_sys::palloc(layout.size()).cast()
-//                     }
-//                     unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
-//                         ::pgx::pg_sys::pfree(ptr.cast());
-//                     }
-//                     unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-//                         ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
-//                     }
-//                 }
-//                 #[pg_extern]
-//                 fn #symbol_ident(arg0: &str) -> Option<String> {
-//                     Some(arg0.to_string())
-//                 }
-//             };
-//             assert_eq!(
-//                 generated_lib_rs,
-//                 fixture_lib_rs,
-//                 "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
-//                 prettyplease::unparse(&generated_lib_rs),
-//                 prettyplease::unparse(&fixture_lib_rs)
-//             );
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                #![no_std]
+                extern crate alloc;
+                use ::core::alloc::{GlobalAlloc, Layout};
+                #[allow(dead_code, unused_imports)]
+                use ::alloc::{
+                    string::{String, ToString},
+                    vec, vec::Vec, boxed::Box,
+                };
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
+                #[pg_extern]
+                fn #symbol_ident(arg0: &str) -> Option<String> {
+                    Some(arg0.to_string())
+                }
+            };
+            assert_eq!(
+                generated_lib_rs,
+                fixture_lib_rs,
+                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs)
+            );
 
-//             let generated_cargo_toml = generated.cargo_toml()?;
-//             let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
-//             let fixture_cargo_toml = toml! {
-//                 [package]
-//                 edition = "2021"
-//                 name = crate_name
-//                 version = "0.0.0"
+            let generated_cargo_toml = generated.cargo_toml()?;
+            let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
+            let fixture_cargo_toml = toml! {
+                [package]
+                edition = "2021"
+                name = crate_name
+                version = "0.0.0"
 
-//                 [features]
-//                 default = [version_feature]
+                [features]
+                default = [version_feature]
 
-//                 [lib]
-//                 crate-type = ["cdylib"]
+                [lib]
+                crate-type = ["cdylib"]
 
-//                 [dependencies]
-//                 pgx = { version = "0.5.0-beta.0", features = [ "postgrestd" ] }
+                [dependencies]
+                pgx = { version = "0.5.0-beta.0", features = [ "postgrestd" ] }
 
-//                 [profile.release]
-//                 debug-assertions = true
-//                 codegen-units = 1_usize
-//                 lto = "fat"
-//                 opt-level = 3_usize
-//                 panic = "unwind"
-//             };
-//             assert_eq!(
-//                 generated_cargo_toml,
-//                 *fixture_cargo_toml.as_table().unwrap(),
-//                 "Generated `Cargo.toml` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
-//                 toml::to_string(&generated_cargo_toml)?,
-//                 toml::to_string(&fixture_cargo_toml)?,
-//             );
+                [profile.release]
+                debug-assertions = true
+                codegen-units = 1_usize
+                lto = "fat"
+                opt-level = 3_usize
+                panic = "unwind"
+            };
+            assert_eq!(
+                generated_cargo_toml,
+                *fixture_cargo_toml.as_table().unwrap(),
+                "Generated `Cargo.toml` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
+                toml::to_string(&generated_cargo_toml)?,
+                toml::to_string(&fixture_cargo_toml)?,
+            );
 
-//             let parent_dir = tempdir::TempDir::new("plrust-generated-crate-function-workflow")
-//                 .wrap_err("Creating temp dir")?;
-//             let provisioned = generated.provision(parent_dir.path())?;
+            let parent_dir = tempdir::TempDir::new("plrust-generated-crate-function-workflow")
+                .wrap_err("Creating temp dir")?;
+            let provisioned = generated.provision(parent_dir.path())?;
 
-//             let (built, _output) =
-//                 provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
+            let (built, _output) =
+                provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
 
-//             let _shared_object = built.shared_object();
+            let _shared_object = built.shared_object();
 
-//             // Without an fcinfo, we can't call this.
-//             let _loaded = unsafe { built.load()? };
+            // Without an fcinfo, we can't call this.
+            let _loaded = unsafe { built.load()? };
 
-//             Ok(())
-//         }
-//         wrapped().unwrap()
-//     }
-// }
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+}
