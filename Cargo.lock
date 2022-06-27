@@ -633,6 +633,7 @@ dependencies = [
 [[package]]
 name = "getrandom"
 version = "0.2.7"
+source = "git+https://github.com/workingjubilee/getrandom?branch=postgres-os#4c37c9fb70f1f51c0c7ec7da4994da8b0e207ab8"
 dependencies = [
  "cfg-if",
  "libc",
@@ -760,6 +761,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "libc"
 version = "0.2.126"
+source = "git+https://github.com/workingjubilee/libc?branch=postgres-os#44f0644ccc61e213fd884c9bb722ff04b15f0c04"
 
 [[package]]
 name = "libloading"
@@ -1002,6 +1004,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1029,6 +1032,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1040,6 +1044,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1062,6 +1067,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
 dependencies = [
  "eyre",
  "libc",
@@ -1082,6 +1088,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/workingjubilee/pgx?branch=sigsetjmp-postgrestd#192001089afb9fad7cf84c30c9cb499d80229830"
 dependencies = [
  "atty",
  "convert_case",
@@ -1401,6 +1408,7 @@ dependencies = [
 [[package]]
 name = "ring"
 version = "0.16.21"
+source = "git+https://github.com/workingjubilee/ring?branch=postgres-os#52f2ad167f1d774e51192d469451e6d122a73744"
 dependencies = [
  "cc",
  "libc",

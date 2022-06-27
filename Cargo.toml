@@ -60,5 +60,5 @@ codegen-units = 1
 libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
 getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
 ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
-pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
-pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx = { git = "https://github.com/workingjubilee/pgx", branch = "sigsetjmp-postgrestd" }
+pgx-tests = { git = "https://github.com/workingjubilee/pgx", branch = "sigsetjmp-postgrestd" }
