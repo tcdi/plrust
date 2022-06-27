@@ -1164,6 +1164,7 @@ dependencies = [
 name = "plrust"
 version = "0.0.0"
 dependencies = [
+ "cfg-if",
  "color-eyre",
  "eyre",
  "libloading",

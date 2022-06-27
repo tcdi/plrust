@@ -1,5 +1,5 @@
 use crate::{
-    user_crate::{CrateState, StateBuilt},
+    user_crate::{target, CrateState, StateBuilt},
     PlRustError,
 };
 use color_eyre::{Section, SectionExt};
@@ -43,12 +43,7 @@ impl StateProvisioned {
         target_dir: Option<&Path>,
     ) -> eyre::Result<(StateBuilt, Output)> {
         let mut command = Command::new("cargo");
-        let target = if let Ok(v) = std::env::var("PLRUST_TARGET") {
-            v
-        } else {
-            "x86_64-postgres-linux-gnu".to_string()
-        };
-
+        let target = target::tuple()?;
         let target_str = &target;
 
         command.current_dir(&self.crate_dir);
@@ -66,7 +61,6 @@ impl StateProvisioned {
         );
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
-
 
         if output.status.success() {
             use std::env::consts::DLL_SUFFIX;
@@ -89,7 +83,11 @@ impl StateProvisioned {
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
-                .map(|d| d.join(target_str).join("release").join(&built_shared_object_name))
+                .map(|d| {
+                    d.join(target_str)
+                        .join("release")
+                        .join(&built_shared_object_name)
+                })
                 .unwrap_or(
                     self.crate_dir
                         .join("target")
@@ -103,7 +101,6 @@ impl StateProvisioned {
             shared_object_name.push_str(DLL_SUFFIX);
 
             let shared_object = artifact_dir.join(&shared_object_name);
-
 
             std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {
                 eyre!(

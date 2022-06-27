@@ -3,6 +3,7 @@ mod state_built;
 mod state_generated;
 mod state_loaded;
 mod state_provisioned;
+mod target;
 
 use crate_variant::CrateVariant;
 pub(crate) use state_built::StateBuilt;
