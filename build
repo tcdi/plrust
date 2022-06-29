@@ -1,0 +1,9 @@
+#!/bin/sh
+
+git clone https://github.com/tcdi/postgrestd.git
+cd ./postgrestd
+cp ./x86_64-postgres-gnu.json ./target.json
+mv target.json $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu && echo "Placed target.json" || exit
+./build copy
+cd -
+PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo test
