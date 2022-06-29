@@ -138,6 +138,10 @@ jobs:
       run: |
         cargo test \
           --features "pg$PG_VER" --no-default-features
+    
+    - name: Run PL/Rust + postgrestd tests
+      if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
+      run: ./build
 
     # Attempt to make the cache payload slightly smaller.
     - name: Clean up built PGX files
