@@ -1,9 +1,16 @@
-#!/bin/sh
+#! /usr/bin/sh
+set -e
 
-git clone https://github.com/tcdi/postgrestd.git
-cd ./postgrestd
-cp ./x86_64-postgres-gnu.json ./target.json
-mv target.json $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu && echo "Placed target.json" || exit
-./build copy
-cd -
+(
+    if cd postgrestd; then
+        git pull
+        git submodule update --init --recursive
+    else
+        git clone https://github.com/tcdi/postgrestd.git --recurse-submodules
+        cd ./postgrestd
+    fi
+    mkdir -p $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/
+    cp --verbose --force ./target.json $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/target.json
+    ./build copy
+)
 PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo test
