@@ -1,5 +1,5 @@
 [toolchain]
 channel = "nightly"
-components = [ "clippy", "rustfmt" ]
+components = [ "rustfmt" ]
 targets = [ ]
 profile = "minimal"
