@@ -14,4 +14,5 @@ set -e
     cargo clean
     ./build copy
 )
+cargo clean
 PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo test
