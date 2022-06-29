@@ -6,7 +6,6 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fmt::{self, Display, Formatter};
 
 pub(crate) mod host {
     use std::env::consts::*;
@@ -46,20 +45,14 @@ fn stringify_tuple(tuple: [&str; 4]) -> String {
     s
 }
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 #[allow(dead_code)] // Such is the life of cfg code
 pub(crate) enum TargetErr {
+    #[error("unsupported target tuple")]
     Unsupported,
+    #[error("non-UTF-8 target tuple specifiers are invalid: {}", .0.to_string_lossy())]
     InvalidSpec(OsString),
 }
-
-impl Display for TargetErr {
-    fn fmt(&self, _: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        todo!()
-    }
-}
-
-impl std::error::Error for TargetErr {}
 
 pub(crate) fn tuple() -> Result<String, TargetErr> {
     match env::var("PLRUST_TARGET") {
