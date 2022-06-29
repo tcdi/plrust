@@ -11,6 +11,7 @@ set -e
     fi
     mkdir -p $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/
     cp --verbose --force ./x86_64-postgres-linux-gnu.json $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/target.json
+    cargo clean
     ./build copy
 )
 PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo test
