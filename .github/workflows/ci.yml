@@ -9,9 +9,7 @@ on:
       - main
 
 env:
-  RUSTFLAGS: -Copt-level=0
   RUST_BACKTRACE: 1
-  CARGO_INCREMENTAL: "false"
   CARGO_PGX_VERSION: "0.5.0-beta.0"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
@@ -23,7 +21,7 @@ jobs:
 
     strategy:
       matrix:
-        version: ["postgres-11", "postgres-12", "postgres-13", "postgres-14"]
+        version: ["postgres-13", "postgres-14"]
         os: ["ubuntu-20.04", "macos-11"]
       fail-fast: false
 
@@ -135,9 +133,11 @@ jobs:
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Run PL/Rust tests
-      run: |
-        cargo test \
-          --features "pg$PG_VER" --no-default-features
+      run: cargo test --features "pg$PG_VER" --no-default-features
+    
+    - name: Run PL/Rust + postgrestd tests
+      if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
+      run: ./build
 
     # Attempt to make the cache payload slightly smaller.
     - name: Clean up built PGX files
