@@ -10,7 +10,6 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  CARGO_INCREMENTAL: 0
   CARGO_PGX_VERSION: "0.5.0-beta.0"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
@@ -128,10 +127,10 @@ jobs:
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
-      run: cargo install --force cargo-pgx --version $CARGO_PGX_VERSION
+      run: cargo install cargo-pgx --version $CARGO_PGX_VERSION
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
-      run: cargo clean && cargo pgx init --pg$PG_VER $(which pg_config)
+      run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Run PL/Rust tests
       run: cargo test --features "pg$PG_VER" --no-default-features
