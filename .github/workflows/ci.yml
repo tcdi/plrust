@@ -22,10 +22,8 @@ jobs:
 
     strategy:
       matrix:
-        # version: ["postgres-11", "postgres-12", "postgres-13", "postgres-14"]
-        # os: ["ubuntu-20.04", "macos-11"]
-        version: ["postgres-14"]
-        os: ["ubuntu-20.04"]
+        version: ["postgres-13", "postgres-14"]
+        os: ["ubuntu-20.04", "macos-11"]
       fail-fast: false
 
     steps:
