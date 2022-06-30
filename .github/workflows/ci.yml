@@ -9,7 +9,6 @@ on:
       - main
 
 env:
-  # RUSTFLAGS: -Copt-level=0
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0
   CARGO_PGX_VERSION: "0.5.0-beta.0"
@@ -136,10 +135,10 @@ jobs:
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
-    # - name: Run PL/Rust tests
-    #   run: |
-    #     cargo test \
-    #       --features "pg$PG_VER" --no-default-features
+    - name: Run PL/Rust tests
+      run: |
+        cargo test \
+          --features "pg$PG_VER" --no-default-features
     
     - name: Run PL/Rust + postgrestd tests
       if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
