@@ -134,9 +134,7 @@ jobs:
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Run PL/Rust tests
-      run: |
-        cargo clean && cargo test \
-          --features "pg$PG_VER" --no-default-features
+      run: cargo test --features "pg$PG_VER" --no-default-features
     
     - name: Run PL/Rust + postgrestd tests
       if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
