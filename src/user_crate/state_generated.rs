@@ -208,6 +208,7 @@ impl StateGenerated {
                     panic = "unwind"
 
                     [patch.crates-io]
+                    pgx-tests = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/tcdi/pgx", branch = "develop" }
                     libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
                     getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
                     ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
