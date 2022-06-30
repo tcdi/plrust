@@ -346,14 +346,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
                 use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
                 use ::pgx::{*, pg_sys};
                 struct PostAlloc;
                 #[global_allocator]
@@ -425,14 +418,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
                 use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
                 use ::pgx::{*, pg_sys};
                 struct PostAlloc;
                 #[global_allocator]
@@ -504,14 +490,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
                 use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
                 use ::pgx::{*, pg_sys};
                 struct PostAlloc;
                 #[global_allocator]
