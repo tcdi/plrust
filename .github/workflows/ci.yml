@@ -135,7 +135,7 @@ jobs:
 
     - name: Run PL/Rust tests
       run: |
-        cargo test \
+        cargo clean && cargo test \
           --features "pg$PG_VER" --no-default-features
     
     - name: Run PL/Rust + postgrestd tests
