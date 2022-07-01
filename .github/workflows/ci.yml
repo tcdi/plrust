@@ -127,7 +127,7 @@ jobs:
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
-      run: cargo install --force cargo-pgx --git "git@github.com:tcdi/pgx.git" --branch "develop"
+      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)
