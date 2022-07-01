@@ -10,7 +10,7 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  CARGO_PGX_VERSION: "0.5.0-beta.0"
+  # CARGO_PGX_VERSION: "0.5.0-beta.0" # Currently using a git address instead.
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
@@ -127,7 +127,7 @@ jobs:
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
-      run: cargo install cargo-pgx --version $CARGO_PGX_VERSION
+      run: cargo install --force cargo-pgx --git "git@github.com:tcdi/pgx.git" --branch "develop"
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)
