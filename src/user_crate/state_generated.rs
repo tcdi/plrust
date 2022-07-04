@@ -368,29 +368,8 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
-                use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
-                use ::pgx::{*, pg_sys};
-                struct PostAlloc;
-                #[global_allocator]
-                static PALLOC: PostAlloc = PostAlloc;
-                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
-                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                        ::pgx::pg_sys::palloc(layout.size()).cast()
-                    }
-                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
-                        ::pgx::pg_sys::pfree(ptr.cast());
-                    }
-                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
-                    }
-                }
+                use pgx::{pg_sys, *};
+
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
@@ -447,29 +426,8 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
-                use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
-                use ::pgx::{*, pg_sys};
-                struct PostAlloc;
-                #[global_allocator]
-                static PALLOC: PostAlloc = PostAlloc;
-                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
-                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                        ::pgx::pg_sys::palloc(layout.size()).cast()
-                    }
-                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
-                        ::pgx::pg_sys::pfree(ptr.cast());
-                    }
-                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
-                    }
-                }
+                use pgx::{pg_sys, *};
+
                 #[pg_extern]
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
@@ -526,29 +484,8 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
-                use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
-                use ::pgx::{*, pg_sys};
-                struct PostAlloc;
-                #[global_allocator]
-                static PALLOC: PostAlloc = PostAlloc;
-                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
-                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                        ::pgx::pg_sys::palloc(layout.size()).cast()
-                    }
-                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
-                        ::pgx::pg_sys::pfree(ptr.cast());
-                    }
-                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
-                    }
-                }
+                use pgx::{pg_sys, *};
+
                 #[pg_extern]
                 fn #symbol_ident(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
                     Some(std::iter::repeat(val).take(5))
@@ -596,29 +533,8 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
-                use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
-                use ::pgx::{*, pg_sys};
-                struct PostAlloc;
-                #[global_allocator]
-                static PALLOC: PostAlloc = PostAlloc;
-                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
-                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                        ::pgx::pg_sys::palloc(layout.size()).cast()
-                    }
-                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
-                        ::pgx::pg_sys::pfree(ptr.cast());
-                    }
-                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
-                    }
-                }
+                use pgx::{pg_sys, *};
+
                 #[pg_trigger]
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
