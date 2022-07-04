@@ -1,3 +1,4 @@
+// Bootstrap a testing table for non-immutable functions
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
@@ -17,6 +18,7 @@ mod tests {
     "#,
         name = "create_contributors_pets",
     );
+    use pgx::{pg_sys::AsPgCStr, *};
 
     #[pg_test]
     #[search_path(@extschema@)]
@@ -41,6 +43,60 @@ mod tests {
             )],
         );
         assert_eq!(retval, Some(6));
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_composite_type() {
+        let definition = r#"
+            CREATE TYPE Dog AS (
+                name TEXT,
+                scritches INT
+            );
+
+            CREATE FUNCTION last_dog(a Dog[]) RETURNS Dog
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+                a.into_iter().last().unwrap_or(None)
+            $$;
+        "#;
+        Spi::run(definition);
+
+        // Since it's a composite type, we need to look it up
+        let composite_type_oid: u32 = unsafe {
+            let mut typoid = 0;
+            let mut typmod = 0;
+            pg_sys::parseTypeString("Dog".as_pg_cstr(), &mut typoid, &mut typmod, false);
+            typoid
+        };
+
+        let retval: Option<PgHeapTuple<AllocatedByRust>> = Spi::get_one_with_args(
+            r#"
+            SELECT last_dog($1);
+        "#,
+            vec![(
+                PgOid::Custom(unsafe { pg_sys::get_array_type(composite_type_oid) }),
+                vec![
+                    {
+                        let mut new_dog = PgHeapTuple::new_composite_type("Dog").unwrap();
+                        new_dog.set_by_name("name", "Brandy").unwrap();
+                        new_dog.set_by_name("scritches", 0).unwrap();
+                        Some(new_dog)
+                    },
+                    {
+                        let mut new_dog = PgHeapTuple::new_composite_type("Dog").unwrap();
+                        new_dog.set_by_name("name", "Nami").unwrap();
+                        new_dog.set_by_name("scritches", 1).unwrap();
+                        Some(new_dog)
+                    },
+                ]
+                .into_datum(),
+            )],
+        );
+        let last_dog = retval.unwrap();
+        assert_eq!(last_dog.get_by_name("name").unwrap(), Some("Nami"));
+        assert_eq!(last_dog.get_by_name("scritches").unwrap(), Some(1));
     }
 
     #[pg_test]
@@ -418,7 +474,6 @@ mod tests {
         "#;
         Spi::run(definition);
     }
-
 
     #[pg_test]
     #[search_path(@extschema@)]

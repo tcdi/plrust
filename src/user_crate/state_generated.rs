@@ -341,7 +341,7 @@ impl StateGenerated {
 #[pgx::pg_schema]
 mod tests {
     use super::*;
-    use pgx::*;
+    use pgx::{pg_sys::AsPgCStr, *};
     use syn::parse_quote;
 
     #[pg_test]
@@ -387,6 +387,92 @@ mod tests {
                 use pgx::prelude::*;
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
+                    Some(arg0.to_string())
+                }
+            };
+            assert_eq!(
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
+            );
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+
+    #[pg_test]
+    fn strict_composite_type() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+            let db_oid = 1 as pg_sys::Oid;
+
+            Spi::run(
+                "\
+                CREATE TYPE Dog AS (
+                    name TEXT,
+                    scritches INT
+                );
+            ",
+            );
+
+            // Since it's a composite type, we need to look it up
+            let composite_type_oid: u32 = unsafe {
+                let mut typoid = 0;
+                let mut typmod = 0;
+                pg_sys::parseTypeString("Dog".as_pg_cstr(), &mut typoid, &mut typmod, false);
+                typoid
+            };
+
+            let variant = {
+                let argument_oids_and_names = vec![(PgOid::from(composite_type_oid), None)];
+                let return_oid = PgOid::from(composite_type_oid);
+                let is_strict = true;
+                let return_set = false;
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            };
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { Some(arg0.to_string()) }
+            })?;
+
+            let generated =
+                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                use core::alloc::{GlobalAlloc, Layout};
+                use pgx::{pg_sys, *};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
+                #[pg_extern]
+                fn #symbol_ident(arg0: pgx::composite_type!("dog")) -> Option<pgx::composite_type!("dog")> {
                     Some(arg0.to_string())
                 }
             };

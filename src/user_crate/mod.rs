@@ -162,7 +162,19 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::VOIDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
         },
-        _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
+        PgOid::Custom(custom_oid) => {
+            let type_name = unsafe {
+                let heap_tuple = pgx::pg_sys::typeidType(custom_oid);
+                let form_data_pg_type =
+                    pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_type>(heap_tuple);
+                let type_name_array = (*form_data_pg_type).typname.data;
+                let type_name_cstr = std::ffi::CStr::from_ptr(type_name_array.as_ptr());
+                type_name_cstr.to_str().unwrap().to_string()
+            };
+
+            quote! { pgx::composite_type!(#type_name) }
+        }
+        PgOid::InvalidOid => return Err(PlRustError::NoOidToRustMapping(base_oid.value())),
     };
 
     let rust_type = if array {
