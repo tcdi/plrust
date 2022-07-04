@@ -245,19 +245,31 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
+                use core::alloc::{GlobalAlloc, Layout};
                 use pgx::{pg_sys, *};
-
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
             };
             assert_eq!(
-                generated_lib_rs,
-                fixture_lib_rs,
-                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 prettyplease::unparse(&generated_lib_rs),
-                prettyplease::unparse(&fixture_lib_rs)
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
             );
 
             let generated_cargo_toml = generated.cargo_toml()?;
@@ -292,11 +304,9 @@ mod tests {
                 ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
             };
             assert_eq!(
-                generated_cargo_toml,
-                *fixture_cargo_toml.as_table().unwrap(),
-                "Generated `Cargo.toml` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 toml::to_string(&generated_cargo_toml)?,
                 toml::to_string(&fixture_cargo_toml)?,
+                "Generated `Cargo.toml` differs from test (after formatting)",
             );
 
             let parent_dir = tempdir::TempDir::new("plrust-generated-crate-function-workflow")
