@@ -267,11 +267,9 @@ mod tests {
                 }
             };
             assert_eq!(
-                generated_lib_rs,
-                fixture_lib_rs,
-                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 prettyplease::unparse(&generated_lib_rs),
-                prettyplease::unparse(&fixture_lib_rs)
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
             );
 
             let generated_cargo_toml = generated.cargo_toml()?;
@@ -306,11 +304,9 @@ mod tests {
                 ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
             };
             assert_eq!(
-                generated_cargo_toml,
-                *fixture_cargo_toml.as_table().unwrap(),
-                "Generated `Cargo.toml` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 toml::to_string(&generated_cargo_toml)?,
                 toml::to_string(&fixture_cargo_toml)?,
+                "Generated `Cargo.toml` differs from test (after formatting)",
             );
 
             let parent_dir = tempdir::TempDir::new("plrust-generated-crate-function-workflow")

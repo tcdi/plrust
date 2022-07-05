@@ -38,9 +38,9 @@ impl StateGenerated {
         let proc_tuple = pg_sys::SearchSysCache(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
             fn_oid.into_datum().unwrap(), // TODO: try_from_datum
-            0.into(),
-            0.into(),
-            0.into(),
+            pg_sys::Datum::from(0_u64),
+            pg_sys::Datum::from(0_u64),
+            pg_sys::Datum::from(0_u64),
         );
         if proc_tuple.is_null() {
             return Err(PlRustError::NullProcTuple)?;
@@ -70,41 +70,49 @@ impl StateGenerated {
         let (user_code, user_dependencies) = parse_source_and_deps(
             &String::from_datum(prosrc_datum, is_null).ok_or(PlRustError::NullSourceCode)?,
         )?;
-        let argnames_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
-
-        let argtypes_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
 
         let proc_entry = PgBox::from_pg(pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
             proc_tuple,
         ));
 
-        let mut argument_oids_and_names = Vec::new();
-        for i in 0..proc_entry.pronargs as usize {
-            let type_oid = argtypes.get(i).expect("no type_oid for argument");
-            let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
+        let return_oid = PgOid::from(proc_entry.prorettype);
 
-            argument_oids_and_names.push((PgOid::from(*type_oid), name));
-        }
+        let variant = match return_oid == pgx::PgBuiltInOids::TRIGGEROID.oid() {
+            true => CrateVariant::trigger(),
+            false => {
+                let argnames_datum = pg_sys::SysCacheGetAttr(
+                    pg_sys::SysCacheIdentifier_PROCOID as i32,
+                    proc_tuple,
+                    pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
+                    &mut is_null,
+                );
+                let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
 
-        let is_strict = proc_entry.proisstrict;
-        let (return_oid, return_set) = (PgOid::from(proc_entry.prorettype), proc_entry.proretset);
+                let argtypes_datum = pg_sys::SysCacheGetAttr(
+                    pg_sys::SysCacheIdentifier_PROCOID as i32,
+                    proc_tuple,
+                    pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
+                    &mut is_null,
+                );
+                let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
+
+                let mut argument_oids_and_names = Vec::new();
+                for i in 0..proc_entry.pronargs as usize {
+                    let type_oid = argtypes.get(i).expect("no type_oid for argument");
+                    let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
+
+                    argument_oids_and_names.push((PgOid::from(*type_oid), name));
+                }
+
+                let is_strict = proc_entry.proisstrict;
+                let return_set = proc_entry.proretset;
+
+                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+            }
+        };
 
         pg_sys::ReleaseSysCache(proc_tuple);
 
-        let variant =
-            CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?;
         Ok(Self {
             fn_oid,
             user_code,
@@ -120,8 +128,8 @@ impl StateGenerated {
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File =
             syn::parse_str(include_str!("./skeleton.rs")).wrap_err("Parsing skeleton code")?;
-        let crate_name = self.crate_name();
 
+        let crate_name = self.crate_name();
         #[cfg(any(
             all(target_os = "macos", target_arch = "x86_64"),
             feature = "force_enable_x86_64_darwin_generations"
@@ -137,6 +145,7 @@ impl StateGenerated {
 
         tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs`");
 
+        let user_code = &self.user_code;
         let user_function = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
@@ -144,8 +153,7 @@ impl StateGenerated {
                 ..
             } => {
                 let arguments = arguments.values();
-                let user_code = &self.user_code;
-                let file: syn::ItemFn = syn::parse2(quote! {
+                let user_fn: syn::ItemFn = syn::parse2(quote! {
                     #[pg_extern]
                     fn #symbol_ident(
                         #( #arguments ),*
@@ -153,9 +161,23 @@ impl StateGenerated {
                     #user_code
                 })
                 .wrap_err("Parsing generated user function")?;
-                file
+                user_fn
+            }
+            CrateVariant::Trigger => {
+                let user_fn: syn::ItemFn = syn::parse2(quote! {
+                    #[pg_trigger]
+                    fn #symbol_ident(
+                        trigger: &::pgx::PgTrigger,
+                    ) -> core::result::Result<
+                        ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                        Box<dyn std::error::Error>,
+                    > #user_code
+                })
+                .wrap_err("Parsing generated user trigger")?;
+                user_fn
             }
         };
+
         skeleton.items.push(syn::Item::Fn(user_function));
         Ok(skeleton)
     }
@@ -368,11 +390,9 @@ mod tests {
                 }
             };
             assert_eq!(
-                generated_lib_rs,
-                fixture_lib_rs,
-                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 prettyplease::unparse(&generated_lib_rs),
-                prettyplease::unparse(&fixture_lib_rs)
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
             );
             Ok(())
         }
@@ -440,11 +460,9 @@ mod tests {
                 }
             };
             assert_eq!(
-                generated_lib_rs,
-                fixture_lib_rs,
-                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 prettyplease::unparse(&generated_lib_rs),
-                prettyplease::unparse(&fixture_lib_rs)
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
             );
             Ok(())
         }
@@ -512,11 +530,76 @@ mod tests {
                 }
             };
             assert_eq!(
-                generated_lib_rs,
-                fixture_lib_rs,
-                "Generated `lib.rs` differs from test (output formatted)\n\nGenerated:\n{}\nFixture:\n{}\n",
                 prettyplease::unparse(&generated_lib_rs),
-                prettyplease::unparse(&fixture_lib_rs)
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
+            );
+            Ok(())
+        }
+        wrapped().unwrap()
+    }
+
+    #[pg_test]
+    fn trigger() {
+        fn wrapped() -> eyre::Result<()> {
+            let fn_oid = 0 as pg_sys::Oid;
+
+            let variant = CrateVariant::trigger();
+            let user_deps = toml::value::Table::default();
+            let user_code = syn::parse2(quote! {
+                { Ok(trigger.current().unwrap().into_owned()) }
+            })?;
+
+            let generated = StateGenerated::for_tests(fn_oid, user_deps, user_code, variant);
+
+            let crate_name = crate::plrust::crate_name(fn_oid);
+            #[cfg(any(
+                all(target_os = "macos", target_arch = "x86_64"),
+                feature = "force_enable_x86_64_darwin_generations"
+            ))]
+            let crate_name = {
+                let mut crate_name = crate_name;
+                let (latest, _path) =
+                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+
+                crate_name.push_str(&format!("_{}", latest));
+                crate_name
+            };
+            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
+            let generated_lib_rs = generated.lib_rs()?;
+            let fixture_lib_rs = parse_quote! {
+                use ::core::alloc::{GlobalAlloc, Layout};
+                use ::pgx::{*, pg_sys};
+                struct PostAlloc;
+                #[global_allocator]
+                static PALLOC: PostAlloc = PostAlloc;
+                unsafe impl ::core::alloc::GlobalAlloc for PostAlloc {
+                    unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+                        ::pgx::pg_sys::palloc(layout.size()).cast()
+                    }
+                    unsafe fn dealloc(&self, ptr: *mut u8, _layout: ::core::alloc::Layout) {
+                        ::pgx::pg_sys::pfree(ptr.cast());
+                    }
+                    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+                        ::pgx::pg_sys::repalloc(ptr.cast(), new_size).cast()
+                    }
+                }
+
+                #[pg_trigger]
+                fn #symbol_ident(
+                    trigger: &::pgx::PgTrigger,
+                ) -> core::result::Result<
+                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                    Box<dyn std::error::Error>,
+                > {
+                    Ok(trigger.current().unwrap().into_owned())
+                }
+            };
+            assert_eq!(
+                prettyplease::unparse(&generated_lib_rs),
+                prettyplease::unparse(&fixture_lib_rs),
+                "Generated `lib.rs` differs from test (after formatting)",
             );
             Ok(())
         }
