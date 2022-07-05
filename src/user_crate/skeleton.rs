@@ -1,5 +1,5 @@
-use core::alloc::{GlobalAlloc, Layout};
-use pgx::{pg_sys, *};
+use ::core::alloc::{GlobalAlloc, Layout};
+use ::pgx::{*, pg_sys};
 
 struct PostAlloc;
 
