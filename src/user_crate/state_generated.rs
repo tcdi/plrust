@@ -569,8 +569,8 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use core::alloc::{GlobalAlloc, Layout};
-                use pgx::{pg_sys, *};
+                use ::core::alloc::{GlobalAlloc, Layout};
+                use ::pgx::{*, pg_sys};
                 struct PostAlloc;
                 #[global_allocator]
                 static PALLOC: PostAlloc = PostAlloc;
