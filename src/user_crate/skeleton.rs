@@ -1,14 +1,4 @@
-#![no_std]
-extern crate alloc;
-
 use ::core::alloc::{GlobalAlloc, Layout};
-#[allow(dead_code, unused_imports)]
-use ::alloc::{
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-    boxed::Box,
-};
 use ::pgx::{*, pg_sys};
 
 struct PostAlloc;

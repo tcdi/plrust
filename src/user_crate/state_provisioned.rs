@@ -1,5 +1,5 @@
 use crate::{
-    user_crate::{CrateState, StateBuilt},
+    user_crate::{target, CrateState, StateBuilt},
     PlRustError,
 };
 use color_eyre::{Section, SectionExt};
@@ -43,10 +43,14 @@ impl StateProvisioned {
         target_dir: Option<&Path>,
     ) -> eyre::Result<(StateBuilt, Output)> {
         let mut command = Command::new("cargo");
+        let target = target::tuple()?;
+        let target_str = &target;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
         command.arg("--release");
+        command.arg("--target");
+        command.arg(target_str);
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         if let Some(target_dir) = target_dir {
             command.env("CARGO_TARGET_DIR", &target_dir);
@@ -79,10 +83,15 @@ impl StateProvisioned {
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
-                .map(|d| d.join("release").join(&built_shared_object_name))
+                .map(|d| {
+                    d.join(target_str)
+                        .join("release")
+                        .join(&built_shared_object_name)
+                })
                 .unwrap_or(
                     self.crate_dir
                         .join("target")
+                        .join(target_str)
                         .join("release")
                         .join(built_shared_object_name),
                 );

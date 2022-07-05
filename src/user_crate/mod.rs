@@ -3,6 +3,7 @@ mod state_built;
 mod state_generated;
 mod state_loaded;
 mod state_provisioned;
+mod target;
 
 use crate_variant::CrateVariant;
 pub(crate) use state_built::StateBuilt;
@@ -244,14 +245,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![no_std]
-                extern crate alloc;
                 use ::core::alloc::{GlobalAlloc, Layout};
-                #[allow(dead_code, unused_imports)]
-                use ::alloc::{
-                    string::{String, ToString},
-                    vec, vec::Vec, boxed::Box,
-                };
                 use ::pgx::{*, pg_sys};
                 struct PostAlloc;
                 #[global_allocator]
@@ -295,7 +289,8 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = { version = "0.5.0-beta.0", features = [ "postgrestd" ] }
+                pgx = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/tcdi/pgx", branch = "develop" }
+                /* User deps added here */
 
                 [profile.release]
                 debug-assertions = true
@@ -303,6 +298,12 @@ mod tests {
                 lto = "fat"
                 opt-level = 3_usize
                 panic = "unwind"
+
+                [patch.crates-io]
+                pgx-tests = { version = "0.5.0-beta.0", git = "https://github.com/tcdi/pgx", branch = "develop" }
+                libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
+                getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
+                ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
             };
             assert_eq!(
                 generated_cargo_toml,
