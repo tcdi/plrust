@@ -273,7 +273,7 @@ mod tests {
 
                 [dependencies]
                 pgx = { version = "0.5.0-beta.0", features = ["postgrestd"], git = "https://github.com/tcdi/pgx", branch = "develop" }
-                pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "fix-pallocator" }
+                pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "linux-postgrestd" }
                 /* User deps added here */
 
                 [profile.release]
