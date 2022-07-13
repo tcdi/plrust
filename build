@@ -6,7 +6,7 @@ set -e
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --recurse-submodules
+        git clone https://github.com/workingjubilee/postgrestd.git --recurse-submodules --branch stubout-everything
         cd ./postgrestd
     fi
     mkdir -p $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/
