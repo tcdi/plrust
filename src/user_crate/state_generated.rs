@@ -126,7 +126,9 @@ impl StateGenerated {
 
     #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_quote!(use ::pgx::*;);
+        let mut skeleton: syn::File = syn::parse_quote!(
+            use ::pgx::*;
+        );
 
         let crate_name = self.crate_name();
         #[cfg(any(

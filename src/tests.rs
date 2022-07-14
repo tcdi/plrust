@@ -263,26 +263,34 @@ mod tests {
         assert_eq!(retval, Some(1));
     }
 
-
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_dont_make_files() {
+    #[cfg(feature = "target_postgrestd")]
+    fn std_dont_make_files() {
         let definition = r#"
-            CREATE FUNCTION make_file(filename TEXT) RETURNS TEXT
-            LANGUAGE PLRUST AS
-            $$
-                std::fs::File::create(filename.unwrap_or("/somewhere/files/dont/belong.txt")).err().map(|e| e.to_string())
-            $$;
-        "#;
+                CREATE FUNCTION make_file(filename TEXT) RETURNS TEXT
+                LANGUAGE PLRUST AS
+                $$
+                    std::fs::File::create(filename.unwrap_or("/somewhere/files/dont/belong.txt"))
+                        .err()
+                        .map(|e| e.to_string())
+                $$;
+            "#;
         Spi::run(definition);
 
         let retval: Option<String> = Spi::get_one_with_args(
             r#"
-            SELECT make_file($1);
-        "#,
-            vec![(PgBuiltInOids::TEXTOID.oid(), "/an/evil/place/to/put/a/file.txt".into_datum())],
+                SELECT make_file($1);
+            "#,
+            vec![(
+                PgBuiltInOids::TEXTOID.oid(),
+                "/an/evil/place/to/put/a/file.txt".into_datum(),
+            )],
         );
-        assert_eq!(retval, Some("operation not supported on this platform".to_string()));
+        assert_eq!(
+            retval,
+            Some("operation not supported on this platform".to_string())
+        );
     }
 }
 

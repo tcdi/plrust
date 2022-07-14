@@ -27,7 +27,7 @@ pub(crate) mod host {
     pub(crate) fn target_tuple() -> String {
         let os = match OS {
             "macos" => "darwin",
-            os => os
+            os => os,
         };
         super::stringify_tuple([ARCH, VENDOR, os, ENV])
     }
