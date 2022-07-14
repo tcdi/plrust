@@ -1,6 +1,10 @@
 #! /usr/bin/sh
 set -e
 
+if [ -z "$PLRUST_TARGET" ]; then
+    PLRUST_TARGET="x86_64-unknown-linux-postgres"
+fi
+
 (
     if cd postgrestd; then
         git pull
@@ -9,9 +13,8 @@ set -e
         git clone https://github.com/workingjubilee/postgrestd.git --recurse-submodules --branch stubout-everything
         cd ./postgrestd
     fi
-    mkdir -p $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/
-    cp --verbose --force ./x86_64-postgres-linux-gnu.json $(rustc --print sysroot)/lib/rustlib/x86_64-postgres-linux-gnu/target.json
     cargo clean
-    ./build copy
+    STD_TARGET="$PLRUST_TARGET" ./run install
 )
-PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo test
+
+cargo test
