@@ -20,7 +20,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_basic() {
+    fn plrust_basic() {
         let definition = r#"
             CREATE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
                 IMMUTABLE STRICT
@@ -45,7 +45,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_update() {
+    fn plrust_update() {
         let definition = r#"
             CREATE FUNCTION update_me() RETURNS TEXT
                 IMMUTABLE STRICT
@@ -83,7 +83,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_spi() {
+    fn plrust_spi() {
         let random_definition = r#"
             CREATE FUNCTION random_contributor_pet() RETURNS TEXT
                 STRICT
@@ -127,7 +127,7 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn test_deps() {
+    fn plrust_deps() {
         let definition = r#"
                 CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
@@ -162,7 +162,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn returns_setof() {
+    fn plrust_returns_setof() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION boop_srf(names TEXT[]) RETURNS SETOF TEXT
                 IMMUTABLE STRICT
@@ -200,7 +200,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_aggregate() {
+    fn plrust_aggregate() {
         let definition = r#"
             CREATE FUNCTION plrust_sum_state(state INT, next INT) RETURNS INT
                 IMMUTABLE STRICT
@@ -227,7 +227,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn test_trigger() {
+    fn plrust_trigger() {
         let definition = r#"
             CREATE TABLE dogs (
                 name TEXT,
@@ -265,8 +265,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[cfg(feature = "target_postgrestd")]
-    fn std_dont_make_files() {
+    fn postgrestd_dont_make_files() {
         let definition = r#"
                 CREATE FUNCTION make_file(filename TEXT) RETURNS TEXT
                 LANGUAGE PLRUST AS
