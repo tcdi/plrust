@@ -2,7 +2,7 @@
 set -e
 
 if [ -z "$PLRUST_TARGET" ]; then
-    PLRUST_TARGET="x86_64-unknown-linux-postgres"
+    export PLRUST_TARGET="x86_64-unknown-linux-postgres"
 fi
 
 (
