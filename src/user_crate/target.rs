@@ -27,7 +27,7 @@ pub(crate) mod host {
     pub(crate) fn target_tuple() -> String {
         let os = match OS {
             "macos" => "darwin",
-            os => os
+            os => os,
         };
         super::stringify_tuple([ARCH, VENDOR, os, ENV])
     }
@@ -60,7 +60,7 @@ pub(crate) fn tuple() -> Result<String, TargetErr> {
         Err(env::VarError::NotPresent) => {
             cfg_if::cfg_if! {
                 if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux"))] {
-                    Ok("x86_64-postgres-linux-gnu".to_string())
+                    Ok("x86_64-unknown-linux-postgres".to_string())
                 } else if #[cfg(feature = "target_postgrestd")] {
                     Err(TargetErr::Unsupported)
                 } else {

@@ -126,7 +126,9 @@ impl StateGenerated {
 
     #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_quote!(use ::pgx::*;);
+        let mut skeleton: syn::File = syn::parse_quote!(
+            use ::pgx::*;
+        );
 
         let crate_name = self.crate_name();
         #[cfg(any(
@@ -228,12 +230,6 @@ impl StateGenerated {
                     lto = "fat"
                     opt-level = 3_usize
                     panic = "unwind"
-
-                    [patch.crates-io]
-                    pgx-tests = { version = "0.5.0-beta.0", git = "https://github.com/tcdi/pgx", branch = "develop" }
-                    libc = { git = "https://github.com/workingjubilee/libc", branch = "postgres-os" }
-                    getrandom = { git = "https://github.com/workingjubilee/getrandom", branch = "postgres-os" }
-                    ring = { git = "https://github.com/workingjubilee/ring", branch = "postgres-os" }
         };
 
         match cargo_toml {
