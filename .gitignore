@@ -6,3 +6,4 @@
 sql/*.generated.sql
 .direnv
 scratch
+postgrestd/
