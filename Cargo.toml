@@ -12,7 +12,7 @@ repository = "https://github.com/zombodb/plrust/"
 crate-type = ["cdylib"]
 
 [features]
-default = ["pg14"]
+default = ["pg14", "target_postgrestd"]
 pg10 = ["pgx/pg10", "pgx-tests/pg10"]
 pg11 = ["pgx/pg11", "pgx-tests/pg11"]
 pg12 = ["pgx/pg12", "pgx-tests/pg12"]
