@@ -48,10 +48,8 @@ fn stringify_tuple(tuple: [&str; 4]) -> String {
 #[derive(thiserror::Error, Debug)]
 #[allow(dead_code)] // Such is the life of cfg code
 pub(crate) enum TargetErr {
-    #[error("current target {} does not support PL/Rust with postgrestd\n\
-    you may override the target selection by setting the PLRUST_TARGET environment variable",
-    .0)]
-    Unsupported(String),
+    #[error("unsupported target tuple")]
+    Unsupported,
     #[error("non-UTF-8 target tuple specifiers are invalid: {}", .0.to_string_lossy())]
     InvalidSpec(OsString),
 }
@@ -61,10 +59,10 @@ pub(crate) fn tuple() -> Result<String, TargetErr> {
         Ok(v) => Ok(v),
         Err(env::VarError::NotPresent) => {
             cfg_if::cfg_if! {
-                if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux", target_env = "gnu"))] {
+                if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux"))] {
                     Ok("x86_64-unknown-linux-postgres".to_string())
                 } else if #[cfg(feature = "target_postgrestd")] {
-                    Err(TargetErr::Unsupported(host::target_tuple()))
+                    Err(TargetErr::Unsupported)
                 } else {
                     Ok(host::target_tuple())
                 }
