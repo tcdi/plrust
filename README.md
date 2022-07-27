@@ -38,6 +38,23 @@ Option | Description
 [github-fpm]: https://github.com/jordansissel/fpm
 [docs-rs-tracing-directive]: https://docs.rs/tracing-subscriber/0.3.11/tracing_subscriber/filter/struct.EnvFilter.html
 
+# Using PL/Rust with Postgrestd
+PL/Rust currently supports being used with an experimental fork of Rust's std entitled `postgrestd` which supports an
+`x86_64-unknown-linux-postgres` target. This is built via the `build` script, which pulls in `postgrestd`.
+Doing so places a copy of the necessary libraries used by Rust for `std` into the appropriate "sysroot",
+which is the location that rustc will look for building those libraries.
+
+Further usage requires setting the `PLRUST_TARGET` to the appropriate tuple, as this is still an experimental feature,
+and so is not currently set by default. Passing `--features target_postgrestd` to `cargo` also works.
+
+This initial build process requires a normal installation of Rust via [`rustup`](https://rustup.rs)
+and for the relevant location to be writeable on the building host.
+
+```bash
+cd plrust
+./build
+PLRUST_TARGET="x86_64-unknown-linux-postgres" cargo build
+```
 
 # Installation
 
