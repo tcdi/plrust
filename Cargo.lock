@@ -985,7 +985,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#8d157d5a4355619b3d47d0fa5633699b4462d350"
+source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1013,7 +1013,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#8d157d5a4355619b3d47d0fa5633699b4462d350"
+source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1025,7 +1025,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#8d157d5a4355619b3d47d0fa5633699b4462d350"
+source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1048,7 +1048,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#8d157d5a4355619b3d47d0fa5633699b4462d350"
+source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
 dependencies = [
  "eyre",
  "libc",
@@ -1069,7 +1069,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#8d157d5a4355619b3d47d0fa5633699b4462d350"
+source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
 dependencies = [
  "atty",
  "convert_case",

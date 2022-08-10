@@ -5,6 +5,15 @@ if [ -z "$PLRUST_TARGET" ]; then
     export PLRUST_TARGET="x86_64-unknown-linux-postgres"
 fi
 
+# Make sure the tip of pgx's develop branch is used,
+# until a release that has all the necessary features is cut.
+cargo update -p pgx
+cargo fetch
+cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+# Don't need to run cargo pgx init: user might already have set it up,
+# and doing so risks clobbering their configuration.
+# If they get an error, it's fairly self-explanatory.
+
 (
     if cd postgrestd; then
         git pull
