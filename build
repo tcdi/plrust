@@ -19,7 +19,7 @@ cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develo
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --recurse-submodules --branch "cargo-lock"
+        git clone https://github.com/tcdi/postgrestd.git --recurse-submodules
         cd ./postgrestd
     fi
     cargo clean
