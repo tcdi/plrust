@@ -22,7 +22,7 @@ cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develo
         git clone https://github.com/tcdi/postgrestd.git --recurse-submodules
         cd ./postgrestd
     fi
-    cargo clean
+    ./run clean
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
 
