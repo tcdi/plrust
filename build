@@ -9,7 +9,9 @@ fi
 # until a release that has all the necessary features is cut.
 cargo update -p pgx
 cargo fetch
-cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+if [ "$CI" != true ]; then
+    cargo +nightly install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+fi
 # Don't need to run cargo pgx init: user might already have set it up,
 # and doing so risks clobbering their configuration.
 # If they get an error, it's fairly self-explanatory.
@@ -22,7 +24,7 @@ cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develo
         git clone https://github.com/tcdi/postgrestd.git --recurse-submodules
         cd ./postgrestd
     fi
-    cargo clean
+    ./run clean
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
 

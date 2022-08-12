@@ -291,6 +291,87 @@ mod tests {
             Some("operation not supported on this platform".to_string())
         );
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn pgx_can_panic() {
+        panic!()
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_can_panic() {
+        let definition = r#"
+            CREATE FUNCTION shut_up_and_explode()
+            RETURNS text AS
+            $$
+                panic!();
+                None
+            $$ LANGUAGE plrust;
+        "#;
+
+        Spi::run(definition);
+        let retval = Spi::get_one::<String>("SELECT shut_up_and_explode();\n");
+        assert_eq!(retval, None);
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn postgrestd_subprocesses_panic() {
+        let definition = r#"
+            CREATE FUNCTION say_hello()
+            RETURNS text AS
+            $$
+                let out = std::process::Command::new("echo")
+                    .arg("Hello world")
+                    .stdout(std::process::Stdio::piped())
+                    .output()
+                    .expect("Failed to execute command");
+                Some(String::from_utf8_lossy(&out.stdout).to_string())
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+
+        let retval = Spi::get_one::<String>("SELECT say_hello();\n");
+        assert_eq!(retval, Some("Hello world\n".into()));
+    }
+
+    /// This test is... meta. It's intended to sleep enough to usually go last.
+    /// If a previous test panics in a way so severe it aborts Postgres?
+    /// This test will fail as a result.
+    /// Ideally this should be slow but still sometimes finish second-to-last.
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_one_sleepy_boi() {
+        use std::{time::Duration, thread::sleep};
+        let moment = Duration::from_secs(2);
+        sleep(moment);
+
+        let definition = r#"
+            CREATE FUNCTION snooze()
+            RETURNS text AS
+            $$
+                use std::{thread::sleep, time::{Duration, Instant}};
+
+                let moment = Duration::from_secs(2);
+                let now = Instant::now();
+
+                sleep(moment);
+
+                assert!(now.elapsed() >= moment);
+                Some("zzz".into())
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        sleep(moment);
+
+        let retval = Spi::get_one::<String>("SELECT snooze();\n");
+        sleep(moment);
+        assert_eq!(retval, Some("zzz".into()));
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
