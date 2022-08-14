@@ -30,7 +30,7 @@ There are two `postgresql.conf` settings that must be configured:
 
 Option | Description
 --------------|-----------
-`plrust.pg_config` | The location of the `postgresql.conf`.
+`plrust.pg_config` | The full path of the `pg_config` binary.
 `plrust.work_dir` | The directory where pl/rust will build functions with cargo.
 `plrust.tracing_level` | A [tracing directive][docs-rs-tracing-directive]. (Default `info`)
 
