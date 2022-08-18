@@ -45,7 +45,11 @@ Doing so places a copy of the necessary libraries used by Rust for `std` into th
 which is the location that rustc will look for building those libraries.
 
 Further usage requires setting the `PLRUST_TARGET` to the appropriate tuple, as this is still an experimental feature,
-and so is not currently set by default. Passing `--features target_postgrestd` to `cargo` also works.
+and so is not currently set by default. Passing `--features target_postgrestd` to `cargo` also works. These are subtly different:
+
+- `PLRUST_TARGET` is evaluated when the PL/Rust handler builds a function
+- `--features target_postgrestd` is evaluated when the PL/Rust handler is built
+- `PLRUST_TARGET` prevails over `target_postgrestd` if both are set
 
 This initial build process requires a normal installation of Rust via [`rustup`](https://rustup.rs)
 and for the relevant location to be writeable on the building host.
