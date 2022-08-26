@@ -10,7 +10,9 @@ fi
 cargo update -p pgx
 cargo fetch
 if [ "$CI" != true ]; then
-    cargo +nightly install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+    cargo install cargo-pgx \
+    --git "https://github.com/tcdi/pgx.git" --branch "develop" \
+    --locked # use the Cargo.lock in the pgx repo
 fi
 # Don't need to run cargo pgx init: user might already have set it up,
 # and doing so risks clobbering their configuration.
