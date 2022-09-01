@@ -377,7 +377,7 @@ mod tests {
 #[cfg(any(test, feature = "pg_test"))]
 pub mod pg_test {
     use once_cell::sync::Lazy;
-    use pgx::utils::pg_config::Pgx;
+    use pgx_pg_config::Pgx;
     use tempdir::TempDir;
 
     static WORK_DIR: Lazy<String> = Lazy::new(|| {

@@ -28,6 +28,7 @@ target_postgrestd = []
 [dependencies]
 cfg-if = "1"
 pgx = { version = "0.5.0-beta.0" }
+pgx-pg-config = { version = "0.5.0-beta.0" }
 libloading = "0.7.2"
 thiserror = "1.0"
 eyre = "0.6"
@@ -60,4 +61,5 @@ codegen-units = 1
 
 [patch.crates-io]
 pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx-pg-config = { git = "https://github.com/tcdi/pgx", branch = "develop" }
 pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "develop" }
