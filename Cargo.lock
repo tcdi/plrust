@@ -446,16 +446,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_proxy"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a5019be18538406a43b5419a5501461f0c8b49ea7dfda0cfc32f4e51fc44be1"
-dependencies = [
- "log",
- "url",
-]
-
-[[package]]
 name = "eyre"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -985,7 +975,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -993,6 +983,7 @@ dependencies = [
  "enum-primitive-derive",
  "eyre",
  "heapless",
+ "libc",
  "num-traits",
  "once_cell",
  "pgx-macros",
@@ -1013,7 +1004,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1023,9 +1014,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pgx-pg-config"
+version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+dependencies = [
+ "dirs",
+ "eyre",
+ "owo-colors",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "toml",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1036,6 +1043,7 @@ dependencies = [
  "once_cell",
  "owo-colors",
  "pgx-macros",
+ "pgx-pg-config",
  "pgx-utils",
  "proc-macro2",
  "quote",
@@ -1048,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
 dependencies = [
  "eyre",
  "libc",
@@ -1056,6 +1064,7 @@ dependencies = [
  "owo-colors",
  "pgx",
  "pgx-macros",
+ "pgx-pg-config",
  "pgx-utils",
  "postgres",
  "regex",
@@ -1069,16 +1078,13 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#47225fc99bef92d1cbd0a0c2eb94215ed0525170"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
 dependencies = [
  "atty",
  "convert_case",
- "dirs",
- "env_proxy",
  "eyre",
  "owo-colors",
  "petgraph",
- "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
@@ -1087,12 +1093,10 @@ dependencies = [
  "serde_json",
  "syn",
  "syntect",
- "toml",
  "tracing",
  "tracing-error",
  "tracing-subscriber",
  "unescape",
- "url",
 ]
 
 [[package]]
@@ -1149,6 +1153,7 @@ dependencies = [
  "libloading",
  "once_cell",
  "pgx",
+ "pgx-pg-config",
  "pgx-tests",
  "prettyplease",
  "proc-macro2",
