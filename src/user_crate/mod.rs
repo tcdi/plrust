@@ -28,12 +28,14 @@ impl UserCrate<StateGenerated> {
     #[cfg(any(test, feature = "pg_test"))]
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn generated_for_tests(
+        db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
         user_code: syn::Block,
         variant: CrateVariant,
     ) -> Self {
         Self(StateGenerated::for_tests(
+            db_oid,
             fn_oid,
             user_deps.into(),
             user_code,
@@ -41,8 +43,8 @@ impl UserCrate<StateGenerated> {
         ))
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn try_from_fn_oid(fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
-        StateGenerated::try_from_fn_oid(fn_oid).map(Self)
+    pub unsafe fn try_from_fn_oid(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
+        StateGenerated::try_from_fn_oid(db_oid, fn_oid).map(Self)
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
@@ -53,7 +55,7 @@ impl UserCrate<StateGenerated> {
         self.0.cargo_toml()
     }
     /// Provision into a given folder and return the crate directory.
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub fn provision(&self, parent_dir: &Path) -> eyre::Result<UserCrate<StateProvisioned>> {
         self.0.provision(parent_dir).map(UserCrate)
     }
@@ -64,6 +66,7 @@ impl UserCrate<StateProvisioned> {
         level = "debug",
         skip_all,
         fields(
+            db_oid = %self.0.db_oid(),
             fn_oid = %self.0.fn_oid(),
             crate_dir = %self.0.crate_dir().display(),
             target_dir = target_dir.map(|v| tracing::field::display(v.display())),
@@ -82,21 +85,21 @@ impl UserCrate<StateProvisioned> {
 
 impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug")]
-    pub(crate) fn built(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
-        UserCrate(StateBuilt::new(fn_oid, shared_object))
+    pub(crate) fn built(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
+        UserCrate(StateBuilt::new(db_oid, fn_oid, shared_object))
     }
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub fn shared_object(&self) -> &Path {
         self.0.shared_object()
     }
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.0.fn_oid()))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub unsafe fn load(self) -> eyre::Result<UserCrate<StateLoaded>> {
         self.0.load().map(UserCrate)
     }
 }
 
 impl UserCrate<StateLoaded> {
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid()))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid(), fn_oid = %self.fn_oid()))]
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         self.0.evaluate(fcinfo)
     }
@@ -111,6 +114,10 @@ impl UserCrate<StateLoaded> {
 
     pub(crate) fn fn_oid(&self) -> &u32 {
         self.0.fn_oid()
+    }
+
+    pub(crate) fn db_oid(&self) -> &u32 {
+        self.0.db_oid()
     }
 
     pub(crate) fn shared_object(&self) -> &Path {
@@ -211,6 +218,7 @@ mod tests {
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
             let fn_oid = 0 as pg_sys::Oid;
+            let db_oid = 1 as pg_sys::Oid;
             let target_dir = crate::gucs::work_dir();
             let pg_config = PathBuf::from(crate::gucs::pg_config());
 
@@ -227,8 +235,9 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated = UserCrate::generated_for_tests(fn_oid, user_deps, user_code, variant);
-            let crate_name = crate::plrust::crate_name(fn_oid);
+            let generated =
+                UserCrate::generated_for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
                 all(target_os = "macos", target_arch = "x86_64"),
                 feature = "force_enable_x86_64_darwin_generations"
@@ -245,7 +254,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use ::pgx::*;
+                use pgx::*;
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
