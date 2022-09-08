@@ -21,9 +21,39 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Print environment
+    - name: Set up (Linux) prerequisites and environment
       run: |
+        echo "----- Print kernel info -----"
         uname -a
+
+        echo "----- Set up dynamic variables -----"
+        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        cat $GITHUB_ENV
+        echo ""
+
+        echo "----- Install system dependencies -----"
+        sudo yum install -y \
+          openssl \
+          openssl-devel \
+          bison \
+          flex \
+          readline \
+          readline-devel \
+          clang
+
+        echo "----- Install rust via rustup -----"
+        export RUSTUP_HOME='~/.rustup'
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+    - name: Install cargo-pgx
+      continue-on-error: true # We might have it.
+      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+
+    - name: Run cargo pgx init for PG14
+      run:  cargo pgx init --pg14 download
+
+    - name: Run build scripot
+      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
   # plrust_tests:
   #   name: tests
