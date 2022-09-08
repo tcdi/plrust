@@ -33,6 +33,7 @@ jobs:
         echo "----- Set up dynamic variables -----"
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         echo "RUSTUP_HOME='~/.rustup'" >> $GITHUB_ENV
+        echo "PATH="$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
         cat $GITHUB_ENV
         echo ""
 
@@ -55,14 +56,14 @@ jobs:
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
       run: |
-        whoami
-        source "$HOME/.cargo/env"
+        #whoami
+        #source "$HOME/.cargo/env"
         cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
 
     - name: Run cargo pgx init for PG14
       run: |
-        whoami
-        source "$HOME/.cargo/env"
+        #whoami
+        #source "$HOME/.cargo/env"
         cargo pgx init --pg14 download
 
     - name: Run build plrust script
