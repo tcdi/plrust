@@ -23,7 +23,7 @@ jobs:
 
     - name: Set up (Linux) prerequisites and environment
       run: |
-        echo """
+        echo ""
         echo "----- Print kernel info -----"
         uname -a
         echo ""
