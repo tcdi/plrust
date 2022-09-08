@@ -33,7 +33,7 @@ jobs:
         echo "----- Set up dynamic variables -----"
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         echo "RUSTUP_HOME='~/.rustup'" >> $GITHUB_ENV
-        echo "PATH="$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
         cat $GITHUB_ENV
         echo ""
 
