@@ -23,8 +23,10 @@ jobs:
 
     - name: Set up (Linux) prerequisites and environment
       run: |
+        echo """
         echo "----- Print kernel info -----"
         uname -a
+        echo ""
 
         echo "----- Set up dynamic variables -----"
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
@@ -43,7 +45,7 @@ jobs:
 
         echo "----- Install rust via rustup -----"
         export RUSTUP_HOME='~/.rustup'
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
