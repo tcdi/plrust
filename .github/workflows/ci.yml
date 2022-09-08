@@ -60,14 +60,16 @@ jobs:
         cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
 
     - name: Run cargo pgx init for PG14
+      run: |
         whoami
         source "$HOME/.cargo/env"
-      run:  cargo pgx init --pg14 download
+        cargo pgx init --pg14 download
 
     - name: Run build scripot
+      run: |
         whoami
         source "$HOME/.cargo/env"
-      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+        PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
   # plrust_tests:
   #   name: tests
