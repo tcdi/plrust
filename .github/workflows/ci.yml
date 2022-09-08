@@ -16,7 +16,7 @@ env:
 jobs:
   plrust_tests_arm64:
     name: Run tests on Arm64
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, linux, ARM64, plrust]
 
     steps:
     - uses: actions/checkout@v2
