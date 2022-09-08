@@ -24,7 +24,8 @@ jobs:
     - name: Set up (Linux) prerequisites and environment
       run: |
         echo ""
-        whoami
+        echo "Running as user: $(whoami)"
+        echo ""
         echo "----- Print kernel info -----"
         uname -a
         echo ""
@@ -48,7 +49,7 @@ jobs:
         echo "----- Install rust via rustup -----"
         export RUSTUP_HOME='~/.rustup'
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source "/home/ec2-user/.cargo/env"
+        source "$HOME/.cargo/env"
         cargo --version
 
     - name: Install cargo-pgx
