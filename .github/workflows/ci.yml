@@ -30,6 +30,7 @@ jobs:
 
         echo "----- Set up dynamic variables -----"
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        echo "RUSTUP_HOME='~/.rustup'" >> $GITHUB_ENV
         cat $GITHUB_ENV
         echo ""
 
@@ -46,7 +47,8 @@ jobs:
         echo "----- Install rust via rustup -----"
         export RUSTUP_HOME='~/.rustup'
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source "$HOME/.cargo/env"
+        source "/home/ec2-user/.cargo/env"
+        cargo --version
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
