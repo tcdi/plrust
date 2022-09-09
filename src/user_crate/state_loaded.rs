@@ -7,6 +7,7 @@ impl CrateState for StateLoaded {}
 
 #[must_use]
 pub(crate) struct StateLoaded {
+    db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     symbol_name: String,
     #[allow(dead_code)] // We must hold this handle for `symbol`
@@ -16,14 +17,18 @@ pub(crate) struct StateLoaded {
 }
 
 impl StateLoaded {
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %fn_oid, shared_object = %shared_object.display()))]
-    pub(crate) unsafe fn load(fn_oid: pg_sys::Oid, shared_object: PathBuf) -> eyre::Result<Self> {
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, shared_object = %shared_object.display()))]
+    pub(crate) unsafe fn load(
+        db_oid: pg_sys::Oid,
+        fn_oid: pg_sys::Oid,
+        shared_object: PathBuf,
+    ) -> eyre::Result<Self> {
         tracing::trace!(
             "Loading {shared_object}",
             shared_object = shared_object.display()
         );
         let library = Library::new(&shared_object)?;
-        let crate_name = crate::plrust::crate_name(fn_oid);
+        let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
 
         #[cfg(any(
             all(target_os = "macos", target_arch = "x86_64"),
@@ -43,6 +48,7 @@ impl StateLoaded {
         let symbol = library.get(symbol_name.as_bytes())?;
 
         Ok(Self {
+            db_oid,
             fn_oid,
             symbol_name,
             library,
@@ -51,7 +57,7 @@ impl StateLoaded {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %self.fn_oid, ?fcinfo))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, ?fcinfo))]
     pub(crate) unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         (self.symbol)(fcinfo)
     }
@@ -60,12 +66,14 @@ impl StateLoaded {
         level = "debug",
         skip_all,
         fields(
+            db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             shared_object = %self.shared_object.display(),
             symbol_name = %self.symbol_name,
         ))]
     pub(crate) fn close(self) -> eyre::Result<()> {
         let Self {
+            db_oid: _,
             fn_oid: _,
             library,
             symbol: _,
@@ -82,6 +90,10 @@ impl StateLoaded {
 
     pub(crate) fn fn_oid(&self) -> &u32 {
         &self.fn_oid
+    }
+
+    pub(crate) fn db_oid(&self) -> &u32 {
+        &self.db_oid
     }
 
     pub(crate) fn shared_object(&self) -> &Path {
