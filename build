@@ -23,7 +23,7 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --recurse-submodules --branch brady/aarch64-support
+        git clone https://github.com/tcdi/postgrestd.git --recurse-submodules
         cd ./postgrestd
     fi
     ./run clean
