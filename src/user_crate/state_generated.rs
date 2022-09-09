@@ -134,7 +134,7 @@ impl StateGenerated {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File = syn::parse_quote!(
-            use pgx::*;
+            use ::pgx::*;
         );
 
         let crate_name = self.crate_name();
@@ -382,7 +382,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                use ::pgx::*;
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
@@ -439,7 +439,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                use ::pgx::*;
                 #[pg_extern]
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
@@ -496,7 +496,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                use ::pgx::*;
                 #[pg_extern]
                 fn #symbol_ident(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
                     Some(std::iter::repeat(val).take(5))
@@ -544,7 +544,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                use pgx::*;
+                use ::pgx::*;
                 #[pg_trigger]
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
