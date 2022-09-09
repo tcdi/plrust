@@ -12,6 +12,7 @@ use std::{
 
 #[must_use]
 pub(crate) struct StateProvisioned {
+    db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
@@ -20,9 +21,15 @@ pub(crate) struct StateProvisioned {
 impl CrateState for StateProvisioned {}
 
 impl StateProvisioned {
-    #[tracing::instrument(level = "debug", skip_all, fields(fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
-    pub(crate) fn new(fn_oid: pg_sys::Oid, crate_name: String, crate_dir: PathBuf) -> Self {
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
+    pub(crate) fn new(
+        db_oid: pg_sys::Oid,
+        fn_oid: pg_sys::Oid,
+        crate_name: String,
+        crate_dir: PathBuf,
+    ) -> Self {
         Self {
+            db_oid,
             fn_oid,
             crate_name,
             crate_dir,
@@ -32,6 +39,7 @@ impl StateProvisioned {
         level = "debug",
         skip_all,
         fields(
+            db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             crate_dir = %self.crate_dir.display(),
             target_dir = target_dir.map(|v| tracing::field::display(v.display())),
@@ -110,7 +118,10 @@ impl StateProvisioned {
                 )
             })?;
 
-            Ok((StateBuilt::new(self.fn_oid, shared_object), output))
+            Ok((
+                StateBuilt::new(self.db_oid, self.fn_oid, shared_object),
+                output,
+            ))
         } else {
             let stdout =
                 String::from_utf8(output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
@@ -133,6 +144,9 @@ impl StateProvisioned {
         &self.fn_oid
     }
 
+    pub(crate) fn db_oid(&self) -> &u32 {
+        &self.db_oid
+    }
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
     }
