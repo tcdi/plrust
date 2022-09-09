@@ -92,6 +92,8 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
     let work_dir = gucs::work_dir();
     let pg_config = gucs::pg_config();
     let target_dir = work_dir.join("target");
+    // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
+    // then writes it only during initialization, so we should not be racing anyone.
     let db_oid = unsafe { MyDatabaseId };
 
     let generated = unsafe { UserCrate::try_from_fn_oid(db_oid, fn_oid)? };
