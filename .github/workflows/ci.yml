@@ -51,12 +51,6 @@ jobs:
         export RUSTUP_HOME='~/.rustup'
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source "$HOME/.cargo/env"
-
-        ### TEMP -- I dont think these are needed?
-        rustup install 1.63.0
-        rustup default 1.63.0
-        ### TEMP -- I dont think these are needed?
-
         cargo --version
 
     - name: Install cargo-pgx
@@ -76,6 +70,7 @@ jobs:
       run: |
         #whoami
         #source "$HOME/.cargo/env"
+        env
         PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
   # plrust_tests:
