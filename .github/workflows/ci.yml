@@ -48,7 +48,7 @@ jobs:
           clang
 
         echo "----- Install rust via rustup -----"
-        export RUSTUP_HOME='~/.rustup'
+        export RUSTUP_HOME="$HOME/.rustup"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source "$HOME/.cargo/env"
         cargo --version
