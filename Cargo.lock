@@ -180,6 +180,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bitvec"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
+dependencies = [
+ "funty",
+ "radium",
+ "tap",
+ "wyz",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -435,17 +447,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-primitive-derive"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c375b9c5eadb68d0a6efee2999fef292f45854c3444c86f09d8ab086ba942b0e"
-dependencies = [
- "num-traits",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "eyre"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -508,6 +509,12 @@ name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
+
+[[package]]
+name = "funty"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
 name = "futures"
@@ -870,15 +877,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-traits"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "num_cpus"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -975,16 +973,15 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
 dependencies = [
  "atomic-traits",
  "bitflags",
+ "bitvec",
  "cstr_core",
- "enum-primitive-derive",
  "eyre",
  "heapless",
  "libc",
- "num-traits",
  "once_cell",
  "pgx-macros",
  "pgx-pg-sys",
@@ -1004,7 +1001,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1016,7 +1013,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
 dependencies = [
  "dirs",
  "eyre",
@@ -1032,7 +1029,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1056,7 +1053,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
 dependencies = [
  "eyre",
  "libc",
@@ -1078,7 +1075,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#f0c16b1bff93fd24dcc12505e34408faf74ca43c"
+source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
 dependencies = [
  "atty",
  "convert_case",
@@ -1243,6 +1240,12 @@ checksum = "a1feb54ed693b93a84e14094943b84b7c4eae204c512b7ccb95ab0c66d278ad1"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "radium"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 
 [[package]]
 name = "rand"
@@ -1701,6 +1704,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
+
+[[package]]
 name = "tempdir"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2089,6 +2098,15 @@ name = "windows_x86_64_msvc"
 version = "0.36.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c811ca4a8c853ef420abd8592ba53ddbbac90410fab6903b3e79972a631f7680"
+
+[[package]]
+name = "wyz"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30b31594f29d27036c383b53b59ed3476874d518f0efb151b27a4c275141390e"
+dependencies = [
+ "tap",
+]
 
 [[package]]
 name = "xml-rs"
