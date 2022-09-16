@@ -71,6 +71,10 @@ jobs:
         #whoami
         #source "$HOME/.cargo/env"
         env
+
+        whoami
+        echo "-- sysroot -- "
+        rustc --print sysroot
         PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
   # plrust_tests:
