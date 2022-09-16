@@ -1,15 +1,25 @@
 # Architecture
 
-`plrust`, a rust based [Postgres Extension for Postgres](https://github.com/tcdi/pgx), provides a rust language handler for Postgres Functions. The installed language handler compiles postgres function, written in rust, executes the function <where>. 
+`plrust`, a Rust-based [extension for Postgres](https://github.com/tcdi/pgx), provides a procedural language handler for Rust in Postgres. When installed, `plrust` allows this to work:
+```sql
+CREATE FUNCTION {fn_name} ({args})
+RETURNS {ret}
+-- function attributes can go here
+AS $$
+    // PL/Rust function body goes here
+$$ LANGUAGE plrust;
+```
+
+PL/Rust will compile the function as a dynamic library, load it, and execute it.
 
 ## Trusted Language
 
-In order to create a [trusted](https://www.postgresql.org/docs/current/sql-createlanguage.html) language handler in Postgres we must restrict the language handler from specific operations such as 
+In order to create a [trusted](https://www.postgresql.org/docs/current/sql-createlanguage.html) language handler in Postgres we must restrict the functions compiled and executed by the language handler to the set of operations other code in Postgres has access to.
 
-- File Handle Operations
+- No operations on Files except through the database itself
 - Limit access to the database to that of other procedural language functions
 - Limit access to system resources to those of a trusted language user function
-- Any unprivileged database user can be permitted to use the language ([postgresql.org](https://www.postgresql.org/docs/current/plperl-trusted.html))
+- It must be sound to allow any unprivileged database user to use the language ([postgresql.org](https://www.postgresql.org/docs/current/plperl-trusted.html))
 
 ## Rust
 
@@ -46,9 +56,13 @@ Following an approach similar to the selection between libc and the musl libc st
 ![](assets/architecture_1.png)
 
 
-## Code Map
+## Supporting Crates
 
-This section talks briefly about various important directories and data structures.
+Because PL/Rust implements a fairly complicated language and makes it sound to use as a trusted procedural language, there are multiple supporting crates necessary to make it work.
+
+### pgx with `features = ["postgrestd", ..]`
+
+The `plrust` language handler is itself implemented using pgx, but also all PL/Rust functions must understand the PostgreSQL data types in the same way that `pgx` enables. In addition, bindings via `pgx` are used to implement most of the other supporting crates.
 
 ### pallocator
 
@@ -62,7 +76,9 @@ realloc - prealloc
 
 The Postgres panic project maps the rust panic to the postgres panic, allowing Postgres to handle the panic within the transaction system.
 
-### std
+### postgrestd
+
+See [postgrestd](https://github.com/tcdi/postgrestd) for more details.
 
 
 ## Cross-Cutting Concerns
