@@ -58,7 +58,7 @@ jobs:
       run: |
         #whoami
         #source "$HOME/.cargo/env"
-        cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+        cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
     - name: Run cargo pgx init for PG14
       run: |
