@@ -55,27 +55,13 @@ jobs:
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
-      run: |
-        #whoami
-        #source "$HOME/.cargo/env"
-        cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
     - name: Run cargo pgx init for PG14
-      run: |
-        #whoami
-        #source "$HOME/.cargo/env"
-        cargo pgx init --pg14 download
+      run: cargo pgx init --pg14 download
 
     - name: Run build plrust script
-      run: |
-        #whoami
-        #source "$HOME/.cargo/env"
-        env
-
-        whoami
-        echo "-- sysroot -- "
-        rustc --print sysroot
-        PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
   # plrust_tests:
   #   name: tests
