@@ -47,35 +47,50 @@ jobs:
           readline-devel \
           clang
 
+        echo ""
+        echo "----- Install sccache -----"
+        mkdir -p $HOME/.local/bin
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
+        mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
+        chmod +x $HOME/.local/bin/sccache
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
+        mkdir -p $HOME/.cache/sccache
+        echo ""
+
         echo "----- Install rust via rustup -----"
         export RUSTUP_HOME="$HOME/.rustup"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source "$HOME/.cargo/env"
         cargo --version
 
-    - name: Install cargo-pgx
-      continue-on-error: true # We might have it.
-      run: |
-        #whoami
-        #source "$HOME/.cargo/env"
-        cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+    # - name: Install cargo-pgx
+    #   continue-on-error: true # We might have it.
+    #   run: |
+    #     #whoami
+    #     #source "$HOME/.cargo/env"
+    #     cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
-    - name: Run cargo pgx init for PG14
-      run: |
-        #whoami
-        #source "$HOME/.cargo/env"
-        cargo pgx init --pg14 download
+    # - name: Run cargo pgx init for PG14
+    #   run: |
+    #     #whoami
+    #     #source "$HOME/.cargo/env"
+    #     cargo pgx init --pg14 download
 
-    - name: Run build plrust script
-      run: |
-        #whoami
-        #source "$HOME/.cargo/env"
-        env
+    # - name: Run build plrust script
+    #   run: |
+    #     #whoami
+    #     #source "$HOME/.cargo/env"
+    #     env
 
-        whoami
-        echo "-- sysroot -- "
-        rustc --print sysroot
-        PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+    #     whoami
+    #     echo "-- sysroot -- "
+    #     rustc --print sysroot
+    #     PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+
+
+
+
 
   # plrust_tests:
   #   name: tests
