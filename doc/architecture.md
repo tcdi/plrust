@@ -1,6 +1,7 @@
 # Architecture
 
-`plrust`, a Rust-based [extension for Postgres](https://github.com/tcdi/pgx), provides a procedural language handler for Rust in Postgres. When installed, `plrust` allows this to work:
+PL/Rust, a Rust-based extension built using [pgx](https://github.com/tcdi/pgx), provides a procedural language handler for Rust in PostgreSQL. When installed, PL/Rust allows this to work:
+
 ```sql
 CREATE FUNCTION {fn_name} ({args})
 RETURNS {ret}
@@ -14,14 +15,16 @@ PL/Rust will compile the function as a dynamic library, load it, and execute it.
 
 ## Trusted Language
 
-In order to create a [trusted](https://www.postgresql.org/docs/current/sql-createlanguage.html) language handler in Postgres we must restrict the functions compiled and executed by the language handler to the set of operations other code in Postgres has access to.
+In order to create a [trusted](https://www.postgresql.org/docs/current/sql-createlanguage.html) language handler in PostgreSQL we must restrict the functions compiled and executed by the language handler to the set of operations other code in PostgreSQL has access to.
 
-- No operations on Files except through the database itself
+- No operations on files except through the database itself
 - Limit access to the database to that of other procedural language functions
 - Limit access to system resources to those of a trusted language user function
-- It must be sound to allow any unprivileged database user to use the language ([postgresql.org](https://www.postgresql.org/docs/current/plperl-trusted.html))
+- It must be sound enough to allow any unprivileged database user to use the language ([postgresql.org](https://www.postgresql.org/docs/current/plperl-trusted.html))
 
 ## Rust
+
+While interpreted languages like Perl or Python execute in a runtime component, the Rust language must be compiled to a specific target.  A target can be a shared object, binary, or wasm artifact.  The operating system or host process executes the shard object (or binary) in a similar manner to C.  Rust provides support for unsafe memory operations through the use of the unsafe keyword.  Code tagged in this manner indicates to the compiler that the code does not need to be checked for memory safety and the developer has ensured it safety.
 
 A target tuple describes a "platform" that can execute code. Rust uses rustc, which requires that code is ahead-of-time compiled in order to do code generation, so it requires a target tuple that defines the code object it must generate. A code object has a format (e.g. ELF or Windows PE) which an operating system supports, instructions (e.g. aarch64 or wasm) which a machine architecture supports, and calls to system interfaces to the operating system (such as via GNU `libc.so` or MacOS `libSystem.dylib`) which require holistic support. These code objects may be executables (which the system may initialize as a process) or libraries (which may be "linked", relocating code from them into the final executable at build time, or loading their code to call at runtime). Libraries used at build time are also called static libraries, objects, or archives. Libraries used at runtime are also called dynamic libraries or shared objects.
 
@@ -31,7 +34,7 @@ The extension called "PL/Rust" which includes the language handler is responsibl
 
 ## Design Goals
 
-Design a custom rust compilation target for Postgres that provides nearly "safe" (as Rust defines it) and "trusted" (as Postgres defines a procedural language) plrust.
+Design a custom rust compilation target for PostgreSQL that provides nearly "safe" (as Rust defines it) and "trusted" (as PostgreSQL defines a procedural language) PL/Rust.
 
 The goals for the approach include
 
@@ -39,16 +42,16 @@ The goals for the approach include
 * Operating system support for Linux
 * Disallow File Handle operations
 * Disallow access to the internals of the database
-* Disallow access to the OS as the user executing the Postgres process 
-* Disallow access into active postmaster process, i.e. no ability to reach into Postgres memory space, despite executing inside it.
-* Gracefully handle rust panics and have them interoperate with Postgres' transaction system
-* Memory allocation within Postgres' palloc/pfree functions
+* Disallow access to the OS as the user executing the PostgreSQL process 
+* Disallow access into active postmaster process, i.e. no ability to reach into PostgreSQL memory space, despite executing inside it.
+* Gracefully handle rust panics and have them interoperate with PostgreSQL' transaction system
+* Memory allocation within PostgreSQL' palloc/pfree functions
 
 ## Approach
 
-The plrust extension is compiled using the standard rust library.  The postgrestd library is used to compile the functions written using PLRust.  The postgrestd library is a libraries are compiled using The 
+The PL/Rust extension is compiled using the standard rust library.  The postgrestd library is used to compile the functions written using PL/Rust.  The postgrestd library is a libraries are compiled using The 
 
-Following an approach similar to the selection between libc and the musl libc standard library for compilation, a Postgres compilation target is defined that instructs the compiler to use the postgrestd library.  The postgrestd library provides the rust standard library interfaces except in the case where it is desirable to prevent access.  In those cases the code is [configured](https://doc.rust-lang.org/stable/rust-by-example/attribute/cfg.html) to be not present. The result is a small shim on top of the rust library limited access to the standard library.
+Following an approach similar to the selection between libc and the musl libc standard library for compilation, a PostgreSQL compilation target is defined that instructs the compiler to use the postgrestd library.  The postgrestd library provides the rust standard library interfaces except in the case where it is desirable to prevent access.  In those cases the code is [configured](https://doc.rust-lang.org/stable/rust-by-example/attribute/cfg.html) to be not present. The result is a small shim on top of the rust library limited access to the standard library.
 
 
 ## Bird's Eye View
@@ -62,11 +65,11 @@ Because PL/Rust implements a fairly complicated language and makes it sound to u
 
 ### pgx with `features = ["postgrestd", ..]`
 
-The `plrust` language handler is itself implemented using pgx, but also all PL/Rust functions must understand the PostgreSQL data types in the same way that `pgx` enables. In addition, bindings via `pgx` are used to implement most of the other supporting crates.
+The PL/Rust language handler is itself implemented using pgx, but also all PL/Rust functions must understand the PostgreSQL data types in the same way that `pgx` enables. In addition, bindings via `pgx` are used to implement most of the other supporting crates.
 
 ### pallocator
 
-The Postgres allocator project maps the Postgres memory allocation methods to standard library methods.  the memory allocation from standard library methods to postgres specific methods.
+The PostgreSQL allocator project maps the PostgreSQL memory allocation methods to standard library methods.  the memory allocation from standard library methods to PostgreSQL specific methods.
 
 alloc -> palloc
 free -> pfree
@@ -74,12 +77,11 @@ realloc - prealloc
 
 ### postpanic
 
-The Postgres panic project maps the rust panic to the postgres panic, allowing Postgres to handle the panic within the transaction system.
+The PostgreSQL panic project maps the rust panic to the PostgreSQL panic, allowing PostgreSQL to handle the panic within the transaction system.
 
 ### postgrestd
 
 See [postgrestd](https://github.com/tcdi/postgrestd) for more details.
-
 
 ## Cross-Cutting Concerns
 
