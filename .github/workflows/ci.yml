@@ -15,7 +15,7 @@ env:
 
 jobs:
   plrust_tests_arm64:
-    name: Run tests on Arm64
+    name: aarch64 tests (pg14, amzn2)
     runs-on: [self-hosted, linux, ARM64, plrust]
 
     steps:
