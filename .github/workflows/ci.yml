@@ -18,6 +18,10 @@ jobs:
     name: Run tests on Arm64
     runs-on: [self-hosted, linux, ARM64, plrust]
 
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_DIR: /home/ec2-user/.cache/sccache
+
     steps:
     - uses: actions/checkout@v2
 
@@ -54,6 +58,7 @@ jobs:
         mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
         chmod +x $HOME/.local/bin/sccache
         echo "$HOME/.local/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.local/bin:$PATH"
         echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
         mkdir -p $HOME/.cache/sccache
         sccache --start-server
