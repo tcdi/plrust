@@ -71,9 +71,11 @@ The PL/Rust language handler is itself implemented using pgx, but also all PL/Ru
 
 The PostgreSQL allocator project maps the PostgreSQL memory allocation methods to standard library methods.  the memory allocation from standard library methods to PostgreSQL specific methods.
 
-alloc -> palloc
-free -> pfree
-realloc - prealloc
+| libc    | postgrestd |
+|---------|------------|
+| alloc   | palloc     |
+| free    | pfree      |
+| realloc | prealloc   |
 
 ### postpanic
 
