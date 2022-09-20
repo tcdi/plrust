@@ -125,6 +125,20 @@ jobs:
         if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $cargo_cache_key &> /dev/null; then
           echo "Cargo cache archive exists for $cargo_cache_key"
           echo "Extracting now."
+
+          archive_path=$HOME/artifacts/$cargo_cache_key
+
+          echo "Downloadng archive and storing to $archive_path"
+
+          aws s3api get-object \
+            --profile artifact-user \
+            --bucket tcdi-ci-plrust-build-cache.private \
+            --key $cargo_cache_key \
+            $archive_path
+
+          echo "Extracting archive"
+
+          lz4 -dc --no-sparse $archive_path | tar xvC /
         else
           echo "Cargo cache archive *does not* exist for $cargo_cache_key -- skipping"
         fi
@@ -138,6 +152,36 @@ jobs:
         if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $sccache_cache_key &> /dev/null; then
           echo "sccache archive exists for $sccache_cache_key"
           echo "Extracting now."
+
+          archive_path=$HOME/artifacts/$sccache_cache_key
+
+          echo "Downloadng archive and storing to $archive_path"
+
+          aws s3api get-object \
+            --profile artifact-user \
+            --bucket tcdi-ci-plrust-build-cache.private \
+            --key $sccache_cache_key \
+            $archive_path
+
+          echo "Extracting archive"
+
+          lz4 -dc --no-sparse $archive_path | tar xvC /
+
+          # tar --ignore-failed-read -cvf - \
+          #   $HOME/.cache/sccache \
+          #   | lz4 - $archive_path
+
+          # echo "Created archive $archive_path -- uploading now"
+
+          # aws s3api put-object \
+          #   --profile artifact-user \
+          #   --bucket tcdi-ci-plrust-build-cache.private \
+          #   --key $sccache_cache_key \
+          #   --body $archive_path
+
+          # echo "Removing $archive_path"
+
+          # rm $archive_path
         else
           echo "sccache archive *does not* exist for $sccache_cache_key -- skipping"
         fi
