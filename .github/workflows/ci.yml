@@ -138,9 +138,19 @@ jobs:
           echo "sccache archive *does not* exist for $sccache_cache_key -- skipping"
         fi
 
-  #   - name: Install cargo-pgx
-  #     continue-on-error: true # We might have it.
-  #     run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+    - name: Start sccache server
+      run: sccache --start-server
+
+    - name: Print sccache stats (before build)
+      run: sccache --show-stats
+
+    - name: Install cargo-pgx
+      continue-on-error: true # We might have it.
+      run: cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+      #run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+
+    - name: Print sccache stats (after build)
+      run: sccache --show-stats
 
   #   - name: Run cargo pgx init for PG14
   #     run: cargo pgx init --pg14 download
