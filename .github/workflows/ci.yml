@@ -29,12 +29,14 @@ jobs:
       run: |
         mkdir -p $HOME/artifacts
         cd /home/ec2-user/actions-runner/_work/plrust/
-        tar cvf - plrust | lz4 - $HOME/artifacts/plrust.tar.lz4
+        cargochecksum=$(sha256sum plrust/Cargo.lock | awk '{print $1}')
+        artifactfilename="plrust-v0-arm64-$cargochecksum.tar.lz4"
+        tar cvf - plrust | lz4 - $HOME/artifacts/$artifactfilename
         aws s3api put-object \
           --profile artifact-user \
           --bucket tcdi-ci-plrust-build-cache.private \
-          --key plrust.tar.lz4 \
-          --body $HOME/artifacts/plrust.tar.lz4
+          --key $artifactfilename \
+          --body $HOME/artifacts/$artifactfilename
 
     # - name: Set up (Linux) prerequisites and environment
     #   run: |
