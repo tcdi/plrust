@@ -152,6 +152,71 @@ jobs:
     - name: Print sccache stats (after build)
       run: sccache --show-stats
 
+    - name: Store Cargo cache if applicable
+      run: |
+        cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+
+        echo "Checking to see if cache archive exists: $cargo_cache_key"
+
+        if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $cargo_cache_key &> /dev/null; then
+          echo "Cargo cache archive exists for $cargo_cache_key -- skipping archive creation."
+        else
+          echo "Cargo cache archive *does not* exist for $cargo_cache_key -- creating archive now"
+
+          archive_path=$HOME/artifacts/$cargo_cache_key
+
+          tar --ignore-failed-read -cvf - \
+            $HOME/.cargo/bin \
+            $HOME/.cargo/registry/index \
+            $HOME/.cargo/registry/cache/ \
+            $HOME/.cargo/git/db \
+            | lz4 - $archive_path
+
+          echo "Created archive $archive_path -- uploading now"
+
+          aws s3api put-object \
+            --profile artifact-user \
+            --bucket tcdi-ci-plrust-build-cache.private \
+            --key $cargo_cache_key \
+            --body $archive_path
+
+          echo "Removing $archive_path"
+
+          rm $archive_path
+        fi
+
+    - name: Store sccache if applicable
+      run: |
+        sccache_cache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+
+        echo "Checking to see if cache archive exists: $sccache_cache_key"
+
+        if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $sccache_cache_key &> /dev/null; then
+          echo "sccache cache archive exists for $sccache_cache_key -- skipping archive creation."
+        else
+          echo "sccache cache archive *does not* exist for $sccache_cache_key -- creating archive now"
+
+          archive_path=$HOME/artifacts/$sccache_cache_key
+
+          # mkdir -p $HOME/.cache/sccache
+
+          tar --ignore-failed-read -cvf - \
+            $HOME/.cache/sccache \
+            | lz4 - $archive_path
+
+          echo "Created archive $archive_path -- uploading now"
+
+          aws s3api put-object \
+            --profile artifact-user \
+            --bucket tcdi-ci-plrust-build-cache.private \
+            --key $sccache_cache_key \
+            --body $archive_path
+
+          echo "Removing $archive_path"
+
+          rm $archive_path
+        fi
+
   #   - name: Run cargo pgx init for PG14
   #     run: cargo pgx init --pg14 download
 
