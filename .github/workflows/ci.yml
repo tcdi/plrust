@@ -28,10 +28,17 @@ jobs:
     - name: Testing something
       run: |
         mkdir -p $HOME/artifacts
-        cd /home/ec2-user/actions-runner/_work/plrust/
-        cargochecksum=$(sha256sum plrust/Cargo.lock | awk '{print $1}')
-        artifactfilename="plrust-v0-arm64-$cargochecksum.tar.lz4"
+        cd /home/ec2-user/actions-runner/_work/plrust/plrust
+        fileschecksums=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+        artifactfilename="plrust-v0-arm64-$fileschecksums.tar.lz4"
+
+  #     key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
+
+        #cargochecksum=$(sha256sum plrust/Cargo.lock | awk '{print $1}')
         tar cvf - plrust | lz4 - $HOME/artifacts/$artifactfilename
+
+        echo "Created artifact $HOME/artifacts/$artifactfilename -- uploading now"
+
         aws s3api put-object \
           --profile artifact-user \
           --bucket tcdi-ci-plrust-build-cache.private \
