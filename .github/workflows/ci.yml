@@ -33,7 +33,7 @@ jobs:
 
         mkdir -p $HOME/artifacts
         cd /home/ec2-user/actions-runner/_work/plrust/plrust
-        fileschecksums=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+        fileschecksums=$(cat .**/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
         artifactfilename="plrust-v0-arm64-$fileschecksums.tar.lz4"
 
         #         ~/.cargo/bin/
@@ -42,7 +42,12 @@ jobs:
         #         ~/.cargo/git/db/
         #         target/
 
-        tar cvf - $HOME/.cargo/bin $HOME/.cargo/registry/index $HOME/.cargo/registry/cache/ $HOME/.cargo/git/db | lz4 - $HOME/artifacts/$artifactfilename
+        tar cvf - \
+          $HOME/.cargo/bin \
+          $HOME/.cargo/registry/index \
+          $HOME/.cargo/registry/cache/ \
+          $HOME/.cargo/git/db \
+          | lz4 - $HOME/artifacts/$artifactfilename
 
         echo "Created artifact $HOME/artifacts/$artifactfilename -- uploading now"
 
