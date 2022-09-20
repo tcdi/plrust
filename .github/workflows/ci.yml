@@ -18,6 +18,10 @@ jobs:
     name: aarch64 tests (pg14, amzn2)
     runs-on: [self-hosted, linux, ARM64, plrust]
 
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_DIR: /home/ec2-user/.cache/sccache
+
     steps:
     - uses: actions/checkout@v2
 
@@ -46,6 +50,20 @@ jobs:
           readline \
           readline-devel \
           clang
+        echo ""
+
+        echo ""
+        echo "----- Install sccache -----"
+        mkdir -p $HOME/.local/bin
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
+        mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
+        chmod +x $HOME/.local/bin/sccache
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.local/bin:$PATH"
+        echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
+        mkdir -p $HOME/.cache/sccache
+        sccache --start-server
+        echo ""
 
         echo "----- Install rust via rustup -----"
         export RUSTUP_HOME="$HOME/.rustup"
@@ -53,155 +71,155 @@ jobs:
         source "$HOME/.cargo/env"
         cargo --version
 
-    - name: Install cargo-pgx
-      continue-on-error: true # We might have it.
-      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+  #   - name: Install cargo-pgx
+  #     continue-on-error: true # We might have it.
+  #     run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
-    - name: Run cargo pgx init for PG14
-      run: cargo pgx init --pg14 download
+  #   - name: Run cargo pgx init for PG14
+  #     run: cargo pgx init --pg14 download
 
-    - name: Run build plrust script
-      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+  #   - name: Run build plrust script
+  #     run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
-  plrust_tests:
-    name: tests
-    runs-on: ${{ matrix.os }}
-    if: "!contains(github.event.head_commit.message, 'nogha')"
+  # plrust_tests:
+  #   name: tests
+  #   runs-on: ${{ matrix.os }}
+  #   if: "!contains(github.event.head_commit.message, 'nogha')"
 
-    strategy:
-      matrix:
-        version: ["postgres-13", "postgres-14"]
-        os: ["ubuntu-20.04"]
-        # it would be nice to other contributors to return "macos-11" to the above array
-      fail-fast: false
+  #   strategy:
+  #     matrix:
+  #       version: ["postgres-13", "postgres-14"]
+  #       os: ["ubuntu-20.04"]
+  #       # it would be nice to other contributors to return "macos-11" to the above array
+  #     fail-fast: false
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Set up (Linux) prerequisites and environment
-      if: matrix.os == 'ubuntu-20.04'
-      run: |
-        echo ""
+  #   - name: Set up (Linux) prerequisites and environment
+  #     if: matrix.os == 'ubuntu-20.04'
+  #     run: |
+  #       echo ""
 
-        echo "----- Set up dynamic variables -----"
-        export PG_VER=$(echo ${{ matrix.version }} | cut -d '-' -f2)
-        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
-        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-        cat $GITHUB_ENV
-        echo ""
+  #       echo "----- Set up dynamic variables -----"
+  #       export PG_VER=$(echo ${{ matrix.version }} | cut -d '-' -f2)
+  #       echo "PG_VER=$PG_VER" >> $GITHUB_ENV
+  #       echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+  #       cat $GITHUB_ENV
+  #       echo ""
 
-        echo "----- Remove old postgres -----"
-        sudo apt remove -y postgres*
-        echo ""
+  #       echo "----- Remove old postgres -----"
+  #       sudo apt remove -y postgres*
+  #       echo ""
 
-        echo "----- Set up PostgreSQL Apt repository -----"
-        sudo apt-get install -y wget gnupg
-        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-        sudo apt-get update -y -qq --fix-missing
-        echo ""
+  #       echo "----- Set up PostgreSQL Apt repository -----"
+  #       sudo apt-get install -y wget gnupg
+  #       sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  #       wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  #       sudo apt-get update -y -qq --fix-missing
+  #       echo ""
 
-        echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
-        sudo apt-get install -y \
-          clang-10 \
-          llvm-10 \
-          clang \
-          gcc \
-          make \
-          build-essential \
-          libz-dev \
-          zlib1g-dev \
-          strace \
-          libssl-dev \
-          pkg-config \
-          postgresql-$PG_VER \
-          postgresql-server-dev-$PG_VER
-        echo ""
+  #       echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
+  #       sudo apt-get install -y \
+  #         clang-10 \
+  #         llvm-10 \
+  #         clang \
+  #         gcc \
+  #         make \
+  #         build-essential \
+  #         libz-dev \
+  #         zlib1g-dev \
+  #         strace \
+  #         libssl-dev \
+  #         pkg-config \
+  #         postgresql-$PG_VER \
+  #         postgresql-server-dev-$PG_VER
+  #       echo ""
 
-        echo "----- Set up Postgres permissions -----"
-        sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
-        echo ""
+  #       echo "----- Set up Postgres permissions -----"
+  #       sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
+  #       echo ""
 
-        echo "----- Print env -----"
-        env
-        echo ""
+  #       echo "----- Print env -----"
+  #       env
+  #       echo ""
 
-        echo "----- Get cargo version -----"
-        cargo --version
-        echo ""
+  #       echo "----- Get cargo version -----"
+  #       cargo --version
+  #       echo ""
 
-    - name: Set up (Mac) prerequisites and environment
-      if: matrix.os == 'macos-11'
-      run: |
-        echo ""
+  #   - name: Set up (Mac) prerequisites and environment
+  #     if: matrix.os == 'macos-11'
+  #     run: |
+  #       echo ""
 
-        # https://stackoverflow.com/questions/57968497/how-do-i-set-an-env-var-with-a-bash-expression-in-github-actions/57969570#57969570
-        echo "----- Getting pre-installed Postgres major version -----"
-        PG_VER=$(pg_config --version | awk '{split($2,a,"."); print a[1]}')
-        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
-        cat $GITHUB_ENV
+  #       # https://stackoverflow.com/questions/57968497/how-do-i-set-an-env-var-with-a-bash-expression-in-github-actions/57969570#57969570
+  #       echo "----- Getting pre-installed Postgres major version -----"
+  #       PG_VER=$(pg_config --version | awk '{split($2,a,"."); print a[1]}')
+  #       echo "PG_VER=$PG_VER" >> $GITHUB_ENV
+  #       cat $GITHUB_ENV
 
-        echo "----- Installing yq so .toml files can be parsed and queried -----"
-        pip3 install yq
-        echo ""
+  #       echo "----- Installing yq so .toml files can be parsed and queried -----"
+  #       pip3 install yq
+  #       echo ""
 
-        echo "----- Setting up RUSTFLAGS found in .cargo/config -----"
-        echo "RUSTFLAGS=$RUSTFLAGS $(tomlq --raw-output '.build.rustflags | join(" ")' .cargo/config)" >> $GITHUB_ENV
-        cat $GITHUB_ENV
-        echo ""
+  #       echo "----- Setting up RUSTFLAGS found in .cargo/config -----"
+  #       echo "RUSTFLAGS=$RUSTFLAGS $(tomlq --raw-output '.build.rustflags | join(" ")' .cargo/config)" >> $GITHUB_ENV
+  #       cat $GITHUB_ENV
+  #       echo ""
 
-        echo "----- Set up Postgres permissions -----"
-        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-        ls -lath `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-        echo ""
+  #       echo "----- Set up Postgres permissions -----"
+  #       sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+  #       ls -lath `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+  #       echo ""
 
-        echo "----- Output Cargo version -----"
-        cargo --version
-        echo ""
+  #       echo "----- Output Cargo version -----"
+  #       cargo --version
+  #       echo ""
 
-        echo "----- Outputting env -----"
-        env
-        echo ""
+  #       echo "----- Outputting env -----"
+  #       env
+  #       echo ""
 
-    - name: Cache cargo registry
-      uses: actions/cache@v2
-      continue-on-error: false
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
+  #   - name: Cache cargo registry
+  #     uses: actions/cache@v2
+  #     continue-on-error: false
+  #     with:
+  #       path: |
+  #         ~/.cargo/bin/
+  #         ~/.cargo/registry/index/
+  #         ~/.cargo/registry/cache/
+  #         ~/.cargo/git/db/
+  #         target/
+  #       key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
 
-    - name: Install cargo-pgx
-      continue-on-error: true # We might have it.
-      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
+  #   - name: Install cargo-pgx
+  #     continue-on-error: true # We might have it.
+  #     run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop"
 
-    - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
-      run: cargo pgx init --pg$PG_VER $(which pg_config)
+  #   - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
+  #     run: cargo pgx init --pg$PG_VER $(which pg_config)
 
-    - name: Run PL/Rust tests
-      run: |
-        cargo test --features "pg$PG_VER" --no-default-features --lib user_crate
-        cargo test --features "pg$PG_VER" --no-default-features --lib plrust
+  #   - name: Run PL/Rust tests
+  #     run: |
+  #       cargo test --features "pg$PG_VER" --no-default-features --lib user_crate
+  #       cargo test --features "pg$PG_VER" --no-default-features --lib plrust
 
-    - name: Run PL/Rust + postgrestd tests
-      if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
-      run: ./build
+  #   - name: Run PL/Rust + postgrestd tests
+  #     if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
+  #     run: ./build
 
-    # Attempt to make the cache payload slightly smaller.
-    - name: Clean up built PGX files
-      run: |
-        cd target/debug/deps/
-        for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
-          base_name=$(echo $built_file | cut -d- -f1);
-          for basefile in "$base_name".*; do
-            [ -f "$basefile" ] || continue;
-            echo "Removing $basefile"
-            rm $basefile
-          done;
-          echo "Removing $built_file"
-          rm $built_file
-        done
+  #   # Attempt to make the cache payload slightly smaller.
+  #   - name: Clean up built PGX files
+  #     run: |
+  #       cd target/debug/deps/
+  #       for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
+  #         base_name=$(echo $built_file | cut -d- -f1);
+  #         for basefile in "$base_name".*; do
+  #           [ -f "$basefile" ] || continue;
+  #           echo "Removing $basefile"
+  #           rm $basefile
+  #         done;
+  #         echo "Removing $built_file"
+  #         rm $built_file
+  #       done
