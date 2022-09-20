@@ -106,6 +106,10 @@ jobs:
         mkdir -p $HOME/.cache/sccache
         echo ""
 
+        echo "----- Create artifacts directory -----"
+        mkdir -p $HOME/artifacts
+        echo ""
+
         echo "----- Install rust via rustup -----"
         export RUSTUP_HOME="$HOME/.rustup"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -197,8 +201,6 @@ jobs:
           echo "sccache cache archive *does not* exist for $sccache_cache_key -- creating archive now"
 
           archive_path=$HOME/artifacts/$sccache_cache_key
-
-          # mkdir -p $HOME/.cache/sccache
 
           tar --ignore-failed-read -cvf - \
             $HOME/.cache/sccache \
