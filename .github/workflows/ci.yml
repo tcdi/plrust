@@ -14,6 +14,55 @@ env:
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
+  plrust_tests_arm64:
+    name: aarch64 tests (pg14, amzn2)
+    runs-on: [self-hosted, linux, ARM64, plrust]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up (Linux) prerequisites and environment
+      run: |
+        echo ""
+        echo "Running as user: $(whoami)"
+        echo ""
+        echo "----- Print kernel info -----"
+        uname -a
+        echo ""
+
+        echo "----- Set up dynamic variables -----"
+        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        cat $GITHUB_ENV
+        echo ""
+
+        echo "----- Install system dependencies -----"
+        sudo yum install -y \
+          openssl \
+          openssl-devel \
+          bison \
+          flex \
+          readline \
+          readline-devel \
+          clang
+
+        echo "----- Install rust via rustup -----"
+        export RUSTUP_HOME="$HOME/.rustup"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+        cargo --version
+
+    - name: Install cargo-pgx
+      continue-on-error: true # We might have it.
+      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+
+    - name: Run cargo pgx init for PG14
+      run: cargo pgx init --pg14 download
+
+    - name: Run build plrust script
+      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+
   plrust_tests:
     name: tests
     runs-on: ${{ matrix.os }}
