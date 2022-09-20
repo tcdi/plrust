@@ -33,7 +33,8 @@ jobs:
 
         mkdir -p $HOME/artifacts
         cd /home/ec2-user/actions-runner/_work/plrust/plrust
-        fileschecksums=$(cat .**/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+        shopt -s globstar
+        fileschecksums=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
         artifactfilename="plrust-v0-arm64-$fileschecksums.tar.lz4"
 
         #         ~/.cargo/bin/
@@ -42,7 +43,7 @@ jobs:
         #         ~/.cargo/git/db/
         #         target/
 
-        tar cvf - \
+        tar --ignore-failed-read -cvf - \
           $HOME/.cargo/bin \
           $HOME/.cargo/registry/index \
           $HOME/.cargo/registry/cache/ \
