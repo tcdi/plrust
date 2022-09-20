@@ -21,9 +21,17 @@ jobs:
     env:
       RUSTC_WRAPPER: sccache
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
+      CACHE_KEY_VERSION: v0
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Generate cache filename checksum
+      run: |
+        cd /home/ec2-user/actions-runner/_work/plrust/plrust
+        shopt -s globstar
+        checksum=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+        echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
 
     - name: Testing something
       run: |
@@ -32,10 +40,11 @@ jobs:
         source "$HOME/.cargo/env"
 
         mkdir -p $HOME/artifacts
-        cd /home/ec2-user/actions-runner/_work/plrust/plrust
-        shopt -s globstar
-        fileschecksums=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
-        artifactfilename="plrust-v0-arm64-$fileschecksums.tar.lz4"
+        #cd /home/ec2-user/actions-runner/_work/plrust/plrust
+        #shopt -s globstar
+        #fileschecksums=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+
+        artifactfilename="plrust-$CACHE_KEY_VERSION-arm64-$CACHE_KEY_CHECKSUM.tar.lz4"
 
         #         ~/.cargo/bin/
         #         ~/.cargo/registry/index/
