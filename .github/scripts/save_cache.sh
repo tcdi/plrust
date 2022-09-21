@@ -9,7 +9,7 @@
 #
 # Expects the following parameters (in-order):
 #  * $1: the pre-calculated cache key
-#  * $2: array of directories to be cached
+#  * $2: array of full-path directories to be cached
 #
 # Example usage:
 #  . /path/to/plrust/.github/scripts/save_cache.sh
