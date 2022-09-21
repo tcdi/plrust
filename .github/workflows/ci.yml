@@ -71,8 +71,6 @@ jobs:
     - name: Set up (Linux) prerequisites and environment
       run: |
         echo ""
-        echo "Running as user: $(whoami)"
-        echo ""
         echo "----- Print kernel info -----"
         uname -a
         echo ""
@@ -85,7 +83,15 @@ jobs:
         echo ""
 
         echo "----- Install system dependencies -----"
+        sudo amazon-linux-extras enable postgresql14
+        sudo yum clean metadata
+
         sudo yum install -y \
+          libpq \
+          libpq-devel \
+          postgresql \
+          postgresql-server \
+          postgresql-server-devel \
           openssl \
           openssl-devel \
           bison \
@@ -95,7 +101,10 @@ jobs:
           clang
         echo ""
 
+        echo "----- Set postgres permissions -----"
+        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
         echo ""
+
         echo "----- Install sccache -----"
         mkdir -p $HOME/.local/bin
         curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
@@ -198,7 +207,7 @@ jobs:
       run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
     - name: Run cargo pgx init for PG14
-      run: cargo pgx init --pg14 download
+      run: cargo pgx init --pg14 $(which pg_config)
 
     - name: Run build plrust script
       run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
