@@ -501,7 +501,7 @@ mod tests {
             let fixture_lib_rs = parse_quote! {
                 use ::pgx::*;
                 #[pg_extern]
-                fn #symbol_ident(val: &str) -> Option<impl Iterator<Item = Option<String>> + '_> {
+                fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
                     Some(std::iter::repeat(val).take(5))
                 }
             };
