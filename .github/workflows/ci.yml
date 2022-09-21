@@ -34,40 +34,6 @@ jobs:
         checksum=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
         echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
 
-    # - name: Testing something
-    #   run: |
-    #     export RUSTUP_HOME="$HOME/.rustup"
-    #     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    #     source "$HOME/.cargo/env"
-
-    #     mkdir -p $HOME/artifacts
-    #     #cd /home/ec2-user/actions-runner/_work/plrust/plrust
-    #     #shopt -s globstar
-    #     #fileschecksums=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
-
-    #     artifactfilename="plrust-$CACHE_KEY_VERSION-arm64-$CACHE_KEY_CHECKSUM.tar.lz4"
-
-    #     #         ~/.cargo/bin/
-    #     #         ~/.cargo/registry/index/
-    #     #         ~/.cargo/registry/cache/
-    #     #         ~/.cargo/git/db/
-    #     #         target/
-
-    #     tar --ignore-failed-read -cvf - \
-    #       $HOME/.cargo/bin \
-    #       $HOME/.cargo/registry/index \
-    #       $HOME/.cargo/registry/cache/ \
-    #       $HOME/.cargo/git/db \
-    #       | lz4 - $HOME/artifacts/$artifactfilename
-
-    #     echo "Created artifact $HOME/artifacts/$artifactfilename -- uploading now"
-
-    #     aws s3api put-object \
-    #       --profile artifact-user \
-    #       --bucket tcdi-ci-plrust-build-cache.private \
-    #       --key $artifactfilename \
-    #       --body $HOME/artifacts/$artifactfilename
-
     - name: Set up (Linux) prerequisites and environment
       run: |
         echo ""
@@ -147,7 +113,6 @@ jobs:
             $archive_path
 
           echo "Extracting archive"
-
           lz4 -dc --no-sparse $archive_path | tar xvC /
         else
           echo "Cargo cache archive *does not* exist for $cargo_cache_key -- skipping"
@@ -174,24 +139,7 @@ jobs:
             $archive_path
 
           echo "Extracting archive"
-
           lz4 -dc --no-sparse $archive_path | tar xvC /
-
-          # tar --ignore-failed-read -cvf - \
-          #   $HOME/.cache/sccache \
-          #   | lz4 - $archive_path
-
-          # echo "Created archive $archive_path -- uploading now"
-
-          # aws s3api put-object \
-          #   --profile artifact-user \
-          #   --bucket tcdi-ci-plrust-build-cache.private \
-          #   --key $sccache_cache_key \
-          #   --body $archive_path
-
-          # echo "Removing $archive_path"
-
-          # rm $archive_path
         else
           echo "sccache archive *does not* exist for $sccache_cache_key -- skipping"
         fi
