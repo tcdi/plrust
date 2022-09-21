@@ -22,6 +22,7 @@ jobs:
       RUSTC_WRAPPER: sccache
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
       CACHE_KEY_VERSION: v0
+      SCCACHE_CACHE_SIZE: 20G
 
     steps:
     - uses: actions/checkout@v2
@@ -196,6 +197,12 @@ jobs:
       continue-on-error: true # We might have it.
       run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
+    - name: Run cargo pgx init for PG14
+      run: cargo pgx init --pg14 download
+
+    - name: Run build plrust script
+      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+
     - name: Print sccache stats (after build)
       run: sccache --show-stats
 
@@ -264,12 +271,6 @@ jobs:
 
           rm $archive_path
         fi
-
-  #   - name: Run cargo pgx init for PG14
-  #     run: cargo pgx init --pg14 download
-
-  #   - name: Run build plrust script
-  #     run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
   # plrust_tests:
   #   name: tests
