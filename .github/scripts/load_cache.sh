@@ -30,7 +30,7 @@ function loadcache() {
     aws s3api get-object \
       --profile $ARTIFACT_USER_AWS_PROFILE \
       --bucket $AWS_CACHE_BUCKET \
-      --key $cargo_cache_key \
+      --key $cache_key \
       $archive_path
 
     echo "Extracting archive $cache_key"
