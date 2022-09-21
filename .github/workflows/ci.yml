@@ -39,6 +39,7 @@ jobs:
 
     - name: TEMP TEST SCRIPTS
       run: |
+        set -ex
         env
         . $WORK_DIR/.github/scripts/load_cache.sh
         loadcache plrust-arm64-sccache-cache-v0-4aab656e8aad7afa625ed8a21db4f014187f062bcbdf94fb2798e6614f4f5b00.tar.lz4
