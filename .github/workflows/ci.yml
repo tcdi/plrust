@@ -37,213 +37,129 @@ jobs:
         checksum=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
         echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
 
-    - name: TEMP TEST SCRIPTS
+    # - name: TEMP TEST SCRIPTS
+    #   run: |
+    #     . $WORK_DIR/.github/scripts/load_cache.sh
+    #     loadcache plrust-arm64-sccache-cache-v0-4aab656e8aad7afa625ed8a21db4f014187f062bcbdf94fb2798e6614f4f5b00.tar.lz4
+
+    # - name: TEMP TEST SCRIPTS
+    #   run: |
+    #     set -ex
+    #     env
+    #     . $WORK_DIR/.github/scripts/save_cache.sh
+    #     my_dirs=($SCCACHE_DIR $WORK_DIR)
+    #     savecache test-boop.tar.lz4 "${my_dirs[@]}"
+
+    - name: Set up (Linux) prerequisites and environment
+      run: |
+        echo ""
+        echo "----- Print kernel info -----"
+        uname -a
+        echo ""
+
+        echo "----- Set up dynamic variables -----"
+        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        cat $GITHUB_ENV
+        echo ""
+
+        echo "----- Install system dependencies -----"
+        sudo amazon-linux-extras enable postgresql14
+        sudo yum clean metadata
+
+        sudo yum install -y \
+          libpq \
+          libpq-devel \
+          postgresql \
+          postgresql-server \
+          postgresql-server-devel \
+          openssl \
+          openssl-devel \
+          bison \
+          flex \
+          readline \
+          readline-devel \
+          clang
+        echo ""
+
+        echo "----- Set postgres permissions -----"
+        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+        echo ""
+
+        echo "----- Install sccache -----"
+        mkdir -p $HOME/.local/bin
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
+        mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
+        chmod +x $HOME/.local/bin/sccache
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.local/bin:$PATH"
+        echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
+        mkdir -p $HOME/.cache/sccache
+        echo ""
+
+        echo "----- Create artifacts directory -----"
+        mkdir -p $HOME/artifacts
+        echo ""
+
+        echo "----- Install rust via rustup -----"
+        export RUSTUP_HOME="$HOME/.rustup"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+        cargo --version
+
+    - name: Load Cargo cache if available
       run: |
         . $WORK_DIR/.github/scripts/load_cache.sh
-        loadcache plrust-arm64-sccache-cache-v0-4aab656e8aad7afa625ed8a21db4f014187f062bcbdf94fb2798e6614f4f5b00.tar.lz4
+        cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $cargo_cache_key
 
-    - name: TEMP TEST SCRIPTS
+    - name: Load sccache cache if available
       run: |
-        set -ex
-        env
+        . $WORK_DIR/.github/scripts/load_cache.sh
+        sccache_cache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $cargo_cache_key
+
+    - name: Start sccache server
+      run: sccache --start-server
+
+    - name: Print sccache stats (before build)
+      run: sccache --show-stats
+
+    - name: Install cargo-pgx
+      continue-on-error: true # We might have it.
+      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+
+    - name: Run cargo pgx init for PG14
+      run: cargo pgx init --pg14 $(which pg_config)
+
+    - name: Run build plrust script
+      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+
+    - name: Print sccache stats (after build)
+      run: sccache --show-stats
+
+    - name: Stop sccache server
+      run: sccache --stop-server || true
+
+    - name: Store Cargo cache if applicable
+      run: |
         . $WORK_DIR/.github/scripts/save_cache.sh
-        my_dirs=($SCCACHE_DIR $WORK_DIR)
-        savecache test-boop.tar.lz4 "${my_dirs[@]}"
+        cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        cargo_dirs=( \
+            $HOME/.cargo/bin \
+            $HOME/.cargo/registry/index \
+            $HOME/.cargo/registry/cache/ \
+            $HOME/.cargo/git/db \
+        )
+        savecache $cargo_cache_key "${cargo_dirs[@]}"
 
-    # - name: Set up (Linux) prerequisites and environment
-    #   run: |
-    #     echo ""
-    #     echo "----- Print kernel info -----"
-    #     uname -a
-    #     echo ""
-
-    #     echo "----- Set up dynamic variables -----"
-    #     echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-    #     echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
-    #     echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
-    #     cat $GITHUB_ENV
-    #     echo ""
-
-    #     echo "----- Install system dependencies -----"
-    #     sudo amazon-linux-extras enable postgresql14
-    #     sudo yum clean metadata
-
-    #     sudo yum install -y \
-    #       libpq \
-    #       libpq-devel \
-    #       postgresql \
-    #       postgresql-server \
-    #       postgresql-server-devel \
-    #       openssl \
-    #       openssl-devel \
-    #       bison \
-    #       flex \
-    #       readline \
-    #       readline-devel \
-    #       clang
-    #     echo ""
-
-    #     echo "----- Set postgres permissions -----"
-    #     sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-    #     echo ""
-
-    #     echo "----- Install sccache -----"
-    #     mkdir -p $HOME/.local/bin
-    #     curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
-    #     mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
-    #     chmod +x $HOME/.local/bin/sccache
-    #     echo "$HOME/.local/bin" >> $GITHUB_PATH
-    #     export PATH="$HOME/.local/bin:$PATH"
-    #     echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
-    #     mkdir -p $HOME/.cache/sccache
-    #     echo ""
-
-    #     echo "----- Create artifacts directory -----"
-    #     mkdir -p $HOME/artifacts
-    #     echo ""
-
-    #     echo "----- Install rust via rustup -----"
-    #     export RUSTUP_HOME="$HOME/.rustup"
-    #     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    #     source "$HOME/.cargo/env"
-    #     cargo --version
-
-    # - name: Load Cargo cache if available
-    #   run: |
-    #     cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-
-    #     echo "Checking to see if cache archive exists: $cargo_cache_key"
-
-    #     if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $cargo_cache_key &> /dev/null; then
-    #       echo "Cargo cache archive exists for $cargo_cache_key"
-    #       echo "Extracting now."
-
-    #       archive_path=$HOME/artifacts/$cargo_cache_key
-
-    #       echo "Downloadng archive and storing to $archive_path"
-
-    #       aws s3api get-object \
-    #         --profile artifact-user \
-    #         --bucket tcdi-ci-plrust-build-cache.private \
-    #         --key $cargo_cache_key \
-    #         $archive_path
-
-    #       echo "Extracting archive"
-    #       lz4 -dc --no-sparse $archive_path | tar xvC /
-    #     else
-    #       echo "Cargo cache archive *does not* exist for $cargo_cache_key -- skipping"
-    #     fi
-
-    # - name: Load sccache cache if available
-    #   run: |
-    #     sccache_cache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-
-    #     echo "Checking to see if cache archive exists: $sccache_cache_key"
-
-    #     if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $sccache_cache_key &> /dev/null; then
-    #       echo "sccache archive exists for $sccache_cache_key"
-    #       echo "Extracting now."
-
-    #       archive_path=$HOME/artifacts/$sccache_cache_key
-
-    #       echo "Downloadng archive and storing to $archive_path"
-
-    #       aws s3api get-object \
-    #         --profile artifact-user \
-    #         --bucket tcdi-ci-plrust-build-cache.private \
-    #         --key $sccache_cache_key \
-    #         $archive_path
-
-    #       echo "Extracting archive"
-    #       lz4 -dc --no-sparse $archive_path | tar xvC /
-    #     else
-    #       echo "sccache archive *does not* exist for $sccache_cache_key -- skipping"
-    #     fi
-
-    # - name: Start sccache server
-    #   run: sccache --start-server
-
-    # - name: Print sccache stats (before build)
-    #   run: sccache --show-stats
-
-    # - name: Install cargo-pgx
-    #   continue-on-error: true # We might have it.
-    #   run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
-
-    # - name: Run cargo pgx init for PG14
-    #   run: cargo pgx init --pg14 $(which pg_config)
-
-    # - name: Run build plrust script
-    #   run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
-
-    # - name: Print sccache stats (after build)
-    #   run: sccache --show-stats
-
-    # - name: Stop sccache server
-    #   run: sccache --stop-server || true
-
-    # - name: Store Cargo cache if applicable
-    #   run: |
-    #     cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-
-    #     echo "Checking to see if cache archive exists: $cargo_cache_key"
-
-    #     if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $cargo_cache_key &> /dev/null; then
-    #       echo "Cargo cache archive exists for $cargo_cache_key -- skipping archive creation."
-    #     else
-    #       echo "Cargo cache archive *does not* exist for $cargo_cache_key -- creating archive now"
-
-    #       archive_path=$HOME/artifacts/$cargo_cache_key
-
-    #       tar --ignore-failed-read -cvf - \
-    #         $HOME/.cargo/bin \
-    #         $HOME/.cargo/registry/index \
-    #         $HOME/.cargo/registry/cache/ \
-    #         $HOME/.cargo/git/db \
-    #         | lz4 - $archive_path
-
-    #       echo "Created archive $archive_path -- uploading now"
-
-    #       aws s3api put-object \
-    #         --profile artifact-user \
-    #         --bucket tcdi-ci-plrust-build-cache.private \
-    #         --key $cargo_cache_key \
-    #         --body $archive_path
-
-    #       echo "Removing $archive_path"
-
-    #       rm $archive_path
-    #     fi
-
-    # - name: Store sccache if applicable
-    #   run: |
-    #     sccache_cache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-
-    #     echo "Checking to see if cache archive exists: $sccache_cache_key"
-
-    #     if aws s3api head-object --profile artifact-user --bucket tcdi-ci-plrust-build-cache.private --key $sccache_cache_key &> /dev/null; then
-    #       echo "sccache cache archive exists for $sccache_cache_key -- skipping archive creation."
-    #     else
-    #       echo "sccache cache archive *does not* exist for $sccache_cache_key -- creating archive now"
-
-    #       archive_path=$HOME/artifacts/$sccache_cache_key
-
-    #       tar --ignore-failed-read -cvf - \
-    #         $HOME/.cache/sccache \
-    #         | lz4 - $archive_path
-
-    #       echo "Created archive $archive_path -- uploading now"
-
-    #       aws s3api put-object \
-    #         --profile artifact-user \
-    #         --bucket tcdi-ci-plrust-build-cache.private \
-    #         --key $sccache_cache_key \
-    #         --body $archive_path
-
-    #       echo "Removing $archive_path"
-
-    #       rm $archive_path
-    #     fi
+    - name: Store sccache if applicable
+      run: |
+        . $WORK_DIR/.github/scripts/save_cache.sh
+        sccache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        sccache_dirs=($HOME/.cache/sccache)
+        savecache $sccache_key "${sccache_dirs[@]}"
 
   # plrust_tests:
   #   name: tests
