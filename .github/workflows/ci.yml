@@ -117,8 +117,8 @@ jobs:
     - name: Load sccache cache if available
       run: |
         . $WORK_DIR/.github/scripts/load_cache.sh
-        sccache_cache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-        loadcache $cargo_cache_key
+        sccache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $sccache_key
 
     - name: Start sccache server
       run: sccache --start-server
