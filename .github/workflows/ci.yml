@@ -194,11 +194,13 @@ jobs:
 
     - name: Install cargo-pgx
       continue-on-error: true # We might have it.
-      run: cargo install cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
-      #run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
+      run: cargo install --force cargo-pgx --git "https://github.com/tcdi/pgx.git" --branch "develop" --locked
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
+
+    - name: Stop sccache server
+      run: sccache --stop-server || true
 
     - name: Store Cargo cache if applicable
       run: |
