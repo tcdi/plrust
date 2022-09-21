@@ -26,6 +26,7 @@ force_enable_x86_64_darwin_generations = []
 target_postgrestd = []
 
 [dependencies]
+current_platform = "0.2.0"
 cfg-if = "1"
 pgx = { version = "0.5.0-beta.0" }
 pgx-pg-config = { version = "0.5.0-beta.0" }
