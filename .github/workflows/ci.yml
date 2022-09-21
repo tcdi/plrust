@@ -19,7 +19,7 @@ jobs:
     runs-on: [self-hosted, linux, ARM64, plrust]
 
     env:
-      RUSTC_WRAPPER: sccache
+      # RUSTC_WRAPPER: sccache
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
       CACHE_KEY_VERSION: v0
       SCCACHE_CACHE_SIZE: 20G
