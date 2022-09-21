@@ -973,7 +973,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -988,6 +988,7 @@ dependencies = [
  "pgx-utils",
  "quote",
  "seahash",
+ "seq-macro",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -1001,7 +1002,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1013,7 +1014,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
 dependencies = [
  "dirs",
  "eyre",
@@ -1029,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1053,7 +1054,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
 dependencies = [
  "eyre",
  "libc",
@@ -1075,16 +1076,18 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#eb33247cdb84b5c4f74248dd134c226c90b12d35"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
 dependencies = [
  "atty",
  "convert_case",
+ "cstr_core",
  "eyre",
  "owo-colors",
  "petgraph",
  "proc-macro2",
  "quote",
  "regex",
+ "seq-macro",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1530,6 +1533,12 @@ checksum = "00b0bef5b7f9e0df16536d3961cfb6e84331c065b4066afb39768d0e319411f7"
 dependencies = [
  "pest",
 ]
+
+[[package]]
+name = "seq-macro"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0772c5c30e1a0d91f6834f8e545c69281c099dfa9a3ac58d96a9fd629c8d4898"
 
 [[package]]
 name = "serde"
