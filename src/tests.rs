@@ -168,7 +168,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Some(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))
+                Some(::pgx::iter::SetOfIterator::new(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!"))))
             $$;
         "#;
         Spi::run(definition);
@@ -346,7 +346,7 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     fn plrust_one_sleepy_boi() {
-        use std::{time::Duration, thread::sleep};
+        use std::{thread::sleep, time::Duration};
         let moment = Duration::from_secs(2);
         sleep(moment);
 

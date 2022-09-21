@@ -58,7 +58,7 @@ impl CrateVariant {
         let return_type: syn::Type = {
             let bare = oid_to_syn_type(&return_oid, true)?;
             match return_set {
-                true => syn::parse2(quote! { Option<impl Iterator<Item=Option<#bare>> + '_> })
+                true => syn::parse2(quote! { Option<::pgx::iter::SetOfIterator<Option<#bare>>> })
                     .wrap_err("Wrapping return type")?,
                 false => syn::parse2(quote! { Option<#bare> }).wrap_err("Wrapping return type")?,
             }

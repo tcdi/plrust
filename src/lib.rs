@@ -24,6 +24,7 @@ mod user_crate;
 pub mod tests;
 
 use error::PlRustError;
+use pgx::iter::TableIterator;
 use pgx::*;
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -142,17 +143,20 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 #[tracing::instrument(level = "debug")]
 fn recompile_function(
     fn_oid: pg_sys::Oid,
-) -> (
-    name!(library_path, Option<String>),
-    name!(stdout, Option<String>),
-    name!(stderr, Option<String>),
-    name!(plrust_error, Option<String>),
-) {
+) -> TableIterator<
+    'static,
+    (
+        name!(library_path, Option<String>),
+        name!(stdout, Option<String>),
+        name!(stderr, Option<String>),
+        name!(plrust_error, Option<String>),
+    ),
+> {
     unsafe {
         plrust::unload_function(fn_oid);
     }
     match plrust::compile_function(fn_oid) {
-        Ok((work_dir, output)) => (
+        Ok((work_dir, output)) => TableIterator::once((
             Some(work_dir.display().to_string()),
             Some(
                 String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8"),
@@ -161,8 +165,8 @@ fn recompile_function(
                 String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not  UTF-8"),
             ),
             None,
-        ),
-        Err(err) => (None, None, None, Some(format!("{:?}", err))),
+        )),
+        Err(err) => TableIterator::once((None, None, None, Some(format!("{:?}", err)))),
     }
 }
 
