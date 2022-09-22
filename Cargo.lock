@@ -973,7 +973,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
+source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1002,7 +1002,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
+source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1014,7 +1014,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
+source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
 dependencies = [
  "dirs",
  "eyre",
@@ -1030,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
+source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1054,7 +1054,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
+source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
 dependencies = [
  "eyre",
  "libc",
@@ -1076,7 +1076,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#3894728ab8ed732a3087a72363f32ebe0ddd7c8b"
+source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
 dependencies = [
  "atty",
  "convert_case",
