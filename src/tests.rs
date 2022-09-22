@@ -107,6 +107,7 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
+                use pgx::IntoDatum;
                 let id = Spi::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
                     vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
