@@ -76,6 +76,9 @@ cargo pgx init --pg14 download
 Then, add some configuration to the `postgresql.conf` and ensure there is a
 writable `work_dir`:
 
+<!-- If `cargo expand` (a very useful tool for debugging pgx-macros) is used to the plrust crate,
+    it embeds the README.md in a block doc comment: /** */. To preserve correct Rust highlighting,
+    balance the upcoming bash glob with a comment-open: /* -->
 ```bash
 PG_CONFIG=$(find ~/.pgx/14.*/pgx-install/bin/pg_config)
 SCRATCH_DIR=/home/${USER}/git/zombodb/plrust/scratch
