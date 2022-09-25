@@ -12,7 +12,7 @@ use crate::{
     user_crate::{StateLoaded, UserCrate},
 };
 
-use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, *};
+use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
 use std::{
     cell::RefCell,
     collections::{hash_map::Entry, HashMap},

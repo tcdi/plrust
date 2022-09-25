@@ -1,7 +1,7 @@
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
-    use pgx::*;
+    use pgx::{datum::IntoDatum, prelude::*};
 
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
