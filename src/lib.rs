@@ -6,6 +6,7 @@ All rights reserved.
 
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
+
 #![doc = include_str!("../README.md")]
 
 #[deny(unsafe_op_in_unsafe_fn)]
@@ -19,13 +20,14 @@ mod generation;
 mod gucs;
 #[deny(unsafe_op_in_unsafe_fn)]
 mod logging;
+#[deny(unsafe_op_in_unsafe_fn)]
 mod plrust;
 
-#[allow(unsafe_op_in_unsafe_fn)]
+#[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
 #[cfg(any(test, feature = "pg_test"))]
-#[allow(unsafe_op_in_unsafe_fn)]
+#[allow(unsafe_op_in_unsafe_fn)] // waiting on a PGX fix
 pub mod tests;
 
 use error::PlRustError;
@@ -156,7 +158,6 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 
 #[pg_extern]
 #[tracing::instrument(level = "debug")]
-#[deny(unsafe_op_in_unsafe_fn)]
 fn recompile_function(
     fn_oid: pg_sys::Oid,
 ) -> TableIterator<
