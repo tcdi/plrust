@@ -2,7 +2,7 @@
 name = "plrust"
 version = "0.0.0"
 authors = ["ZomboDB, LLC <zombodb@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "PostgreSQL Open Source License"
 description = "A Rust procedural language for PostgreSQL"
 homepage = "https://github.com/zombodb/plrust/"
