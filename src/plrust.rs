@@ -42,13 +42,16 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 }
 
 #[tracing::instrument(level = "debug")]
+#[deny(unsafe_op_in_unsafe_fn)]
 pub(crate) unsafe fn evaluate_function(
     fn_oid: pg_sys::Oid,
     fcinfo: FunctionCallInfo,
 ) -> eyre::Result<pg_sys::Datum> {
     LOADED_SYMBOLS.with(|loaded_symbols| {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
-        let db_oid = MyDatabaseId;
+        // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
+        // then writes it only during initialization, so we should not be racing anyone.
+        let db_oid = unsafe { MyDatabaseId };
         let user_crate_loaded = match loaded_symbols_handle.entry(fn_oid) {
             entry @ Entry::Occupied(_) => {
                 entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
@@ -71,7 +74,7 @@ pub(crate) unsafe fn evaluate_function(
 
                 let shared_library = gucs::work_dir().join(&shared_object_name);
                 let user_crate_built = UserCrate::built(db_oid, fn_oid, shared_library);
-                let user_crate_loaded = user_crate_built.load()?;
+                let user_crate_loaded = unsafe { user_crate_built.load()? };
 
                 entry.or_insert(user_crate_loaded)
             }
@@ -83,7 +86,7 @@ pub(crate) unsafe fn evaluate_function(
             user_crate_loaded.shared_object().display()
         );
 
-        Ok(user_crate_loaded.evaluate(fcinfo))
+        Ok(unsafe { user_crate_loaded.evaluate(fcinfo) })
     })
 }
 
