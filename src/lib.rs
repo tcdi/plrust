@@ -9,18 +9,25 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 #![doc = include_str!("../README.md")]
 
+#[deny(unsafe_op_in_unsafe_fn)]
 mod error;
 #[cfg(any(
     all(target_os = "macos", target_arch = "x86_64"),
     feature = "force_enable_x86_64_darwin_generations"
 ))]
 mod generation;
+#[deny(unsafe_op_in_unsafe_fn)]
 mod gucs;
+#[deny(unsafe_op_in_unsafe_fn)]
 mod logging;
+#[deny(unsafe_op_in_unsafe_fn)]
 mod plrust;
+
+#[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
 #[cfg(any(test, feature = "pg_test"))]
+#[allow(unsafe_op_in_unsafe_fn)] // waiting on a PGX fix
 pub mod tests;
 
 use error::PlRustError;
@@ -73,22 +80,26 @@ CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
 #[tracing::instrument(level = "debug")]
+#[deny(unsafe_op_in_unsafe_fn)]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     unsafe fn plrust_call_handler_inner(
         fcinfo: pg_sys::FunctionCallInfo,
     ) -> eyre::Result<pg_sys::Datum> {
-        let fn_oid = fcinfo
-            .as_ref()
-            .ok_or(PlRustError::NullFunctionCallInfo)?
-            .flinfo
-            .as_ref()
-            .ok_or(PlRustError::NullFmgrInfo)?
-            .fn_oid;
-        let retval = plrust::evaluate_function(fn_oid, fcinfo)?;
+        let fn_oid = unsafe {
+            fcinfo
+                .as_ref()
+                .ok_or(PlRustError::NullFunctionCallInfo)?
+                .flinfo
+                .as_ref()
+        }
+        .ok_or(PlRustError::NullFmgrInfo)?
+        .fn_oid;
+        let retval = unsafe { plrust::evaluate_function(fn_oid, fcinfo)? };
         Ok(retval)
     }
 
-    match plrust_call_handler_inner(fcinfo) {
+    // SAFETY: This is more of a "don't call us, we'll call you" situation.
+    match unsafe { plrust_call_handler_inner(fcinfo) } {
         Ok(datum) => datum,
         // Panic into the pgx guard.
         Err(err) => panic!("{:?}", err),
@@ -97,27 +108,33 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
 
 #[pg_extern]
 #[tracing::instrument(level = "debug")]
+// Don't call this!
+#[deny(unsafe_op_in_unsafe_fn)]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     unsafe fn plrust_validator_inner(
         fn_oid: pg_sys::Oid,
         fcinfo: pg_sys::FunctionCallInfo,
     ) -> eyre::Result<()> {
-        let fcinfo = PgBox::from_pg(fcinfo);
-        let flinfo = PgBox::from_pg(fcinfo.flinfo);
-        if !pg_sys::CheckFunctionValidatorAccess(
-            flinfo.fn_oid,
-            pg_getarg(fcinfo.as_ptr(), 0).unwrap(),
-        ) {
+        let fcinfo = unsafe { PgBox::from_pg(fcinfo) };
+        let flinfo = unsafe { PgBox::from_pg(fcinfo.flinfo) };
+        // We were called by Postgres hopefully
+        if unsafe {
+            !pg_sys::CheckFunctionValidatorAccess(
+                flinfo.fn_oid,
+                pg_getarg(fcinfo.as_ptr(), 0).unwrap(),
+            )
+        } {
             return Err(PlRustError::CheckFunctionValidatorAccess)?;
         }
 
-        plrust::unload_function(fn_oid);
+        unsafe { plrust::unload_function(fn_oid) };
         // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
         // compile the function when it's created to avoid locking during function execution
         let (_, output) = plrust::compile_function(fn_oid)?;
 
         // however, we'll use it to decide if we should go ahead and dynamically load our function
-        if pg_sys::check_function_bodies {
+        // SAFETY: This should always be set by Postgres.
+        if unsafe { pg_sys::check_function_bodies } {
             // it's on, so lets go ahead and load our function
             // plrust::lookup_function(fn_oid);
         }
@@ -132,7 +149,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         Ok(())
     }
 
-    match plrust_validator_inner(fn_oid, fcinfo) {
+    match unsafe { plrust_validator_inner(fn_oid, fcinfo) } {
         Ok(()) => (),
         // Panic into the pgx guard.
         Err(err) => panic!("{:?}", err),
