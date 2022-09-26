@@ -31,12 +31,11 @@ mod user_crate;
 pub mod tests;
 
 use error::PlRustError;
-use pgx::iter::TableIterator;
-use pgx::*;
+use pgx::{prelude::*, pg_getarg};
 
 #[cfg(any(test, feature = "pg_test"))]
 pub use tests::pg_test;
-pg_module_magic!();
+pgx::pg_module_magic!();
 
 #[pg_guard]
 fn _PG_init() {

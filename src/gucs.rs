@@ -7,7 +7,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use pgx::*;
+use pgx::guc::{GucContext, GucRegistry, GucSetting};
 use std::path::PathBuf;
 use std::str::FromStr;
 
