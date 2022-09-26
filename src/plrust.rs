@@ -21,6 +21,8 @@ use std::{
     process::Output,
 };
 
+use current_platform::CURRENT_PLATFORM;
+
 thread_local! {
     pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> = Default::default();
 }
@@ -109,7 +111,15 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
 }
 
 pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
-    let crate_name = format!("plrust_fn_oid_{}_{}", db_oid, fn_oid);
+    // Include current_platform in the name
+    // There's no guarantee that the compiled library will be
+    // in the same architecture if the database was restored
+    let crate_name = format!(
+        "plrust_fn_oid_{}_{}_{}",
+        db_oid,
+        fn_oid,
+        CURRENT_PLATFORM.replace("-", "_")
+    );
 
     crate_name
 }
