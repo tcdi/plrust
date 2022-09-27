@@ -418,6 +418,39 @@ mod tests {
         "#;
         Spi::run(definition);
     }
+
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    #[ignore]
+    fn plrust_block_unsafe_plutonium() {
+        // TODO: PL/Rust should defeat the latest in cutting-edge `unsafe` obfuscation tech
+        let definition = r#"
+            CREATE FUNCTION super_safe()
+            RETURNS text AS
+            $$
+                [dependencies]
+                plutonium = "*"
+
+                [code]
+                use std::{os::raw as ffi, str, ffi::CStr};
+                use plutonium::safe;
+
+                #[safe]
+                fn super_safe() -> Option<String> {
+                    let int: u32 = 0xDEADBEEF;
+                    let ptr = int as *mut u64;
+                    ptr.write(0x00_1BADC0DE_00);
+                    let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
+                    str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned())
+                }
+
+                super_safe()
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
