@@ -222,6 +222,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
+name = "cargo-geiger-serde"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63fcf425f40a413b6b1052486b48ce4cc7cfa407a335790ba2992a2571cf2a17"
+dependencies = [
+ "semver 1.0.10",
+ "serde",
+ "url",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -398,6 +409,12 @@ name = "cty"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
+name = "current_platform"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a74858bcfe44b22016cb49337d7b6f04618c58e5dbfdef61b06b8c434324a0bc"
 
 [[package]]
 name = "digest"
@@ -603,6 +620,17 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "geiger"
+version = "0.4.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe24f2b38bd325f6030942529c5e2c788511ce908b9d459000a0eb3d93960b4d"
+dependencies = [
+ "cargo-geiger-serde",
+ "proc-macro2",
+ "syn",
 ]
 
 [[package]]
@@ -973,7 +1001,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#ba28e5e2940257e4b15ed91434e52a50b40d4d91"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1002,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#ba28e5e2940257e4b15ed91434e52a50b40d4d91"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1014,7 +1042,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#ba28e5e2940257e4b15ed91434e52a50b40d4d91"
 dependencies = [
  "dirs",
  "eyre",
@@ -1030,7 +1058,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#ba28e5e2940257e4b15ed91434e52a50b40d4d91"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1054,7 +1082,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#ba28e5e2940257e4b15ed91434e52a50b40d4d91"
 dependencies = [
  "eyre",
  "libc",
@@ -1076,7 +1104,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
-source = "git+https://github.com/tcdi/pgx?branch=develop#b48c8db02f1f93ec7d663c9921c5e408586f9de0"
+source = "git+https://github.com/tcdi/pgx?branch=develop#ba28e5e2940257e4b15ed91434e52a50b40d4d91"
 dependencies = [
  "atty",
  "convert_case",
@@ -1149,7 +1177,9 @@ version = "0.0.0"
 dependencies = [
  "cfg-if",
  "color-eyre",
+ "current_platform",
  "eyre",
+ "geiger",
  "libloading",
  "once_cell",
  "pgx",
@@ -1518,6 +1548,9 @@ name = "semver"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a41d061efea015927ac527063765e73601444cdc344ba855bc7bd44578b25e1c"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "semver-parser"
@@ -1973,6 +2006,7 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

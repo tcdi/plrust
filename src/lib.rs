@@ -31,7 +31,7 @@ mod user_crate;
 pub mod tests;
 
 use error::PlRustError;
-use pgx::{prelude::*, pg_getarg};
+use pgx::{pg_getarg, prelude::*};
 
 #[cfg(any(test, feature = "pg_test"))]
 pub use tests::pg_test;
