@@ -137,6 +137,7 @@ impl StateGenerated {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File = syn::parse_quote!(
+            #![deny(unsafe_op_in_unsafe_fn)]
             use pgx::prelude::*;
         );
 
@@ -385,6 +386,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
                 use pgx::prelude::*;
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
@@ -442,6 +444,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
                 use pgx::prelude::*;
                 #[pg_extern]
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
@@ -499,6 +502,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
                 use pgx::prelude::*;
                 #[pg_extern]
                 fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
@@ -547,6 +551,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
                 use pgx::prelude::*;
                 #[pg_trigger]
                 fn #symbol_ident(

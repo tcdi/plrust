@@ -12,6 +12,7 @@ pub(crate) use state_loaded::StateLoaded;
 pub(crate) use state_provisioned::StateProvisioned;
 
 use crate::PlRustError;
+use geiger;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -180,7 +181,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         Deps,
     }
     let mut deps_block = String::new();
-    let mut code_block = String::new();
+    let mut code_block = String::from("{ ");
     let mut parse = Parse::Code;
 
     for line in code_and_deps.trim().split_inclusive('\n') {
@@ -194,11 +195,19 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         }
     }
 
+    code_block.push_str(" }");
+
+    let fake_fn = format!("fn plrust_fn() {code_block}");
+    let unsafe_metrics = geiger::find_unsafe_in_string(&fake_fn, geiger::IncludeTests::No).unwrap();
+    if unsafe_metrics.counters.has_unsafe() {
+        panic!("detected unsafe code in this code block:\n{}", code_block);
+    }
+
     let user_dependencies: toml::value::Table =
         toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
 
     let user_code: syn::Block =
-        syn::parse_str(&format!("{{ {code_block} }}")).map_err(PlRustError::ParsingCodeBlock)?;
+        syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
 
     Ok((user_code, user_dependencies))
 }
@@ -254,6 +263,7 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
                 use pgx::prelude::*;
                 #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {

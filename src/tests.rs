@@ -373,6 +373,51 @@ mod tests {
         sleep(moment);
         assert_eq!(retval, Some("zzz".into()));
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_block_unsafe_annotated() {
+        // PL/Rust should block creating obvious, correctly-annotated usage of unsafe code
+        let definition = r#"
+            CREATE FUNCTION naughty()
+            RETURNS text AS
+            $$
+                use std::{os::raw as ffi, str, ffi::CStr};
+                let int = 0xDEADBEEF;
+                // Note that it is always safe to create a pointer.
+                let ptr = int as *mut u64;
+                // What is unsafe is dereferencing it
+                let cstr = unsafe {
+                    ptr.write(0x00_1BADC0DE_00);
+                    CStr::from_ptr(ptr.cast::<ffi::c_char>())
+                };
+                str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned())
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_block_unsafe_hidden() {
+        // PL/Rust should not allow hidden injection of unsafe code
+        // that may rely on the way PGX expands into `unsafe fn` to "sneak in"
+        let definition = r#"
+            CREATE FUNCTION naughty()
+            RETURNS text AS
+            $$
+                use std::{os::raw as ffi, str, ffi::CStr};
+                let int = 0xDEADBEEF;
+                let ptr = int as *mut u64;
+                ptr.write(0x00_1BADC0DE_00);
+                let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
+                str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned())
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
