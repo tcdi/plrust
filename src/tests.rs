@@ -451,6 +451,29 @@ mod tests {
         "#;
         Spi::run(definition);
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_pgloglevel_dont_allcaps_panic() {
+        // This test attempts to annihilate the database.
+        // It relies on the existing assumption that tests are run in the same Postgres instance,
+        // so this test will make all tests "flaky" if Postgres suddenly goes down with it.
+        let definition = r#"
+            CREATE FUNCTION dont_allcaps_panic()
+            RETURNS text AS
+            $$
+                use pgx::log::{PgLogLevel, elog};
+
+                elog(PgLogLevel::PANIC, "If other tests completed, PL/Rust did not actually destroy the entire database, \
+                                         But if you see this in the error output, something might be wrong.");
+                Some("lol".into())
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let retval = Spi::get_one::<String>("SELECT dont_allcaps_panic();\n");
+        assert_eq!(retval, Some("lol".into()));
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
