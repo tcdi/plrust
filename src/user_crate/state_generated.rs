@@ -60,7 +60,7 @@ impl StateGenerated {
             pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
             &mut is_null,
         );
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null, pg_sys::OIDOID);
+        let lang_oid = pg_sys::Oid::from_polymorphic_datum(lang_datum, is_null, pg_sys::OIDOID);
         let plrust =
             std::ffi::CString::new("plrust").expect("Expected `\"plrust\"` to be a valid CString");
         if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
@@ -74,7 +74,7 @@ impl StateGenerated {
             &mut is_null,
         );
         let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
+            &String::from_polymorphic_datum(prosrc_datum, is_null, pg_sys::TEXTOID)
                 .ok_or(PlRustError::NullSourceCode)?,
         )?;
 
@@ -93,8 +93,11 @@ impl StateGenerated {
                     pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
                     &mut is_null,
                 );
-                let argnames =
-                    Vec::<Option<_>>::from_datum(argnames_datum, is_null, pg_sys::TEXTARRAYOID);
+                let argnames = Vec::<Option<_>>::from_polymorphic_datum(
+                    argnames_datum,
+                    is_null,
+                    pg_sys::TEXTARRAYOID,
+                );
 
                 let argtypes_datum = pg_sys::SysCacheGetAttr(
                     pg_sys::SysCacheIdentifier_PROCOID as i32,
@@ -103,7 +106,8 @@ impl StateGenerated {
                     &mut is_null,
                 );
                 let argtypes =
-                    Vec::<_>::from_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID).unwrap();
+                    Vec::<_>::from_polymorphic_datum(argtypes_datum, is_null, pg_sys::OIDARRAYOID)
+                        .unwrap();
 
                 let mut argument_oids_and_names = Vec::new();
                 for i in 0..proc_entry.pronargs as usize {
@@ -231,7 +235,7 @@ impl StateGenerated {
                     crate-type = ["cdylib"]
 
                     [dependencies]
-                    pgx = { version = "0.5.0-beta.1", features = ["plrust"] }
+                    pgx = { version = "0.5.2", features = ["plrust"] }
                     pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                     /* User deps added here */
 
