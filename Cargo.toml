@@ -62,3 +62,8 @@ panic = "unwind"
 opt-level = 3
 lto = "fat"
 codegen-units = 1
+
+[patch.crates-io]
+pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx-pg-config = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "develop" }
