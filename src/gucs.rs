@@ -91,3 +91,29 @@ pub(crate) fn tracing_level() -> tracing::Level {
         .map(|v| v.parse().expect("plrust.tracing_level was invalid"))
         .unwrap_or(tracing::Level::INFO)
 }
+
+pub(crate) fn allow_listed_dependencies_only() -> bool {
+    let val = PLRUST_ALLOWED_DEPENDENCIES.get();
+
+    if val.is_none() {
+        return false;
+    }
+
+    true
+}
+
+pub(crate) fn get_allow_listed_dependencies() -> toml::value::Table {
+    let path = PathBuf::from_str(
+        &PLRUST_ALLOWED_DEPENDENCIES
+            .get()
+            .expect("plrust.allowed_dependencies is not set in postgresql.conf"),
+    )
+    .expect("plrust.allowed_dependencies is not a valid path");
+
+    let contents = std::fs::read_to_string(&path).expect(
+        "
+        Unable to read allow listed dependencies",
+    );
+
+    toml::from_str(&contents).expect("Unable to format allow listed dependencies")
+}

@@ -232,6 +232,10 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
 
     validate_dependences_are_allowed(&user_dependencies)?;
 
+    if crate::gucs::allow_listed_dependencies_only() {
+        validate_dependences_are_allowed(&user_dependencies);
+    }
+
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
 
