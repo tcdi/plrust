@@ -210,10 +210,37 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     let user_dependencies: toml::value::Table =
         toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
 
+    if crate::gucs::allow_listed_dependencies_only() {
+        validate_dependences_are_allowed(&user_dependencies);
+    }
+
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
 
     Ok((user_code, user_dependencies))
+}
+
+#[tracing::instrument(level = "debug", skip_all)]
+fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) {
+    let allowed_deps = crate::gucs::get_allow_listed_dependencies();
+    let mut unsupported_deps = std::collections::HashMap::<String, toml::value::Value>::new();
+
+    for (dep, version) in user_dependencies {
+        // TODO: should move this to a match block toml::Value::Array and everything else
+        if allowed_deps.contains_key(dep) && allowed_deps.get(dep).unwrap() == version {
+            // Dependency and version specified is supported
+        } else {
+            unsupported_deps.insert(dep.to_string(), version.clone());
+        };
+    }
+
+    if !unsupported_deps.is_empty() {
+        pgx::error!(
+            "The following dependencies are unsupported {:?}, environment only supports {:?}",
+            unsupported_deps,
+            allowed_deps
+        );
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
