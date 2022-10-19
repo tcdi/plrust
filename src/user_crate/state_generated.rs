@@ -228,7 +228,7 @@ impl StateGenerated {
                     crate-type = ["cdylib"]
 
                     [dependencies]
-                    pgx = { version = "0.5.2", features = ["plrust"] }
+                    pgx = { version = "0.5.2", features = ["plrust"], git = "https://github.com/tcdi/pgx", branch = "develop" }
                     pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                     /* User deps added here */
 
@@ -240,8 +240,8 @@ impl StateGenerated {
                     panic = "unwind"
 
                     [patch.crates-io]
-                    pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
                     pgx-pg-config = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+                    pgx-pg-sys = { git = "https://github.com/tcdi/pgx", branch = "develop" }
                     pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "develop" }
         };
 
