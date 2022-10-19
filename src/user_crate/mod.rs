@@ -227,6 +227,7 @@ mod tests {
     use syn::parse_quote;
     use toml::toml;
 
+    #[ignore]
     #[pg_test]
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
