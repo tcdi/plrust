@@ -227,7 +227,6 @@ mod tests {
     use syn::parse_quote;
     use toml::toml;
 
-    #[ignore]
     #[pg_test]
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
@@ -296,7 +295,7 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = { version = "0.5.2", features = ["plrust"] }
+                pgx = { version = "0.5.3", features = ["plrust"] }
                 pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                 /* User deps added here */
 

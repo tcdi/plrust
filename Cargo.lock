@@ -879,8 +879,9 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.5.2"
-source = "git+https://github.com/tcdi/pgx?branch=develop#79b250401459564a003060a00cf394e5875de003"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "981ce8e6b75a371c8c9a7f35ee895e94446fa91fa87af21bb379fb1bdcfb0afa"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -908,8 +909,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.5.2"
-source = "git+https://github.com/tcdi/pgx?branch=develop#79b250401459564a003060a00cf394e5875de003"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1d8ecdf7715f6f8caad0ca157617456d196353c100ddc64e4f0130386946d41"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -920,8 +922,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-config"
-version = "0.5.2"
-source = "git+https://github.com/tcdi/pgx?branch=develop#79b250401459564a003060a00cf394e5875de003"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7d5d686ea09dce55a820df6b91392b1d25aa0f49e7659b63a57f18083fbdc8c"
 dependencies = [
  "dirs",
  "eyre",
@@ -935,8 +938,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.5.2"
-source = "git+https://github.com/tcdi/pgx?branch=develop#79b250401459564a003060a00cf394e5875de003"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7197050b02d4c4f6a20fcf6c0b4532724febbac99b1805f137cbb1beaa7ae0f3"
 dependencies = [
  "bindgen",
  "eyre",
@@ -955,8 +959,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-tests"
-version = "0.5.2"
-source = "git+https://github.com/tcdi/pgx?branch=develop#79b250401459564a003060a00cf394e5875de003"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f14845507aedcf77112641ffef99a346faab4b828f6fb30766f9bfaf3641b0f0"
 dependencies = [
  "eyre",
  "libc",
@@ -977,8 +982,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-utils"
-version = "0.5.2"
-source = "git+https://github.com/tcdi/pgx?branch=develop#79b250401459564a003060a00cf394e5875de003"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e884579ff059e62dbc634a47a12a31d7e84ff96738186cbef71beb3d987ff470"
 dependencies = [
  "atty",
  "convert_case",
