@@ -164,6 +164,42 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
+    fn plrust_deps_supported_semver_parse() {
+        let definition = r#"
+                CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+            [dependencies]
+                owo-colors = ">2"
+            [code]
+                use owo_colors::OwoColorize;
+                Some(input.purple().to_string())
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT colorize($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+
+        // Regression test: A previous version of PL/Rust would abort if this was called twice, so call it twice:
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT colorize($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+    }
+
+    #[pg_test]
+    #[cfg(not(feature = "sandboxed"))]
+    #[search_path(@extschema@)]
     fn plrust_deps_not_supported() {
         let definition = r#"
                 CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
@@ -523,7 +559,7 @@ pub mod pg_test {
             .path()
             .join(PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME);
         let mut allowed_deps = std::fs::File::create(&file_path).unwrap();
-        allowed_deps.write_all(b"owo-colors = \"3\"").unwrap();
+        allowed_deps.write_all(b"owo-colors = \"3.5.0\"").unwrap();
 
         temp_allowed_deps_dir
     });
