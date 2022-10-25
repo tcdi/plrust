@@ -17,6 +17,7 @@ use geiger;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
+use semver;
 use std::{
     path::{Path, PathBuf},
     process::Output,
@@ -226,12 +227,25 @@ fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) {
     let mut unsupported_deps = std::collections::HashMap::<String, toml::value::Value>::new();
 
     for (dep, version) in user_dependencies {
-        // TODO: should move this to a match block toml::Value::Array and everything else
-        if allowed_deps.contains_key(dep) && allowed_deps.get(dep).unwrap() == version {
-            // Dependency and version specified is supported
-        } else {
-            unsupported_deps.insert(dep.to_string(), version.clone());
-        };
+        match version {
+            toml::Value::String(ver) => {
+                let req = semver::VersionReq::parse(ver.as_str()).unwrap();
+
+                if allowed_deps.contains_key(dep)
+                    && req.matches(
+                        &semver::Version::parse(&allowed_deps.get(dep).unwrap().as_str().unwrap())
+                            .unwrap(),
+                    )
+                {
+                    // version is supported
+                } else {
+                    unsupported_deps.insert(dep.to_string(), version.clone());
+                }
+            }
+            _ => {
+                pgx::error!("The toml::Value {:?} is not currently supported", version);
+            }
+        }
     }
 
     if !unsupported_deps.is_empty() {
