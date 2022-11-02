@@ -228,6 +228,7 @@ mod tests {
     use toml::toml;
 
     #[pg_test]
+    #[ignore]
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
             let fn_oid = 0 as pg_sys::Oid;
