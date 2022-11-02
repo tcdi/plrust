@@ -228,7 +228,7 @@ impl StateGenerated {
                     crate-type = ["cdylib"]
 
                     [dependencies]
-                    pgx = { version = "0.5.6", features = ["plrust"] }
+                    pgx = { version = "0.5.6", features = ["plrust"], git = "https://github.com/thomcc/pgx", branch = "threadsafe" }
                     pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                     /* User deps added here */
 
@@ -238,6 +238,9 @@ impl StateGenerated {
                     lto = "fat"
                     opt-level = 3_usize
                     panic = "unwind"
+
+                    [patch.crates-io]
+                    pgx-pg-sys = { version = "0.5.6", features = ["pg14"], git = "https://github.com/thomcc/pgx", branch = "threadsafe" }
         };
 
         match cargo_toml {
