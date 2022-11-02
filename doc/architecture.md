@@ -56,7 +56,7 @@ Following an approach similar to the selection between libc and the musl libc st
 
 ## Supporting Crates
 
-Because PL/Rust implements a fairly complicated language and makes it sound to use as a trusted procedural language, there are multiple supporting crates necessary to make it work.
+Because PL/Rust implements a fairly complicated language with the intention to make it sound to use as a trusted procedural language, there are multiple supporting crates necessary to make it work.
 
 ### pgx with `features = ["postgrestd", ..]`
 
@@ -72,9 +72,7 @@ The PostgreSQL allocator project maps the PostgreSQL memory allocation methods t
 | free    | pfree      |
 | realloc | prealloc   |
 
-### postpanic
-
-The PostgreSQL panic project maps the rust panic to the PostgreSQL panic, allowing PostgreSQL to handle the panic within the transaction system.
+Using this crate to override the allocator guarantees it is the linked allocator, as only one `#[global_allocator]` may be linked in the entire build graph for a crate.
 
 ### postgrestd
 
@@ -86,6 +84,10 @@ This sections talks about the things which are everywhere and nowhere in particu
 
 ### Code generation
 
+PL/Rust uses [Cargo] for code generation. Each function is built as its own crate to allow it to be individually dynamically loaded (however this is not a strict requirement: multiple functions could be generated together, it's merely a current implementation detail that simplifies some handling).
+
+PL/Rust builds reuse the same build directory to assist in exploiting the existing [build caching][build-cache] implemented in Cargo. However, because of the [resolver], as soon as dependencies are involved, and because building PL/Rust code involves a nonzero number of default crate dependencies, the exact build graph may vary from build to build even for what appears to be the "same crate" to a programmer, as subtle changes in feature or version resolution can all cause the crate to need to be recompiled.
+
 ### Cancellation
 
 ### Testing
@@ -93,3 +95,7 @@ This sections talks about the things which are everywhere and nowhere in particu
 ### Error Handling
 
 ### Observability
+
+[Cargo]: https://doc.rust-lang.org/cargo/guide
+[build-cache]: https://doc.rust-lang.org/cargo/guide/build-cache.html
+[resolver]: https://doc.rust-lang.org/cargo/reference/resolver.html
