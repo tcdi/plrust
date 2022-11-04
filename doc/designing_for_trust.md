@@ -68,6 +68,9 @@ The security of hashed data usually instead lies in making it so that the attack
 considerable time, and probably at least one or two novel breakthroughs in the understanding of computation itself,
 or else they may be spending so much time that the Earth will grow cold before they can unlock the data.
 Or hopefully at least a few days, allowing time for, say, discovering the breach and generating new passwords.
+We call something that achieves this goal "secure", even though in actuality it is in fact "eventually breakable".
+Likewise, a "trusted procedural language" will in practice be "eventually breakable",
+and the goal is not necessarily to be inviolate but to offer some resistance.
 
 ## Solving the problems
 
@@ -77,6 +80,8 @@ Unfortunately, a formally-verified wasm virtual machine that can be used to safe
 yet still bind easily against PostgreSQL's C API is... a tall order. In other words, the more elegant solution simply doesn't exist yet.
 Because it doesn't exist, it's debatable if it would actually elegantly solve the issue, as we can't actually assess that claim.
 Notably, it's not clear that allowing arbitrary bindings in such a wasm sandbox would not simply create a sandbox that can do dangerous things.
+A protective box that encloses its contents yet still has many dangerous projections outside it is usually called a "tank",
+and is considered to be a weapon of war, which may not be something you wish to introduce into your database.
 
 So in this, more clumsy world, such a three-part problem calls for a three-part solution... at least.
 
@@ -89,7 +94,7 @@ Eventually, using more effective and total layers of sandboxing can be used when
 Normally, Rust code has the ability to call bindings that can do things a trusted procedural language should not be allowed to do,
 so if you allow Rust to bind calls to arbitrary external functions into wasm, then you allow Rust to "break trust".
 A comprehensive approach that blocks off these exit routes is still required, and any additional sandboxing serves as reinforcement.
-zs
+
 ### Safety, Unwinding, and `impl Drop`
 
 In Rust, the `Drop` trait promises that if execution reaches certain points in a program then a destructor has been run.
