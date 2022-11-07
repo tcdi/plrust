@@ -17,7 +17,7 @@ Again, Rust is not an intrinsically safe language.
 There are three major details to this:
 
 1. Rust has not been formally verified to have all of the safety properties it intends to have. Bugs exist that undoubtedly violate its own design for memory safety. These bugs will eventually be fixed, because there is no soundness bug that is considered a "breaking change", or rather, Rust considers all flaws in its type system that would prevent the type system from verifying memory safety to be acceptable to change and they are explicitly not governed by any stability promises. Nonetheless, Rust is only as safe as its implementation is safe.
-2. Rust is split into two sublanguages: Safe Rust and Unsafe Rust. Most Rust is Safe Rust. An `unsafe { }` block allows the usage of Unsafe Rust code, and most Unsafe Rust code item declarations are also annotated with `unsafe`[1]. It is required to have Unsafe Rust as an implementation primitive in order to be able to specify the behavior of Rust: otherwise it would have to be written in another, also memory-unsafe language. By using both as part of Rust, certain guarantees based in the type system can traverse between Safe and Unsafe Rust and remain intact. Otherwise, the work to prove the type soundness would have to begin entirely within Safe Rust, without the ability to incrementally validate claims. However, this means that Unsafe Rust is always waiting behind all Safe Rust, so the abstraction boundary must be evaluated carefully.
+2. Rust is split into two sublanguages: Safe Rust and Unsafe Rust. Most Rust is Safe Rust. An `unsafe { }` block allows the usage of Unsafe Rust code, and most Unsafe Rust code item declarations are also annotated with `unsafe`[^1]. It is required to have Unsafe Rust as an implementation primitive in order to be able to specify the behavior of Rust: otherwise it would have to be written in another, also memory-unsafe language. By using both as part of Rust, certain guarantees based in the type system can traverse between Safe and Unsafe Rust and remain intact. Otherwise, the work to prove the type soundness would have to begin entirely within Safe Rust, without the ability to incrementally validate claims. However, this means that Unsafe Rust is always waiting behind all Safe Rust, so the abstraction boundary must be evaluated carefully.
 3. Rust is not safe against all logic errors, nor does it consider all operations to be `unsafe` that the programmer might think of as `unsafe`. For instance, Rust considers `panic!` to be "safe": arguably, it is very not safe for _someone_ if Rust code forms the core of an actively-running flight system for some airplane or helicopter and an uncaught panic terminates the flight system abruptly, rendering it inoperative for sufficiently long that the flight system cannot recover stability even after it reboots. It is also usually considered safe to perform IO on arbitrary files, but a database might take a dim view of writing to its storage files.
 
 This three-part caveat, one might notice, is largely a problem of _definition_:
@@ -91,10 +91,10 @@ and is considered to be a weapon of war, which may not be something you wish to 
 
 So in this, more clumsy world, such a three-part problem calls for a three-part solution... at least.
 
-3. To align Safe Rust more closely with what Postgres expects a trusted language to be able to do, replace `std` with `postgrestd`.
+1. To align Safe Rust more closely with what Postgres expects a trusted language to be able to do, replace `std` with `postgrestd`.
 2. To prevent Unsafe Rust from being used to violate expectations, bar the use of `unsafe` code.
-1. Deploy any and all additional hardening necessary.
-0. Keep doing that, actually: Defense in depth is a good thing.
+3. Deploy any and all additional hardening necessary.
+4. Keep doing that, actually: Defense in depth is a good thing.
 
 Eventually, using more effective and total layers of sandboxing can be used when that becomes more convenient, but the problem would remain:
 Normally, Rust code has the ability to call bindings that can do things a trusted procedural language should not be allowed to do,
@@ -218,7 +218,7 @@ This may trade off a lot of performance gains from PL/Rust's overall approach, b
 
 # Notes
 
-[1]: There are a few cases where Unsafe Rust code can be declared without it being visibly denoted as such, and these are intended to be phased out eventually, but in these cases they generally still require an `unsafe { }` block to be called or they must be wrapped in an `unsafe fn`. The absence of the `unsafe` token can only be bypassed in Rust by declaring an `extern fn` (which is implicitly also an `unsafe fn`, allowing one to fill it with other `unsafe` code) and then calling that function from another language, like C.
+[^1]: There are a few cases where Unsafe Rust code can be declared without it being visibly denoted as such, and these are intended to be phased out eventually, but in these cases they generally still require an `unsafe { }` block to be called or they must be wrapped in an `unsafe fn`. The absence of the `unsafe` token can only be bypassed in Rust by declaring an `extern fn` (which is implicitly also an `unsafe fn`, allowing one to fill it with other `unsafe` code) and then calling that function from another language, like C.
 
 [pgx@crates.io]: https://crates.io/crates/pgx/
 [issue-audit-c-calls]: https://github.com/tcdi/pgx/issues/843
