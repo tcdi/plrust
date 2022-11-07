@@ -61,6 +61,7 @@ and it uses dynamic checks and SQL roles to assist implementing that.
 Specifically, this means a trusted language's code should also respect SQL roles and not produce unintentional denials of service.
 It may still serve as an attack vector on the system, as can normal SQL-DDL commands, but if it does,
 it should make it slightly more frustrating for an attacker than running arbitrary assembly (AKA shellcode) would permit.
+Many attacks of this nature unfortunately will still end in being able to run shellcode if successful.
 
 It may be worth drawing a parallel to cryptography, another way of assuring data security and integrity:
 many supposedly "one-way" hash functions can theoretically be reversed by an attacker with sufficient power.
@@ -172,12 +173,46 @@ There are two possible options in carving out what parts of pgx are appropriate 
 Neither of these are perfectly satisfying because neither option provides a neatly-defined, automatic answer
 to the question "of pgx's safe code, what should be allowed?" to begin with.
 
-### Further possible defense in depth
+There is also the unfortunate question of "is pgx's safe code actually sound?"
+The crate's early implementation days included safe wrappers around dubious code that didn't fully check all invariants,
+and in some cases did not document the implied invariants, so an [audit of code in pgx][issue-audit-c-calls] is required.
+There is no getting around this, as it falls back on the fundamental problem of all procedural languages:
+They can only be as trustworthy as their implementations, which puts a burden on their implementation details to be correct.
+
+### Further defense in depth: Heap attacks?
+
+When you allow a user to run code in your database's process, you are allowing them to attempt to subvert that process,
+so all users to some extent must _also_ be trusted with the tools you are giving them,
+claims that trusted procedural languages allow untrusted users to run untrusted code besides. They just can be trusted _less_.
+However, if a user is expected to possibly "sublet" their tenancy to another user, creating a complex multitenancy situation,
+where the current superuser adopts the position of a "hyperuser", and the user adopts the position of "virtual superuser",
+the hyperuser who decides what languages are installed may still want to allow the virtual superuser's guests to run code,
+but has to be aware that they have _even less_ trust.
+This means various traditional attack venues, e.g. heap attacks, become even more of a concern,
+as the hyperuser may have to mount a defense against the virtual superuser's guests,
+and the virtual superuser may install and run PL/Rust code on behalf of these guests.
+
+These are possible future directions in adding layers of security, not currently implemented or experimented with yet.
 
 #### Dynamic allocator hardening?
+
+While PL/Rust merely interposes palloc, it... still interposes palloc. This means it can implement a "buddy allocator".
+Since it's possible to control the global allocator for Rust code, this can help interfere with attacks on the heap.
+This is likely necessary, at the cost of some runtime overhead (offset by PL/Rust precompiling code for execution speed),
+to buy security against any attacks that target flaws in the Rust type system when those issues are not solved.
+Having to do this to harden a "memory-safe" language is not unusual, and the system administrator
+should be aware of this when deploying PostgreSQL and consider deploying PostgreSQL with a similarly hardened allocator
+so that all allocations benefit from this protection, but it's not unreasonable to want a second layer for PL/Rust.
+
+#### Background worker executor?
+
+The process boundary offers a great deal of resilience against heap attacks. Background workers are separate processes, and
+PL/Java implementations use a similar approach of running code inside a daemon (which also takes care of compiling code).
+This may trade off a lot of performance gains from PL/Rust's overall approach, but it still may be worth it.
 
 # Notes
 
 [1]: There are a few cases where Unsafe Rust code can be declared without it being visibly denoted as such, and these are intended to be phased out eventually, but in these cases they generally still require an `unsafe { }` block to be called or they must be wrapped in an `unsafe fn`. The absence of the `unsafe` token can only be bypassed in Rust by declaring an `extern fn` (which is implicitly also an `unsafe fn`, allowing one to fill it with other `unsafe` code) and then calling that function from another language, like C.
 
 [pgx@crates.io]: https://crates.io/crates/pgx/
+[issue-audit-c-calls]: https://github.com/tcdi/pgx/issues/843
