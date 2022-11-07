@@ -174,10 +174,11 @@ Neither of these are perfectly satisfying because neither option provides a neat
 to the question "of pgx's safe code, what should be allowed?" to begin with.
 
 There is also the unfortunate question of "is pgx's safe code actually sound?"
-The crate's early implementation days included safe wrappers around dubious code that didn't fully check all invariants,
+The crate's early implementation days included a few declared-safe wrappers that didn't fully check all invariants,
 and in some cases did not document the implied invariants, so an [audit of code in pgx][issue-audit-c-calls] is required.
 There is no getting around this, as it falls back on the fundamental problem of all procedural languages:
 They can only be as trustworthy as their implementations, which puts a burden on their implementation details to be correct.
+Fortunately, most of this audit has already been accomplished simply by the crate receiving scrutiny over the past 3 years.
 
 ### Further defense in depth: Heap attacks?
 
