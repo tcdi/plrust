@@ -103,10 +103,15 @@ A comprehensive approach that blocks off these exit routes is still required, an
 
 ### Safety, Unwinding, and `impl Drop`
 
+<details>
+<summary>
+Needs rewrite after rewrite of PGX error handling
+</summary>
+
 In Rust, the `Drop` trait promises that if execution reaches certain points in a program then a destructor has been run.
 There is an immediate and obvious problem with this: Rust does not guarantee forward progress and includes diverging control flow that "never returns".
 Thus it is possible for Rust code to never reach certain points in control flow, such as by invoking `panic!()` first.
-Normally, however, `panic!()` will cause "unwinding", which walks back through Rust code to the nearest `catch_unwind`, runningzs `Drop` as it goes.
+Normally, however, `panic!()` will cause "unwinding", which walks back through Rust code to the nearest `catch_unwind`, running `Drop` as it goes.
 
 However, this is not always the case, and `panic!()` may be implemented by other forms of divergence such as immediate termination.
 This may seem surprising, but it is a simple extension of the natural observation that `SIGKILL` exists,
@@ -120,19 +125,16 @@ Together, these facts mean that a destructor can never be relied on to be run wh
 Only Rust control flow that lacks these features can be expected to run all destructors.
 In other words: `Drop` can be intercepted by both events inside normal Rust code and also "outside" it.
 
-This raises the question: what are destructors "for", if code can't actually rely on them to do anything?
-In Rust, `Drop` arguably primarily exists to dismantle objects so they are not left in invalid states, and to allow reclaiming resources early.
-The first only matters if the invalid state can potentially be reached later in the program. Thus, a destructor is only relevant if the program continues.
-Otherwise, it usually takes unsound code to observe states in something that has been subject to `mem::forget`, as that function consumes the object in question.
-Everything moved into it should be "gone" and no longer visible to the rest of the program state unless `unsafe` has been used.
-The second only matters if the resources are not reclaimed by some other mechanism, such as e.g. process termination.
+</details>
 
-Thus, if an error inside a function causes Rust to leave behind all of the code that contains broken state,
-then at least hypothetically not running any destructors in that code whatsoever, even if it does not include `mem::forget`, is "not a problem".
-This implies that in response to errors from Postgres, a "correct" (in the sense of "sound, not violating Rust's memory safety properties")
-error handling strategy for PL/Rust is simple abject submission that terminates the function instantly.
-This is a somewhat crude approach as it also means errors from Postgres that could plausibly be handled soundly in PL/Rust are not,
-but it also prevents having to handle miscellaneous other edge-cases correctly, and a better error-handling story can be developed over time.
+<!--
+need to discuss:
+- statics
+- unwind runtimes
+- landing pads and where they are located in PL/Rust contexts
+- maybe thread safety?
+- other stuff with palloc?
+-->
 
 ### Controlling `unsafe`
 
