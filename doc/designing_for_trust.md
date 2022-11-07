@@ -73,6 +73,11 @@ We call something that achieves this goal "secure", even though in actuality it 
 Likewise, a "trusted procedural language" will in practice be "eventually breakable",
 and the goal is not necessarily to be inviolate but to offer some resistance.
 
+A quality implementation of a trusted procedural language should offer enough resistance that you can worry much less.
+The rest of this discussion will revolve around what is ultimately a proposal to implement PL/Rust
+as a high-quality trusted procedural language and how to evaluate that as an ongoing event,
+rather than one that is necessarily expected to be "finished".
+
 ## Solving the problems
 
 A perfectly elegant solution would address all of these parts of the problem in one swoop.
