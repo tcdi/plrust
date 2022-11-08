@@ -187,6 +187,20 @@ There is no getting around this, as it falls back on the fundamental problem of 
 They can only be as trustworthy as their implementations, which puts a burden on their implementation details to be correct.
 Fortunately, most of this audit has already been accomplished simply by the crate receiving scrutiny over the past 3 years.
 
+## Building arbitrary crates
+
+Part of what makes Rust such a useful language is that it has crates.io: an ecosystem that allows easy sharing of code,
+like most "dynamic" languages do, with very little support needed from an operating system's package manager,
+yet is a systems programming language. Thus, it's inevitable that PL/Rust will want to be able to build arbitrary dependencies.
+In fact, it has to add at least a few specially approved crates, its own build dependencies like pgx, in order to build Rust code,
+but we have to fully trust those crates anyways, so this is nothing new.
+But using crates we may not necessarily want to automatically trust introduces many, many complications as a direct result.
+
+Some of the primary concerns:
+- build.rs
+- procedural macros
+- `unsafe` code in dependencies
+- `#[cfg]` for a very strange runtime
 
 # Further defense in depth: Heap attacks?
 
