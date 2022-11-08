@@ -84,7 +84,8 @@ A perfectly elegant solution would address all of these parts of the problem in 
 However, that would require there to be some unifying dilemma that, if answered, can easily handle all of these outward projections.
 Unfortunately, a formally-verified wasm virtual machine that can be used to safely execute arbitrary Rust code inside it,
 yet still bind easily against PostgreSQL's C API is... a tall order. In other words, the more elegant solution simply doesn't exist yet.
-Because it doesn't exist, it's debatable if it would actually elegantly solve the issue, as we can't actually assess that claim.
+
+Because such a provably-secure-yet-porous-enough wasm sandbox currently doesn't exist, it's debatable if it would actually elegantly solve the issue, as we can't actually assess that claim.
 Notably, it's not clear that allowing arbitrary bindings in such a wasm sandbox would not simply create a sandbox that can do dangerous things.
 A protective box that encloses its contents yet still has many dangerous projections outside it is usually called a "tank",
 and is considered to be a weapon of war, which may not be something you wish to introduce into your database.
@@ -202,7 +203,7 @@ Some of the primary concerns:
 - `unsafe` code in dependencies
 - `#[cfg]` for a very strange runtime
 
-# Further defense in depth: Heap attacks?
+# Future directions
 
 When you allow a user to run code in your database's process, you are allowing them to attempt to subvert that process,
 so all users to some extent must _also_ be trusted with the tools you are giving them,
@@ -231,6 +232,25 @@ so that all allocations benefit from this protection, but it's not unreasonable 
 The process boundary offers a great deal of resilience against heap attacks. Background workers are separate processes, and
 PL/Java implementations use a similar approach of running code inside a daemon (which also takes care of compiling code).
 This may trade off a lot of performance gains from PL/Rust's overall approach, but it still may be worth it.
+
+## Control Flow Integrity
+
+There are various hardware-, kernel-, or compiler-level approaches to protect the integrity
+of even C or C++ code against reasonably determined attackers trying to usurp its control flow.
+Thus these approaches are sometimes called "control flow integrity" collectively,
+but they have various specific brand names like "indirect branch targeting", "control flow guard",
+or "pointer authentication". The Rust compiler supports a number of these as nightly features,
+and while they require Postgres to also be built with support these features for them to work,
+it would be worth exploring their use for PL/Rust.
+
+## witx: the wasm strikes back
+
+A method of generating bindings for wasm automatically is being prototyped,
+called witx, which builds on "WebAssembly Interface Types".
+It's not currently ready for primetime, but it is possible that
+within a few years it may be a feasible answer to many of these problems,
+especially in terms of hardening the Rust stack and heap against code
+just doing arbitrary nonsense to it, even if things get overly "interesting".
 
 # Notes
 
