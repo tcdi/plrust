@@ -1,15 +1,15 @@
 # Designing for Trust
 
-## A note on definitions
+# A note on definitions
 In order to allow building a Postgres extension in Rust, quite a lot of bindings to C code are required,
 and a language handler is necessarily a Postgres "C" function, which is usually packaged as a Postgres extension.
 Since the only Postgres extension of true concern for PL/Rust is the language handler and associated components,
 and most other functions that will be embedded in Postgres will be managed by this extension, I will redefine the difference arbitrarily for this document: the language handler is a Postgres extension, and "Postgres function" will be used to refer to any Postgres function _except_ a language handler.
 
-## The goal
+# The goal
 Nominally, to make PL/Rust exist: a dialect of Rust nested in SQL that can function as a "trusted procedural language".
 
-## The caveat
+# The caveat
 A major obstacle to making PL/Rust a trustworthy language is that Rust is not an intrinsically safe language.
 
 Again, Rust is not an intrinsically safe language.
@@ -28,7 +28,7 @@ This three-part caveat, one might notice, is largely a problem of _definition_:
 
 However, each of these remain distinct issues because they cover different domains: validity, implementation, and context.
 
-### Is Trust Insufficient Paranoia?
+## Is Trust Insufficient Paranoia?
 
 The caveats that apply to Rust apply in very similar form to other existing procedural languages, whether or not they are "trusted":
 1. The question is not whether there is another vulnerability to discover in PL/Tcl, PL/Perl, PL/pgSQL, or with their shared interface with PostgreSQL: it's how long it will take to find it, whether anyone bothers to look, and whether it can actually be used to inflict damage.
@@ -45,7 +45,7 @@ In effect, "trust" in practice only exists in two cases:
 - not being aware of the consequences
 - being willing to accept the possibility that worst-case consequences might happen
 
-## Safety and trust are implementation-defined
+# Safety and trust are implementation-defined
 
 Rust defines "safety" around the concept of "memory safety", and uses a type system that includes ownership types to implement that.
 
@@ -78,7 +78,7 @@ The rest of this discussion will revolve around what is ultimately a proposal to
 as a high-quality trusted procedural language and how to evaluate that as an ongoing event,
 rather than one that is necessarily expected to be "finished".
 
-## Solving the problems
+# Solving the problems
 
 A perfectly elegant solution would address all of these parts of the problem in one swoop.
 However, that would require there to be some unifying dilemma that, if answered, can easily handle all of these outward projections.
@@ -101,7 +101,7 @@ Normally, Rust code has the ability to call bindings that can do things a truste
 so if you allow Rust to bind calls to arbitrary external functions into wasm, then you allow Rust to "break trust".
 A comprehensive approach that blocks off these exit routes is still required, and any additional sandboxing serves as reinforcement.
 
-### Safety, Unwinding, and `impl Drop`
+## Safety, Unwinding, and `impl Drop`
 
 <details>
 <summary>
@@ -136,11 +136,11 @@ need to discuss:
 - other stuff with palloc?
 -->
 
-### Controlling `unsafe`
+## Controlling `unsafe`
 
 Code can by hypothetically verified to be "safe" by either scanning the tokens directly using a procedural macro or by compiling it with various lints of the Rust compiler to detect and constrain use of `unsafe` enabled.
 
-#### Is automatically blocking all `unsafe` code enough?
+### Is automatically blocking all `unsafe` code enough?
 
 No.
 
@@ -154,10 +154,10 @@ Thus, in order to compile any PL/Rust function, *a lot of unsafe code must be us
 This also means that something must be done to prevent the use of pgx's `unsafe fn` in PL/Rust
 while still allowing pgx to use `unsafe` code to implement its own interfaces.
 
-#### plutonium
+### plutonium
 
 
-### `postgrestd`: containing the problem
+## `postgrestd`: containing the problem
 
 If Rust is not allowed to bind against arbitrary external interfaces, then it only has `std` and whatever crates are permitted.
 This makes controlling `std` a priority, and `postgrestd` is used to implement that.
@@ -168,7 +168,7 @@ cannot simply jump outside the database and start doing arbitrary things.
 It is limited to subverting the database, which admittedly is still a bountiful target,
 but in this event containing the database itself can still be meaningfully done.
 
-### The other elephant in the room: pgx
+## The other elephant in the room: pgx
 
 In addition to being used as the implementation detail of PL/Rust, pgx offers a full-fledged interface for building Postgres extensions in general.
 This means that like the Rust standard library, pgx is not perfectly adapted to being an interface for a trusted procedural language.
@@ -187,7 +187,8 @@ There is no getting around this, as it falls back on the fundamental problem of 
 They can only be as trustworthy as their implementations, which puts a burden on their implementation details to be correct.
 Fortunately, most of this audit has already been accomplished simply by the crate receiving scrutiny over the past 3 years.
 
-### Further defense in depth: Heap attacks?
+
+# Further defense in depth: Heap attacks?
 
 When you allow a user to run code in your database's process, you are allowing them to attempt to subvert that process,
 so all users to some extent must _also_ be trusted with the tools you are giving them,
@@ -201,8 +202,7 @@ as the hyperuser may have to mount a defense against the virtual superuser's gue
 and the virtual superuser may install and run PL/Rust code on behalf of these guests.
 
 These are possible future directions in adding layers of security, not currently implemented or experimented with yet.
-
-#### Dynamic allocator hardening?
+## Dynamic allocator hardening?
 
 While PL/Rust merely interposes palloc, it... still interposes palloc. This means it can implement a "buddy allocator".
 Since it's possible to control the global allocator for Rust code, this can help interfere with attacks on the heap.
@@ -212,7 +212,7 @@ Having to do this to harden a "memory-safe" language is not unusual, and the sys
 should be aware of this when deploying PostgreSQL and consider deploying PostgreSQL with a similarly hardened allocator
 so that all allocations benefit from this protection, but it's not unreasonable to want a second layer for PL/Rust.
 
-#### Background worker executor?
+## Background worker executor?
 
 The process boundary offers a great deal of resilience against heap attacks. Background workers are separate processes, and
 PL/Java implementations use a similar approach of running code inside a daemon (which also takes care of compiling code).
