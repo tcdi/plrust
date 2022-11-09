@@ -474,6 +474,103 @@ mod tests {
         let retval = Spi::get_one::<String>("SELECT dont_allcaps_panic();\n");
         assert_eq!(retval, Some("lol".into()));
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_call_1st() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION ret_1st(a int, b int)
+            RETURNS int AS
+            $$
+                a
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let result_1 = Spi::get_one::<i32>("SELECT ret_1st(1, 2);\n");
+        assert_eq!(Some(1), result_1); // may get: Some(1)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_call_2nd() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION ret_2nd(a int, b int)
+            RETURNS int AS
+            $$
+                b
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let result_2 = Spi::get_one::<i32>("SELECT ret_2nd(1, 2);\n");
+        assert_eq!(Some(2), result_2); // may get: Some(2)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_call_me() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION pick_ret(a int, b int, pick int)
+            RETURNS int AS
+            $$
+                match pick {
+                    Some(0) => a,
+                    Some(1) => b,
+                    _ => None,
+                }
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let result_a = Spi::get_one::<i32>("SELECT pick_ret(3, 4, 0);");
+        let result_b = Spi::get_one::<i32>("SELECT pick_ret(5, 6, 1);");
+        let result_c = Spi::get_one::<i32>("SELECT pick_ret(7, 8, 2);");
+        let result_z = Spi::get_one::<i32>("SELECT pick_ret(9, 99, -1);");
+        assert_eq!(Some(3), result_a); // may get: Some(4) or None
+        assert_eq!(Some(6), result_b); // may get: None
+        assert_eq!(None, result_c);
+        assert_eq!(None, result_z);
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_call_me_call_me() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION ret_1st(a int, b int)
+            RETURNS int AS
+            $$
+                a
+            $$ LANGUAGE plrust;
+
+            CREATE OR REPLACE FUNCTION ret_2nd(a int, b int)
+            RETURNS int AS
+            $$
+                b
+            $$ LANGUAGE plrust;
+
+            CREATE OR REPLACE FUNCTION pick_ret(a int, b int, pick int)
+            RETURNS int AS
+            $$
+                match pick {
+                    Some(0) => a,
+                    Some(1) => b,
+                    _ => None,
+                }
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let result_1 = Spi::get_one::<i32>("SELECT ret_1st(1, 2);\n");
+        let result_2 = Spi::get_one::<i32>("SELECT ret_2nd(1, 2);\n");
+        assert_eq!(Some(1), result_1); // may get: Some(2)
+        assert_eq!(Some(2), result_2); // may get: Some(1)
+
+        let result_a = Spi::get_one::<i32>("SELECT pick_ret(3, 4, 0);");
+        let result_b = Spi::get_one::<i32>("SELECT pick_ret(5, 6, 1);");
+        let result_c = Spi::get_one::<i32>("SELECT pick_ret(7, 8, 2);");
+        let result_z = Spi::get_one::<i32>("SELECT pick_ret(9, 99, -1);");
+        assert_eq!(Some(3), result_a); // may get: Some(4) or None
+        assert_eq!(Some(6), result_b); // may get: None
+        assert_eq!(None, result_c);
+        assert_eq!(None, result_z);
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
