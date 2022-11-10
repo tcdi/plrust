@@ -569,6 +569,38 @@ mod tests {
         assert_eq!(Some(2), result_2); // may get: Some(1)
         assert_eq!(Some(1), result_1); // may get: Some(2)
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_dup_args() {
+        let definition = r#"
+            CREATE FUNCTION not_unique(a int, a int)
+            RETURNS int AS
+            $$
+                a
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let result = Spi::get_one::<i32>("SELECT not_unique(1, 2);\n");
+        assert_eq!(Some(1), result);
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_defaulting_dup_args() {
+        let definition = r#"
+            CREATE FUNCTION not_unique(int, arg0 int)
+            RETURNS int AS
+            $$
+                arg0
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition);
+        let result = Spi::get_one::<i32>("SELECT not_unique(1, 2);\n");
+        assert_eq!(Some(1), result);
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
