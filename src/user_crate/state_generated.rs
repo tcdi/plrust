@@ -161,7 +161,6 @@ impl StateGenerated {
                 ref return_type,
                 ..
             } => {
-                let arguments = arguments.values();
                 let user_fn: syn::ItemFn = syn::parse2(quote! {
                     #[pg_extern]
                     fn #symbol_ident(
