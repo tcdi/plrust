@@ -93,6 +93,7 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
         }
         .ok_or(PlRustError::NullFmgrInfo)?
         .fn_oid;
+        unsafe { plrust::recompile_missing_shared_object(fn_oid)?; }
         let retval = unsafe { plrust::evaluate_function(fn_oid, fcinfo)? };
         Ok(retval)
     }

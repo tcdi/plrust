@@ -14,6 +14,7 @@ use std::str::FromStr;
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
+static PLRUST_AUTO_RECOMPILE: GucSetting<bool> = GucSetting::new(false);
 
 pub(crate) fn init() {
     GucRegistry::define_string_guc(
@@ -39,6 +40,14 @@ pub(crate) fn init() {
         &PLRUST_TRACING_LEVEL,
         GucContext::Sighup,
     );
+
+    GucRegistry::define_bool_guc(
+        "plrust.auto_recompile",
+        "Recompile function if unable to find shared object file in plrust.work_dir",
+        "Recompile function if unable to find shared object file in plrust.work_dir",
+        &PLRUST_AUTO_RECOMPILE,
+        GucContext::Sighup,
+    )
 }
 
 pub(crate) fn work_dir() -> PathBuf {
@@ -64,4 +73,8 @@ pub(crate) fn tracing_level() -> tracing::Level {
         .get()
         .map(|v| v.parse().expect("plrust.tracing_level was invalid"))
         .unwrap_or(tracing::Level::INFO)
+}
+
+pub(crate) fn auto_recompile() -> bool {
+    PLRUST_AUTO_RECOMPILE.get()
 }

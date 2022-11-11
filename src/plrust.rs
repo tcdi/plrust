@@ -44,6 +44,23 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 }
 
 #[tracing::instrument(level = "debug")]
+pub(crate) unsafe fn recompile_missing_shared_object(fn_oid: pg_sys::Oid) -> eyre::Result<()> {
+    let db_oid = unsafe { MyDatabaseId };
+    let mut shared_object_name = crate_name(db_oid, fn_oid);
+    shared_object_name.push_str(DLL_SUFFIX);
+    let shared_library = gucs::work_dir().join(&shared_object_name);
+    if !shared_library.exists() && gucs::auto_recompile() {
+        tracing::trace!(
+            "Shared object {shared_object} is not found and plrust.auto_recompile is enabled, recompiling {shared_object}",
+            shared_object = shared_object_name
+        );
+        unsafe { unload_function(fn_oid); }
+        compile_function(fn_oid)?;
+    }
+    Ok(())
+}
+
+#[tracing::instrument(level = "debug")]
 #[deny(unsafe_op_in_unsafe_fn)]
 pub(crate) unsafe fn evaluate_function(
     fn_oid: pg_sys::Oid,
