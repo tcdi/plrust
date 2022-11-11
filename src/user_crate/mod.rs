@@ -153,7 +153,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::INT8OID => quote! { i64 },
             PgBuiltInOids::JSONBOID => quote! { JsonB },
             PgBuiltInOids::JSONOID => quote! { Json },
-            PgBuiltInOids::NUMERICOID => quote! { Numeric },
+            PgBuiltInOids::NUMERICOID => quote! { AnyNumeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &str },
