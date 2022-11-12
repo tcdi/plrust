@@ -175,10 +175,10 @@ fn recompile_function(
         Ok((work_dir, output)) => TableIterator::once((
             Some(work_dir.display().to_string()),
             Some(
-                String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not  UTF-8"),
+                String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8"),
             ),
             Some(
-                String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not  UTF-8"),
+                String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not UTF-8"),
             ),
             None,
         )),
