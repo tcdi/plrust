@@ -26,6 +26,7 @@ fi
         git clone https://github.com/tcdi/postgrestd.git --branch "1.61" --recurse-submodules
         cd ./postgrestd
     fi
+    rm rust-toolchain.toml
     ./run clean
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
