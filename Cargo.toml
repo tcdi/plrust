@@ -15,6 +15,7 @@ crate-type = ["cdylib"]
 default = ["pg14", "verify"]
 pg13 = ["pgx/pg13", "pgx-tests/pg13"]
 pg14 = ["pgx/pg14", "pgx-tests/pg14"]
+pg15 = ["pgx/pg15", "pgx-tests/pg15"]
 pg_test = []
 # Be accomodating to sandboxed builds with no network.
 sandboxed = []
@@ -28,8 +29,8 @@ cfg-if = "1" # platform conditional helper
 once_cell = "1.7.2" # polyfills a nightly feature
 
 # pgx core details
-pgx = { version = "0.5.6" }
-pgx-pg-config = { version = "0.5.6" }
+pgx = { version = "0.6.0-alpha.1" }
+pgx-pg-config = { version = "0.6.0-alpha.1" }
 
 # language handler support
 libloading = "0.7.2"
@@ -55,7 +56,7 @@ proc-macro2 = "1"
 geiger = { version = "0.4", optional = true } # unsafe detection
 
 [dev-dependencies]
-pgx-tests = "0.5.6"
+pgx-tests = { version = "0.6.0-alpha.1" }
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
