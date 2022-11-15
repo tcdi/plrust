@@ -85,7 +85,17 @@ impl StateGenerated {
         })
     }
     pub(crate) fn crate_name(&self) -> String {
-        crate::plrust::crate_name(self.db_oid, self.fn_oid)
+        let mut crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "x86_64"),
+            feature = "force_enable_x86_64_darwin_generations"
+        ))]
+        {
+            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
+
+            crate_name.push_str(&format!("_{}", next));
+        }
+        crate_name
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -96,20 +106,9 @@ impl StateGenerated {
         );
 
         let crate_name = self.crate_name();
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
-
-            crate_name.push_str(&format!("_{}", next));
-            crate_name
-        };
         let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs`");
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for build step");
 
         let user_code = &self.user_code;
         let user_function = match &self.variant {
@@ -133,6 +132,53 @@ impl StateGenerated {
                     #[pg_trigger]
                     fn #symbol_ident(
                         trigger: &::pgx::PgTrigger,
+                    ) -> ::core::result::Result<
+                        ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                        Box<dyn std::error::Error>,
+                    > #user_code
+                })
+                .wrap_err("Parsing generated user trigger")?;
+                user_fn
+            }
+        };
+
+        skeleton.items.push(user_function.into());
+        Ok(skeleton)
+    }
+
+
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
+    pub(crate) fn safe_lib_rs(&self) -> eyre::Result<syn::File> {
+        let mut skeleton: syn::File = syn::parse_quote!(
+            #![forbid(unsafe_code)]
+            use pgx::prelude::*;
+        );
+
+        let crate_name = self.crate_name();
+        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
+
+        let user_code = &self.user_code;
+        let user_function = match &self.variant {
+            CrateVariant::Function {
+                ref arguments,
+                ref return_type,
+                ..
+            } => {
+                let user_fn: syn::ItemFn = syn::parse2(quote! {
+                    fn #symbol_ident(
+                        #( #arguments ),*
+                    ) -> #return_type
+                    #user_code
+                })
+                .wrap_err("Parsing generated user function")?;
+                user_fn
+            }
+            CrateVariant::Trigger => {
+                let user_fn: syn::ItemFn = syn::parse2(quote! {
+                    fn #symbol_ident(
+                        trigger: &::pgx::PgTrigger,
                     ) -> core::result::Result<
                         ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                         Box<dyn std::error::Error>,
@@ -152,18 +198,6 @@ impl StateGenerated {
         let major_version = pgx::pg_sys::get_pg_major_version_num();
         let version_feature = format!("pgx/pg{major_version}");
         let crate_name = self.crate_name();
-
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
-
-            crate_name.push_str(&format!("_{}", next));
-            crate_name
-        };
 
         tracing::trace!(
             crate_name = %crate_name,
@@ -539,7 +573,7 @@ mod tests {
                 #[pg_trigger]
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
-                ) -> core::result::Result<
+                ) -> ::core::result::Result<
                     ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                     Box<dyn std::error::Error>,
                 > {
