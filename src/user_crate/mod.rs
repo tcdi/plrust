@@ -226,31 +226,55 @@ fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) {
     let allowed_deps = crate::gucs::get_allow_listed_dependencies();
     let mut unsupported_deps = std::collections::HashMap::<String, toml::value::Value>::new();
 
-    for (dep, version) in user_dependencies {
-        match version {
+    for (dep, val) in user_dependencies {
+        if !allowed_deps.contains_key(dep) {
+            unsupported_deps.insert(dep.to_string(), val.clone());
+            continue;
+        }
+
+        match val {
             toml::Value::String(ver) => {
                 let req = semver::VersionReq::parse(ver.as_str()).unwrap();
 
-                if allowed_deps.contains_key(dep)
-                    && req.matches(
-                        &semver::Version::parse(&allowed_deps.get(dep).unwrap().as_str().unwrap())
+                // Check if the allowed dependency is of format String or toml::Table
+                // foo = "1.0.0" vs foo = { version = "1.0.0", features = ["foo", "bar"]}
+                match allowed_deps.get(dep).unwrap() {
+                    toml::Value::String(allowed_deps_ver) => {
+                        if !req.matches(&semver::Version::parse(allowed_deps_ver).unwrap()) {
+                            unsupported_deps.insert(dep.to_string(), val.clone());
+                        }
+                    }
+                    toml::Value::Table(allowed_deps_vals) => {
+                        if !allowed_deps_vals.contains_key("version") {
+                            pgx::error!(
+                                "The allowed dependencies file does not specify a version for the crate {}",
+                                dep
+                            );
+                        }
+
+                        if !req.matches(
+                            &semver::Version::parse(
+                                &allowed_deps_vals.get("version").unwrap().as_str().unwrap(),
+                            )
                             .unwrap(),
-                    )
-                {
-                    // version is supported
-                } else {
-                    unsupported_deps.insert(dep.to_string(), version.clone());
+                        ) {
+                            unsupported_deps.insert(dep.to_string(), val.clone());
+                        }
+                    }
+                    _ => {
+                        pgx::error!("Currently only Toml Inline Table and String format is supported for dependencies");
+                    }
                 }
             }
             _ => {
-                pgx::error!("The toml::Value {:?} is not currently supported", version);
+                pgx::error!("The toml::Value {:?} is not currently supported", val);
             }
         }
     }
 
     if !unsupported_deps.is_empty() {
         pgx::error!(
-            "The following dependencies are unsupported {:?}, environment only supports {:?}",
+            "The following dependencies are unsupported {:?}, the configured PL/Rust only supports {:?}",
             unsupported_deps,
             allowed_deps
         );

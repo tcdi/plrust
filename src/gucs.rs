@@ -58,8 +58,8 @@ pub(crate) fn init() {
 
     GucRegistry::define_string_guc(
         "plrust.allowed_dependencies",
-        "The full path of a file containing crates and versions allowed when creating PL/Rust functions.",
-        "The full path of a file containing crates and versions allowed when creating PL/Rust functions.",
+        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions.",
+        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions.",
         &PLRUST_ALLOWED_DEPENDENCIES,
         GucContext::Sighup,
     );

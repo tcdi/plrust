@@ -200,6 +200,32 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
+    fn plrust_deps_supported_deps_in_toml_table() {
+        let definition = r#"
+                CREATE FUNCTION say_hello() RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+            [dependencies]
+                tokio = ">=1"
+            [code]
+                Some("hello".to_string())
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT say_hello();
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "hello".into_datum())],
+        );
+        assert!(retval.is_some());
+    }
+
+    #[pg_test]
+    #[cfg(not(feature = "sandboxed"))]
+    #[search_path(@extschema@)]
     fn plrust_deps_not_supported() {
         let definition = r#"
                 CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
@@ -549,7 +575,7 @@ pub mod pg_test {
     });
     static LOG_LEVEL: &str = "plrust.tracing_level=trace";
 
-    static PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME: &str = "allowed_deps.txt";
+    static PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME: &str = "allowed_deps.toml";
     static PLRUST_ALLOWED_DEPENDENCIES_FILE_DIRECTORY: Lazy<TempDir> = Lazy::new(|| {
         use std::io::Write;
         let temp_allowed_deps_dir =
@@ -559,7 +585,12 @@ pub mod pg_test {
             .path()
             .join(PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME);
         let mut allowed_deps = std::fs::File::create(&file_path).unwrap();
-        allowed_deps.write_all(b"owo-colors = \"3.5.0\"").unwrap();
+        allowed_deps
+            .write_all(
+                b"owo-colors = \"3.5.0\"\n
+            tokio = { version = \"1.19.2\", features = [\"rt\", \"net\"]}",
+            )
+            .unwrap();
 
         temp_allowed_deps_dir
     });
