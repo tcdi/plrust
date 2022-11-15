@@ -159,7 +159,7 @@ jobs:
 
     strategy:
       matrix:
-        version: ["postgres-13", "postgres-14", "postgres-15"]
+        version: ["postgres-13", "postgres-14"]
         os: ["ubuntu-20.04"]
         # it would be nice to other contributors to return "macos-11" to the above array
       fail-fast: false
@@ -277,7 +277,7 @@ jobs:
         cargo test --features "pg$PG_VER verify" --no-default-features --lib plrust
 
     - name: Run PL/Rust + postgrestd tests
-      if: matrix.version == 'postgres-14' || matrix.version == 'postgres-15' && matrix.os == 'ubuntu-20.04'
+      if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
       run: ./build
 
     # Attempt to make the cache payload slightly smaller.
