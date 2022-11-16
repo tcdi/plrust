@@ -262,7 +262,7 @@ fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) {
                         }
                     }
                     _ => {
-                        pgx::error!("Currently only Toml Inline Table and String format is supported for dependencies");
+                        pgx::error!("Currently only toml Inline Table and String format is supported for dependencies");
                     }
                 }
             }
