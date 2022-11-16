@@ -208,6 +208,7 @@ mod tests {
             $$
             [dependencies]
                 tokio = ">=1"
+                owo-colors = "3"
             [code]
                 Some("hello".to_string())
             $$;
