@@ -154,7 +154,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::INT8OID => quote! { i64 },
             PgBuiltInOids::JSONBOID => quote! { JsonB },
             PgBuiltInOids::JSONOID => quote! { Json },
-            PgBuiltInOids::NUMERICOID => quote! { Numeric },
+            PgBuiltInOids::NUMERICOID => quote! { AnyNumeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &str },
@@ -360,7 +360,7 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = { version = "0.5.6", features = ["plrust"] }
+                pgx = { version = "0.6.0-alpha.1", features = ["plrust"] }
                 pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                 /* User deps added here */
 

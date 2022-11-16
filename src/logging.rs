@@ -10,7 +10,7 @@ impl<const IS_STDERR: bool> Write for PgxGuestWriter<IS_STDERR> {
         } else {
             String::from("stdout: ") + content
         };
-        pgx::elog(pgx::log::PgLogLevel::LOG, &prefixed);
+        pgx::log!("{}", &prefixed);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -24,7 +24,7 @@ impl<const TRIM: bool> Write for PgxLogWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let content = if TRIM { content.trim_start() } else { content };
-        pgx::elog(pgx::log::PgLogLevel::LOG, content);
+        pgx::log!("{}", content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -38,7 +38,7 @@ impl<const TRIM: bool> Write for PgxNoticeWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let content = if TRIM { content.trim_start() } else { content };
-        pgx::elog(pgx::log::PgLogLevel::NOTICE, content);
+        pgx::notice!("{}", content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -52,7 +52,7 @@ impl<const TRIM: bool> Write for PgxWarningWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let content = if TRIM { content.trim_start() } else { content };
-        pgx::elog(pgx::log::PgLogLevel::WARNING, content);
+        pgx::warning!("{}", content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {

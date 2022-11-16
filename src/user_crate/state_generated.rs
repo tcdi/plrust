@@ -161,7 +161,6 @@ impl StateGenerated {
                 ref return_type,
                 ..
             } => {
-                let arguments = arguments.values();
                 let user_fn: syn::ItemFn = syn::parse2(quote! {
                     #[pg_extern]
                     fn #symbol_ident(
@@ -228,7 +227,7 @@ impl StateGenerated {
                     crate-type = ["cdylib"]
 
                     [dependencies]
-                    pgx = { version = "0.5.6", features = ["plrust"] }
+                    pgx =  { version = "0.6.0-alpha.1", features = ["plrust"] }
                     pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                     /* User deps added here */
 
