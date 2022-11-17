@@ -716,8 +716,8 @@ pub mod pg_test {
         let mut allowed_deps = std::fs::File::create(&file_path).unwrap();
         allowed_deps
             .write_all(
-                b"owo-colors = \"3.5.0\"\n
-            tokio = { version = \"1.19.2\", features = [\"rt\", \"net\"]}",
+r#"owo-colors = "3.5.0"
+tokio = { version = "1.19.2", features = ["rt", "net"]}"#
             )
             .unwrap();
 
