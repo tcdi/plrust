@@ -26,6 +26,8 @@ mod plrust;
 #[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
+mod plrust_proc;
+
 #[cfg(any(test, feature = "pg_test"))]
 #[allow(unsafe_op_in_unsafe_fn)] // waiting on a PGX fix
 pub mod tests;
@@ -129,7 +131,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         unsafe { plrust::unload_function(fn_oid) };
         // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
         // compile the function when it's created to avoid locking during function execution
-        let (_, output) = plrust::compile_function(fn_oid)?;
+        let output = plrust::compile_function(fn_oid)?;
 
         // however, we'll use it to decide if we should go ahead and dynamically load our function
         // SAFETY: This should always be set by Postgres.
@@ -152,33 +154,6 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         Ok(()) => (),
         // Panic into the pgx guard.
         Err(err) => panic!("{:?}", err),
-    }
-}
-
-#[pg_extern]
-#[tracing::instrument(level = "debug")]
-fn recompile_function(
-    fn_oid: pg_sys::Oid,
-) -> TableIterator<
-    'static,
-    (
-        name!(library_path, Option<String>),
-        name!(stdout, Option<String>),
-        name!(stderr, Option<String>),
-        name!(plrust_error, Option<String>),
-    ),
-> {
-    unsafe {
-        plrust::unload_function(fn_oid);
-    }
-    match plrust::compile_function(fn_oid) {
-        Ok((work_dir, output)) => TableIterator::once((
-            Some(work_dir.display().to_string()),
-            Some(String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8")),
-            Some(String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not UTF-8")),
-            None,
-        )),
-        Err(err) => TableIterator::once((None, None, None, Some(format!("{:?}", err)))),
     }
 }
 

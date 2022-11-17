@@ -71,24 +71,27 @@ impl UserCrate<StateProvisioned> {
             db_oid = %self.0.db_oid(),
             fn_oid = %self.0.fn_oid(),
             crate_dir = %self.0.crate_dir().display(),
-            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+            target_dir = tracing::field::display(target_dir.display()),
         ))]
     pub fn build(
         self,
-        artifact_dir: &Path,
         pg_config: PathBuf,
-        target_dir: Option<&Path>,
+        target_dir: &Path,
     ) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
         self.0
-            .build(artifact_dir, pg_config, target_dir)
+            .build(pg_config, target_dir)
             .map(|(state, output)| (UserCrate(state), output))
+    }
+
+    pub(crate) fn crate_dir(&self) -> &Path {
+        self.0.crate_dir()
     }
 }
 
 impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug")]
-    pub(crate) fn built(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
-        UserCrate(StateBuilt::new(db_oid, fn_oid, shared_object))
+    pub(crate) fn built(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid, shared_object: &Path) -> Self {
+        UserCrate(StateBuilt::new(db_oid, fn_oid, shared_object.to_path_buf()))
     }
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub fn shared_object(&self) -> &Path {
@@ -312,12 +315,9 @@ mod tests {
                 "Generated `Cargo.toml` differs from test (after formatting)",
             );
 
-            let parent_dir = tempdir::TempDir::new("plrust-generated-crate-function-workflow")
-                .wrap_err("Creating temp dir")?;
             let provisioned = generated.provision(parent_dir.path())?;
 
-            let (built, _output) =
-                provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
+            let (built, _output) = provisioned.build(pg_config, target_dir.as_path())?;
 
             let _shared_object = built.shared_object();
 

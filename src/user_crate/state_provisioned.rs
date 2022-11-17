@@ -42,13 +42,12 @@ impl StateProvisioned {
             db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             crate_dir = %self.crate_dir.display(),
-            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+            target_dir = tracing::field::display(target_dir.display()),
         ))]
     pub(crate) fn build(
         self,
-        artifact_dir: &Path,
         pg_config: PathBuf,
-        target_dir: Option<&Path>,
+        target_dir: &Path,
     ) -> eyre::Result<(StateBuilt, Output)> {
         let mut command = Command::new("cargo");
         let target = target::tuple()?;
@@ -60,9 +59,7 @@ impl StateProvisioned {
         command.arg("--target");
         command.arg(target_str);
         command.env("PGX_PG_CONFIG_PATH", pg_config);
-        if let Some(target_dir) = target_dir {
-            command.env("CARGO_TARGET_DIR", &target_dir);
-        }
+        command.env("CARGO_TARGET_DIR", &target_dir);
         command.env(
             "RUSTFLAGS",
             "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
@@ -91,35 +88,12 @@ impl StateProvisioned {
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
-                .map(|d| {
-                    d.join(target_str)
-                        .join("release")
-                        .join(&built_shared_object_name)
-                })
-                .unwrap_or(
-                    self.crate_dir
-                        .join("target")
-                        .join(target_str)
-                        .join("release")
-                        .join(built_shared_object_name),
-                );
-
-            let mut shared_object_name = crate_name.clone();
-
-            shared_object_name.push_str(DLL_SUFFIX);
-
-            let shared_object = artifact_dir.join(&shared_object_name);
-
-            std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {
-                eyre!(
-                    "renaming shared object from `{}` to `{}`",
-                    built_shared_object.display(),
-                    shared_object.display()
-                )
-            })?;
+                .join(target_str)
+                .join("release")
+                .join(&built_shared_object_name);
 
             Ok((
-                StateBuilt::new(self.db_oid, self.fn_oid, shared_object),
+                StateBuilt::new(self.db_oid, self.fn_oid, built_shared_object),
                 output,
             ))
         } else {

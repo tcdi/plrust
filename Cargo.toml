@@ -37,6 +37,7 @@ libloading = "0.7.2"
 toml = "0.5"
 tempdir = "0.3.7" # for building crates
 current_platform = "0.2.0" # uses a build.rs
+tempfile = "3.3.0"
 
 # error handling, tracing, formatting
 thiserror = "1.0"
