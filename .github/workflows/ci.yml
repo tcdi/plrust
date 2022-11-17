@@ -15,7 +15,7 @@ env:
 
 jobs:
   plrust_tests_arm64:
-    name: aarch64 tests (pg14, amzn2)
+    name: aarch64 tests (pg15, amzn2)
     runs-on: [self-hosted, linux, ARM64, plrust]
 
     env:
@@ -28,7 +28,7 @@ jobs:
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Generate cache filename checksum
       run: |
@@ -52,7 +52,7 @@ jobs:
         echo ""
 
         echo "----- Install system dependencies -----"
-        sudo amazon-linux-extras enable postgresql14
+        sudo amazon-linux-extras enable postgresql15
         sudo yum clean metadata
 
         sudo yum install -y \
@@ -119,8 +119,8 @@ jobs:
       continue-on-error: true # We might have it.
       run: cargo install cargo-pgx --locked --version "${CARGO_PGX_VERSION}"
 
-    - name: Run cargo pgx init for PG14
-      run: cargo pgx init --pg14 $(which pg_config)
+    - name: Run cargo pgx init for PG15
+      run: cargo pgx init --pg15 $(which pg_config)
 
     - name: Run build plrust script
       run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
@@ -159,13 +159,13 @@ jobs:
 
     strategy:
       matrix:
-        version: ["postgres-13", "postgres-14", "postgres-15"]
+        version: ["pg13", "pg14", "pg15"]
         os: ["ubuntu-20.04"]
         # it would be nice to other contributors to return "macos-11" to the above array
       fail-fast: false
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up (Linux) prerequisites and environment
       if: matrix.os == 'ubuntu-20.04'
@@ -173,7 +173,7 @@ jobs:
         echo ""
 
         echo "----- Set up dynamic variables -----"
-        export PG_VER=$(echo ${{ matrix.version }} | cut -d '-' -f2)
+        export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         cat $GITHUB_ENV
@@ -276,8 +276,8 @@ jobs:
         cargo test --features "pg$PG_VER" --no-default-features --lib user_crate
         cargo test --features "pg$PG_VER verify" --no-default-features --lib plrust
 
-    - name: Run PL/Rust + postgrestd tests
-      if: matrix.version == 'postgres-14' || matrix.version == 'postgres-15' && matrix.os == 'ubuntu-20.04'
+    - name: Run PL/Rust + postgrestd tests on PG15 only
+      if: matrix.version == 'postgres-15' && matrix.os == 'ubuntu-20.04'
       run: ./build
 
     # Attempt to make the cache payload slightly smaller.
