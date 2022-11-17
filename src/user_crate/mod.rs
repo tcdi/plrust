@@ -315,9 +315,9 @@ mod tests {
                 "Generated `Cargo.toml` differs from test (after formatting)",
             );
 
-            let provisioned = generated.provision(parent_dir.path())?;
+            let provisioned = generated.provision(&target_dir)?;
 
-            let (built, _output) = provisioned.build(pg_config, target_dir.as_path())?;
+            let (built, _output) = provisioned.build(pg_config, &target_dir)?;
 
             let _shared_object = built.shared_object();
 
