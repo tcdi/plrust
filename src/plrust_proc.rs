@@ -39,9 +39,15 @@ pub(crate) fn insert(pg_proc_oid: pg_sys::Oid, so_path: &Path) -> eyre::Result<(
     args.push((PgBuiltInOids::BYTEAOID.oid(), so.into_datum()));
 
     Spi::run_with_args(
-            "INSERT INTO plrust.plrust_proc(id, arch, os, so) VALUES ($1, $2::plrust.supported_arch, $3, $4)",
-            Some(args),
-        );
+        r#"
+                INSERT INTO plrust.plrust_proc(id, arch, os, so) 
+                     VALUES ($1, $2::plrust.supported_arch, $3, $4)
+                     ON CONFLICT 
+                         ON CONSTRAINT plrust_proc_pkey 
+                            DO UPDATE SET so = $4 WHERE (id, arch, os) = ($1, $2::plrust.supported_arch, $3)
+                "#,
+        Some(args),
+    );
     Ok(())
 }
 
