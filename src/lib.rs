@@ -43,6 +43,9 @@ pgx::pg_module_magic!();
 /// this function will raise an ERROR if the `plrust` language isn't installed
 pub(crate) fn plrust_lang_oid() -> Option<pg_sys::Oid> {
     static PLRUST_LANG_NAME: &[u8] = b"plrust\0"; // want this to look like a c string
+    // SAFETY: We pass `missing_ok: false`, which will cause an error if not found.
+    // So we always will return a valid Oid if we return at all.
+    // The first parameter has the same requirements as `&CStr`.
     Some(unsafe { pg_sys::get_language_oid(PLRUST_LANG_NAME.as_ptr().cast(), false) })
 }
 
