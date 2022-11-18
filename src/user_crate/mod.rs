@@ -208,12 +208,9 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         }
     }
 
-    let user_dependencies: toml::value::Table =
-        toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
+    let user_dependencies = validate_dependencies_format(deps_block)?;
 
-    if crate::gucs::allow_listed_dependencies_only() {
-        validate_dependences_are_allowed(&user_dependencies);
-    }
+    validate_dependences_are_allowed(&user_dependencies)?;
 
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
@@ -222,13 +219,39 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
-fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) {
-    let allowed_deps = crate::gucs::get_allow_listed_dependencies();
-    let mut unsupported_deps = std::collections::HashMap::<String, toml::value::Value>::new();
+fn validate_dependencies_format(user_deps: String) -> eyre::Result<toml::value::Table> {
+    let user_dependencies: toml::value::Table = toml::from_str(&user_deps)?;
+
+    for (dependency, val) in &user_dependencies {
+        match val {
+            toml::Value::String(_) => {
+                // No-op, we currently only support dependencies in the format
+                // foo = "1.0.0"
+            }
+            _ => {
+                return Err(eyre::eyre!(
+                    "dependency {} with values {:?} is malformatted. Only strings are supported",
+                    dependency,
+                    val
+                ));
+            }
+        }
+    }
+    Ok(user_dependencies)
+}
+
+#[tracing::instrument(level = "debug", skip_all)]
+fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) -> eyre::Result<()> {
+    if matches!(crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get(), None) {
+        return Ok(());
+    }
+
+    let allowed_deps = &*crate::gucs::PLRUST_ALLOWED_DEPENDENCIES_CONTENTS;
+    let mut unsupported_deps = std::vec::Vec::new();
 
     for (dep, val) in user_dependencies {
         if !allowed_deps.contains_key(dep) {
-            unsupported_deps.insert(dep.to_string(), val.clone());
+            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
             continue;
         }
 
@@ -237,48 +260,47 @@ fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) {
                 let req = semver::VersionReq::parse(ver.as_str()).unwrap();
 
                 // Check if the allowed dependency is of format String or toml::Table
-                // foo = "1.0.0" vs foo = { version = "1.0.0", features = ["foo", "bar"]}
+                // foo = "1.0.0" vs foo = { version = "1.0.0", features = ["full", "boo"], test = ["single"]}
                 match allowed_deps.get(dep).unwrap() {
                     toml::Value::String(allowed_deps_ver) => {
-                        if !req.matches(&semver::Version::parse(allowed_deps_ver).unwrap()) {
-                            unsupported_deps.insert(dep.to_string(), val.clone());
+                        if !req.matches(&semver::Version::parse(allowed_deps_ver)?) {
+                            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
                         }
                     }
                     toml::Value::Table(allowed_deps_vals) => {
-                        if !allowed_deps_vals.contains_key("version") {
-                            pgx::error!(
-                                "The allowed dependencies file does not specify a version for the crate {}",
-                                dep
-                            );
-                        }
-
-                        if !req.matches(
-                            &semver::Version::parse(
-                                &allowed_deps_vals.get("version").unwrap().as_str().unwrap(),
-                            )
-                            .unwrap(),
-                        ) {
-                            unsupported_deps.insert(dep.to_string(), val.clone());
+                        if !req.matches(&semver::Version::parse(
+                            &allowed_deps_vals.get("version").unwrap().as_str().unwrap(),
+                        )?) {
+                            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
                         }
                     }
                     _ => {
-                        pgx::error!("Currently only toml Inline Table and String format is supported for dependencies");
+                        return Err(eyre::eyre!(
+                            "{} contains an unsupported toml format",
+                            crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get().unwrap()
+                        ));
                     }
                 }
             }
             _ => {
-                pgx::error!("The toml::Value {:?} is not currently supported", val);
+                return Err(eyre::eyre!(
+                    "dependency {} with values {:?} is malformatted. Only strings are supported",
+                    dep,
+                    val
+                ));
             }
         }
     }
 
     if !unsupported_deps.is_empty() {
-        pgx::error!(
-            "The following dependencies are unsupported {:?}, the configured PL/Rust only supports {:?}",
+        return Err(eyre::eyre!(
+            "The following dependencies are unsupported {:?}. The configured PL/Rust only supports {:?}",
             unsupported_deps,
             allowed_deps
-        );
+        ));
     }
+
+    Ok(())
 }
 
 #[cfg(any(test, feature = "pg_test"))]
