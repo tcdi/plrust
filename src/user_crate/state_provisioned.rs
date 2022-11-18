@@ -60,10 +60,7 @@ impl StateProvisioned {
         command.arg(target_str);
         command.env("PGX_PG_CONFIG_PATH", pg_config);
         command.env("CARGO_TARGET_DIR", &target_dir);
-        command.env(
-            "RUSTFLAGS",
-            "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
-        );
+        command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 

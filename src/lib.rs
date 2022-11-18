@@ -26,6 +26,7 @@ mod plrust;
 #[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
+mod hooks;
 mod plrust_proc;
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -39,6 +40,12 @@ use pgx::{pg_getarg, prelude::*};
 pub use tests::pg_test;
 pgx::pg_module_magic!();
 
+/// this function will raise an ERROR if the `plrust` language isn't installed
+pub(crate) fn plrust_lang_oid() -> Option<pg_sys::Oid> {
+    static PLRUST_LANG_NAME: &[u8] = b"plrust\0"; // want this to look like a c string
+    Some(unsafe { pg_sys::get_language_oid(PLRUST_LANG_NAME.as_ptr().cast(), false) })
+}
+
 #[pg_guard]
 fn _PG_init() {
     color_eyre::config::HookBuilder::default()
@@ -49,6 +56,7 @@ fn _PG_init() {
         .unwrap();
 
     gucs::init();
+    hooks::init();
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 

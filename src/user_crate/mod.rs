@@ -225,7 +225,6 @@ mod tests {
     use pgx::*;
 
     use crate::user_crate::*;
-    use eyre::WrapErr;
     use quote::quote;
     use syn::parse_quote;
     use toml::toml;

@@ -601,6 +601,77 @@ mod tests {
         let result = Spi::get_one::<i32>("SELECT not_unique(1, 2);\n");
         assert_eq!(Some(1), result);
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_cant_change_strict_off() {
+        let definition = r#"
+            CREATE FUNCTION cant_change_strict_off() 
+            RETURNS int 
+            LANGUAGE plrust 
+            AS $$ Some(1) $$;
+        "#;
+        Spi::run(definition);
+        Spi::run("ALTER FUNCTION cant_change_strict() CALLED ON NULL INPUT");
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn plrust_cant_change_strict_on() {
+        let definition = r#"
+            CREATE FUNCTION cant_change_strict_on() 
+            RETURNS int 
+            LANGUAGE plrust 
+            AS $$ Some(1) $$;
+        "#;
+        Spi::run(definition);
+        Spi::run("ALTER FUNCTION cant_change_strict() RETURNS NULL ON NULL INPUT");
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_drop_function() {
+        let definition = r#"
+            CREATE FUNCTION drop_function() 
+            RETURNS int 
+            LANGUAGE plrust 
+            AS $$ Some(1) $$;
+        "#;
+        Spi::run(definition);
+        let oid = Spi::get_one::<pg_sys::Oid>(
+            "SELECT oid FROM pg_catalog.pg_proc WHERE proname = 'drop_function'",
+        )
+        .expect("failed to lookup function oid");
+        Spi::run("DROP FUNCTION drop_function");
+        let our_id = Spi::get_one::<pg_sys::Oid>(&format!(
+            "SELECT id FROM plrust.plrust_proc WHERE id = {oid}"
+        ));
+        assert!(our_id.is_none())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn plrust_drop_schema() {
+        let definition = r#"
+            CREATE SCHEMA to_drop;
+            CREATE FUNCTION to_drop.drop_function() 
+            RETURNS int 
+            LANGUAGE plrust 
+            AS $$ Some(1) $$;
+        "#;
+        Spi::run(definition);
+        let oid = Spi::get_one::<pg_sys::Oid>(
+            "SELECT oid FROM pg_catalog.pg_proc WHERE oid = 'to_drop.drop_function'::regproc::oid",
+        )
+        .expect("failed to lookup function oid");
+        Spi::run("DROP SCHEMA to_drop CASCADE");
+        let our_id = Spi::get_one::<pg_sys::Oid>(&format!(
+            "SELECT id FROM plrust.plrust_proc WHERE id = {oid}"
+        ));
+        assert!(our_id.is_none())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -627,6 +698,11 @@ pub mod pg_test {
     }
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
-        vec![&*WORK_DIR, &*PG_CONFIG, &*LOG_LEVEL]
+        vec![
+            &*WORK_DIR,
+            &*PG_CONFIG,
+            &*LOG_LEVEL,
+            "shared_preload_libraries='plrust'",
+        ]
     }
 }

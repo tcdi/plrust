@@ -85,7 +85,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     let shared_object = built.shared_object();
 
     // store the shared object in our table
-    plrust_proc::insert(fn_oid, shared_object)?;
+    plrust_proc::create_or_replace_function(fn_oid, shared_object)?;
 
     // cleanup after ourselves
     tracing::trace!("removing {}", shared_object.display());
