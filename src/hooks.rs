@@ -19,8 +19,55 @@ pub(crate) fn init() {
     }
 }
 
+#[cfg(feature = "pg13")]
 #[pg_guard]
 unsafe extern "C" fn plrust_process_utility_hook(
+    pstmt: *mut pg_sys::PlannedStmt,
+    query_string: *const ::std::os::raw::c_char,
+    context: pg_sys::ProcessUtilityContext,
+    params: pg_sys::ParamListInfo,
+    query_env: *mut pg_sys::QueryEnvironment,
+    dest: *mut pg_sys::DestReceiver,
+    qc: *mut pg_sys::QueryCompletion,
+) {
+    plrust_process_utility_hook_internal(
+        pstmt,
+        query_string,
+        false,
+        context,
+        params,
+        query_env,
+        dest,
+        qc,
+    )
+}
+
+#[cfg(not(feature = "pg13"))]
+#[pg_guard]
+unsafe extern "C" fn plrust_process_utility_hook(
+    pstmt: *mut pg_sys::PlannedStmt,
+    query_string: *const ::std::os::raw::c_char,
+    read_only_tree: bool,
+    context: pg_sys::ProcessUtilityContext,
+    params: pg_sys::ParamListInfo,
+    query_env: *mut pg_sys::QueryEnvironment,
+    dest: *mut pg_sys::DestReceiver,
+    qc: *mut pg_sys::QueryCompletion,
+) {
+    plrust_process_utility_hook_internal(
+        pstmt,
+        query_string,
+        read_only_tree,
+        context,
+        params,
+        query_env,
+        dest,
+        qc,
+    )
+}
+
+#[allow(unused_variables)] // for `read_only_tree` under pg13
+unsafe fn plrust_process_utility_hook_internal(
     pstmt: *mut pg_sys::PlannedStmt,
     query_string: *const ::std::os::raw::c_char,
     read_only_tree: bool,
@@ -63,6 +110,7 @@ unsafe extern "C" fn plrust_process_utility_hook(
         prev_hook(
             pstmt.into_pg(),
             query_string,
+            #[cfg(not(feature = "pg13"))]
             read_only_tree,
             context,
             params,
@@ -76,6 +124,7 @@ unsafe extern "C" fn plrust_process_utility_hook(
         pg_sys::standard_ProcessUtility(
             pstmt.into_pg(),
             query_string,
+            #[cfg(not(feature = "pg13"))]
             read_only_tree,
             context,
             params,
