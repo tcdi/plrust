@@ -108,6 +108,9 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
     }
 }
 
+/// Called by Postgres, not you.
+/// # Safety
+/// Don't.
 #[pg_extern]
 #[tracing::instrument(level = "debug")]
 // Don't call this!
