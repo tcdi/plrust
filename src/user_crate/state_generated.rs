@@ -85,17 +85,16 @@ impl StateGenerated {
         })
     }
     pub(crate) fn crate_name(&self) -> String {
-        let mut crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
+        let mut _crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
         #[cfg(any(
             all(target_os = "macos", target_arch = "x86_64"),
             feature = "force_enable_x86_64_darwin_generations"
         ))]
         {
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
-
-            crate_name.push_str(&format!("_{}", next));
+            let next = crate::generation::next_generation(&_crate_name, true).unwrap_or_default();
+            _crate_name.push_str(&format!("_{}", next));
         }
-        crate_name
+        _crate_name
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
