@@ -21,7 +21,6 @@ fi
 
 (
     if cd postgrestd; then
-        git pull
         git submodule update --init --recursive
     else
         git clone https://github.com/tcdi/postgrestd.git --branch "1.61" --recurse-submodules
