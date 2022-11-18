@@ -69,7 +69,7 @@ pub(crate) unsafe fn evaluate_function(
     })
 }
 
-// #[tracing::instrument(level = "debug")]
+#[tracing::instrument(level = "debug")]
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     let work_dir = gucs::work_dir();
     let pg_config = gucs::pg_config();
