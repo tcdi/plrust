@@ -90,8 +90,8 @@ impl UserCrate<StateProvisioned> {
 
 impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug")]
-    pub(crate) fn built(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid, shared_object: &Path) -> Self {
-        UserCrate(StateBuilt::new(db_oid, fn_oid, shared_object.to_path_buf()))
+    pub(crate) fn built(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
+        UserCrate(StateBuilt::new(db_oid, fn_oid, shared_object))
     }
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub fn shared_object(&self) -> &Path {

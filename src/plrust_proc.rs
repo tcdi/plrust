@@ -86,7 +86,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
 
     // fabricate a StateBuilt version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
-    let built = UserCrate::built(db_oid, pg_proc_oid, temp_so_file.path());
+    let built = UserCrate::built(db_oid, pg_proc_oid, temp_so_file.path().to_path_buf());
     let loaded = unsafe { built.load()? };
 
     // just to be obvious, the temp_so_file gets deleted here.  Now that it's been loaded, we don't
@@ -98,6 +98,8 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
     Ok(loaded)
 }
 
+/// helper function to build a vec of Spi arguments to be used as the composite primary key
+/// `plrust.plrust_proc` needs to locate a function
 #[inline]
 fn pkey_datums(pg_proc_oid: pg_sys::Oid) -> Vec<(PgOid, Option<pg_sys::Datum>)> {
     vec![
