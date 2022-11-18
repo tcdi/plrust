@@ -14,13 +14,13 @@ if [ "$CI" != true ]; then
     --version "0.6.0-alpha.1" \
     --locked # use the Cargo.lock in the pgx repo
 fi
+
 # Don't need to run cargo pgx init: user might already have set it up,
 # and doing so risks clobbering their configuration.
 # If they get an error, it's fairly self-explanatory.
 
 (
     if cd postgrestd; then
-        git pull
         git submodule update --init --recursive
     else
         git clone https://github.com/tcdi/postgrestd.git --branch "1.61" --recurse-submodules

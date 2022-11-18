@@ -717,7 +717,7 @@ pub mod pg_test {
         allowed_deps
             .write_all(
 r#"owo-colors = "3.5.0"
-tokio = { version = "1.19.2", features = ["rt", "net"]}"#
+tokio = { version = "1.19.2", features = ["rt", "net"]}"#.as_bytes()
             )
             .unwrap();
 
