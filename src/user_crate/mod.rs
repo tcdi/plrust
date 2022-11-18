@@ -46,7 +46,7 @@ impl UserCrate<StateGenerated> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub unsafe fn try_from_fn_oid(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
-        StateGenerated::try_from_fn_oid(db_oid, fn_oid).map(Self)
+        unsafe { StateGenerated::try_from_fn_oid(db_oid, fn_oid).map(Self) }
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
@@ -96,14 +96,14 @@ impl UserCrate<StateBuilt> {
     }
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub unsafe fn load(self) -> eyre::Result<UserCrate<StateLoaded>> {
-        self.0.load().map(UserCrate)
+        unsafe { self.0.load().map(UserCrate) }
     }
 }
 
 impl UserCrate<StateLoaded> {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid(), fn_oid = %self.fn_oid()))]
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-        self.0.evaluate(fcinfo)
+        unsafe { self.0.evaluate(fcinfo) }
     }
 
     pub(crate) fn close(self) -> eyre::Result<()> {

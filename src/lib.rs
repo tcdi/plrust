@@ -20,7 +20,6 @@ mod gucs;
 mod logging;
 mod plrust;
 
-#[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
 #[cfg(any(test, feature = "pg_test"))]

@@ -27,7 +27,7 @@ impl StateLoaded {
             "Loading {shared_object}",
             shared_object = shared_object.display()
         );
-        let library = Library::new(&shared_object)?;
+        let library = unsafe { Library::new(&shared_object)? };
         let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
 
         #[cfg(any(
@@ -45,7 +45,7 @@ impl StateLoaded {
         let symbol_name = crate_name + "_wrapper";
 
         tracing::trace!("Getting symbol `{symbol_name}`");
-        let symbol = library.get(symbol_name.as_bytes())?;
+        let symbol = unsafe { library.get(symbol_name.as_bytes())? };
 
         Ok(Self {
             db_oid,
@@ -59,7 +59,7 @@ impl StateLoaded {
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, ?fcinfo))]
     pub(crate) unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-        (self.symbol)(fcinfo)
+        unsafe { (self.symbol)(fcinfo) }
     }
 
     #[tracing::instrument(
