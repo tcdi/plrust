@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::{
-    gucs,
+    gucs, plrust_proc,
     user_crate::{StateLoaded, UserCrate},
 };
 
@@ -16,12 +16,11 @@ use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
 use std::{
     cell::RefCell,
     collections::{hash_map::Entry, HashMap},
-    env::consts::DLL_SUFFIX,
-    path::PathBuf,
     process::Output,
 };
 
-use current_platform::CURRENT_PLATFORM;
+use crate::plrust_proc::get_target_triple;
+use eyre::WrapErr;
 
 thread_local! {
     pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> = Default::default();
@@ -51,34 +50,13 @@ pub(crate) unsafe fn evaluate_function(
 ) -> eyre::Result<pg_sys::Datum> {
     LOADED_SYMBOLS.with(|loaded_symbols| {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
-        // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
-        // then writes it only during initialization, so we should not be racing anyone.
-        let db_oid = unsafe { MyDatabaseId };
         let user_crate_loaded = match loaded_symbols_handle.entry(fn_oid) {
             entry @ Entry::Occupied(_) => {
                 entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
             }
             entry @ Entry::Vacant(_) => {
-                let crate_name = crate_name(db_oid, fn_oid);
-                let mut shared_object_name = crate_name;
-                #[cfg(any(
-                    all(target_os = "macos", target_arch = "x86_64"),
-                    feature = "force_enable_x86_64_darwin_generations"
-                ))]
-                {
-                    let (latest, _path) =
-                        crate::generation::latest_generation(&shared_object_name, true)
-                            .unwrap_or_default();
-
-                    shared_object_name.push_str(&format!("_{}", latest));
-                };
-                shared_object_name.push_str(DLL_SUFFIX);
-
-                let shared_library = gucs::work_dir().join(&shared_object_name);
-                let user_crate_built = UserCrate::built(db_oid, fn_oid, shared_library);
-                let user_crate_loaded = unsafe { user_crate_built.load()? };
-
-                entry.or_insert(user_crate_loaded)
+                let loaded = plrust_proc::load(fn_oid)?;
+                entry.or_insert(loaded)
             }
         };
 
@@ -93,7 +71,7 @@ pub(crate) unsafe fn evaluate_function(
 }
 
 #[tracing::instrument(level = "debug")]
-pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Output)> {
+pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     let work_dir = gucs::work_dir();
     let pg_config = gucs::pg_config();
     let target_dir = work_dir.join("target");
@@ -103,11 +81,26 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<(PathBuf, Ou
 
     let generated = unsafe { UserCrate::try_from_fn_oid(db_oid, fn_oid)? };
     let provisioned = generated.provision(&work_dir)?;
-    let (built, output) = provisioned.build(&work_dir, pg_config, Some(target_dir.as_path()))?;
-
+    let crate_dir = provisioned.crate_dir().to_path_buf();
+    let (built, output) = provisioned.build(pg_config, target_dir.as_path())?;
     let shared_object = built.shared_object();
 
-    Ok((shared_object.into(), output))
+    // store the shared object in our table
+    plrust_proc::create_or_replace_function(fn_oid, shared_object)?;
+
+    // cleanup after ourselves
+    tracing::trace!("removing {}", shared_object.display());
+    std::fs::remove_file(&shared_object).wrap_err(format!(
+        "Problem deleting temporary shared object file at '{}'",
+        shared_object.display()
+    ))?;
+    tracing::trace!("removing {}", crate_dir.display());
+    std::fs::remove_dir_all(&crate_dir).wrap_err(format!(
+        "Problem deleting temporary crate directory at '{}'",
+        crate_dir.display()
+    ))?;
+
+    Ok(output)
 }
 
 pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
@@ -118,7 +111,7 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
         "plrust_fn_oid_{}_{}_{}",
         db_oid,
         fn_oid,
-        CURRENT_PLATFORM.replace("-", "_")
+        get_target_triple().replace("-", "_")
     );
 
     crate_name

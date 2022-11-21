@@ -7,6 +7,7 @@ license = "PostgreSQL Open Source License"
 description = "A Rust procedural language for PostgreSQL"
 homepage = "https://github.com/zombodb/plrust/"
 repository = "https://github.com/zombodb/plrust/"
+build = "build.rs"
 
 [lib]
 crate-type = ["cdylib"]
@@ -37,7 +38,7 @@ pgx-pg-config = { version = "0.6.0-alpha.1" }
 libloading = "0.7.2"
 toml = "0.5"
 tempdir = "0.3.7" # for building crates
-current_platform = "0.2.0" # uses a build.rs
+tempfile = "3.3.0"
 
 # error handling, tracing, formatting
 thiserror = "1.0"

@@ -24,14 +24,22 @@ sum_array
 */
 ```
 
-# Options
+# Configuration
 
-There are two `postgresql.conf` settings that must be configured:
+First, plrust must be configured as a `shared_preload_libraries` entry in `postgresql.conf`.  For example:
+
+```
+shared_preload_libraries = 'plrust'
+```
+
+Failure to do so will cause unexpected behavior around the DROP FUNCTION, DROP SCHEMA, and ALTER FUNCTION commands.
+
+Additionally, there are two `postgresql.conf` settings that must be configured:
 
 Option | Description
 --------------|-----------
-`plrust.pg_config` | The full path of the `pg_config` binary.
-`plrust.work_dir` | The directory where pl/rust will build functions with cargo.
+`plrust.pg_config` | The full path of the `pg_config` binary (required).
+`plrust.work_dir` | The directory where pl/rust will build functions with cargo (required).
 `plrust.tracing_level` | A [tracing directive][docs-rs-tracing-directive]. (Default `info`)
 
 [github-pgx]: https://github.com/zombodb/pgx

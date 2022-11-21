@@ -72,17 +72,20 @@ impl UserCrate<StateProvisioned> {
             db_oid = %self.0.db_oid(),
             fn_oid = %self.0.fn_oid(),
             crate_dir = %self.0.crate_dir().display(),
-            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+            target_dir = tracing::field::display(target_dir.display()),
         ))]
     pub fn build(
         self,
-        artifact_dir: &Path,
         pg_config: PathBuf,
-        target_dir: Option<&Path>,
+        target_dir: &Path,
     ) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
         self.0
-            .build(artifact_dir, pg_config, target_dir)
+            .build(pg_config, target_dir)
             .map(|(state, output)| (UserCrate(state), output))
+    }
+
+    pub(crate) fn crate_dir(&self) -> &Path {
+        self.0.crate_dir()
     }
 }
 
@@ -309,7 +312,6 @@ mod tests {
     use pgx::*;
 
     use crate::user_crate::*;
-    use eyre::WrapErr;
     use quote::quote;
     use syn::parse_quote;
     use toml::toml;
@@ -399,12 +401,9 @@ mod tests {
                 "Generated `Cargo.toml` differs from test (after formatting)",
             );
 
-            let parent_dir = tempdir::TempDir::new("plrust-generated-crate-function-workflow")
-                .wrap_err("Creating temp dir")?;
-            let provisioned = generated.provision(parent_dir.path())?;
+            let provisioned = generated.provision(&target_dir)?;
 
-            let (built, _output) =
-                provisioned.build(parent_dir.path(), pg_config, Some(target_dir.as_path()))?;
+            let (built, _output) = provisioned.build(pg_config, &target_dir)?;
 
             let _shared_object = built.shared_object();
 
