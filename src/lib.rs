@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 #![doc = include_str!("../README.md")]
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 mod error;
 #[cfg(any(
