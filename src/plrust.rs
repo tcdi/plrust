@@ -13,12 +13,10 @@ use crate::{
 };
 
 use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
-use std::{
-    cell::RefCell,
-    collections::{hash_map::Entry, HashMap},
-    process::Output,
-};
+use std::{cell::RefCell, collections::HashMap, process::Output};
 
+use crate::error::PlRustError;
+use crate::pgproc::PgProc;
 use crate::plrust_proc::get_target_triple;
 use eyre::WrapErr;
 
@@ -36,7 +34,6 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
         let removed = loaded_symbols_handle.remove(&fn_oid);
         if let Some(user_crate) = removed {
-            tracing::info!("unloaded function");
             user_crate.close().unwrap();
         }
     })
@@ -49,14 +46,42 @@ pub(crate) unsafe fn evaluate_function(
 ) -> eyre::Result<pg_sys::Datum> {
     LOADED_SYMBOLS.with(|loaded_symbols| {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
-        let user_crate_loaded = match loaded_symbols_handle.entry(fn_oid) {
-            entry @ Entry::Occupied(_) => {
-                entry.or_insert_with(|| unreachable!("Occupied entry was vacant"))
+
+        let user_crate_loaded = if let Some(current) = loaded_symbols_handle.get_mut(&fn_oid) {
+            let current_xmin = PgProc::new(fn_oid)
+                .ok_or_else(|| PlRustError::NoSuchFunction(fn_oid))?
+                .xmin();
+
+            // xmin represents the transaction id that inserted this row (in this case into
+            // pg_catalog.pg_proc).  So if it's changed from the last time we loaded the function
+            // then we have more work to do...
+            if current.xmin() != current_xmin {
+                // the function, which we've previously loaded, was changed by a concurrent session.
+                // This could be caused by (at least) the "OR REPLACE" bit of CREATE OR REPLACE or
+                // by an ALTER FUNCTION that changed one of the attributes of the function.
+                tracing::trace!(
+                    "Reloading function {fn_oid} due to change from concurrent session"
+                );
+
+                // load the new function
+                let new = plrust_proc::load(fn_oid)?;
+
+                // swap out the currently loaded function for the new one
+                let old = std::mem::replace(current, new);
+
+                // make a best effort to try and close the old loaded function.  If dlclose() fails,
+                // there's nothing we can do but carry on with the newly loaded version
+                if let Err(e) = old.close() {
+                    tracing::warn!("Failed to close the old version of function {fn_oid}.  Ignoring, and continuing with new version: {e}");
+                }
             }
-            entry @ Entry::Vacant(_) => {
-                let loaded = plrust_proc::load(fn_oid)?;
-                entry.or_insert(loaded)
-            }
+
+            current
+        } else {
+            // loading the function for the first time
+            loaded_symbols_handle
+                .entry(fn_oid)
+                .or_insert(plrust_proc::load(fn_oid)?)
         };
 
         tracing::trace!(

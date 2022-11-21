@@ -12,6 +12,7 @@ use std::{
 
 #[must_use]
 pub(crate) struct StateProvisioned {
+    pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     crate_name: String,
@@ -23,12 +24,14 @@ impl CrateState for StateProvisioned {}
 impl StateProvisioned {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
     ) -> Self {
         Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             crate_name,
@@ -90,7 +93,12 @@ impl StateProvisioned {
                 .join(&built_shared_object_name);
 
             Ok((
-                StateBuilt::new(self.db_oid, self.fn_oid, built_shared_object),
+                StateBuilt::new(
+                    self.pg_proc_xmin,
+                    self.db_oid,
+                    self.fn_oid,
+                    built_shared_object,
+                ),
                 output,
             ))
         } else {
@@ -111,12 +119,12 @@ impl StateProvisioned {
         }
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
-        &self.fn_oid
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
+        self.fn_oid
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
-        &self.db_oid
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
+        self.db_oid
     }
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
