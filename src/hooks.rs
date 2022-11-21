@@ -1,6 +1,6 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 use std::ffi::CStr;
 
-use pgx::pg_sys::DropStmt;
 use pgx::{
     pg_guard, pg_sys, FromDatum, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel,
     PgSqlErrorCode, Spi,
@@ -67,7 +67,7 @@ unsafe extern "C" fn plrust_process_utility_hook(
 }
 
 #[allow(unused_variables)] // for `read_only_tree` under pg13
-unsafe fn plrust_process_utility_hook_internal(
+fn plrust_process_utility_hook_internal(
     pstmt: *mut pg_sys::PlannedStmt,
     query_string: *const ::std::os::raw::c_char,
     read_only_tree: bool,
@@ -77,15 +77,26 @@ unsafe fn plrust_process_utility_hook_internal(
     dest: *mut pg_sys::DestReceiver,
     qc: *mut pg_sys::QueryCompletion,
 ) {
-    let pstmt = PgBox::from_pg(pstmt);
-    let utility_stmt = PgBox::from_pg(pstmt.utilityStmt);
+    let pstmt = unsafe {
+        // SAFETY:  Postgres will have provided us with a valid PlannedStmt pointer, which it allocated
+        PgBox::from_pg(pstmt)
+    };
+    let utility_stmt = unsafe {
+        // SAFETY:  and this is the "process utility hook", so pstmt's `utilityStmt` member will also
+        // be a properly-allocated Postgres pointer
+        PgBox::from_pg(pstmt.utilityStmt)
+    };
 
     // examine the UtilityStatement itself.  We're interested in three different commands,
     // "DROP FUNCTION", "DROP SCHEMA", and "ALTER FUNCTION".  Two different node types are used
     // for these -- `DropStmt` and `AlterFunctionStmt`
 
     if utility_stmt.type_ == pg_sys::NodeTag_T_DropStmt {
-        let drop_stmt = PgBox::from_pg(pstmt.utilityStmt.cast::<pg_sys::DropStmt>());
+        let drop_stmt = unsafe {
+            // SAFETY:  we already determined that pstmt.utilityStmt is valid, and we just determined
+            // its "node type" is a DropStmt, so the cast is clean
+            PgBox::from_pg(pstmt.utilityStmt.cast::<pg_sys::DropStmt>())
+        };
 
         // in the case of DropStmt, if the object being dropped is a FUNCTION or a SCHEMA, we'll
         // go off and handle those two cases
@@ -97,56 +108,79 @@ unsafe fn plrust_process_utility_hook_internal(
             }
         }
     } else if utility_stmt.type_ == pg_sys::NodeTag_T_AlterFunctionStmt {
-        let alter_stmt = PgBox::from_pg(pstmt.utilityStmt.cast::<pg_sys::AlterFunctionStmt>());
+        let alter_stmt = unsafe {
+            // SAFETY:  we already determined that pstmt.utilityStmt is valid, and we just determined
+            // its "node type" is an AlterFunctionStmt, so the cast is clean
+            PgBox::from_pg(pstmt.utilityStmt.cast::<pg_sys::AlterFunctionStmt>())
+        };
 
-        // and for AlterFunctioStmt, we'll just go do it.
+        // and for AlterFunctionStmt, we'll just go do it.
         handle_alter_function(&alter_stmt);
     }
 
-    if PREVIOUS_PROCESS_UTILITY_HOOK.is_some() {
-        // previous hook must go last as we need the catalog entries this utility statement might
-        // operate on to be valid
-        let prev_hook = PREVIOUS_PROCESS_UTILITY_HOOK.as_ref().unwrap();
-        prev_hook(
-            pstmt.into_pg(),
-            query_string,
-            #[cfg(not(feature = "pg13"))]
-            read_only_tree,
-            context,
-            params,
-            query_env,
-            dest,
-            qc,
-        );
-    } else {
-        // otherwise if there isn't one, we are the first to hook ProcessUtility, so ask Postgres
-        // to do whatever it wants to do with this statement
-        pg_sys::standard_ProcessUtility(
-            pstmt.into_pg(),
-            query_string,
-            #[cfg(not(feature = "pg13"))]
-            read_only_tree,
-            context,
-            params,
-            query_env,
-            dest,
-            qc,
-        );
+    unsafe {
+        // SAFETY:  PREVIOUS_PROCESS_UTILITY_HOOK is ours and is initialized to None, and it's
+        // potentially replaced with a Some() value in `init()`.  Additionally, Postgres and plrust
+        // are not threaded, so there's no chance of concurrently modifying this thing
+        if PREVIOUS_PROCESS_UTILITY_HOOK.is_some() {
+            // previous hook must go last as we need the catalog entries this utility statement might
+            // operate on to be valid
+            let prev_hook = PREVIOUS_PROCESS_UTILITY_HOOK.as_ref().unwrap();
+            prev_hook(
+                pstmt.into_pg(),
+                query_string,
+                #[cfg(not(feature = "pg13"))]
+                read_only_tree,
+                context,
+                params,
+                query_env,
+                dest,
+                qc,
+            );
+        } else {
+            // otherwise if there isn't one, we are the first to hook ProcessUtility, so ask Postgres
+            // to do whatever it wants to do with this statement
+            pg_sys::standard_ProcessUtility(
+                pstmt.into_pg(),
+                query_string,
+                #[cfg(not(feature = "pg13"))]
+                read_only_tree,
+                context,
+                params,
+                query_env,
+                dest,
+                qc,
+            );
+        }
     }
 }
 
 /// if the function being altered is `LANGUAGE plrust`, block any attempted change to the `STRICT`
 /// property, even if to the current value
-unsafe fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
-    let pg_proc_oid = pg_sys::LookupFuncWithArgs(alter_stmt.objtype, alter_stmt.func, false);
+fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
+    let pg_proc_oid = unsafe {
+        // SAFETY:  specifying missing_ok=false ensures that LookupFuncWithArgs won't return for
+        // something that doesn't exist.
+        pg_sys::LookupFuncWithArgs(alter_stmt.objtype, alter_stmt.func, false)
+    };
     let lang_oid = lookup_func_lang(pg_proc_oid);
 
     if lang_oid == plrust_lang_oid() {
         // block a change to the 'STRICT' property
-        let actions = PgList::<pg_sys::DefElem>::from_pg(alter_stmt.actions);
+        let actions = unsafe {
+            // SAFETY:  AlterFunctionStmt.actions is known to be a "list of DefElem"
+            PgList::<pg_sys::DefElem>::from_pg(alter_stmt.actions)
+        };
         for defelem in actions.iter_ptr() {
-            let defelem = PgBox::from_pg(defelem);
-            let name = CStr::from_ptr(defelem.defname);
+            let defelem = unsafe {
+                // SAFETY: a Postgres pg_sys::List, and by extension PgList, wont contain null
+                // pointers, so we know this DefElem pointer is valid
+                PgBox::from_pg(defelem)
+            };
+            let name = unsafe {
+                // SAFETY:  DefElem.defname is always a valid pointer to a null-terminted C string
+                CStr::from_ptr(defelem.defname)
+            };
 
             // if the defelem name contains "strict", we need to stop the show.  Changing the
             // "strict-ness" of a pl/rust function without also changing the **source code** of that
@@ -173,7 +207,7 @@ unsafe fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
 }
 
 /// drop all the `LANGUAGE plrust` functions from the set of all functions being dropped by the [`DropStmt`]
-unsafe fn handle_drop_function(drop_stmt: &PgBox<DropStmt>) {
+fn handle_drop_function(drop_stmt: &PgBox<pg_sys::DropStmt>) {
     let plrust_lang_oid = plrust_lang_oid();
 
     for pg_proc_oid in objects(drop_stmt, pg_sys::ProcedureRelationId).filter_map(|oa| {
@@ -186,7 +220,7 @@ unsafe fn handle_drop_function(drop_stmt: &PgBox<DropStmt>) {
 }
 
 /// drop all `LANGUAGE plrust` functions in any of the schemas being dropped by the [`DropStmt`]
-unsafe fn handle_drop_schema(drop_stmt: &PgBox<DropStmt>) {
+fn handle_drop_schema(drop_stmt: &PgBox<pg_sys::DropStmt>) {
     for object in objects(drop_stmt, pg_sys::NamespaceRelationId) {
         for pg_proc_oid in all_in_namespace(object.objectId) {
             plrust_proc::drop_function(pg_proc_oid)
@@ -196,23 +230,40 @@ unsafe fn handle_drop_schema(drop_stmt: &PgBox<DropStmt>) {
 
 /// Returns an iterator over the `objects` in the `[DropStmt]`, filtered by only those of the
 /// specified `filter_class_id`
-unsafe fn objects(
-    drop_stmt: &PgBox<DropStmt>,
+fn objects(
+    drop_stmt: &PgBox<pg_sys::DropStmt>,
     filter_class_id: pg_sys::Oid,
 ) -> impl Iterator<Item = pg_sys::ObjectAddress> {
-    PgList::<pg_sys::Node>::from_pg(drop_stmt.objects)
-        .iter_ptr()
-        .map(move |object| {
+    let list = unsafe {
+        // SAFETY:  Postgres documents DropStmt.object as being a "list of names", which are in fact
+        // compatible with generic pg_sys::Node types
+        PgList::<pg_sys::Node>::from_pg(drop_stmt.objects)
+    };
+
+    list.iter_ptr()
+        .filter_map(move |object| {
             let mut rel = std::ptr::null_mut();
-            pg_sys::get_object_address(
-                drop_stmt.removeType,
-                object,
-                &mut rel,
-                pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE,
-                drop_stmt.missing_ok,
-            )
+
+            unsafe {
+                // SAFETY:  "object" is a valid Node pointer from the list, and the value returned
+                // from get_object_address is never null.  We don't particularly care about the
+                // value of "missing_ok" as if the named object is missing the returned
+                // "ObjectAddress.objectId" will be InvalidOid and we filter that out here
+                let address = pg_sys::get_object_address(
+                    drop_stmt.removeType,
+                    object,
+                    &mut rel,
+                    pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE,
+                    drop_stmt.missing_ok,
+                );
+
+                if address.objectId == pg_sys::InvalidOid || address.classId != filter_class_id {
+                    None
+                } else {
+                    Some(address)
+                }
+            }
         })
-        .filter(move |oa| oa.classId == filter_class_id && oa.objectId != pg_sys::InvalidOid)
         .collect::<Vec<_>>()
         .into_iter()
 }
@@ -251,25 +302,28 @@ pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> Vec<pg_sys::Oid
 }
 
 /// Return the specified function's `prolang` value from `pg_catalog.pg_proc`
-unsafe fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> Option<pg_sys::Oid> {
-    let cache_entry = pg_sys::SearchSysCache1(
-        pg_sys::SysCacheIdentifier_PROCOID as i32,
-        pg_proc_oid.into_datum().unwrap(),
-    );
-    if !cache_entry.is_null() {
-        let mut is_null = false;
-        let lang_datum = pg_sys::SysCacheGetAttr(
+fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> Option<pg_sys::Oid> {
+    // SAFETY:  This whole function gets replaced in a follow-up PR.  You'll like it @workingjubilee, I promise!
+    unsafe {
+        let cache_entry = pg_sys::SearchSysCache1(
             pg_sys::SysCacheIdentifier_PROCOID as i32,
-            cache_entry,
-            pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
-            &mut is_null,
+            pg_proc_oid.into_datum().unwrap(),
         );
-        // SAFETY:  the datum will never be null -- postgres has a NOT NULL constraint on prolang
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null).unwrap();
-        pg_sys::ReleaseSysCache(cache_entry);
+        if !cache_entry.is_null() {
+            let mut is_null = false;
+            let lang_datum = pg_sys::SysCacheGetAttr(
+                pg_sys::SysCacheIdentifier_PROCOID as i32,
+                cache_entry,
+                pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
+                &mut is_null,
+            );
+            // SAFETY:  the datum will never be null -- postgres has a NOT NULL constraint on prolang
+            let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null).unwrap();
+            pg_sys::ReleaseSysCache(cache_entry);
 
-        Some(lang_oid)
-    } else {
-        None
+            Some(lang_oid)
+        } else {
+            None
+        }
     }
 }
