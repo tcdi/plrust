@@ -2,10 +2,10 @@
 use std::ffi::CStr;
 
 use pgx::{
-    pg_guard, pg_sys, FromDatum, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel,
-    PgSqlErrorCode, Spi,
+    pg_guard, pg_sys, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel, PgSqlErrorCode, Spi,
 };
 
+use crate::pgproc::PgProc;
 use crate::{plrust_lang_oid, plrust_proc};
 
 static mut PREVIOUS_PROCESS_UTILITY_HOOK: pg_sys::ProcessUtility_hook_type = None;
@@ -329,27 +329,6 @@ pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> Vec<pg_sys::Oid
 
 /// Return the specified function's `prolang` value from `pg_catalog.pg_proc`
 fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> Option<pg_sys::Oid> {
-    // SAFETY:  This whole function gets replaced in a follow-up PR.  You'll like it @workingjubilee, I promise!
-    unsafe {
-        let cache_entry = pg_sys::SearchSysCache1(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            pg_proc_oid.into_datum().unwrap(),
-        );
-        if !cache_entry.is_null() {
-            let mut is_null = false;
-            let lang_datum = pg_sys::SysCacheGetAttr(
-                pg_sys::SysCacheIdentifier_PROCOID as i32,
-                cache_entry,
-                pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
-                &mut is_null,
-            );
-            // SAFETY:  the datum will never be null -- postgres has a NOT NULL constraint on prolang
-            let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null).unwrap();
-            pg_sys::ReleaseSysCache(cache_entry);
-
-            Some(lang_oid)
-        } else {
-            None
-        }
-    }
+    let meta = PgProc::new(pg_proc_oid)?;
+    Some(meta.prolang())
 }

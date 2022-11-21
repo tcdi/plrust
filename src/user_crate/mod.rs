@@ -31,6 +31,7 @@ impl UserCrate<StateGenerated> {
     #[cfg(any(test, feature = "pg_test"))]
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn generated_for_tests(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -38,6 +39,7 @@ impl UserCrate<StateGenerated> {
         variant: CrateVariant,
     ) -> Self {
         Self(StateGenerated::for_tests(
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             user_deps.into(),
@@ -91,8 +93,18 @@ impl UserCrate<StateProvisioned> {
 
 impl UserCrate<StateBuilt> {
     #[tracing::instrument(level = "debug")]
-    pub(crate) fn built(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid, shared_object: PathBuf) -> Self {
-        UserCrate(StateBuilt::new(db_oid, fn_oid, shared_object))
+    pub(crate) fn built(
+        pg_proc_xmin: pg_sys::TransactionId,
+        db_oid: pg_sys::Oid,
+        fn_oid: pg_sys::Oid,
+        shared_object: PathBuf,
+    ) -> Self {
+        UserCrate(StateBuilt::new(
+            pg_proc_xmin,
+            db_oid,
+            fn_oid,
+            shared_object.to_path_buf(),
+        ))
     }
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
     pub fn shared_object(&self) -> &Path {
@@ -118,11 +130,16 @@ impl UserCrate<StateLoaded> {
         self.0.symbol_name()
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
+    #[inline]
+    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
+        self.0.xmin()
+    }
+
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
         self.0.fn_oid()
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
         self.0.db_oid()
     }
 
@@ -319,6 +336,7 @@ mod tests {
     #[pg_test]
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
+            let pg_proc_oid = 0 as pg_sys::TransactionId;
             let fn_oid = 0 as pg_sys::Oid;
             let db_oid = 1 as pg_sys::Oid;
             let target_dir = crate::gucs::work_dir();
@@ -337,8 +355,14 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated =
-                UserCrate::generated_for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = UserCrate::generated_for_tests(
+                pg_proc_oid,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
                 all(target_os = "macos", target_arch = "x86_64"),
