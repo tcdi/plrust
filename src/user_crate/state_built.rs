@@ -42,11 +42,15 @@ impl StateBuilt {
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, shared_object = %self.shared_object.display()))]
     pub(crate) unsafe fn load(self) -> eyre::Result<StateLoaded> {
-        StateLoaded::load(
-            self.pg_proc_xmin,
-            self.db_oid,
-            self.fn_oid,
-            self.shared_object,
-        )
+        unsafe {
+            // SAFETY:  Caller is responsible for ensuring self.shared_object points to the proper
+            // shared library to be loaded
+            StateLoaded::load(
+                self.pg_proc_xmin,
+                self.db_oid,
+                self.fn_oid,
+                self.shared_object,
+            )
+        }
     }
 }
