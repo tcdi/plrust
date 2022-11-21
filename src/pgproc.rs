@@ -8,6 +8,9 @@ pub(crate) struct PgProc {
 
 impl Drop for PgProc {
     fn drop(&mut self) {
+        // SAFETY: We have a valid pointer and this just decrements the reference count.
+        // This will generally get resolved by the end of the transaction anyways,
+        // but Postgres strongly recommends you do not do that.
         unsafe { pg_sys::ReleaseSysCache(self.inner.as_ptr()) }
     }
 }
