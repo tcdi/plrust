@@ -23,7 +23,6 @@ mod plrust;
 mod user_crate;
 
 mod hooks;
-mod pgproc;
 mod plrust_proc;
 
 #[cfg(any(test, feature = "pg_test"))]
