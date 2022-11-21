@@ -8,29 +8,24 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 #![doc = include_str!("../README.md")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
-#[deny(unsafe_op_in_unsafe_fn)]
 mod error;
 #[cfg(any(
     all(target_os = "macos", target_arch = "x86_64"),
     feature = "force_enable_x86_64_darwin_generations"
 ))]
 mod generation;
-#[deny(unsafe_op_in_unsafe_fn)]
 mod gucs;
-#[deny(unsafe_op_in_unsafe_fn)]
 mod logging;
-#[deny(unsafe_op_in_unsafe_fn)]
 mod plrust;
 
-#[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
 mod hooks;
 mod plrust_proc;
 
 #[cfg(any(test, feature = "pg_test"))]
-#[allow(unsafe_op_in_unsafe_fn)] // waiting on a PGX fix
 pub mod tests;
 
 use error::PlRustError;
@@ -106,11 +101,12 @@ CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
 #[tracing::instrument(level = "debug")]
-#[deny(unsafe_op_in_unsafe_fn)]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     unsafe fn plrust_call_handler_inner(
         fcinfo: pg_sys::FunctionCallInfo,
     ) -> eyre::Result<pg_sys::Datum> {
+        // SAFETY: these seemingly innocent invocations of `as_ref` are actually `pointer::as_ref`
+        // but we should have been given this fcinfo by Postgres, so it should be fine
         let fn_oid = unsafe {
             fcinfo
                 .as_ref()
@@ -132,10 +128,11 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
     }
 }
 
+/// Called by Postgres, not you.
+/// # Safety
+/// Don't.
 #[pg_extern]
 #[tracing::instrument(level = "debug")]
-// Don't call this!
-#[deny(unsafe_op_in_unsafe_fn)]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     unsafe fn plrust_validator_inner(
         fn_oid: pg_sys::Oid,

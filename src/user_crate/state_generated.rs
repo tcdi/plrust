@@ -38,6 +38,7 @@ impl StateGenerated {
     }
 
     #[tracing::instrument(level = "debug")]
+    #[allow(unsafe_op_in_unsafe_fn)] // TODO: A bit of a mess in here, fix this?
     pub(crate) unsafe fn try_from_fn_oid(
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,

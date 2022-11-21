@@ -35,6 +35,6 @@ impl StateBuilt {
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, shared_object = %self.shared_object.display()))]
     pub(crate) unsafe fn load(self) -> eyre::Result<StateLoaded> {
-        StateLoaded::load(self.db_oid, self.fn_oid, self.shared_object)
+        unsafe { StateLoaded::load(self.db_oid, self.fn_oid, self.shared_object) }
     }
 }
