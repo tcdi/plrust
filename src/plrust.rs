@@ -43,7 +43,6 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
 }
 
 #[tracing::instrument(level = "debug")]
-#[deny(unsafe_op_in_unsafe_fn)]
 pub(crate) unsafe fn evaluate_function(
     fn_oid: pg_sys::Oid,
     fcinfo: FunctionCallInfo,
