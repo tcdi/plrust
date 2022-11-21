@@ -129,6 +129,11 @@ impl UserCrate<StateLoaded> {
         self.0.symbol_name()
     }
 
+    #[inline]
+    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
+        self.0.xmin()
+    }
+
     pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
         self.0.fn_oid()
     }

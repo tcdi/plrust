@@ -9,11 +9,12 @@ pub(crate) struct PgProc {
 
 impl Drop for PgProc {
     fn drop(&mut self) {
-        unsafe { pg_sys::ReleaseSysCache(self.inner.assume_init().as_ptr()) }
+        unsafe { pg_sys::ReleaseSysCache(self.inner.as_ptr()) }
     }
 }
 
 impl PgProc {
+    #[inline]
     pub(crate) fn new(pg_proc_oid: pg_sys::Oid) -> Option<PgProc> {
         unsafe {
             // SAFETY:  SearchSysCache1 will give us a valid HeapTuple or it'll return null.
@@ -28,6 +29,7 @@ impl PgProc {
         }
     }
 
+    #[inline]
     pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
         // SAFETY:  self.inner will be valid b/c that's part of what pg_sys::SearchSysCache1()
         // does for us.  Same is true for t_data
@@ -36,7 +38,7 @@ impl PgProc {
                 .as_ref()
                 .t_data
                 .as_ref()
-                .unwrap()
+                .unwrap_unchecked() // SAFETY: t_data will never be null and `xmin()` is called in a potentially hot path
                 .t_choice
                 .t_heap
                 .t_xmin

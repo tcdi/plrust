@@ -4,7 +4,7 @@ use crate::{
     PlRustError,
 };
 use eyre::WrapErr;
-use pgx::{pg_sys, FromDatum, IntoDatum, PgOid};
+use pgx::{pg_sys, PgOid};
 use quote::quote;
 use std::path::Path;
 

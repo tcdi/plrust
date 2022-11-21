@@ -92,7 +92,8 @@ impl StateLoaded {
         &self.symbol_name
     }
 
-    pub(crate) fn pg_prox_xmin(&self) -> pg_sys::TransactionId {
+    #[inline]
+    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
         self.pg_proc_xmin
     }
 

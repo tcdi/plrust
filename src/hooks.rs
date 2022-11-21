@@ -2,8 +2,7 @@
 use std::ffi::CStr;
 
 use pgx::{
-    pg_guard, pg_sys, FromDatum, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel,
-    PgSqlErrorCode, Spi,
+    pg_guard, pg_sys, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel, PgSqlErrorCode, Spi,
 };
 
 use crate::pgproc::PgProc;
