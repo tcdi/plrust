@@ -8,8 +8,6 @@ pub(crate) enum PlRustError {
     NullFmgrInfo,
     #[error("The Procedure Tuple was NULL")]
     NullProcTuple,
-    #[error("The source code of the function was NULL")]
-    NullSourceCode,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
     #[cfg(any(

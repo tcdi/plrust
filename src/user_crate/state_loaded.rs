@@ -7,6 +7,7 @@ impl CrateState for StateLoaded {}
 
 #[must_use]
 pub(crate) struct StateLoaded {
+    pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     symbol_name: String,
@@ -19,6 +20,7 @@ pub(crate) struct StateLoaded {
 impl StateLoaded {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, shared_object = %shared_object.display()))]
     pub(crate) unsafe fn load(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         shared_object: PathBuf,
@@ -48,6 +50,7 @@ impl StateLoaded {
         let symbol = unsafe { library.get(symbol_name.as_bytes())? };
 
         Ok(Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             symbol_name,
@@ -73,6 +76,7 @@ impl StateLoaded {
         ))]
     pub(crate) fn close(self) -> eyre::Result<()> {
         let Self {
+            pg_proc_xmin: _,
             db_oid: _,
             fn_oid: _,
             library,
@@ -88,12 +92,16 @@ impl StateLoaded {
         &self.symbol_name
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
-        &self.fn_oid
+    pub(crate) fn pg_prox_xmin(&self) -> pg_sys::TransactionId {
+        self.pg_proc_xmin
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
-        &self.db_oid
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
+        self.fn_oid
+    }
+
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
+        self.db_oid
     }
 
     pub(crate) fn shared_object(&self) -> &Path {

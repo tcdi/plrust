@@ -1,10 +1,10 @@
+use crate::pgproc::PgProc;
 use crate::{
-    plrust_lang_oid,
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateProvisioned},
     PlRustError,
 };
 use eyre::WrapErr;
-use pgx::{pg_sys, FromDatum, IntoDatum, PgBox, PgOid};
+use pgx::{pg_sys, FromDatum, IntoDatum, PgOid};
 use quote::quote;
 use std::path::Path;
 
@@ -12,6 +12,7 @@ impl CrateState for StateGenerated {}
 
 #[must_use]
 pub(crate) struct StateGenerated {
+    pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     user_dependencies: toml::value::Table,
@@ -22,6 +23,7 @@ pub(crate) struct StateGenerated {
 impl StateGenerated {
     #[cfg(any(test, feature = "pg_test"))]
     pub(crate) fn for_tests(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -29,6 +31,7 @@ impl StateGenerated {
         variant: CrateVariant,
     ) -> Self {
         Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             user_dependencies: user_deps.into(),
@@ -43,83 +46,38 @@ impl StateGenerated {
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
     ) -> eyre::Result<Self> {
-        let proc_tuple = pg_sys::SearchSysCache(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            fn_oid.into_datum().unwrap(), // TODO: try_from_datum
-            pg_sys::Datum::from(0_u64),
-            pg_sys::Datum::from(0_u64),
-            pg_sys::Datum::from(0_u64),
-        );
-        if proc_tuple.is_null() {
-            return Err(PlRustError::NullProcTuple)?;
-        }
+        let meta = PgProc::new(fn_oid).ok_or(PlRustError::NullProcTuple)?;
+        let pg_proc_xmin = meta.xmin();
+        let (user_code, user_dependencies) = parse_source_and_deps(&meta.prosrc())?;
 
-        let mut is_null = false;
-
-        let lang_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null);
-        if lang_oid != plrust_lang_oid() {
-            return Err(PlRustError::NotPlRustFunction(fn_oid))?;
-        }
-
-        let prosrc_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_prosrc as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null).ok_or(PlRustError::NullSourceCode)?,
-        )?;
-
-        let proc_entry = PgBox::from_pg(pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
-            proc_tuple,
-        ));
-
-        let return_oid = PgOid::from(proc_entry.prorettype);
-
-        let variant = match return_oid == pgx::PgBuiltInOids::TRIGGEROID.oid() {
+        let variant = match meta.prorettype() == pg_sys::TRIGGEROID {
             true => CrateVariant::trigger(),
             false => {
-                let argnames_datum = pg_sys::SysCacheGetAttr(
-                    pg_sys::SysCacheIdentifier_PROCOID as i32,
-                    proc_tuple,
-                    pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
-                    &mut is_null,
-                );
-                let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
+                let argnames = meta.proargnames();
+                let argtypes = meta.proargtypes();
 
-                let argtypes_datum = pg_sys::SysCacheGetAttr(
-                    pg_sys::SysCacheIdentifier_PROCOID as i32,
-                    proc_tuple,
-                    pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
-                    &mut is_null,
-                );
-                let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
+                // we must have the same number of argument names and argument types.  It's seemingly
+                // impossible that we never would, but lets make sure as it's an invariant from this
+                // point forward
+                assert_eq!(argnames.len(), argtypes.len());
 
-                let mut argument_oids_and_names = Vec::new();
-                for i in 0..proc_entry.pronargs as usize {
-                    let type_oid = argtypes.get(i).expect("no type_oid for argument");
-                    let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
+                let argument_oids_and_names = argtypes
+                    .into_iter()
+                    .map(|oid| PgOid::from(oid))
+                    .zip(argnames.into_iter())
+                    .collect();
 
-                    argument_oids_and_names.push((PgOid::from(*type_oid), name));
-                }
-
-                let is_strict = proc_entry.proisstrict;
-                let return_set = proc_entry.proretset;
-
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    PgOid::from(meta.prorettype()),
+                    meta.proretset(),
+                    meta.proisstrict(),
+                )?
             }
         };
 
-        pg_sys::ReleaseSysCache(proc_tuple);
-
         Ok(Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             user_code,
@@ -320,6 +278,7 @@ impl StateGenerated {
         .wrap_err("Writing generated `Cargo.toml`")?;
 
         Ok(StateProvisioned::new(
+            self.pg_proc_xmin,
             self.db_oid,
             self.fn_oid,
             crate_name,
@@ -327,12 +286,12 @@ impl StateGenerated {
         ))
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
-        &self.fn_oid
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
+        self.fn_oid
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
-        &self.db_oid
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
+        self.db_oid
     }
 }
 
@@ -346,6 +305,7 @@ mod tests {
     #[pg_test]
     fn strict_string() {
         fn wrapped() -> eyre::Result<()> {
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
             let fn_oid = 0 as pg_sys::Oid;
             let db_oid = 1 as pg_sys::Oid;
 
@@ -362,8 +322,14 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(
+                pg_proc_xmin,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -402,6 +368,7 @@ mod tests {
     #[pg_test]
     fn non_strict_integer() {
         fn wrapped() -> eyre::Result<()> {
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
             let fn_oid = 0 as pg_sys::Oid;
             let db_oid = 1 as pg_sys::Oid;
 
@@ -420,8 +387,14 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(
+                pg_proc_xmin,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -460,6 +433,7 @@ mod tests {
     #[pg_test]
     fn strict_string_set() {
         fn wrapped() -> eyre::Result<()> {
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
             let fn_oid = 0 as pg_sys::Oid;
             let db_oid = 1 as pg_sys::Oid;
 
@@ -478,8 +452,14 @@ mod tests {
                 { Some(std::iter::repeat(val).take(5)) }
             })?;
 
-            let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(
+                pg_proc_xmin,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -518,6 +498,7 @@ mod tests {
     #[pg_test]
     fn trigger() {
         fn wrapped() -> eyre::Result<()> {
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
             let fn_oid = 0 as pg_sys::Oid;
             let db_oid = 1 as pg_sys::Oid;
 
@@ -527,8 +508,14 @@ mod tests {
                 { Ok(trigger.current().unwrap().into_owned()) }
             })?;
 
-            let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = StateGenerated::for_tests(
+                pg_proc_xmin,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(

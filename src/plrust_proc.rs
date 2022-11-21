@@ -1,6 +1,7 @@
 //! Routines for managing the `plrust.plrust_proc` extension table along with the data it contains
 use crate::error::PlRustError;
 use crate::gucs;
+use crate::pgproc::PgProc;
 use crate::user_crate::{StateLoaded, UserCrate};
 use pgx::pg_sys::MyDatabaseId;
 use pgx::{extension_sql, pg_sys, IntoDatum, PgBuiltInOids, PgOid, Spi};
@@ -86,7 +87,13 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
 
     // fabricate a StateBuilt version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
-    let built = UserCrate::built(db_oid, pg_proc_oid, temp_so_file.path().to_path_buf());
+    let meta = PgProc::new(pg_proc_oid).ok_or(PlRustError::NullProcTuple)?;
+    let built = UserCrate::built(
+        meta.xmin(),
+        db_oid,
+        pg_proc_oid,
+        temp_so_file.path().to_path_buf(),
+    );
     let loaded = unsafe { built.load()? };
 
     // just to be obvious, the temp_so_file gets deleted here.  Now that it's been loaded, we don't
