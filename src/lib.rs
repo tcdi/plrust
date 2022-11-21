@@ -43,6 +43,7 @@ pgx::pg_module_magic!();
 /// this function will raise an ERROR if the `plrust` language isn't installed
 pub(crate) fn plrust_lang_oid() -> Option<pg_sys::Oid> {
     static PLRUST_LANG_NAME: &[u8] = b"plrust\0"; // want this to look like a c string
+
     // SAFETY: We pass `missing_ok: false`, which will cause an error if not found.
     // So we always will return a valid Oid if we return at all.
     // The first parameter has the same requirements as `&CStr`.
@@ -51,6 +52,19 @@ pub(crate) fn plrust_lang_oid() -> Option<pg_sys::Oid> {
 
 #[pg_guard]
 fn _PG_init() {
+    // Must be loaded with shared_preload_libraries
+    unsafe {
+        // SAFETY:  We're required to be loaded as a "shared preload library", and Postgres will
+        // set this static to true before trying to load any of those libraries
+        if !pg_sys::process_shared_preload_libraries_in_progress {
+            ereport!(
+                ERROR,
+                PgSqlErrorCode::ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE,
+                "plrust must be loaded via shared_preload_libraries"
+            );
+        }
+    }
+
     color_eyre::config::HookBuilder::default()
         .theme(color_eyre::config::Theme::new())
         .into_hooks()

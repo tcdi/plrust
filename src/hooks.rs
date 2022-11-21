@@ -145,12 +145,23 @@ unsafe fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
         // block a change to the 'STRICT' property
         let actions = PgList::<pg_sys::DefElem>::from_pg(alter_stmt.actions);
         for defelem in actions.iter_ptr() {
-            static STRICT: &str = "strict";
-
             let defelem = PgBox::from_pg(defelem);
             let name = CStr::from_ptr(defelem.defname);
 
-            if name.to_string_lossy().eq_ignore_ascii_case(STRICT) {
+            // if the defelem name contains "strict", we need to stop the show.  Changing the
+            // "strict-ness" of a pl/rust function without also changing the **source code** of that
+            // function and re-compiling it would cause all sorts of undefined and unexpected
+            // behavior.  Declaring a function as "STRICT" means plrust/pgx doesn't need to treat
+            // the arguments as `Option<T>` and instead as simply `T`.  These things are not compatible!
+            //
+            // We could go through the trouble of checking the current strict-ness of the function
+            // and if they're the same, just carry on, but lets not complicate the code/logic for
+            // something that's pretty unlikely to be a common occurrence.
+            if name
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .contains("strict")
+            {
                 pgx::ereport!(PgLogLevel::ERROR,
                     PgSqlErrorCode::ERRCODE_FEATURE_NOT_SUPPORTED,
                     "plrust functions cannot have their STRICT property altered",

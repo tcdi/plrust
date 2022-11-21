@@ -19,7 +19,8 @@ use std::{
     process::Output,
 };
 
-use current_platform::CURRENT_PLATFORM;
+use crate::plrust_proc::get_target_triple;
+use eyre::WrapErr;
 
 thread_local! {
     pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> = Default::default();
@@ -89,9 +90,15 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
 
     // cleanup after ourselves
     tracing::trace!("removing {}", shared_object.display());
-    std::fs::remove_file(shared_object)?;
+    std::fs::remove_file(&shared_object).wrap_err(format!(
+        "Problem deleting temporary shared object file at '{}'",
+        shared_object.display()
+    ))?;
     tracing::trace!("removing {}", crate_dir.display());
-    std::fs::remove_dir_all(crate_dir)?;
+    std::fs::remove_dir_all(&crate_dir).wrap_err(format!(
+        "Problem deleting temporary crate directory at '{}'",
+        crate_dir.display()
+    ))?;
 
     Ok(output)
 }
@@ -104,7 +111,7 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
         "plrust_fn_oid_{}_{}_{}",
         db_oid,
         fn_oid,
-        CURRENT_PLATFORM.replace("-", "_")
+        get_target_triple().replace("-", "_")
     );
 
     crate_name

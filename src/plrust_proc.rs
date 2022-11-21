@@ -71,7 +71,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
         pkey_datums(pg_proc_oid),
     )
-    .ok_or(PlRustError::NoProcEntry(pg_proc_oid, get_target_triple()))?;
+    .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_target_triple().to_string()))?;
 
     // we write the shared object (`so`) bytes out to a temporary file rooted in our
     // configured `plrust.work_dir`.  This will get removed from disk when this function
@@ -114,6 +114,7 @@ fn pkey_datums(pg_proc_oid: pg_sys::Oid) -> Vec<(PgOid, Option<pg_sys::Datum>)> 
 /// Assumes the `target_triple` for the current host is that of the one which compiled the plrust
 /// extension shared library itself.
 #[inline]
-fn get_target_triple() -> String {
-    std::env!("TARGET").to_string()
+pub(crate) const fn get_target_triple() -> &'static str {
+    // NB: This gets set in our `build.rs`
+    env!("TARGET")
 }
