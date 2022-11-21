@@ -1,4 +1,5 @@
 use crate::{
+    plrust_lang_oid,
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateProvisioned},
     PlRustError,
 };
@@ -61,9 +62,7 @@ impl StateGenerated {
             &mut is_null,
         );
         let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null);
-        let plrust =
-            std::ffi::CString::new("plrust").expect("Expected `\"plrust\"` to be a valid CString");
-        if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
+        if lang_oid != plrust_lang_oid() {
             return Err(PlRustError::NotPlRustFunction(fn_oid))?;
         }
 

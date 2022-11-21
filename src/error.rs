@@ -34,4 +34,6 @@ pub(crate) enum PlRustError {
     ParsingCodeBlock(syn::Error),
     #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
+    #[error("No plrust.plrust_proc entry for ({0}, {1})")]
+    NoProcEntry(pgx::pg_sys::Oid, String),
 }
