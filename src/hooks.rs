@@ -91,6 +91,8 @@ fn plrust_process_utility_hook_internal(
     // "DROP FUNCTION", "DROP SCHEMA", and "ALTER FUNCTION".  Two different node types are used
     // for these -- `DropStmt` and `AlterFunctionStmt`
 
+    // Note that we handle calling the previous hook (if there is one) differently for DROP and ALTER
+
     if utility_stmt.type_ == pg_sys::NodeTag_T_DropStmt {
         let drop_stmt = unsafe {
             // SAFETY:  we already determined that pstmt.utilityStmt is valid, and we just determined
@@ -107,7 +109,18 @@ fn plrust_process_utility_hook_internal(
                 // we don't do anything for the other objects
             }
         }
+
+        // call the previous hook last.  We want to call it after our work because we need the catalog
+        // entries in place to find/ensure that we only affect plrust functions.
+        #[rustfmt::skip]
+        call_prev_hook(pstmt.into_pg(), query_string, read_only_tree, context, params, query_env, dest, qc);
     } else if utility_stmt.type_ == pg_sys::NodeTag_T_AlterFunctionStmt {
+        // for ALTER FUNCTION we call the previous hook first as it could decide it needs to change
+        // the STRICT-ness of the function and we absolutely need to stop that in its tracks
+        #[rustfmt::skip]
+        call_prev_hook(pstmt.as_ptr(), query_string, read_only_tree, context, params, query_env, dest, qc);
+
+        // Now we can carry on with our work
         let alter_stmt = unsafe {
             // SAFETY:  we already determined that pstmt.utilityStmt is valid, and we just determined
             // its "node type" is an AlterFunctionStmt, so the cast is clean
@@ -116,18 +129,31 @@ fn plrust_process_utility_hook_internal(
 
         // and for AlterFunctionStmt, we'll just go do it.
         handle_alter_function(&alter_stmt);
+    } else {
+        // this is not a utility statement we care about, so call the previous hook
+        #[rustfmt::skip]
+        call_prev_hook(pstmt.as_ptr(), query_string, read_only_tree, context, params, query_env, dest, qc);
     }
+}
 
+fn call_prev_hook(
+    pstmt: *mut pg_sys::PlannedStmt,
+    query_string: *const ::std::os::raw::c_char,
+    read_only_tree: bool,
+    context: pg_sys::ProcessUtilityContext,
+    params: pg_sys::ParamListInfo,
+    query_env: *mut pg_sys::QueryEnvironment,
+    dest: *mut pg_sys::DestReceiver,
+    qc: *mut pg_sys::QueryCompletion,
+) {
     unsafe {
         // SAFETY:  PREVIOUS_PROCESS_UTILITY_HOOK is ours and is initialized to None, and it's
         // potentially replaced with a Some() value in `init()`.  Additionally, Postgres and plrust
         // are not threaded, so there's no chance of concurrently modifying this thing
         if PREVIOUS_PROCESS_UTILITY_HOOK.is_some() {
-            // previous hook must go last as we need the catalog entries this utility statement might
-            // operate on to be valid
             let prev_hook = PREVIOUS_PROCESS_UTILITY_HOOK.as_ref().unwrap();
             prev_hook(
-                pstmt.into_pg(),
+                pstmt,
                 query_string,
                 #[cfg(not(feature = "pg13"))]
                 read_only_tree,
@@ -138,10 +164,10 @@ fn plrust_process_utility_hook_internal(
                 qc,
             );
         } else {
-            // otherwise if there isn't one, we are the first to hook ProcessUtility, so ask Postgres
-            // to do whatever it wants to do with this statement
+            // we are the first to hook ProcessUtility.  Tell Postgres to do whatever it wants to do
+            // with this statement
             pg_sys::standard_ProcessUtility(
-                pstmt.into_pg(),
+                pstmt,
                 query_string,
                 #[cfg(not(feature = "pg13"))]
                 read_only_tree,
