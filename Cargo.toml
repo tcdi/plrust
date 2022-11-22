@@ -39,7 +39,6 @@ libloading = "0.7.2"
 toml = "0.5"
 tempdir = "0.3.7" # for building crates
 tempfile = "3.3.0"
-semver = "1.0.14"
 
 # error handling, tracing, formatting
 thiserror = "1.0"
