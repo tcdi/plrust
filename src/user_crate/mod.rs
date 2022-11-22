@@ -228,9 +228,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         }
     }
 
-    let user_dependencies = validate_dependencies_format(deps_block)?;
-
-    validate_dependences_are_allowed(&user_dependencies)?;
+    let user_dependencies = check_user_dependencies(deps_block)?;
 
     if crate::gucs::allow_listed_dependencies_only() {
         validate_dependences_are_allowed(&user_dependencies);
@@ -243,7 +241,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
-fn validate_dependencies_format(user_deps: String) -> eyre::Result<toml::value::Table> {
+fn check_user_dependencies(user_deps: String) -> eyre::Result<toml::value::Table> {
     let user_dependencies: toml::value::Table = toml::from_str(&user_deps)?;
 
     for (dependency, val) in &user_dependencies {
@@ -261,11 +259,13 @@ fn validate_dependencies_format(user_deps: String) -> eyre::Result<toml::value::
             }
         }
     }
+
+    check_dependencies_against_allowed(&user_dependencies)?;
     Ok(user_dependencies)
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
-fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) -> eyre::Result<()> {
+fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre::Result<()> {
     if matches!(crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get(), None) {
         return Ok(());
     }
@@ -273,7 +273,7 @@ fn validate_dependences_are_allowed(user_dependencies: &toml::value::Table) -> e
     let allowed_deps = &*crate::gucs::PLRUST_ALLOWED_DEPENDENCIES_CONTENTS;
     let mut unsupported_deps = std::vec::Vec::new();
 
-    for (dep, val) in user_dependencies {
+    for (dep, val) in dependencies {
         if !allowed_deps.contains_key(dep) {
             unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
             continue;
