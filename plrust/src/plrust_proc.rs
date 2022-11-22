@@ -5,21 +5,18 @@ use crate::pgproc::PgProc;
 use crate::user_crate::{FnReady, UserCrate};
 use pgx::pg_sys::MyDatabaseId;
 use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
+use std::ffi::CStr;
 use std::path::Path;
 
 extension_sql!(
     r#"
 CREATE TABLE plrust.plrust_proc (
-    id            regproc   NOT NULL,
+    --
+    -- `id` is the "identity" column from `pg_catalog.pg_identify_object()`
+    id            text      NOT NULL,
     target_triple text      NOT NULL,
     so            bytea     NOT NULL,
     PRIMARY KEY(id, target_triple)
-
-    --
-    -- Would be nice if we could make a foreign key over to pg_catalog.pg_proc
-    -- but that's okay.  We'll be managing access to this table ourselves
-    --
-    -- CONSTRAINT ft_pg_proc_oid FOREIGN KEY(id) REFERENCES pg_catalog.pg_proc(oid)
 );
 SELECT pg_catalog.pg_extension_config_dump('plrust.plrust_proc', '');
 "#,
@@ -54,10 +51,7 @@ pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) -> spi::Result<()> {
     tracing::debug!("deleting function oid `{pg_proc_oid}`");
     Spi::run_with_args(
         "DELETE FROM plrust.plrust_proc WHERE id = $1",
-        Some(vec![(
-            PgBuiltInOids::REGPROCOID.oid(),
-            pg_proc_oid.into_datum(),
-        )]),
+        Some(vec![get_fn_identity_datum(pg_proc_oid)]),
     )
 }
 
@@ -104,17 +98,43 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<FnReady>>
     Ok(loaded)
 }
 
-/// helper function to build a vec of Spi arguments to be used as the composite primary key
-/// `plrust.plrust_proc` needs to locate a function
+// helper function to build the primary key values used to query `plrust.plrust_proc` via Spi
+#[rustfmt::skip]
 #[inline]
 fn pkey_datums(pg_proc_oid: pg_sys::Oid) -> Vec<(PgOid, Option<pg_sys::Datum>)> {
     vec![
-        (PgBuiltInOids::REGPROCOID.oid(), pg_proc_oid.into_datum()),
-        (
-            PgBuiltInOids::TEXTOID.oid(),
-            get_target_triple().into_datum(),
-        ),
+        get_fn_identity_datum(pg_proc_oid),
+        (PgBuiltInOids::TEXTOID.oid(), get_target_triple().into_datum()),
     ]
+}
+
+// helper function to build the function identity (oid, value) datum
+fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Datum>) {
+    let oa = pg_sys::ObjectAddress {
+        classId: pg_sys::ProcedureRelationId,
+        objectId: pg_proc_oid,
+        objectSubId: 0,
+    };
+    let identity_ptr = unsafe {
+        // SAFETY:  by setting "missing_ok_ to false, getObjectIdentity will raise an ERROR if the
+        // ObjectAddress we created doesn't exist, otherwise returning a properly palloc'd pointer
+        pg_sys::getObjectIdentity(&oa as *const _, false)
+    };
+    let identity_str = unsafe {
+        // SAFETY:  Postgres has given us a valid, albeit palloc'd, cstring as the result of getObjectIdentity
+        CStr::from_ptr(identity_ptr).to_str().unwrap_or_else(|_| {
+            pgx::error!("function {pg_proc_oid}'s identity is not a valid UTF8 string")
+        })
+    };
+
+    let result = (PgBuiltInOids::TEXTOID.oid(), identity_str.into_datum());
+
+    unsafe {
+        // SAFETY: identity_ptr was previously proven valid
+        pg_sys::pfree(identity_ptr.cast());
+    }
+
+    result
 }
 
 /// Assumes the `target_triple` for the current host is that of the one which compiled the plrust
