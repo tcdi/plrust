@@ -1,14 +1,16 @@
 use pgx::{pg_sys, FromDatum, IntoDatum};
-use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 
 /// Provides a safe wrapper around a Postgres "SysCache" entry from `pg_catalog.pg_proc`.
 pub(crate) struct PgProc {
-    inner: ManuallyDrop<NonNull<pg_sys::HeapTupleData>>,
+    inner: NonNull<pg_sys::HeapTupleData>,
 }
 
 impl Drop for PgProc {
     fn drop(&mut self) {
+        // SAFETY: We have a valid pointer and this just decrements the reference count.
+        // This will generally get resolved by the end of the transaction anyways,
+        // but Postgres strongly recommends you do not do that.
         unsafe { pg_sys::ReleaseSysCache(self.inner.as_ptr()) }
     }
 }
@@ -24,7 +26,7 @@ impl PgProc {
                 pg_proc_oid.into_datum().unwrap(),
             );
             Some(PgProc {
-                inner: ManuallyDrop::new(NonNull::new(entry)?),
+                inner: NonNull::new(entry)?,
             })
         }
     }
