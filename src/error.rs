@@ -26,8 +26,6 @@ pub(crate) enum PlRustError {
     NoOidToRustMapping(pgx::pg_sys::Oid),
     #[error("Generated Rust type (`{1}`) for `{0}` was unparsable: {2}")]
     ParsingRustMapping(pgx::pg_sys::Oid, String, syn::Error),
-    #[error("Parsing `[dependencies]` block: {0}")]
-    ParsingDependenciesBlock(toml::de::Error),
     #[error("Parsing `[code]` block: {0}")]
     ParsingCodeBlock(syn::Error),
     #[error("Parsing error at span `{:?}`", .0.span())]

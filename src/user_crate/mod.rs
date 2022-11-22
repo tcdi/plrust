@@ -17,6 +17,7 @@ use geiger;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
+use semver;
 use std::{
     path::{Path, PathBuf},
     process::Output,
@@ -227,13 +228,99 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         }
     }
 
-    let user_dependencies: toml::value::Table =
-        toml::from_str(&deps_block).map_err(PlRustError::ParsingDependenciesBlock)?;
+    let user_dependencies = check_user_dependencies(deps_block)?;
 
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
 
     Ok((user_code, user_dependencies))
+}
+
+#[tracing::instrument(level = "debug", skip_all)]
+fn check_user_dependencies(user_deps: String) -> eyre::Result<toml::value::Table> {
+    let user_dependencies: toml::value::Table = toml::from_str(&user_deps)?;
+
+    for (dependency, val) in &user_dependencies {
+        match val {
+            toml::Value::String(_) => {
+                // No-op, we currently only support dependencies in the format
+                // foo = "1.0.0"
+            }
+            _ => {
+                return Err(eyre::eyre!(
+                    "dependency {} with values {:?} is malformatted. Only strings are supported",
+                    dependency,
+                    val
+                ));
+            }
+        }
+    }
+
+    check_dependencies_against_allowed(&user_dependencies)?;
+    Ok(user_dependencies)
+}
+
+#[tracing::instrument(level = "debug", skip_all)]
+fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre::Result<()> {
+    if matches!(crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get(), None) {
+        return Ok(());
+    }
+
+    let allowed_deps = &*crate::gucs::PLRUST_ALLOWED_DEPENDENCIES_CONTENTS;
+    let mut unsupported_deps = std::vec::Vec::new();
+
+    for (dep, val) in dependencies {
+        if !allowed_deps.contains_key(dep) {
+            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
+            continue;
+        }
+
+        match val {
+            toml::Value::String(ver) => {
+                let req = semver::VersionReq::parse(ver.as_str()).unwrap();
+
+                // Check if the allowed dependency is of format String or toml::Table
+                // foo = "1.0.0" vs foo = { version = "1.0.0", features = ["full", "boo"], test = ["single"]}
+                match allowed_deps.get(dep).unwrap() {
+                    toml::Value::String(allowed_deps_ver) => {
+                        if !req.matches(&semver::Version::parse(allowed_deps_ver)?) {
+                            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
+                        }
+                    }
+                    toml::Value::Table(allowed_deps_vals) => {
+                        if !req.matches(&semver::Version::parse(
+                            &allowed_deps_vals.get("version").unwrap().as_str().unwrap(),
+                        )?) {
+                            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
+                        }
+                    }
+                    _ => {
+                        return Err(eyre::eyre!(
+                            "{} contains an unsupported toml format",
+                            crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get().unwrap()
+                        ));
+                    }
+                }
+            }
+            _ => {
+                return Err(eyre::eyre!(
+                    "dependency {} with values {:?} is malformatted. Only strings are supported",
+                    dep,
+                    val
+                ));
+            }
+        }
+    }
+
+    if !unsupported_deps.is_empty() {
+        return Err(eyre::eyre!(
+            "The following dependencies are unsupported {:?}. The configured PL/Rust only supports {:?}",
+            unsupported_deps,
+            allowed_deps
+        ));
+    }
+
+    Ok(())
 }
 
 #[cfg(any(test, feature = "pg_test"))]

@@ -128,7 +128,7 @@ mod tests {
     #[pg_test]
     #[cfg(not(feature = "sandboxed"))]
     #[search_path(@extschema@)]
-    fn plrust_deps() {
+    fn plrust_deps_supported() {
         let definition = r#"
                 CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
                 IMMUTABLE STRICT
@@ -159,6 +159,88 @@ mod tests {
             vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
         );
         assert!(retval.is_some());
+    }
+
+    #[pg_test]
+    #[cfg(not(feature = "sandboxed"))]
+    #[search_path(@extschema@)]
+    fn plrust_deps_supported_semver_parse() {
+        let definition = r#"
+                CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+            [dependencies]
+                owo-colors = ">2"
+            [code]
+                use owo_colors::OwoColorize;
+                Some(input.purple().to_string())
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT colorize($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+
+        // Regression test: A previous version of PL/Rust would abort if this was called twice, so call it twice:
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT colorize($1);
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "Nami".into_datum())],
+        );
+        assert!(retval.is_some());
+    }
+
+    #[pg_test]
+    #[cfg(not(feature = "sandboxed"))]
+    #[search_path(@extschema@)]
+    fn plrust_deps_supported_deps_in_toml_table() {
+        let definition = r#"
+                CREATE FUNCTION say_hello() RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+            [dependencies]
+                tokio = ">=1"
+                owo-colors = "3"
+            [code]
+                Some("hello".to_string())
+            $$;
+        "#;
+        Spi::run(definition);
+
+        let retval: Option<String> = Spi::get_one_with_args(
+            r#"
+            SELECT say_hello();
+        "#,
+            vec![(PgBuiltInOids::TEXTOID.oid(), "hello".into_datum())],
+        );
+        assert!(retval.is_some());
+    }
+
+    #[pg_test]
+    #[cfg(not(feature = "sandboxed"))]
+    #[search_path(@extschema@)]
+    fn plrust_deps_not_supported() {
+        let definition = r#"
+                CREATE FUNCTION colorize(input TEXT) RETURNS TEXT
+                IMMUTABLE STRICT
+                LANGUAGE PLRUST AS
+            $$
+            [dependencies]
+                regex = "1.6.5"
+            [code]
+                Some("test")
+            $$;
+        "#;
+        let res = std::panic::catch_unwind(|| Spi::run(definition));
+        assert!(res.is_err());
     }
 
     #[pg_test]
@@ -693,6 +775,38 @@ pub mod pg_test {
     });
     static LOG_LEVEL: &str = "plrust.tracing_level=trace";
 
+    static PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME: &str = "allowed_deps.toml";
+    static PLRUST_ALLOWED_DEPENDENCIES_FILE_DIRECTORY: Lazy<TempDir> = Lazy::new(|| {
+        use std::io::Write;
+        let temp_allowed_deps_dir =
+            TempDir::new("plrust-allowed-deps").expect("Couldnt create tempdir");
+
+        let file_path = temp_allowed_deps_dir
+            .path()
+            .join(PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME);
+        let mut allowed_deps = std::fs::File::create(&file_path).unwrap();
+        allowed_deps
+            .write_all(
+                r#"owo-colors = "3.5.0"
+tokio = { version = "1.19.2", features = ["rt", "net"]}"#
+                    .as_bytes(),
+            )
+            .unwrap();
+
+        temp_allowed_deps_dir
+    });
+
+    static PLRUST_ALLOWED_DEPENDENCIES: Lazy<String> = Lazy::new(|| {
+        format!(
+            "plrust.allowed_dependencies='{}'",
+            PLRUST_ALLOWED_DEPENDENCIES_FILE_DIRECTORY
+                .path()
+                .join(PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME)
+                .to_str()
+                .unwrap()
+        )
+    });
+
     pub fn setup(_options: Vec<&str>) {
         // perform one-off initialization when the pg_test framework starts
     }
@@ -702,6 +816,7 @@ pub mod pg_test {
             &*WORK_DIR,
             &*PG_CONFIG,
             &*LOG_LEVEL,
+            &*PLRUST_ALLOWED_DEPENDENCIES,
             "shared_preload_libraries='plrust'",
         ]
     }

@@ -7,6 +7,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -14,6 +15,23 @@ use std::str::FromStr;
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
+pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
+    GucSetting::new(None);
+
+pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
+    Lazy::new(|| {
+        let path = PathBuf::from_str(
+            &PLRUST_ALLOWED_DEPENDENCIES
+                .get()
+                .expect("plrust.allowed_dependencies is not set in postgresql.conf"),
+        )
+        .expect("plrust.allowed_dependencies is not a valid path");
+
+        let contents =
+            std::fs::read_to_string(&path).expect("Unable to read allow listed dependencies");
+
+        toml::from_str(&contents).expect("Unable to format allow listed dependencies")
+    });
 
 pub(crate) fn init() {
     GucRegistry::define_string_guc(
@@ -38,6 +56,14 @@ pub(crate) fn init() {
         "The tracing level to use while running pl/rust. Should be `error`, `warn`, `info`, `debug`, or `trace`",
         &PLRUST_TRACING_LEVEL,
         GucContext::Sighup,
+    );
+
+    GucRegistry::define_string_guc(
+        "plrust.allowed_dependencies",
+        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions.",
+        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions.",
+        &PLRUST_ALLOWED_DEPENDENCIES,
+        GucContext::Postmaster,
     );
 }
 

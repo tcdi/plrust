@@ -14,6 +14,7 @@ if [ "$CI" != true ]; then
     --version "0.6.0-alpha.1" \
     --locked # use the Cargo.lock in the pgx repo
 fi
+
 # Don't need to run cargo pgx init: user might already have set it up,
 # and doing so risks clobbering their configuration.
 # If they get an error, it's fairly self-explanatory.
