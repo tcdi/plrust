@@ -3,6 +3,7 @@ mod state_built;
 mod state_generated;
 mod state_loaded;
 mod state_provisioned;
+mod state_validated;
 mod target;
 
 use crate_variant::CrateVariant;
@@ -10,6 +11,7 @@ pub(crate) use state_built::StateBuilt;
 pub(crate) use state_generated::StateGenerated;
 pub(crate) use state_loaded::StateLoaded;
 pub(crate) use state_provisioned::StateProvisioned;
+pub(crate) use state_validated::StateValidated;
 
 use crate::PlRustError;
 #[cfg(feature = "verify")]
