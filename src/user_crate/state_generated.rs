@@ -98,56 +98,7 @@ impl StateGenerated {
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_quote!(
-            #![deny(unsafe_op_in_unsafe_fn)]
-            use pgx::prelude::*;
-        );
-
-        let crate_name = self.crate_name();
-        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for build step");
-
-        let user_code = &self.user_code;
-        let user_function = match &self.variant {
-            CrateVariant::Function {
-                ref arguments,
-                ref return_type,
-                ..
-            } => {
-                let user_fn: syn::ItemFn = syn::parse2(quote! {
-                    #[pg_extern]
-                    fn #symbol_ident(
-                        #( #arguments ),*
-                    ) -> #return_type
-                    #user_code
-                })
-                .wrap_err("Parsing generated user function")?;
-                user_fn
-            }
-            CrateVariant::Trigger => {
-                let user_fn: syn::ItemFn = syn::parse2(quote! {
-                    #[pg_trigger]
-                    fn #symbol_ident(
-                        trigger: &::pgx::PgTrigger,
-                    ) -> ::core::result::Result<
-                        ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
-                        Box<dyn std::error::Error>,
-                    > #user_code
-                })
-                .wrap_err("Parsing generated user trigger")?;
-                user_fn
-            }
-        };
-
-        skeleton.items.push(user_function.into());
-        Ok(skeleton)
-    }
-
-
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn safe_lib_rs(&self) -> eyre::Result<syn::File> {
+    pub(crate) fn safe_lib_rs(&self) -> eyre::Result<(syn::ItemFn, syn::File)> {
         let mut skeleton: syn::File = syn::parse_quote!(
             #![forbid(unsafe_code)]
             use pgx::prelude::*;
@@ -159,7 +110,7 @@ impl StateGenerated {
         tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
 
         let user_code = &self.user_code;
-        let user_function = match &self.variant {
+        let user_fn = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
@@ -188,8 +139,8 @@ impl StateGenerated {
             }
         };
 
-        skeleton.items.push(user_function.into());
-        Ok(skeleton)
+        skeleton.items.push(user_fn.into());
+        Ok((user_fn, skeleton))
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -297,7 +248,7 @@ impl StateGenerated {
             "Could not create crate directory in configured `plrust.work_dir` location",
         )?;
 
-        let lib_rs = self.lib_rs()?;
+        let (user_fn, lib_rs) = self.safe_lib_rs()?;
         let lib_rs_path = src_dir.join("lib.rs");
         std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
             .wrap_err("Writing generated `lib.rs`")?;
@@ -316,6 +267,8 @@ impl StateGenerated {
             self.fn_oid,
             crate_name,
             crate_dir,
+            user_fn,
+            self.variant,
         ))
     }
 

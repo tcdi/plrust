@@ -55,7 +55,8 @@ impl UserCrate<StateGenerated> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        self.0.lib_rs()
+        let (_, lib_rs) = self.0.safe_lib_rs()?;
+        Ok(lib_rs)
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
@@ -69,6 +70,31 @@ impl UserCrate<StateGenerated> {
 }
 
 impl UserCrate<StateProvisioned> {
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            db_oid = %self.0.db_oid(),
+            fn_oid = %self.0.fn_oid(),
+            crate_dir = %self.0.crate_dir().display(),
+            target_dir = tracing::field::display(target_dir.display()),
+        ))]
+    pub fn validate(
+        self,
+        pg_config: PathBuf,
+        target_dir: &Path,
+    ) -> eyre::Result<(UserCrate<StateValidated>, Output)> {
+        self.0
+            .validate(pg_config, target_dir)
+            .map(|(state, output)| (UserCrate(state), output))
+    }
+
+    pub(crate) fn crate_dir(&self) -> &Path {
+        self.0.crate_dir()
+    }
+}
+
+impl UserCrate<StateValidated> {
     #[tracing::instrument(
         level = "debug",
         skip_all,
@@ -429,7 +455,9 @@ mod tests {
 
             let provisioned = generated.provision(&target_dir)?;
 
-            let (built, _output) = provisioned.build(pg_config, &target_dir)?;
+            let (validated, _output) = provisioned.validate(pg_config, &target_dir)?;
+
+            let (built, _output) = validated.build(pg_config, &target_dir)?;
 
             let _shared_object = built.shared_object();
 

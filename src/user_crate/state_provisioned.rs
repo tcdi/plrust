@@ -1,14 +1,19 @@
 use crate::{
-    user_crate::{target, CrateState, StateBuilt},
+    user_crate::{target, StateBuilt},
     PlRustError,
 };
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
     process::{Command, Output},
 };
+use crate::pgproc::PgProc;
+use crate::{
+    user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateValidated},
+};
+use pgx::{pg_sys, PgOid};
+use quote::quote;
 
 #[must_use]
 pub(crate) struct StateProvisioned {
@@ -17,6 +22,8 @@ pub(crate) struct StateProvisioned {
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
+    user_fn: syn::ItemFn,
+    variant: CrateVariant,
 }
 
 impl CrateState for StateProvisioned {}
@@ -29,6 +36,8 @@ impl StateProvisioned {
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        user_fn: syn::ItemFn,
+        variant: CrateVariant,
     ) -> Self {
         Self {
             pg_proc_xmin,
@@ -36,8 +45,46 @@ impl StateProvisioned {
             fn_oid,
             crate_name,
             crate_dir,
+            user_fn,
+            variant,
         }
     }
+
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
+    pub(crate) fn unsafe_lib_rs(&self) -> eyre::Result<syn::File> {
+        let mut skeleton: syn::File = syn::parse_quote!(
+            #![forbid(unsafe_op_in_unsafe_fn)]
+            use pgx::prelude::*;
+        );
+
+        let crate_name = self.crate_name;
+        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for build step");
+
+        let mut user_fn = self.user_fn.clone();
+        match &self.variant {
+            CrateVariant::Function {
+                ref arguments,
+                ref return_type,
+                ..
+            } => {
+                user_fn.attrs.push(syn::parse_quote! {
+                    #[pg_extern]
+                });
+            }
+            CrateVariant::Trigger => {
+                user_fn.attrs.push(syn::parse_quote! {
+                    #[pg_trigger]
+                });
+            }
+        };
+
+        skeleton.items.push(user_fn.into());
+        Ok(skeleton)
+    }
+
+
     #[tracing::instrument(
         level = "debug",
         skip_all,
@@ -47,18 +94,17 @@ impl StateProvisioned {
             crate_dir = %self.crate_dir.display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub(crate) fn build(
+    pub(crate) fn validate(
         self,
         pg_config: PathBuf,
         target_dir: &Path,
-    ) -> eyre::Result<(StateBuilt, Output)> {
+    ) -> eyre::Result<(StateValidated, Output)> {
         let mut command = Command::new("cargo");
         let target = target::tuple()?;
         let target_str = &target;
 
         command.current_dir(&self.crate_dir);
-        command.arg("rustc");
-        command.arg("--release");
+        command.arg("check");
         command.arg("--target");
         command.arg(target_str);
         command.env("PGX_PG_CONFIG_PATH", pg_config);
@@ -71,6 +117,13 @@ impl StateProvisioned {
             use std::env::consts::DLL_SUFFIX;
 
             let crate_name = self.crate_name;
+
+            // rebuild code:
+            let lib_rs = self.unsafe_lib_rs()?;
+            let lib_rs_path = self.crate_dir.join("src/lib.rs");
+            std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
+                .wrap_err("Writing generated `lib.rs`")?;
+
 
             #[cfg(any(
                 all(target_os = "macos", target_arch = "x86_64"),
@@ -86,18 +139,13 @@ impl StateProvisioned {
                 crate_name
             };
 
-            let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
-            let built_shared_object = target_dir
-                .join(target_str)
-                .join("release")
-                .join(&built_shared_object_name);
-
             Ok((
-                StateBuilt::new(
+                StateValidated::new(
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
-                    built_shared_object,
+                    self.crate_name,
+                    self.crate_dir
                 ),
                 output,
             ))
