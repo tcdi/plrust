@@ -456,7 +456,7 @@ mod tests {
 
             let (validated, _output) = provisioned.validate(pg_config, &target_dir)?;
 
-            let (built, _output) = validated.build(pg_config, &target_dir)?;
+            let (built, _output) = validated.build(&target_dir)?;
 
             let _shared_object = built.shared_object();
 

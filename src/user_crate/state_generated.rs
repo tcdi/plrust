@@ -332,11 +332,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
@@ -397,11 +396,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
                 }
@@ -462,11 +460,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
                     Some(std::iter::repeat(val).take(5))
                 }
@@ -518,11 +515,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_trigger]
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
                 ) -> ::core::result::Result<
