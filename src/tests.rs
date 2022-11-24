@@ -504,9 +504,7 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
-    #[ignore]
     fn plrust_block_unsafe_plutonium() {
-        // TODO: PL/Rust should defeat the latest in cutting-edge `unsafe` obfuscation tech
         let definition = r#"
             CREATE FUNCTION super_safe()
             RETURNS text AS
