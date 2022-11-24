@@ -755,6 +755,9 @@ mod tests {
         assert!(our_id.is_none())
     }
 
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "error: declaration of a `no_mangle` static")]
     fn plrust_no_link_section() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION vapt() RETURNS BIGINT
