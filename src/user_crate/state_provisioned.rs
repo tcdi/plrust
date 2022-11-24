@@ -53,7 +53,7 @@ impl StateProvisioned {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn unsafe_lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File = syn::parse_quote!(
-            #![forbid(unsafe_op_in_unsafe_fn)]
+            #![deny(unsafe_op_in_unsafe_fn)]
             use pgx::prelude::*;
         );
 
