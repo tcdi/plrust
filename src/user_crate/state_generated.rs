@@ -268,7 +268,7 @@ impl StateGenerated {
             crate_name,
             crate_dir,
             user_fn,
-            self.variant,
+            self.variant.clone(),
         ))
     }
 
