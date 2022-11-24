@@ -129,7 +129,7 @@ impl StateGenerated {
                 let user_fn: syn::ItemFn = syn::parse2(quote! {
                     fn #symbol_ident(
                         trigger: &::pgx::PgTrigger,
-                    ) -> core::result::Result<
+                    ) -> ::core::result::Result<
                         ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                         Box<dyn std::error::Error>,
                     > #user_code
