@@ -139,7 +139,7 @@ impl StateGenerated {
             }
         };
 
-        skeleton.items.push(user_fn.into());
+        skeleton.items.push(user_fn.clone().into());
         Ok((user_fn, skeleton))
     }
 

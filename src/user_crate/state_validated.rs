@@ -17,6 +17,7 @@ pub(crate) struct StateValidated {
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
+    pg_config: PathBuf,
 }
 
 impl CrateState for StateValidated {}
@@ -29,6 +30,7 @@ impl StateValidated {
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        pg_config: PathBuf,
     ) -> Self {
         Self {
             pg_proc_xmin,
@@ -36,6 +38,7 @@ impl StateValidated {
             fn_oid,
             crate_name,
             crate_dir,
+            pg_config,
         }
     }
 
@@ -50,7 +53,6 @@ impl StateValidated {
         ))]
     pub(crate) fn build(
         self,
-        pg_config: PathBuf,
         target_dir: &Path,
     ) -> eyre::Result<(StateBuilt, Output)> {
         let mut command = Command::new("cargo");
@@ -62,7 +64,7 @@ impl StateValidated {
         command.arg("--release");
         command.arg("--target");
         command.arg(target_str);
-        command.env("PGX_PG_CONFIG_PATH", pg_config);
+        command.env("PGX_PG_CONFIG_PATH", self.pg_config);
         command.env("CARGO_TARGET_DIR", &target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 

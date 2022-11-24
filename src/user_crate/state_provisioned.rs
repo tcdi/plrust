@@ -57,7 +57,7 @@ impl StateProvisioned {
             use pgx::prelude::*;
         );
 
-        let crate_name = self.crate_name;
+        let crate_name = &self.crate_name;
         let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
         tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for build step");
@@ -107,7 +107,7 @@ impl StateProvisioned {
         command.arg("check");
         command.arg("--target");
         command.arg(target_str);
-        command.env("PGX_PG_CONFIG_PATH", pg_config);
+        command.env("PGX_PG_CONFIG_PATH", &pg_config);
         command.env("CARGO_TARGET_DIR", &target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
@@ -116,7 +116,7 @@ impl StateProvisioned {
         if output.status.success() {
             use std::env::consts::DLL_SUFFIX;
 
-            let crate_name = self.crate_name;
+            let crate_name = self.crate_name.clone();
 
             // rebuild code:
             let lib_rs = self.unsafe_lib_rs()?;
@@ -145,7 +145,8 @@ impl StateProvisioned {
                     self.db_oid,
                     self.fn_oid,
                     self.crate_name,
-                    self.crate_dir
+                    self.crate_dir,
+                    pg_config,
                 ),
                 output,
             ))

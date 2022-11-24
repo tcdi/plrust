@@ -106,11 +106,10 @@ impl UserCrate<StateValidated> {
         ))]
     pub fn build(
         self,
-        pg_config: PathBuf,
         target_dir: &Path,
     ) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
         self.0
-            .build(pg_config, target_dir)
+            .build(target_dir)
             .map(|(state, output)| (UserCrate(state), output))
     }
 
