@@ -50,15 +50,11 @@ impl StateProvisioned {
         );
 
         let crate_name = &self.crate_name;
-        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
         tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for build step");
 
         let mut user_fn = self.user_fn.clone();
         match &self.variant {
             CrateVariant::Function {
-                ref arguments,
-                ref return_type,
                 ..
             } => {
                 user_fn.attrs.push(syn::parse_quote! {
@@ -134,7 +130,7 @@ impl StateProvisioned {
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
-                    self.crate_name,
+                    crate_name,
                     self.crate_dir,
                     pg_config,
                 ),
