@@ -51,10 +51,7 @@ impl StateValidated {
             crate_dir = %self.crate_dir.display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub(crate) fn build(
-        self,
-        target_dir: &Path,
-    ) -> eyre::Result<(StateBuilt, Output)> {
+    pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<(StateBuilt, Output)> {
         let mut command = Command::new("cargo");
         let target = target::tuple()?;
         let target_str = &target;

@@ -1,4 +1,4 @@
-use crate::user_crate::{target, CrateState, CrateVariant, StateValidated, PlRustError};
+use crate::user_crate::{target, CrateState, CrateVariant, PlRustError, StateValidated};
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
@@ -54,9 +54,7 @@ impl StateProvisioned {
 
         let mut user_fn = self.user_fn.clone();
         match &self.variant {
-            CrateVariant::Function {
-                ..
-            } => {
+            CrateVariant::Function { .. } => {
                 user_fn.attrs.push(syn::parse_quote! {
                     #[pg_extern]
                 });
@@ -71,7 +69,6 @@ impl StateProvisioned {
         skeleton.items.push(user_fn.into());
         Ok(skeleton)
     }
-
 
     #[tracing::instrument(
         level = "debug",
@@ -109,7 +106,6 @@ impl StateProvisioned {
             let lib_rs_path = self.crate_dir.join("src/lib.rs");
             std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
                 .wrap_err("Writing generated `lib.rs`")?;
-
 
             #[cfg(any(
                 all(target_os = "macos", target_arch = "x86_64"),

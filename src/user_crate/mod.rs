@@ -104,10 +104,7 @@ impl UserCrate<StateValidated> {
             crate_dir = %self.0.crate_dir().display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub fn build(
-        self,
-        target_dir: &Path,
-    ) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
+    pub fn build(self, target_dir: &Path) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
         self.0
             .build(target_dir)
             .map(|(state, output)| (UserCrate(state), output))
