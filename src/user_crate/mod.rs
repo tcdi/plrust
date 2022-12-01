@@ -112,10 +112,6 @@ impl UserCrate<StateValidated> {
             .build(target_dir)
             .map(|(state, output)| (UserCrate(state), output))
     }
-
-    pub(crate) fn crate_dir(&self) -> &Path {
-        self.0.crate_dir()
-    }
 }
 
 impl UserCrate<StateBuilt> {
