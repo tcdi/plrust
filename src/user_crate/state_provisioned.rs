@@ -1,19 +1,11 @@
-use crate::{
-    user_crate::{target, StateBuilt},
-    PlRustError,
-};
+use crate::user_crate::{target, CrateState, CrateVariant, StateValidated, PlRustError};
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
+use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
     process::{Command, Output},
 };
-use crate::pgproc::PgProc;
-use crate::{
-    user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateValidated},
-};
-use pgx::{pg_sys, PgOid};
-use quote::quote;
 
 #[must_use]
 pub(crate) struct StateProvisioned {
@@ -114,8 +106,6 @@ impl StateProvisioned {
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
         if output.status.success() {
-            use std::env::consts::DLL_SUFFIX;
-
             let crate_name = self.crate_name.clone();
 
             // rebuild code:
