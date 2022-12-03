@@ -10,6 +10,7 @@ use std::{
     process::{Command, Output},
 };
 
+/// Validated and ready to build
 #[must_use]
 pub(crate) struct StateValidated {
     pg_proc_xmin: pg_sys::TransactionId,

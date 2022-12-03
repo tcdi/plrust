@@ -1,3 +1,21 @@
+/*!
+Provisioned and ready for validation steps
+
+To detect unsafe code in PL/Rust while still using PGX requires some circumlocution.
+PGX creates `#[no_mangle] unsafe extern "C" fn` wrappers that allow Postgres to call Rust,
+as PostgreSQL will dynamically load what it thinks is a C library and call C ABI wrapper fn
+that themselves handle the Postgres fn call ABI for the programmer and then, finally,
+call into the programmer's Rust ABI fn!
+This blocks simply using rustc's `unsafe` detection as pgx-macros generated code is unsafe.
+
+The circumlocution is brutal, simple, and effective:
+pgx-macros wraps actual Rust which can be safe if it contains no unsafe code!
+Such code is powerless (it really, truly, will not run, and may not even build)
+but it should still typecheck. Writing an empty shell function first
+allows using the linting power of rustc on it as a validation step.
+Then the function can be rewritten with annotations from pgx-macros injected.
+*/
+
 use crate::user_crate::{target, CrateState, CrateVariant, PlRustError, StateValidated};
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
@@ -7,6 +25,7 @@ use std::{
     process::{Command, Output},
 };
 
+/// Provisioned and ready to validate
 #[must_use]
 pub(crate) struct StateProvisioned {
     pg_proc_xmin: pg_sys::TransactionId,
@@ -20,6 +39,8 @@ pub(crate) struct StateProvisioned {
 
 impl CrateState for StateProvisioned {}
 
+/// Note that this is the step which actually executes validation
+/// because of past tense naming.
 impl StateProvisioned {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
@@ -42,6 +63,8 @@ impl StateProvisioned {
         }
     }
 
+    // TODO: Maybe should be in next state? Prevent access until validated?
+    // This only would be very useful if it was also module-abstracted.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn unsafe_lib_rs(&self) -> eyre::Result<syn::File> {
         let mut skeleton: syn::File = syn::parse_quote!(
@@ -98,6 +121,7 @@ impl StateProvisioned {
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
+        // TODO: Maybe this should instead be an explicit re-provisioning step?
         if output.status.success() {
             let crate_name = self.crate_name.clone();
 

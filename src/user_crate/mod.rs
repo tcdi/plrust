@@ -1,3 +1,13 @@
+/*!
+How to actually build and load a PL/Rust function
+*/
+
+/*
+Consider opening the documentation like so:
+```shell
+cargo doc --no-deps --document-private-items --open
+```
+*/
 mod crate_variant;
 mod state_built;
 mod state_generated;
@@ -6,6 +16,8 @@ mod state_provisioned;
 mod state_validated;
 mod target;
 
+// TODO: These past-tense names are confusing to reason about
+// Consider rewriting them to present tense?
 use crate_variant::CrateVariant;
 pub(crate) use state_built::StateBuilt;
 pub(crate) use state_generated::StateGenerated;
@@ -26,8 +38,10 @@ use std::{
 };
 
 /**
-Finite state machine with "typestate" generic so UserCrate<P> must follow
-```
+Finite state machine with "typestate" generic
+
+This forces `UserCrate<P>` to follow the linear path:
+```rust
 StateGenerated::try_from_$(inputs)_*
   -> StateGenerated
   -> StateProvisioned
@@ -40,9 +54,14 @@ Rust's ownership types allow guaranteeing one-way consumption.
 pub(crate) struct UserCrate<P: CrateState>(P);
 
 /**
-Each CrateState implementation has some set of fn including
-- fn new(Args) -> Self;
-- fn next(self, MoreArgs) -> NextCrateState;
+Stages of PL/Rust compilation
+
+Each CrateState implementation has some set of fn including equivalents to
+```rust
+fn new(args: A) -> Self;
+fn next(self, args: N) -> Self::NextCrateState;
+```
+
 These are currently not part of CrateState as they are type-specific and
 premature abstraction would be unwise.
 */
@@ -90,20 +109,6 @@ impl UserCrate<StateGenerated> {
     }
 }
 
-/**
-To detect unsafe code in PL/Rust while still using PGX requires some circumlocution.
-PGX creates `#[no_mangle] unsafe extern "C" fn` wrappers that allow Postgres to call Rust,
-as PostgreSQL will dynamically load what it thinks is a C library and call C ABI wrapper fn
-that themselves handle the Postgres fn call ABI for the programmer and then, finally,
-call into the programmer's Rust ABI fn!
-This blocks simply using rustc's `unsafe` detection as pgx-macros generated code is unsafe.
-
-However, there is a circumlocution available: pgx-macros wraps around actual Rust,
-and this Rust can be safe it does not itself use unsafe code.
-Such code is powerless but should typecheck, so by first building an empty shell function,
-it allows using the typechecking and linting power of rustc on it as a validation step,
-then rebuilding the crate with the same code and annotations from pgx-macros injected.
-*/
 impl UserCrate<StateProvisioned> {
     #[tracing::instrument(
         level = "debug",

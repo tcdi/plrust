@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 impl CrateState for StateLoaded {}
 
+/// Available and ready-to-reload PL/Rust function
 #[must_use]
 pub(crate) struct StateLoaded {
     pg_proc_xmin: pg_sys::TransactionId,

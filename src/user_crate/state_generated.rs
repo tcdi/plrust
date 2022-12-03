@@ -10,6 +10,7 @@ use std::path::Path;
 
 impl CrateState for StateGenerated {}
 
+/// Entry point for new crates via FSM
 #[must_use]
 pub(crate) struct StateGenerated {
     pg_proc_xmin: pg_sys::TransactionId,
@@ -97,6 +98,8 @@ impl StateGenerated {
         _crate_name
     }
 
+    /// Generates the initial, "pure Rust" wrapper for the PL/Rust function,
+    /// allowing it to be used for typechecking.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn safe_lib_rs(&self) -> eyre::Result<(syn::ItemFn, syn::File)> {
         let mut skeleton: syn::File = syn::parse_quote!(

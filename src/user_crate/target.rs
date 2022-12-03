@@ -2,7 +2,7 @@
     This prevents using the "fallback" logic of Cargo leaving builds in an unlabeled directory.
     This is a precaution as PL/Rust is a cross-compiler.
     so a normal build-and-test cycle may create artifacts for multiple targets.
-!*/
+*/
 
 use std::env;
 use std::ffi::OsString;
