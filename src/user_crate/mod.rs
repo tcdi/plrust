@@ -25,8 +25,27 @@ use std::{
     process::Output,
 };
 
+/**
+Finite state machine with "typestate" generic so UserCrate<P> must follow
+```
+StateGenerated::try_from_$(inputs)_*
+  -> StateGenerated
+  -> StateProvisioned
+  -> StateValidated
+  -> StateBuilt
+  -> StateLoaded
+```
+Rust's ownership types allow guaranteeing one-way consumption.
+*/
 pub(crate) struct UserCrate<P: CrateState>(P);
 
+/**
+Each CrateState implementation has some set of fn including
+- fn new(Args) -> Self;
+- fn next(self, MoreArgs) -> NextCrateState;
+These are currently not part of CrateState as they are type-specific and
+premature abstraction would be unwise.
+*/
 pub(crate) trait CrateState {}
 
 impl UserCrate<StateGenerated> {
@@ -53,6 +72,8 @@ impl UserCrate<StateGenerated> {
     pub unsafe fn try_from_fn_oid(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         unsafe { StateGenerated::try_from_fn_oid(db_oid, fn_oid).map(Self) }
     }
+    /// Two functions exist internally, a `safe_lib_rs` and `unsafe_lib_rs`.
+    /// At first, it only has access to `StateGenerated::safe_lib_rs` due to the FSM.
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
         let (_, lib_rs) = self.0.safe_lib_rs()?;
@@ -69,6 +90,20 @@ impl UserCrate<StateGenerated> {
     }
 }
 
+/**
+To detect unsafe code in PL/Rust while still using PGX requires some circumlocution.
+PGX creates `#[no_mangle] unsafe extern "C" fn` wrappers that allow Postgres to call Rust,
+as PostgreSQL will dynamically load what it thinks is a C library and call C ABI wrapper fn
+that themselves handle the Postgres fn call ABI for the programmer and then, finally,
+call into the programmer's Rust ABI fn!
+This blocks simply using rustc's `unsafe` detection as pgx-macros generated code is unsafe.
+
+However, there is a circumlocution available: pgx-macros wraps around actual Rust,
+and this Rust can be safe it does not itself use unsafe code.
+Such code is powerless but should typecheck, so by first building an empty shell function,
+it allows using the typechecking and linting power of rustc on it as a validation step,
+then rebuilding the crate with the same code and annotations from pgx-macros injected.
+*/
 impl UserCrate<StateProvisioned> {
     #[tracing::instrument(
         level = "debug",
