@@ -1,15 +1,29 @@
+/*!
+How to actually build and load a PL/Rust function
+*/
+
+/*
+Consider opening the documentation like so:
+```shell
+cargo doc --no-deps --document-private-items --open
+```
+*/
 mod crate_variant;
 mod state_built;
 mod state_generated;
 mod state_loaded;
 mod state_provisioned;
+mod state_validated;
 mod target;
 
+// TODO: These past-tense names are confusing to reason about
+// Consider rewriting them to present tense?
 use crate_variant::CrateVariant;
 pub(crate) use state_built::StateBuilt;
 pub(crate) use state_generated::StateGenerated;
 pub(crate) use state_loaded::StateLoaded;
 pub(crate) use state_provisioned::StateProvisioned;
+pub(crate) use state_validated::StateValidated;
 
 use crate::PlRustError;
 #[cfg(feature = "verify")]
@@ -23,8 +37,34 @@ use std::{
     process::Output,
 };
 
+/**
+Finite state machine with "typestate" generic
+
+This forces `UserCrate<P>` to follow the linear path:
+```rust
+StateGenerated::try_from_$(inputs)_*
+  -> StateGenerated
+  -> StateProvisioned
+  -> StateValidated
+  -> StateBuilt
+  -> StateLoaded
+```
+Rust's ownership types allow guaranteeing one-way consumption.
+*/
 pub(crate) struct UserCrate<P: CrateState>(P);
 
+/**
+Stages of PL/Rust compilation
+
+Each CrateState implementation has some set of fn including equivalents to
+```rust
+fn new(args: A) -> Self;
+fn next(self, args: N) -> Self::NextCrateState;
+```
+
+These are currently not part of CrateState as they are type-specific and
+premature abstraction would be unwise.
+*/
 pub(crate) trait CrateState {}
 
 impl UserCrate<StateGenerated> {
@@ -51,9 +91,12 @@ impl UserCrate<StateGenerated> {
     pub unsafe fn try_from_fn_oid(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         unsafe { StateGenerated::try_from_fn_oid(db_oid, fn_oid).map(Self) }
     }
+    /// Two functions exist internally, a `safe_lib_rs` and `unsafe_lib_rs`.
+    /// At first, it only has access to `StateGenerated::safe_lib_rs` due to the FSM.
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        self.0.lib_rs()
+        let (_, lib_rs) = self.0.safe_lib_rs()?;
+        Ok(lib_rs)
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
@@ -76,18 +119,35 @@ impl UserCrate<StateProvisioned> {
             crate_dir = %self.0.crate_dir().display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub fn build(
+    pub fn validate(
         self,
         pg_config: PathBuf,
         target_dir: &Path,
-    ) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
+    ) -> eyre::Result<(UserCrate<StateValidated>, Output)> {
         self.0
-            .build(pg_config, target_dir)
+            .validate(pg_config, target_dir)
             .map(|(state, output)| (UserCrate(state), output))
     }
 
     pub(crate) fn crate_dir(&self) -> &Path {
         self.0.crate_dir()
+    }
+}
+
+impl UserCrate<StateValidated> {
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            db_oid = %self.0.db_oid(),
+            fn_oid = %self.0.fn_oid(),
+            crate_dir = %self.0.crate_dir().display(),
+            target_dir = tracing::field::display(target_dir.display()),
+        ))]
+    pub fn build(self, target_dir: &Path) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
+        self.0
+            .build(target_dir)
+            .map(|(state, output)| (UserCrate(state), output))
     }
 }
 
@@ -380,9 +440,8 @@ mod tests {
 
             let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
@@ -408,7 +467,7 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = { version = "0.6.0-alpha.1", features = ["plrust"] }
+                pgx = { version = "=0.6.0-alpha.1", features = ["plrust"] }
                 pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                 /* User deps added here */
 
@@ -427,7 +486,9 @@ mod tests {
 
             let provisioned = generated.provision(&target_dir)?;
 
-            let (built, _output) = provisioned.build(pg_config, &target_dir)?;
+            let (validated, _output) = provisioned.validate(pg_config, &target_dir)?;
+
+            let (built, _output) = validated.build(&target_dir)?;
 
             let _shared_object = built.shared_object();
 

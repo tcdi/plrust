@@ -12,6 +12,7 @@ pub(crate) struct StateBuilt {
 
 impl CrateState for StateBuilt {}
 
+/// Available and ready-to-reload PL/Rust function
 impl StateBuilt {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn new(

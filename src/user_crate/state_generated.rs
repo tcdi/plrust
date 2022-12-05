@@ -10,6 +10,7 @@ use std::path::Path;
 
 impl CrateState for StateGenerated {}
 
+/// Entry point for new crates via FSM
 #[must_use]
 pub(crate) struct StateGenerated {
     pg_proc_xmin: pg_sys::TransactionId,
@@ -85,41 +86,46 @@ impl StateGenerated {
         })
     }
     pub(crate) fn crate_name(&self) -> String {
-        crate::plrust::crate_name(self.db_oid, self.fn_oid)
-    }
-
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_quote!(
-            #![deny(unsafe_op_in_unsafe_fn)]
-            use pgx::prelude::*;
-        );
-
-        let crate_name = self.crate_name();
+        let mut _crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
         #[cfg(any(
             all(target_os = "macos", target_arch = "x86_64"),
             feature = "force_enable_x86_64_darwin_generations"
         ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
+        {
+            let next = crate::generation::next_generation(&_crate_name, true).unwrap_or_default();
+            _crate_name.push_str(&format!("_{}", next));
+        }
+        _crate_name
+    }
 
-            crate_name.push_str(&format!("_{}", next));
-            crate_name
-        };
+    /// Generates the initial, "pure Rust" wrapper for the PL/Rust function,
+    /// allowing it to be used for typechecking.
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
+    pub(crate) fn safe_lib_rs(&self) -> eyre::Result<(syn::ItemFn, syn::File)> {
+        // Hello from the futurepast!
+        // The only situation in which you should be removing this `#![forbid(unsafe_code)]`
+        // from the skeleton code is if you are moving the forbid command somewhere else
+        // or reconfiguring PL/Rust to also allow it to be run in a fully "untrusted" mode.
+        // This is what does all of the code checking not only for `unsafe {}` but also
+        // "unsafe attributes" which are considered unsafe but don't have the `unsafe` token.
+        let mut skeleton: syn::File = syn::parse_quote!(
+            #![forbid(unsafe_code)]
+            use pgx::prelude::*;
+        );
+
+        let crate_name = self.crate_name();
         let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs`");
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
 
         let user_code = &self.user_code;
-        let user_function = match &self.variant {
+        let user_fn = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
                 ..
             } => {
                 let user_fn: syn::ItemFn = syn::parse2(quote! {
-                    #[pg_extern]
                     fn #symbol_ident(
                         #( #arguments ),*
                     ) -> #return_type
@@ -130,10 +136,9 @@ impl StateGenerated {
             }
             CrateVariant::Trigger => {
                 let user_fn: syn::ItemFn = syn::parse2(quote! {
-                    #[pg_trigger]
                     fn #symbol_ident(
                         trigger: &::pgx::PgTrigger,
-                    ) -> core::result::Result<
+                    ) -> ::core::result::Result<
                         ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                         Box<dyn std::error::Error>,
                     > #user_code
@@ -143,8 +148,8 @@ impl StateGenerated {
             }
         };
 
-        skeleton.items.push(user_function.into());
-        Ok(skeleton)
+        skeleton.items.push(user_fn.clone().into());
+        Ok((user_fn, skeleton))
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -152,18 +157,6 @@ impl StateGenerated {
         let major_version = pgx::pg_sys::get_pg_major_version_num();
         let version_feature = format!("pgx/pg{major_version}");
         let crate_name = self.crate_name();
-
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
-
-            crate_name.push_str(&format!("_{}", next));
-            crate_name
-        };
 
         tracing::trace!(
             crate_name = %crate_name,
@@ -184,7 +177,7 @@ impl StateGenerated {
                     crate-type = ["cdylib"]
 
                     [dependencies]
-                    pgx =  { version = "0.6.0-alpha.1", features = ["plrust"] }
+                    pgx =  { version = "=0.6.0-alpha.1", features = ["plrust"] }
                     pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
 
                     /* User deps added here */
@@ -264,7 +257,7 @@ impl StateGenerated {
             "Could not create crate directory in configured `plrust.work_dir` location",
         )?;
 
-        let lib_rs = self.lib_rs()?;
+        let (user_fn, lib_rs) = self.safe_lib_rs()?;
         let lib_rs_path = src_dir.join("lib.rs");
         std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
             .wrap_err("Writing generated `lib.rs`")?;
@@ -283,6 +276,8 @@ impl StateGenerated {
             self.fn_oid,
             crate_name,
             crate_dir,
+            user_fn,
+            self.variant.clone(),
         ))
     }
 
@@ -346,11 +341,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
                 }
@@ -411,11 +405,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
                 }
@@ -476,11 +469,10 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_extern]
                 fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
                     Some(std::iter::repeat(val).take(5))
                 }
@@ -532,14 +524,13 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
             let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
+                #![forbid(unsafe_code)]
                 use pgx::prelude::*;
-                #[pg_trigger]
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
-                ) -> core::result::Result<
+                ) -> ::core::result::Result<
                     ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
                     Box<dyn std::error::Error>,
                 > {

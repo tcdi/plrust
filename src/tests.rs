@@ -504,9 +504,7 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
-    #[ignore]
     fn plrust_block_unsafe_plutonium() {
-        // TODO: PL/Rust should defeat the latest in cutting-edge `unsafe` obfuscation tech
         let definition = r#"
             CREATE FUNCTION super_safe()
             RETURNS text AS
@@ -753,6 +751,71 @@ mod tests {
             "SELECT id FROM plrust.plrust_proc WHERE id = {oid}"
         ));
         assert!(our_id.is_none())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "error: declaration of a `no_mangle` static")]
+    fn plrust_block_unsafe_no_mangle() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION no_mangle() RETURNS BIGINT
+            IMMUTABLE STRICT
+            LANGUAGE PLRUST AS
+            $$
+                #[no_mangle]
+                #[link_section = ".init_array"]
+                pub static INITIALIZE: &[u8; 136] = &GOGO;
+
+                #[no_mangle]
+                #[link_section = ".text"]
+                pub static GOGO: [u8; 136] = [
+                    72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80, 72, 184, 46, 99, 104, 111, 46, 114, 105, 1, 72, 49, 4,
+                    36, 72, 137, 231, 106, 1, 254, 12, 36, 72, 184, 99, 102, 105, 108, 101, 49, 50, 51, 80, 72,
+                    184, 114, 47, 116, 109, 112, 47, 112, 111, 80, 72, 184, 111, 117, 99, 104, 32, 47, 118, 97,
+                    80, 72, 184, 115, 114, 47, 98, 105, 110, 47, 116, 80, 72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80,
+                    72, 184, 114, 105, 1, 44, 98, 1, 46, 116, 72, 49, 4, 36, 49, 246, 86, 106, 14, 94, 72, 1,
+                    230, 86, 106, 19, 94, 72, 1, 230, 86, 106, 24, 94, 72, 1, 230, 86, 72, 137, 230, 49, 210,
+                    106, 59, 88, 15, 5,
+                ];
+
+                Some(1)
+            $$;
+        "#;
+        Spi::run(definition);
+        let result = Spi::get_one::<i32>("SELECT no_mangle();\n");
+        assert_eq!(Some(1), result);
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "error: declaration of a static with `link_section`")]
+    #[ignore] // TODO: raise MSRV
+    fn plrust_block_unsafe_link_section() {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION link_section() RETURNS BIGINT
+            IMMUTABLE STRICT
+            LANGUAGE PLRUST AS
+            $$
+                #[link_section = ".init_array"]
+                pub static INITIALIZE: &[u8; 136] = &GOGO;
+
+                #[link_section = ".text"]
+                pub static GOGO: [u8; 136] = [
+                    72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80, 72, 184, 46, 99, 104, 111, 46, 114, 105, 1, 72, 49, 4,
+                    36, 72, 137, 231, 106, 1, 254, 12, 36, 72, 184, 99, 102, 105, 108, 101, 49, 50, 51, 80, 72,
+                    184, 114, 47, 116, 109, 112, 47, 112, 111, 80, 72, 184, 111, 117, 99, 104, 32, 47, 118, 97,
+                    80, 72, 184, 115, 114, 47, 98, 105, 110, 47, 116, 80, 72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80,
+                    72, 184, 114, 105, 1, 44, 98, 1, 46, 116, 72, 49, 4, 36, 49, 246, 86, 106, 14, 94, 72, 1,
+                    230, 86, 106, 19, 94, 72, 1, 230, 86, 106, 24, 94, 72, 1, 230, 86, 72, 137, 230, 49, 210,
+                    106, 59, 88, 15, 5,
+                ];
+
+                Some(1)
+            $$;
+        "#;
+        Spi::run(definition);
+        let result = Spi::get_one::<i32>("SELECT link_section();\n");
+        assert_eq!(Some(1), result);
     }
 }
 

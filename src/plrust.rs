@@ -105,8 +105,10 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
 
     let generated = unsafe { UserCrate::try_from_fn_oid(db_oid, fn_oid)? };
     let provisioned = generated.provision(&work_dir)?;
+    // We want to introduce validation here.
     let crate_dir = provisioned.crate_dir().to_path_buf();
-    let (built, output) = provisioned.build(pg_config, target_dir.as_path())?;
+    let (validated, _output) = provisioned.validate(pg_config, target_dir.as_path())?;
+    let (built, output) = validated.build(target_dir.as_path())?;
     let shared_object = built.shared_object();
 
     // store the shared object in our table

@@ -5,6 +5,7 @@ use proc_macro2::{Ident, Span};
 use quote::quote;
 
 #[must_use]
+#[derive(Clone)]
 pub(crate) enum CrateVariant {
     Function {
         arguments: Vec<syn::FnArg>,
