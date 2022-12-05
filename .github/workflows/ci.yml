@@ -10,7 +10,7 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  CARGO_PGX_VERSION: "0.6.0-alpha.1"
+  CARGO_PGX_VERSION: "0.6.0"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
