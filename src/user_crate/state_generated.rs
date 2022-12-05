@@ -102,6 +102,12 @@ impl StateGenerated {
     /// allowing it to be used for typechecking.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn safe_lib_rs(&self) -> eyre::Result<(syn::ItemFn, syn::File)> {
+        // Hello from the futurepast!
+        // The only situation in which you should be removing this `#![forbid(unsafe_code)]`
+        // from the skeleton code is if you are moving the forbid command somewhere else
+        // or reconfiguring PL/Rust to also allow it to be run in a fully "untrusted" mode.
+        // This is what does all of the code checking not only for `unsafe {}` but also
+        // "unsafe attributes" which are considered unsafe but don't have the `unsafe` token.
         let mut skeleton: syn::File = syn::parse_quote!(
             #![forbid(unsafe_code)]
             use pgx::prelude::*;
