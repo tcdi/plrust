@@ -123,7 +123,7 @@ jobs:
       run: cargo pgx init --pg14 $(which pg_config)
 
     - name: Run build plrust script
-      run: PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
+      run: cd plrust && PLRUST_TARGET="aarch64-unknown-linux-postgres" ./build
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
@@ -278,7 +278,7 @@ jobs:
 
     - name: Run PL/Rust + postgrestd tests
       if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
-      run: ./build
+      run: cd plrust && ./build
 
     # Attempt to make the cache payload slightly smaller.
     - name: Clean up built PGX files
