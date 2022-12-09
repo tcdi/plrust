@@ -153,17 +153,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfb24e866b15a1af2a1b663f10c6b6b8f397a84aadb828f12e5b289ec23a3a3c"
 
 [[package]]
-name = "cargo-geiger-serde"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63fcf425f40a413b6b1052486b48ce4cc7cfa407a335790ba2992a2571cf2a17"
-dependencies = [
- "semver 1.0.14",
- "serde",
- "url",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -453,17 +442,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "geiger"
-version = "0.4.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34739087c8c562d75bafc912e343035bba4a4986f86966a4c0b2b1d407411a47"
-dependencies = [
- "cargo-geiger-serde",
- "proc-macro2",
- "syn",
 ]
 
 [[package]]
@@ -985,7 +963,6 @@ dependencies = [
  "cfg-if",
  "color-eyre",
  "eyre",
- "geiger",
  "libloading",
  "once_cell",
  "pgx",
@@ -1295,9 +1272,6 @@ name = "semver"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e25dfac463d778e353db5be2449d1cce89bd6fd23c9f1ea21310ce6e5a1b29c4"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "semver-parser"
@@ -1744,7 +1718,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
- "serde",
 ]
 
 [[package]]
