@@ -23,7 +23,7 @@ sandboxed = []
 # Forcibly enable a feature used by x86_64 MacOS machines because they're bad at `dlclose()`
 force_enable_x86_64_darwin_generations = []
 target_postgrestd = []
-verify = ["dep:geiger"]
+verify = []
 
 [dependencies]
 cfg-if = "1" # platform conditional helper
@@ -53,9 +53,6 @@ prettyplease = "0.1"
 syn = "1"
 quote = "1"
 proc-macro2 = "1"
-
-# verify feature
-geiger = { version = "0.4", optional = true } # unsafe detection
 
 [dev-dependencies]
 pgx-tests = { version = "=0.6.0" }
