@@ -31,8 +31,8 @@ once_cell = "1.7.2" # polyfills a nightly feature
 semver = "1.0.14"
 
 # pgx core details
-pgx = { version = "=0.6.0" }
-pgx-pg-config = { version = "=0.6.0" }
+pgx = { version = "=0.6.1" }
+pgx-pg-config = { version = "=0.6.1" }
 
 # language handler support
 libloading = "0.7.2"
@@ -58,7 +58,7 @@ proc-macro2 = "1"
 geiger = { version = "0.4", optional = true } # unsafe detection
 
 [dev-dependencies]
-pgx-tests = { version = "=0.6.0" }
+pgx-tests = { version = "=0.6.1" }
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
