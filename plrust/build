@@ -11,7 +11,7 @@ cargo update -p pgx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgx \
-    --version "0.6.0" \
+    --version "0.6.1" \
     --locked # use the Cargo.lock in the pgx repo
 fi
 

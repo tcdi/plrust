@@ -13,7 +13,7 @@ build = "build.rs"
 crate-type = ["cdylib"]
 
 [features]
-default = ["pg14", "verify"]
+default = ["pg14"]
 pg13 = ["pgx/pg13", "pgx-tests/pg13"]
 pg14 = ["pgx/pg14", "pgx-tests/pg14"]
 pg15 = ["pgx/pg15", "pgx-tests/pg15"]
@@ -23,7 +23,7 @@ sandboxed = []
 # Forcibly enable a feature used by x86_64 MacOS machines because they're bad at `dlclose()`
 force_enable_x86_64_darwin_generations = []
 target_postgrestd = []
-verify = ["dep:geiger"]
+# verify = [] # Revisit this later for other verification features
 
 [dependencies]
 cfg-if = "1" # platform conditional helper
@@ -53,9 +53,6 @@ prettyplease = "0.1"
 syn = "1"
 quote = "1"
 proc-macro2 = "1"
-
-# verify feature
-geiger = { version = "0.4", optional = true } # unsafe detection
 
 [dev-dependencies]
 pgx-tests = { version = "=0.6.1" }

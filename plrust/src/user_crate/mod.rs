@@ -26,8 +26,6 @@ pub(crate) use state_provisioned::StateProvisioned;
 pub(crate) use state_validated::StateValidated;
 
 use crate::PlRustError;
-#[cfg(feature = "verify")]
-use geiger;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -278,15 +276,6 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     }
 
     code_block.push_str(" }");
-    #[cfg(feature = "verify")]
-    {
-        let fake_fn = format!("fn plrust_fn() {code_block}");
-        let unsafe_metrics =
-            geiger::find_unsafe_in_string(&fake_fn, geiger::IncludeTests::No).unwrap();
-        if unsafe_metrics.counters.has_unsafe() {
-            panic!("detected unsafe code in this code block:\n{}", code_block);
-        }
-    }
 
     let user_dependencies = check_user_dependencies(deps_block)?;
 
