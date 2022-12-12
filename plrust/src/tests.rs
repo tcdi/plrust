@@ -789,7 +789,6 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic(expected = "error: declaration of a static with `link_section`")]
-    #[ignore] // TODO: raise MSRV
     fn plrust_block_unsafe_link_section() {
         let definition = r#"
             CREATE OR REPLACE FUNCTION link_section() RETURNS BIGINT
