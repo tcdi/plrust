@@ -1,6 +1,6 @@
 use crate::pgproc::PgProc;
 use crate::{
-    user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateProvisioned},
+    user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
     PlRustError,
 };
 use eyre::WrapErr;
@@ -8,11 +8,11 @@ use pgx::{pg_sys, PgOid};
 use quote::quote;
 use std::path::Path;
 
-impl CrateState for StateGenerated {}
+impl CrateState for FnCrating {}
 
 /// Entry point for new crates via FSM
 #[must_use]
-pub(crate) struct StateGenerated {
+pub(crate) struct FnCrating {
     pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
@@ -21,7 +21,7 @@ pub(crate) struct StateGenerated {
     variant: CrateVariant,
 }
 
-impl StateGenerated {
+impl FnCrating {
     #[cfg(any(test, feature = "pg_test"))]
     pub(crate) fn for_tests(
         pg_proc_xmin: pg_sys::TransactionId,
@@ -249,7 +249,7 @@ impl StateGenerated {
     }
     /// Provision into a given folder and return the crate directory.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, parent_dir = %parent_dir.display()))]
-    pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<StateProvisioned> {
+    pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<FnVerify> {
         let crate_name = self.crate_name();
         let crate_dir = parent_dir.join(&crate_name);
         let src_dir = crate_dir.join("src");
@@ -270,7 +270,7 @@ impl StateGenerated {
         )
         .wrap_err("Writing generated `Cargo.toml`")?;
 
-        Ok(StateProvisioned::new(
+        Ok(FnVerify::new(
             self.pg_proc_xmin,
             self.db_oid,
             self.fn_oid,
@@ -317,7 +317,7 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated = StateGenerated::for_tests(
+            let generated = FnCrating::for_tests(
                 pg_proc_xmin,
                 db_oid,
                 fn_oid,
@@ -381,7 +381,7 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated = StateGenerated::for_tests(
+            let generated = FnCrating::for_tests(
                 pg_proc_xmin,
                 db_oid,
                 fn_oid,
@@ -445,7 +445,7 @@ mod tests {
                 { Some(std::iter::repeat(val).take(5)) }
             })?;
 
-            let generated = StateGenerated::for_tests(
+            let generated = FnCrating::for_tests(
                 pg_proc_xmin,
                 db_oid,
                 fn_oid,
@@ -500,7 +500,7 @@ mod tests {
                 { Ok(trigger.current().unwrap().into_owned()) }
             })?;
 
-            let generated = StateGenerated::for_tests(
+            let generated = FnCrating::for_tests(
                 pg_proc_xmin,
                 db_oid,
                 fn_oid,

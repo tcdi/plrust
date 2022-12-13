@@ -16,7 +16,7 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::{target, CrateState, CrateVariant, PlRustError, StateValidated};
+use crate::user_crate::{target, CrateState, CrateVariant, PlRustError, FnBuild};
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
@@ -27,7 +27,7 @@ use std::{
 
 /// Provisioned and ready to validate
 #[must_use]
-pub(crate) struct StateProvisioned {
+pub(crate) struct FnVerify {
     pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
@@ -37,11 +37,9 @@ pub(crate) struct StateProvisioned {
     variant: CrateVariant,
 }
 
-impl CrateState for StateProvisioned {}
+impl CrateState for FnVerify {}
 
-/// Note that this is the step which actually executes validation
-/// because of past tense naming.
-impl StateProvisioned {
+impl FnVerify {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
         pg_proc_xmin: pg_sys::TransactionId,
@@ -106,7 +104,7 @@ impl StateProvisioned {
         self,
         pg_config: PathBuf,
         target_dir: &Path,
-    ) -> eyre::Result<(StateValidated, Output)> {
+    ) -> eyre::Result<(FnBuild, Output)> {
         let mut command = Command::new("cargo");
         let target = target::tuple()?;
         let target_str = &target;
@@ -146,7 +144,7 @@ impl StateProvisioned {
             };
 
             Ok((
-                StateValidated::new(
+                FnBuild::new(
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,

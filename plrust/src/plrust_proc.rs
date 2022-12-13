@@ -2,7 +2,7 @@
 use crate::error::PlRustError;
 use crate::gucs;
 use crate::pgproc::PgProc;
-use crate::user_crate::{StateLoaded, UserCrate};
+use crate::user_crate::{FnReady, UserCrate};
 use pgx::pg_sys::MyDatabaseId;
 use pgx::{extension_sql, pg_sys, IntoDatum, PgBuiltInOids, PgOid, Spi};
 use std::path::Path;
@@ -65,7 +65,7 @@ pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) {
 /// Dynamically load the shared library stored in `plrust.plrust_proc` for the specified `pg_proc_oid`
 /// procedure object id and the `target_triple` of the host.
 #[tracing::instrument(level = "debug")]
-pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoaded>> {
+pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<FnReady>> {
     tracing::debug!("loading function oid `{pg_proc_oid}`");
     // using SPI, read the plrust_proc entry for the provided pg_proc.oid value
     let so = Spi::get_one_with_args::<&[u8]>(
@@ -85,7 +85,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
     // then writes it only during initialization, so we should not be racing anyone.
     let db_oid = unsafe { MyDatabaseId };
 
-    // fabricate a StateBuilt version of the UserCrate so that we can "load()" it -- tho we're
+    // fabricate a FnLoad version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
     let meta = PgProc::new(pg_proc_oid).ok_or(PlRustError::NullProcTuple)?;
     let built = UserCrate::built(
