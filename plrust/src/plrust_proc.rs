@@ -118,15 +118,15 @@ fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Dat
     let identity_ptr = unsafe {
         #[cfg(feature = "pg13")]
         {
-            // SAFETY:  getObjectIdentity will raise an ERROR if theObjectAddress we created doesn't
-            // exist, otherwise returning a properly palloc'd pointer
+            // SAFETY:  getObjectIdentity will raise an ERROR if the ObjectAddress we created doesn't
+            // exist, otherwise it returns a properly palloc'd pointer
             pg_sys::getObjectIdentity(&oa as *const _)
         }
 
         #[cfg(not(feature = "pg13"))]
         {
             // SAFETY:  by setting "missing_ok" to false, getObjectIdentity will raise an ERROR if the
-            // ObjectAddress we created doesn't exist, otherwise returning a properly palloc'd pointer
+            // ObjectAddress we created doesn't exist, otherwise it returns a properly palloc'd pointer
             pg_sys::getObjectIdentity(&oa as *const _, false)
         }
     };
