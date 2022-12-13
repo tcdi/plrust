@@ -10,7 +10,7 @@ use std::path::Path;
 extension_sql!(
     r#"
 CREATE TABLE plrust.plrust_proc (
-    id            regproc   NOT NULL,
+    id            text   NOT NULL, -- pg_identify_object identity
     target_triple text      NOT NULL,
     so            bytea     NOT NULL,
     PRIMARY KEY(id, target_triple)
@@ -38,15 +38,21 @@ pub(crate) fn create_or_replace_function(
     args.push((PgBuiltInOids::BYTEAOID.oid(), so.into_datum()));
 
     tracing::debug!("inserting function oid `{pg_proc_oid}`");
+
     Spi::run_with_args(
         r#"
                 INSERT INTO plrust.plrust_proc(id, target_triple, so)
-                     VALUES ($1, $2, $3)
-                     ON CONFLICT (id, target_triple)
-                        DO UPDATE SET so = $3
-                "#,
+                SELECT iden.identity as id, $2 as target_triple, $3 as so
+                FROM 
+                    pg_catalog.pg_class as class, 
+                    pg_catalog.pg_identify_object(class.oid, $1, 0) as iden, 
+                    pg_namespace as nsp
+                WHERE class.relname = 'pg_proc' AND class.relnamespace = nsp.oid AND nsp.nspname = 'pg_catalog'
+                ON CONFLICT (id, target_triple)
+                    DO UPDATE SET so = $3"#,
         Some(args),
     );
+
     Ok(())
 }
 
@@ -69,7 +75,13 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
     tracing::debug!("loading function oid `{pg_proc_oid}`");
     // using SPI, read the plrust_proc entry for the provided pg_proc.oid value
     let so = Spi::get_one_with_args::<&[u8]>(
-        "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
+        "SELECT so FROM plrust.plrust_proc WHERE target_triple = $2 and id = 
+        (SELECT iden.identity
+                FROM 
+                    pg_catalog.pg_class as class, 
+                    pg_catalog.pg_identify_object(class.oid, $1, 0) as iden, 
+                    pg_namespace as nsp
+                WHERE class.relname = 'pg_proc' AND class.relnamespace = nsp.oid AND nsp.nspname = 'pg_catalog')",
         pkey_datums(pg_proc_oid),
     )
     .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_target_triple().to_string()))?;
@@ -107,6 +119,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<StateLoad
 
 /// helper function to build a vec of Spi arguments to be used as the composite primary key
 /// `plrust.plrust_proc` needs to locate a function
+/// pg_proc_oid is used to identify the object_identity in the table
 #[inline]
 fn pkey_datums(pg_proc_oid: pg_sys::Oid) -> Vec<(PgOid, Option<pg_sys::Datum>)> {
     vec![
