@@ -88,11 +88,13 @@ impl UserCrate<FnCrating> {
         unsafe { FnCrating::try_from_fn_oid(db_oid, fn_oid).map(Self) }
     }
     #[tracing::instrument(level = "debug", skip_all)]
+    #[allow(unused)] // used in tests
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
         let lib_rs = self.0.lib_rs()?;
         Ok(lib_rs)
     }
     #[tracing::instrument(level = "debug", skip_all)]
+    #[allow(unused)] // used in tests
     pub fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
         self.0.cargo_toml()
     }
@@ -424,11 +426,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![forbid(unsafe_code)]
-                use pgx::prelude::*;
+            let imports = crate::user_crate::state_generated::shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(

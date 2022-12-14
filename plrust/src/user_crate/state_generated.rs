@@ -288,7 +288,7 @@ fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Re
 }
 
 /// Used by both the unsafe and safe module.
-fn shared_imports() -> syn::ItemUse {
+pub(crate) fn shared_imports() -> syn::ItemUse {
     syn::parse_quote!(
         use pgx::prelude::*;
     )
@@ -461,11 +461,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![forbid(unsafe_code)]
-                use pgx::prelude::*;
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
@@ -519,11 +534,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![forbid(unsafe_code)]
-                use pgx::prelude::*;
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
                     Some(std::iter::repeat(val).take(5))
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
@@ -568,9 +598,8 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![forbid(unsafe_code)]
-                use pgx::prelude::*;
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
                 ) -> ::core::result::Result<
@@ -578,6 +607,22 @@ mod tests {
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_trigger]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
