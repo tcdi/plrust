@@ -98,44 +98,30 @@ impl FnCrating {
         _crate_name
     }
 
-    /// Generates the initial, "pure Rust" wrapper for the PL/Rust function,
-    /// allowing it to be used for typechecking.
+    /// Generates the lib.rs to write
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn safe_lib_rs(&self) -> eyre::Result<(syn::ItemFn, syn::File)> {
-        // Hello from the futurepast!
-        // The only situation in which you should be removing this `#![forbid(unsafe_code)]`
-        // from the skeleton code is if you are moving the forbid command somewhere else
-        // or reconfiguring PL/Rust to also allow it to be run in a fully "untrusted" mode.
-        // This is what does all of the code checking not only for `unsafe {}` but also
-        // "unsafe attributes" which are considered unsafe but don't have the `unsafe` token.
-        let mut skeleton: syn::File = syn::parse_quote!(
-            #![forbid(unsafe_code)]
-            use pgx::prelude::*;
-        );
-
+    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
         let crate_name = self.crate_name();
         let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
         tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
 
         let user_code = &self.user_code;
-        let user_fn = match &self.variant {
+        let user_fn: syn::ItemFn = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
                 ..
             } => {
-                let user_fn: syn::ItemFn = syn::parse2(quote! {
+                syn::parse2(quote! {
                     fn #symbol_ident(
                         #( #arguments ),*
                     ) -> #return_type
                     #user_code
                 })
-                .wrap_err("Parsing generated user function")?;
-                user_fn
+                .wrap_err("Parsing generated user function")?
             }
             CrateVariant::Trigger => {
-                let user_fn: syn::ItemFn = syn::parse2(quote! {
+                syn::parse2(quote! {
                     fn #symbol_ident(
                         trigger: &::pgx::PgTrigger,
                     ) -> ::core::result::Result<
@@ -143,13 +129,13 @@ impl FnCrating {
                         Box<dyn std::error::Error>,
                     > #user_code
                 })
-                .wrap_err("Parsing generated user trigger")?;
-                user_fn
+                .wrap_err("Parsing generated user trigger")?
             }
         };
+        let opened = unsafe_mod(user_fn.clone(), &self.variant)?;
+        let forbidden = safe_mod(user_fn)?;
 
-        skeleton.items.push(user_fn.clone().into());
-        Ok((user_fn, skeleton))
+        compose_lib_from_mods([opened, forbidden])
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -257,7 +243,7 @@ impl FnCrating {
             "Could not create crate directory in configured `plrust.work_dir` location",
         )?;
 
-        let (user_fn, lib_rs) = self.safe_lib_rs()?;
+        let lib_rs = self.lib_rs()?;
         let lib_rs_path = src_dir.join("lib.rs");
         std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
             .wrap_err("Writing generated `lib.rs`")?;
@@ -276,8 +262,6 @@ impl FnCrating {
             self.fn_oid,
             crate_name,
             crate_dir,
-            user_fn,
-            self.variant.clone(),
         ))
     }
 
@@ -288,6 +272,67 @@ impl FnCrating {
     pub(crate) fn db_oid(&self) -> pg_sys::Oid {
         self.db_oid
     }
+}
+
+/// Throw all the libs into this, we will write this once.
+fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<syn::File> {
+    let mut skeleton: syn::File = syn::parse2(quote! {
+        #![deny(unsafe_op_in_unsafe_fn)]
+    })
+    .wrap_err("Generating lib skeleton")?;
+
+    for module in modules {
+        skeleton.items.push(module.into());
+    }
+    Ok(skeleton)
+}
+
+/// Used by both the unsafe and safe module.
+fn shared_imports() -> syn::ItemUse {
+    syn::parse_quote!(
+        use pgx::prelude::*;
+    )
+}
+
+fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Result<syn::ItemMod> {
+    let imports = shared_imports();
+
+    match variant {
+        CrateVariant::Function { .. } => {
+            called_fn.attrs.push(syn::parse_quote! {
+                #[pg_extern]
+            });
+        }
+        CrateVariant::Trigger => {
+            called_fn.attrs.push(syn::parse_quote! {
+                #[pg_trigger]
+            });
+        }
+    };
+
+    // Use pub mod so that symbols inside are found, opened, and called
+    syn::parse2(quote! {
+        pub mod opened {
+            #imports
+
+            #called_fn
+        }
+    })
+    .wrap_err("Could not create opened module")
+}
+
+fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<syn::ItemMod> {
+    let imports = shared_imports();
+
+    syn::parse2(quote! {
+        mod forbidden {
+            #![forbid(unsafe_code)]
+            #imports
+
+            #bare_fn
+        }
+    })
+    .wrap_err("Could not create forbidden module")
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -317,14 +362,8 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated = FnCrating::for_tests(
-                pg_proc_xmin,
-                db_oid,
-                fn_oid,
-                user_deps,
-                user_code,
-                variant,
-            );
+            let generated =
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -341,12 +380,27 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![forbid(unsafe_code)]
-                use pgx::prelude::*;
+            let generated_lib_rs = generated.lib_rs()?;
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
@@ -381,14 +435,8 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated = FnCrating::for_tests(
-                pg_proc_xmin,
-                db_oid,
-                fn_oid,
-                user_deps,
-                user_code,
-                variant,
-            );
+            let generated =
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -405,7 +453,7 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
+            let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
                 #![forbid(unsafe_code)]
                 use pgx::prelude::*;
@@ -445,14 +493,8 @@ mod tests {
                 { Some(std::iter::repeat(val).take(5)) }
             })?;
 
-            let generated = FnCrating::for_tests(
-                pg_proc_xmin,
-                db_oid,
-                fn_oid,
-                user_deps,
-                user_code,
-                variant,
-            );
+            let generated =
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -469,7 +511,7 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
+            let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
                 #![forbid(unsafe_code)]
                 use pgx::prelude::*;
@@ -500,14 +542,8 @@ mod tests {
                 { Ok(trigger.current().unwrap().into_owned()) }
             })?;
 
-            let generated = FnCrating::for_tests(
-                pg_proc_xmin,
-                db_oid,
-                fn_oid,
-                user_deps,
-                user_code,
-                variant,
-            );
+            let generated =
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -524,7 +560,7 @@ mod tests {
             };
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
-            let (_, generated_lib_rs) = generated.safe_lib_rs()?;
+            let generated_lib_rs = generated.lib_rs()?;
             let fixture_lib_rs = parse_quote! {
                 #![forbid(unsafe_code)]
                 use pgx::prelude::*;

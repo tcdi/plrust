@@ -87,11 +87,9 @@ impl UserCrate<FnCrating> {
     pub unsafe fn try_from_fn_oid(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
         unsafe { FnCrating::try_from_fn_oid(db_oid, fn_oid).map(Self) }
     }
-    /// Two functions exist internally, a `safe_lib_rs` and `unsafe_lib_rs`.
-    /// At first, it only has access to `FnCrating::safe_lib_rs` due to the FSM.
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let (_, lib_rs) = self.0.safe_lib_rs()?;
+        let lib_rs = self.0.lib_rs()?;
         Ok(lib_rs)
     }
     #[tracing::instrument(level = "debug", skip_all)]

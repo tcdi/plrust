@@ -16,7 +16,7 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::{target, CrateState, CrateVariant, PlRustError, FnBuild};
+use crate::user_crate::{target, CrateState, FnBuild, PlRustError};
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
@@ -33,8 +33,6 @@ pub(crate) struct FnVerify {
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
-    user_fn: syn::ItemFn,
-    variant: CrateVariant,
 }
 
 impl CrateState for FnVerify {}
@@ -47,8 +45,6 @@ impl FnVerify {
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
-        user_fn: syn::ItemFn,
-        variant: CrateVariant,
     ) -> Self {
         Self {
             pg_proc_xmin,
@@ -56,39 +52,7 @@ impl FnVerify {
             fn_oid,
             crate_name,
             crate_dir,
-            user_fn,
-            variant,
         }
-    }
-
-    // TODO: Maybe should be in next state? Prevent access until validated?
-    // This only would be very useful if it was also module-abstracted.
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn unsafe_lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_quote!(
-            #![deny(unsafe_op_in_unsafe_fn)]
-            use pgx::prelude::*;
-        );
-
-        let crate_name = &self.crate_name;
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for build step");
-
-        let mut user_fn = self.user_fn.clone();
-        match &self.variant {
-            CrateVariant::Function { .. } => {
-                user_fn.attrs.push(syn::parse_quote! {
-                    #[pg_extern]
-                });
-            }
-            CrateVariant::Trigger => {
-                user_fn.attrs.push(syn::parse_quote! {
-                    #[pg_trigger]
-                });
-            }
-        };
-
-        skeleton.items.push(user_fn.into());
-        Ok(skeleton)
     }
 
     #[tracing::instrument(
@@ -119,36 +83,13 @@ impl FnVerify {
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
-        // TODO: Maybe this should instead be an explicit re-provisioning step?
         if output.status.success() {
-            let crate_name = self.crate_name.clone();
-
-            // rebuild code:
-            let lib_rs = self.unsafe_lib_rs()?;
-            let lib_rs_path = self.crate_dir.join("src/lib.rs");
-            std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
-                .wrap_err("Writing generated `lib.rs`")?;
-
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let next = crate::generation::next_generation(&crate_name, true)
-                    .map(|gen_num| gen_num)
-                    .unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", next));
-                crate_name
-            };
-
             Ok((
                 FnBuild::new(
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
-                    crate_name,
+                    self.crate_name,
                     self.crate_dir,
                     pg_config,
                 ),
