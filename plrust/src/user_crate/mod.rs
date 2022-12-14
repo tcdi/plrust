@@ -8,20 +8,25 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
+#[path = "./state_validated.rs"]
+mod build;
 mod crate_variant;
-mod state_built;
-mod state_generated;
-mod state_loaded;
-mod state_provisioned;
-mod state_validated;
+#[path = "./state_generated.rs"]
+mod crating;
+#[path = "./state_built.rs"]
+mod loading;
+#[path = "./state_loaded.rs"]
+mod ready;
 mod target;
+#[path = "./state_provisioned.rs"]
+mod verify;
 
+pub(crate) use build::FnBuild;
 use crate_variant::CrateVariant;
-pub(crate) use state_built::FnLoad;
-pub(crate) use state_generated::FnCrating;
-pub(crate) use state_loaded::FnReady;
-pub(crate) use state_provisioned::FnVerify;
-pub(crate) use state_validated::FnBuild;
+pub(crate) use crating::FnCrating;
+pub(crate) use loading::FnLoad;
+pub(crate) use ready::FnReady;
+pub(crate) use verify::FnVerify;
 
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
@@ -426,7 +431,7 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let imports = crate::user_crate::state_generated::shared_imports();
+            let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
