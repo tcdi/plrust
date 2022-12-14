@@ -9,7 +9,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use crate::{
     gucs, plrust_proc,
-    user_crate::{StateLoaded, UserCrate},
+    user_crate::{FnReady, UserCrate},
 };
 
 use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
@@ -21,7 +21,7 @@ use crate::plrust_proc::get_target_triple;
 use eyre::WrapErr;
 
 thread_local! {
-    pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<StateLoaded>>> = Default::default();
+    pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<FnReady>>> = Default::default();
 }
 
 pub(crate) fn init() {

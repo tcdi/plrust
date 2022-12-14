@@ -8,22 +8,25 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
+#[path = "./state_validated.rs"]
+mod build;
 mod crate_variant;
-mod state_built;
-mod state_generated;
-mod state_loaded;
-mod state_provisioned;
-mod state_validated;
+#[path = "./state_generated.rs"]
+mod crating;
+#[path = "./state_built.rs"]
+mod loading;
+#[path = "./state_loaded.rs"]
+mod ready;
 mod target;
+#[path = "./state_provisioned.rs"]
+mod verify;
 
-// TODO: These past-tense names are confusing to reason about
-// Consider rewriting them to present tense?
+pub(crate) use build::FnBuild;
 use crate_variant::CrateVariant;
-pub(crate) use state_built::StateBuilt;
-pub(crate) use state_generated::StateGenerated;
-pub(crate) use state_loaded::StateLoaded;
-pub(crate) use state_provisioned::StateProvisioned;
-pub(crate) use state_validated::StateValidated;
+pub(crate) use crating::FnCrating;
+pub(crate) use loading::FnLoad;
+pub(crate) use ready::FnReady;
+pub(crate) use verify::FnVerify;
 
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
@@ -40,12 +43,12 @@ Finite state machine with "typestate" generic
 
 This forces `UserCrate<P>` to follow the linear path:
 ```rust
-StateGenerated::try_from_$(inputs)_*
-  -> StateGenerated
-  -> StateProvisioned
-  -> StateValidated
-  -> StateBuilt
-  -> StateLoaded
+FnCrating::try_from_$(inputs)_*
+  -> FnCrating
+  -> FnVerify
+  -> FnBuild
+  -> FnLoad
+  -> FnReady
 ```
 Rust's ownership types allow guaranteeing one-way consumption.
 */
@@ -65,7 +68,7 @@ premature abstraction would be unwise.
 */
 pub(crate) trait CrateState {}
 
-impl UserCrate<StateGenerated> {
+impl UserCrate<FnCrating> {
     #[cfg(any(test, feature = "pg_test"))]
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn generated_for_tests(
@@ -76,7 +79,7 @@ impl UserCrate<StateGenerated> {
         user_code: syn::Block,
         variant: CrateVariant,
     ) -> Self {
-        Self(StateGenerated::for_tests(
+        Self(FnCrating::for_tests(
             pg_proc_xmin,
             db_oid,
             fn_oid,
@@ -87,27 +90,27 @@ impl UserCrate<StateGenerated> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     pub unsafe fn try_from_fn_oid(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> eyre::Result<Self> {
-        unsafe { StateGenerated::try_from_fn_oid(db_oid, fn_oid).map(Self) }
+        unsafe { FnCrating::try_from_fn_oid(db_oid, fn_oid).map(Self) }
     }
-    /// Two functions exist internally, a `safe_lib_rs` and `unsafe_lib_rs`.
-    /// At first, it only has access to `StateGenerated::safe_lib_rs` due to the FSM.
     #[tracing::instrument(level = "debug", skip_all)]
+    #[allow(unused)] // used in tests
     pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let (_, lib_rs) = self.0.safe_lib_rs()?;
+        let lib_rs = self.0.lib_rs()?;
         Ok(lib_rs)
     }
     #[tracing::instrument(level = "debug", skip_all)]
+    #[allow(unused)] // used in tests
     pub fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
         self.0.cargo_toml()
     }
     /// Provision into a given folder and return the crate directory.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
-    pub fn provision(&self, parent_dir: &Path) -> eyre::Result<UserCrate<StateProvisioned>> {
+    pub fn provision(&self, parent_dir: &Path) -> eyre::Result<UserCrate<FnVerify>> {
         self.0.provision(parent_dir).map(UserCrate)
     }
 }
 
-impl UserCrate<StateProvisioned> {
+impl UserCrate<FnVerify> {
     #[tracing::instrument(
         level = "debug",
         skip_all,
@@ -121,7 +124,7 @@ impl UserCrate<StateProvisioned> {
         self,
         pg_config: PathBuf,
         target_dir: &Path,
-    ) -> eyre::Result<(UserCrate<StateValidated>, Output)> {
+    ) -> eyre::Result<(UserCrate<FnBuild>, Output)> {
         self.0
             .validate(pg_config, target_dir)
             .map(|(state, output)| (UserCrate(state), output))
@@ -132,7 +135,7 @@ impl UserCrate<StateProvisioned> {
     }
 }
 
-impl UserCrate<StateValidated> {
+impl UserCrate<FnBuild> {
     #[tracing::instrument(
         level = "debug",
         skip_all,
@@ -142,14 +145,14 @@ impl UserCrate<StateValidated> {
             crate_dir = %self.0.crate_dir().display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub fn build(self, target_dir: &Path) -> eyre::Result<(UserCrate<StateBuilt>, Output)> {
+    pub fn build(self, target_dir: &Path) -> eyre::Result<(UserCrate<FnLoad>, Output)> {
         self.0
             .build(target_dir)
             .map(|(state, output)| (UserCrate(state), output))
     }
 }
 
-impl UserCrate<StateBuilt> {
+impl UserCrate<FnLoad> {
     #[tracing::instrument(level = "debug")]
     pub(crate) fn built(
         pg_proc_xmin: pg_sys::TransactionId,
@@ -157,7 +160,7 @@ impl UserCrate<StateBuilt> {
         fn_oid: pg_sys::Oid,
         shared_object: PathBuf,
     ) -> Self {
-        UserCrate(StateBuilt::new(
+        UserCrate(FnLoad::new(
             pg_proc_xmin,
             db_oid,
             fn_oid,
@@ -169,12 +172,12 @@ impl UserCrate<StateBuilt> {
         self.0.shared_object()
     }
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
-    pub unsafe fn load(self) -> eyre::Result<UserCrate<StateLoaded>> {
+    pub unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
         unsafe { self.0.load().map(UserCrate) }
     }
 }
 
-impl UserCrate<StateLoaded> {
+impl UserCrate<FnReady> {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid(), fn_oid = %self.fn_oid()))]
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         unsafe { self.0.evaluate(fcinfo) }
@@ -428,11 +431,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![forbid(unsafe_code)]
-                use pgx::prelude::*;
+            let imports = crate::user_crate::crating::shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(

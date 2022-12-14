@@ -1,5 +1,5 @@
 use crate::{
-    user_crate::{target, CrateState, StateBuilt},
+    user_crate::{target, CrateState, FnLoad},
     PlRustError,
 };
 use color_eyre::{Section, SectionExt};
@@ -12,7 +12,7 @@ use std::{
 
 /// Validated and ready to build
 #[must_use]
-pub(crate) struct StateValidated {
+pub(crate) struct FnBuild {
     pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
@@ -21,9 +21,9 @@ pub(crate) struct StateValidated {
     pg_config: PathBuf,
 }
 
-impl CrateState for StateValidated {}
+impl CrateState for FnBuild {}
 
-impl StateValidated {
+impl FnBuild {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
         pg_proc_xmin: pg_sys::TransactionId,
@@ -52,7 +52,7 @@ impl StateValidated {
             crate_dir = %self.crate_dir.display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<(StateBuilt, Output)> {
+    pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<(FnLoad, Output)> {
         let mut command = Command::new("cargo");
         let target = target::tuple()?;
         let target_str = &target;
@@ -94,7 +94,7 @@ impl StateValidated {
                 .join(&built_shared_object_name);
 
             Ok((
-                StateBuilt::new(
+                FnLoad::new(
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
@@ -103,10 +103,8 @@ impl StateValidated {
                 output,
             ))
         } else {
-            let stdout =
-                String::from_utf8(output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
-            let stderr =
-                String::from_utf8(output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
+            let stdout = String::from_utf8(output.stdout).wrap_err("cargo stdout was not UTF-8")?;
+            let stderr = String::from_utf8(output.stderr).wrap_err("cargo stderr was not UTF-8")?;
 
             Err(eyre!(PlRustError::CargoBuildFail)
                 .section(stdout.header("`cargo build` stdout:"))

@@ -3,11 +3,11 @@ use libloading::os::unix::{Library, Symbol};
 use pgx::pg_sys;
 use std::path::{Path, PathBuf};
 
-impl CrateState for StateLoaded {}
+impl CrateState for FnReady {}
 
 /// Available and ready-to-reload PL/Rust function
 #[must_use]
-pub(crate) struct StateLoaded {
+pub(crate) struct FnReady {
     pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
@@ -18,7 +18,7 @@ pub(crate) struct StateLoaded {
     symbol: Symbol<unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
 }
 
-impl StateLoaded {
+impl FnReady {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, shared_object = %shared_object.display()))]
     pub(crate) unsafe fn load(
         pg_proc_xmin: pg_sys::TransactionId,
