@@ -8,17 +8,12 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
-#[path = "./state_validated.rs"]
 mod build;
 mod crate_variant;
-#[path = "./state_generated.rs"]
 mod crating;
-#[path = "./state_built.rs"]
 mod loading;
-#[path = "./state_loaded.rs"]
 mod ready;
 mod target;
-#[path = "./state_provisioned.rs"]
 mod verify;
 
 pub(crate) use build::FnBuild;
