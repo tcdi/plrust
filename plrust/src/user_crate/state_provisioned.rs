@@ -17,7 +17,6 @@ Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
 use crate::user_crate::{target, CrateState, FnBuild, PlRustError};
-use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 use std::{
@@ -69,19 +68,28 @@ impl FnVerify {
         pg_config: PathBuf,
         target_dir: &Path,
     ) -> eyre::Result<(FnBuild, Output)> {
-        let mut command = Command::new("cargo");
+        // This is the step which would be used for running validation
+        // after writing the lib.rs but before actually building it.
+        // As PL/Rust is not fully configured to run user commands here,
+        // this just echoes to smoke-test the ability to run a command
+        let mut command = Command::new("echo");
         let target = target::tuple()?;
         let target_str = &target;
 
-        command.current_dir(&self.crate_dir);
-        command.arg("check");
-        command.arg("--target");
-        command.arg(target_str);
-        command.env("PGX_PG_CONFIG_PATH", &pg_config);
-        command.env("CARGO_TARGET_DIR", &target_dir);
-        command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+        let args = format!(
+            r#"'
+            --target {target_str}
+            PGX_PG_CONFIG_PATH = {config}
+            CARGO_TARGET_DIR = {dir}
+            RUSTFLAGS = -Clink-args=-Wl,-undefined,dynamic_lookup'"#,
+            config = pg_config.display(),
+            dir = target_dir.display()
+        );
 
-        let output = command.output().wrap_err("`cargo` execution failure")?;
+        command.current_dir(&self.crate_dir);
+        command.arg(args);
+
+        let output = command.output().wrap_err("verification failure")?;
 
         if output.status.success() {
             Ok((
@@ -96,20 +104,7 @@ impl FnVerify {
                 output,
             ))
         } else {
-            let stdout =
-                String::from_utf8(output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
-            let stderr =
-                String::from_utf8(output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
-
-            Err(eyre!(PlRustError::CargoBuildFail)
-                .section(stdout.header("`cargo build` stdout:"))
-                .section(stderr.header("`cargo build` stderr:"))
-                .with_section(|| {
-                    std::fs::read_to_string(&self.crate_dir.join("src").join("lib.rs"))
-                        .wrap_err("Writing generated `lib.rs`")
-                        .expect("Reading generated `lib.rs` to output during error")
-                        .header("Source Code:")
-                }))?
+            Err(eyre!(PlRustError::CargoBuildFail))
         }
     }
 

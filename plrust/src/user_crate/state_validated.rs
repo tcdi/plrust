@@ -103,10 +103,8 @@ impl FnBuild {
                 output,
             ))
         } else {
-            let stdout =
-                String::from_utf8(output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
-            let stderr =
-                String::from_utf8(output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
+            let stdout = String::from_utf8(output.stdout).wrap_err("cargo stdout was not UTF-8")?;
+            let stderr = String::from_utf8(output.stderr).wrap_err("cargo stderr was not UTF-8")?;
 
             Err(eyre!(PlRustError::CargoBuildFail)
                 .section(stdout.header("`cargo build` stdout:"))
