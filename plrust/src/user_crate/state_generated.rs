@@ -323,7 +323,14 @@ fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Resul
 
 fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<syn::ItemMod> {
     let imports = shared_imports();
-
+    // Hello from the futurepast!
+    // The only situation in which you should be removing this
+    // `#![forbid(unsafe_code)]` is if you are moving the forbid
+    // command somewhere else  or reconfiguring PL/Rust to also
+    // allow it to be run in a fully "Untrusted PL/Rust" mode.
+    // This enables the code checking not only for `unsafe {}`
+    // but also "unsafe attributes" which are considered unsafe
+    // but don't have the `unsafe` token.
     syn::parse2(quote! {
         mod forbidden {
             #![forbid(unsafe_code)]
