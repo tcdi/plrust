@@ -1,9 +1,4 @@
-## Security
-
-A security vulnerability is 
-
-> “a weakness in the computational logic (e.g., code) found in software and hardware components that, when exploited, results in a negative impact to confidentiality, integrity, OR availability. Mitigation of the vulnerabilities in this context typically involves coding changes but could also include specification changes or even specification deprecations (e.g., removal of affected protocols or functionality in their entirety).” (MITRE.org CNA Rules  7.1)
- 
+# Security
 
 ## Reporting Security Issues
 
