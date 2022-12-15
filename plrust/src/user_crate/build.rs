@@ -10,7 +10,10 @@ use std::{
     process::{Command, Output},
 };
 
-/// Validated and ready to build
+/// Build the dynamic library from source
+///
+/// - Requires: PL/Rust && Rust source verification
+/// - Produces: a dlopenable artifact
 #[must_use]
 pub(crate) struct FnBuild {
     pg_proc_xmin: pg_sys::TransactionId,

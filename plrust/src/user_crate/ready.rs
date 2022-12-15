@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 
 impl CrateState for FnReady {}
 
-/// Available and ready-to-reload PL/Rust function
+/// Ready-to-evaluate PL/Rust function
+///
+/// - Requires: dlopened artifact
+/// - Produces: evaluation of the PL/Rust function
 #[must_use]
 pub(crate) struct FnReady {
     pg_proc_xmin: pg_sys::TransactionId,
