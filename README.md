@@ -191,3 +191,7 @@ plrust=# \dx+ plrust
  language plrust
 (4 rows)
 ```
+
+## Security Notice
+
+Please read the [Security](SECURITY.md) for directions on reporting a potential security issue.
