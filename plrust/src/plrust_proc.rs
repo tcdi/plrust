@@ -140,7 +140,8 @@ fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Dat
     let result = (PgBuiltInOids::TEXTOID.oid(), identity_str.into_datum());
 
     unsafe {
-        // SAFETY: identity_ptr was previously proven valid
+        // SAFETY: identity_ptr was previously proven valid and
+        // identity_str was reallocated elsewhere in Postgres
         pg_sys::pfree(identity_ptr.cast());
     }
 
