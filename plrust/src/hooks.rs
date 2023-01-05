@@ -1,7 +1,8 @@
 use std::ffi::CStr;
 
 use pgx::{
-    pg_guard, pg_sys, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel, PgSqlErrorCode, Spi,
+    ereport, pg_guard, pg_sys, spi, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel,
+    PgSqlErrorCode, Spi,
 };
 
 use crate::pgproc::PgProc;
@@ -104,10 +105,18 @@ fn plrust_process_utility_hook_internal(
         match drop_stmt.removeType {
             pg_sys::ObjectType_OBJECT_FUNCTION => handle_drop_function(&drop_stmt),
             pg_sys::ObjectType_OBJECT_SCHEMA => handle_drop_schema(&drop_stmt),
-            _ => {
-                // we don't do anything for the other objects
-            }
+
+            // we don't do anything for the other objects
+            _ => Ok(()),
         }
+        .unwrap_or_else(|e| {
+            ereport!(
+                PgLogLevel::ERROR,
+                PgSqlErrorCode::ERRCODE_INTERNAL_ERROR,
+                "failed to handle drop statement",
+                &format!("{}", e)
+            )
+        });
 
         // call the previous hook last.  We want to call it after our work because we need the catalog
         // entries in place to find/ensure that we only affect plrust functions.
@@ -232,7 +241,7 @@ fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
 }
 
 /// drop all the `LANGUAGE plrust` functions from the set of all functions being dropped by the [`DropStmt`]
-fn handle_drop_function(drop_stmt: &PgBox<pg_sys::DropStmt>) {
+fn handle_drop_function(drop_stmt: &PgBox<pg_sys::DropStmt>) -> spi::Result<()> {
     let plrust_lang_oid = plrust_lang_oid();
 
     for pg_proc_oid in objects(drop_stmt, pg_sys::ProcedureRelationId).filter_map(|oa| {
@@ -240,17 +249,19 @@ fn handle_drop_function(drop_stmt: &PgBox<pg_sys::DropStmt>) {
         // if it's a pl/rust function we can drop it
         (lang_oid == plrust_lang_oid).then(|| oa.objectId)
     }) {
-        plrust_proc::drop_function(pg_proc_oid);
+        plrust_proc::drop_function(pg_proc_oid)?;
     }
+    Ok(())
 }
 
 /// drop all `LANGUAGE plrust` functions in any of the schemas being dropped by the [`DropStmt`]
-fn handle_drop_schema(drop_stmt: &PgBox<pg_sys::DropStmt>) {
+fn handle_drop_schema(drop_stmt: &PgBox<pg_sys::DropStmt>) -> spi::Result<()> {
     for object in objects(drop_stmt, pg_sys::NamespaceRelationId) {
-        for pg_proc_oid in all_in_namespace(object.objectId) {
-            plrust_proc::drop_function(pg_proc_oid)
+        for pg_proc_oid in all_in_namespace(object.objectId)? {
+            plrust_proc::drop_function(pg_proc_oid)?;
         }
     }
+    Ok(())
 }
 
 /// Returns an iterator over the `objects` in the `[DropStmt]`, filtered by only those of the
@@ -295,7 +306,7 @@ fn objects(
 
 /// Returns an Iterator of `LANGUAGE plrust` function oids (`pg_catalog.pg_proc.oid`) in a specific namespace
 #[tracing::instrument(level = "debug")]
-pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> Vec<pg_sys::Oid> {
+pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> spi::Result<Vec<pg_sys::Oid>> {
     Spi::connect(|client| {
         let results = client.select(
             r#"
@@ -309,21 +320,13 @@ pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> Vec<pg_sys::Oid
                 PgBuiltInOids::OIDOID.oid(),
                 pg_namespace_oid.into_datum(),
             )]),
-        );
+        )?;
 
-        let proc_oids = results
+        results
             .into_iter()
-            .map(|row| {
-                row.by_ordinal(1)
-                    .ok()
-                    .unwrap()
-                    .value::<pg_sys::Oid>()
-                    .unwrap()
-            })
-            .collect::<Vec<_>>();
-
-        Ok(Some(proc_oids))
-    }).unwrap()
+            .map(|row| Ok(row.get::<pg_sys::Oid>(1)?.unwrap()))
+            .collect::<spi::Result<Vec<_>>>()
+    })
 }
 
 /// Return the specified function's `prolang` value from `pg_catalog.pg_proc`

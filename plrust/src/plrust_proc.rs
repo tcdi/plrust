@@ -4,7 +4,7 @@ use crate::gucs;
 use crate::pgproc::PgProc;
 use crate::user_crate::{FnReady, UserCrate};
 use pgx::pg_sys::MyDatabaseId;
-use pgx::{extension_sql, pg_sys, IntoDatum, PgBuiltInOids, PgOid, Spi};
+use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
 use std::path::Path;
 
 extension_sql!(
@@ -38,7 +38,7 @@ pub(crate) fn create_or_replace_function(
     args.push((PgBuiltInOids::BYTEAOID.oid(), so.into_datum()));
 
     tracing::debug!("inserting function oid `{pg_proc_oid}`");
-    Spi::run_with_args(
+    Ok(Spi::run_with_args(
         r#"
                 INSERT INTO plrust.plrust_proc(id, target_triple, so)
                      VALUES ($1, $2, $3)
@@ -46,12 +46,11 @@ pub(crate) fn create_or_replace_function(
                         DO UPDATE SET so = $3
                 "#,
         Some(args),
-    );
-    Ok(())
+    )?)
 }
 
 #[tracing::instrument(level = "debug")]
-pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) {
+pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) -> spi::Result<()> {
     tracing::debug!("deleting function oid `{pg_proc_oid}`");
     Spi::run_with_args(
         "DELETE FROM plrust.plrust_proc WHERE id = $1",
@@ -71,7 +70,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<FnReady>>
     let so = Spi::get_one_with_args::<&[u8]>(
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
         pkey_datums(pg_proc_oid),
-    )
+    )?
     .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_target_triple().to_string()))?;
 
     // we write the shared object (`so`) bytes out to a temporary file rooted in our

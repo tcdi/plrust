@@ -469,8 +469,8 @@ mod tests {
                 crate-type = ["cdylib"]
 
                 [dependencies]
-                pgx = { version = "=0.6.1", features = ["plrust"] }
-                pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
+                pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+                // pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
                 /* User deps added here */
 
                 [profile.release]
