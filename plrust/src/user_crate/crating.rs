@@ -10,7 +10,10 @@ use std::path::Path;
 
 impl CrateState for FnCrating {}
 
-/// Entry point for new crates via FSM
+/// Entry point into the FSM for new functions
+///
+/// - Requires: PL/Rust source input
+/// - Produces: a provisioned Cargo crate directory
 #[must_use]
 pub(crate) struct FnCrating {
     pg_proc_xmin: pg_sys::TransactionId,

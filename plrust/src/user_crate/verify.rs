@@ -24,7 +24,10 @@ use std::{
     process::{Command, Output},
 };
 
-/// Provisioned and ready to validate
+/// Available and ready-to-validate PL/Rust crate
+///
+/// - Requires: a provisioned Cargo crate directory
+/// - Produces: verified Rust source code
 #[must_use]
 pub(crate) struct FnVerify {
     pg_proc_xmin: pg_sys::TransactionId,
