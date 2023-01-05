@@ -322,12 +322,10 @@ pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> spi::Result<Vec
             )]),
         )?;
 
-        let proc_oids = results
+        results
             .into_iter()
             .map(|row| Ok(row.get::<pg_sys::Oid>(1)?.unwrap()))
-            .collect::<spi::Result<Vec<_>>>()?;
-
-        Ok(proc_oids)
+            .collect::<spi::Result<Vec<_>>>()
     })
 }
 

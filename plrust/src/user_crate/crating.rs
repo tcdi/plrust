@@ -111,26 +111,22 @@ impl FnCrating {
                 ref arguments,
                 ref return_type,
                 ..
-            } => {
-                syn::parse2(quote! {
-                    fn #symbol_ident(
-                        #( #arguments ),*
-                    ) -> #return_type
-                    #user_code
-                })
-                .wrap_err("Parsing generated user function")?
-            }
-            CrateVariant::Trigger => {
-                syn::parse2(quote! {
-                    fn #symbol_ident(
-                        trigger: &::pgx::PgTrigger,
-                    ) -> ::core::result::Result<
-                        ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
-                        Box<dyn std::error::Error>,
-                    > #user_code
-                })
-                .wrap_err("Parsing generated user trigger")?
-            }
+            } => syn::parse2(quote! {
+                fn #symbol_ident(
+                    #( #arguments ),*
+                ) -> #return_type
+                #user_code
+            })
+            .wrap_err("Parsing generated user function")?,
+            CrateVariant::Trigger => syn::parse2(quote! {
+                fn #symbol_ident(
+                    trigger: &::pgx::PgTrigger,
+                ) -> ::core::result::Result<
+                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Box<dyn std::error::Error>,
+                > #user_code
+            })
+            .wrap_err("Parsing generated user trigger")?,
         };
         let opened = unsafe_mod(user_fn.clone(), &self.variant)?;
         let forbidden = safe_mod(user_fn)?;
@@ -603,7 +599,7 @@ mod tests {
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())
