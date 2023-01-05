@@ -1779,6 +1779,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "trusted-pgx"
+version = "0.0.0"
+dependencies = [
+ "pgx",
+]
+
+[[package]]
 name = "typenum"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

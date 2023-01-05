@@ -375,10 +375,10 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 mod tests {
     use pgx::*;
 
+    use crate::user_crate::crating::cargo_toml_template;
     use crate::user_crate::*;
     use quote::quote;
     use syn::parse_quote;
-    use toml::toml;
 
     #[pg_test]
     fn full_workflow() {
@@ -456,30 +456,8 @@ mod tests {
 
             let generated_cargo_toml = generated.cargo_toml()?;
             let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
-            let fixture_cargo_toml = toml! {
-                [package]
-                edition = "2021"
-                name = crate_name
-                version = "0.0.0"
+            let fixture_cargo_toml = cargo_toml_template(&crate_name, &version_feature);
 
-                [features]
-                default = [version_feature]
-
-                [lib]
-                crate-type = ["cdylib"]
-
-                [dependencies]
-                pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
-                // pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
-                /* User deps added here */
-
-                [profile.release]
-                debug-assertions = true
-                codegen-units = 1_usize
-                lto = "fat"
-                opt-level = 3_usize
-                panic = "unwind"
-            };
             assert_eq!(
                 toml::to_string(&generated_cargo_toml)?,
                 toml::to_string(&fixture_cargo_toml)?,

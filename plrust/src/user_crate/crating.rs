@@ -149,32 +149,7 @@ impl FnCrating {
             "Generating `Cargo.toml`"
         );
 
-        let cargo_toml = toml::toml! {
-                    [package]
-                    edition = "2021"
-                    name = crate_name
-                    version = "0.0.0"
-
-                    [features]
-                    default = [version_feature]
-
-                    [lib]
-                    crate-type = ["cdylib"]
-
-                    [dependencies]
-                    pgx =  { git = "https://github.com/tcdi/pgx", branch = "develop" }
-                    // pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
-
-                    /* User deps added here */
-
-                    [profile.release]
-                    debug-assertions = true
-                    codegen-units = 1_usize
-                    lto = "fat"
-                    opt-level = 3_usize
-                    panic = "unwind"
-        };
-
+        let cargo_toml = cargo_toml_template(&crate_name, &version_feature);
         match cargo_toml {
             toml::Value::Table(mut cargo_manifest) => {
                 // We have to add the user deps now before we return it.
@@ -289,8 +264,39 @@ fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Re
 /// Used by both the unsafe and safe module.
 pub(crate) fn shared_imports() -> syn::ItemUse {
     syn::parse_quote!(
+        // we (plrust + pgx) fully qualify all pgx imports with `::pgx`, so if the user's function
+        // doesn't use any other pgx items we don't want a compiler warning
+        #[allow(unused_imports)]
         use pgx::prelude::*;
     )
+}
+
+pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Value {
+    toml::toml! {
+        [package]
+        edition = "2021"
+        name = crate_name
+        version = "0.0.0"
+
+        [features]
+        default = [version_feature]
+
+        [lib]
+        crate-type = ["cdylib"]
+
+        [dependencies]
+        pgx =  { git = "https://github.com/tcdi/plrust/trusted-pgx", branch = "trusted-pgx", package = "trusted-pgx" }
+        // pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
+
+        /* User deps added here */
+
+        [profile.release]
+        debug-assertions = true
+        codegen-units = 1_usize
+        lto = "fat"
+        opt-level = 3_usize
+        panic = "unwind"
+    }
 }
 
 fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Result<syn::ItemMod> {
