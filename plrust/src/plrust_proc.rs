@@ -111,7 +111,7 @@ fn pkey_datums(pg_proc_oid: pg_sys::Oid) -> Vec<(PgOid, Option<pg_sys::Datum>)> 
 // helper function to build the function identity (oid, value) datum
 fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Datum>) {
     let oa = pg_sys::ObjectAddress {
-        classId: pg_sys::ProcedureRelationId,
+        classId: pg_sys::ProcedureRelationId, // the "oid" of Postgres' `pg_catalog.pg_proc` table
         objectId: pg_proc_oid,
         objectSubId: 0,
     };
