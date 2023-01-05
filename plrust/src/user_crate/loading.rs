@@ -2,6 +2,10 @@ use crate::user_crate::{CrateState, FnReady};
 use pgx::pg_sys;
 use std::path::{Path, PathBuf};
 
+/// Available and ready-to-load PL/Rust function
+///
+/// - Requires: a dlopenable artifact
+/// - Produces: a dlopened artifact
 #[must_use]
 pub(crate) struct FnLoad {
     pg_proc_xmin: pg_sys::TransactionId,
@@ -12,7 +16,6 @@ pub(crate) struct FnLoad {
 
 impl CrateState for FnLoad {}
 
-/// Available and ready-to-reload PL/Rust function
 impl FnLoad {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn new(
