@@ -751,9 +751,17 @@ mod tests {
             "SELECT oid FROM pg_catalog.pg_proc WHERE proname = 'drop_function'",
         )?
         .expect("failed to lookup function oid");
+
+        let procedure_id = pg_sys::ProcedureRelationId;
+        let identity = Spi::get_one::<String>(&format!(
+            "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)"
+        ))?
+        .expect("call to pg_identify_object returned NULL");
+
         Spi::run("DROP FUNCTION drop_function")?;
-        let our_id = Spi::get_one::<pg_sys::Oid>(&format!(
-            "SELECT id FROM plrust.plrust_proc WHERE id = {oid}"
+
+        let our_id = Spi::get_one::<String>(&format!(
+            "SELECT id FROM plrust.plrust_proc WHERE id = '{identity}'"
         ));
         assert_eq!(our_id, Err(spi::Error::InvalidPosition));
         Ok(())
@@ -774,9 +782,16 @@ mod tests {
             "SELECT oid FROM pg_catalog.pg_proc WHERE oid = 'to_drop.drop_function'::regproc::oid",
         )?
         .expect("failed to lookup function oid");
+
+        let procedure_id = pg_sys::ProcedureRelationId;
+        let identity = Spi::get_one::<String>(&format!(
+            "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)"
+        ))?
+        .expect("call to pg_identify_object returned NULL");
+
         Spi::run("DROP SCHEMA to_drop CASCADE")?;
-        let our_id = Spi::get_one::<pg_sys::Oid>(&format!(
-            "SELECT id FROM plrust.plrust_proc WHERE id = {oid}"
+        let our_id = Spi::get_one::<String>(&format!(
+            "SELECT id FROM plrust.plrust_proc WHERE id = '{identity}'"
         ));
         assert_eq!(our_id, Err(spi::Error::InvalidPosition));
         Ok(())
