@@ -862,6 +862,21 @@ mod tests {
         assert_eq!(Ok(Some(1)), result);
         Ok(())
     }
+
+    #[pg_test]
+    #[should_panic(expected = "issue78 works")]
+    fn test_issue_78() -> spi::Result<()> {
+        let sql = r#"CREATE OR REPLACE FUNCTION raise_error() RETURNS TEXT
+                        IMMUTABLE STRICT
+                        LANGUAGE PLRUST AS
+                    $$
+                        pgx::error!("issue78 works");
+                        Some("hi".to_string())
+                    $$;"#;
+        Spi::run(sql)?;
+        Spi::get_one::<String>("SELECT raise_error()")?;
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
