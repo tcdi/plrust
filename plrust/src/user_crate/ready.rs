@@ -66,7 +66,11 @@ impl FnReady {
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, ?fcinfo))]
     pub(crate) unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-        unsafe { (self.symbol)(fcinfo) }
+        // SAFETY:  First off, `self.symbol` is some function in the dlopened shared library, so
+        // FFI into that is inherently unsafe.  Secondly, it's an FFI function, so we need to protect
+        // that boundary to properly handle Rust panics and Postgres errors, hence the use of
+        // `pg_guard_ffi_boundary()`.
+        unsafe { pg_sys::submodules::ffi::pg_guard_ffi_boundary(|| (self.symbol)(fcinfo)) }
     }
 
     #[tracing::instrument(
