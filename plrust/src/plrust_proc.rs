@@ -7,6 +7,7 @@ use pgx::pg_sys::MyDatabaseId;
 use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
 use std::ffi::CStr;
 use std::path::Path;
+use std::rc::Rc;
 
 extension_sql!(
     r#"
@@ -58,7 +59,7 @@ pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) -> spi::Result<()> {
 /// Dynamically load the shared library stored in `plrust.plrust_proc` for the specified `pg_proc_oid`
 /// procedure object id and the `target_triple` of the host.
 #[tracing::instrument(level = "debug")]
-pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<FnReady>> {
+pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnReady>>> {
     tracing::debug!("loading function oid `{pg_proc_oid}`");
     // using SPI, read the plrust_proc entry for the provided pg_proc.oid value
     let so = Spi::get_one_with_args::<&[u8]>(
@@ -95,7 +96,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<UserCrate<FnReady>>
     drop(temp_so_file);
 
     // all good
-    Ok(loaded)
+    Ok(Rc::new(loaded))
 }
 
 // helper function to build the primary key values used to query `plrust.plrust_proc` via Spi

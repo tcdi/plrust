@@ -877,6 +877,33 @@ mod tests {
         Spi::get_one::<String>("SELECT raise_error()")?;
         Ok(())
     }
+
+    #[pg_test]
+    fn test_issue_79() -> spi::Result<()> {
+        let sql = r#"
+            create or replace function fn1(i int) returns int strict language plrust as $$
+                [code]
+                notice!("{}", "fn1 started");
+                let cmd = format!("select fn2({})", i);
+                Spi::connect(|client|
+                    {
+                        client.select(&cmd, None, None);
+                    });
+                notice!("{}", "fn1 finished");
+                Some(1)
+            $$;
+
+            create or replace function fn2(i int) returns int strict language plrust as $$
+                [code]
+                notice!("{}", "fn2 started");
+                notice!("{}", "fn2 finished");
+                Some(2)
+            $$;
+        "#;
+        Spi::run(sql)?;
+        assert_eq!(Ok(Some(1)), Spi::get_one::<i32>("SELECT fn1(1)"));
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
