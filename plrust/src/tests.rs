@@ -750,11 +750,12 @@ mod tests {
         let oid = Spi::get_one::<pg_sys::Oid>(
             "SELECT oid FROM pg_catalog.pg_proc WHERE proname = 'drop_function'",
         )?
-        .expect("failed to lookup function oid");
+        .expect("failed to lookup function oid")
+        .as_u32();
 
-        let procedure_id = pg_sys::ProcedureRelationId;
+        let procedure_id = pg_sys::ProcedureRelationId.as_u32();
         let identity = Spi::get_one::<String>(&format!(
-            "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)"
+            "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)",
         ))?
         .expect("call to pg_identify_object returned NULL");
 
@@ -781,9 +782,10 @@ mod tests {
         let oid = Spi::get_one::<pg_sys::Oid>(
             "SELECT oid FROM pg_catalog.pg_proc WHERE oid = 'to_drop.drop_function'::regproc::oid",
         )?
-        .expect("failed to lookup function oid");
+        .expect("failed to lookup function oid")
+        .as_u32();
 
-        let procedure_id = pg_sys::ProcedureRelationId;
+        let procedure_id = pg_sys::ProcedureRelationId.as_u32();
         let identity = Spi::get_one::<String>(&format!(
             "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)"
         ))?

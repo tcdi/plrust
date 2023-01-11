@@ -204,7 +204,7 @@ impl UserCrate<FnReady> {
     }
 }
 
-#[tracing::instrument(level = "debug", skip_all, fields(type_oid = type_oid.value()))]
+#[tracing::instrument(level = "debug", skip_all, fields(type_oid = %type_oid.value()))]
 pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 

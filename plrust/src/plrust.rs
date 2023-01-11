@@ -142,8 +142,8 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     // in the same architecture if the database was restored
     let crate_name = format!(
         "plrust_fn_oid_{}_{}_{}",
-        db_oid,
-        fn_oid,
+        db_oid.as_u32(),
+        fn_oid.as_u32(),
         get_target_triple().replace("-", "_")
     );
 
