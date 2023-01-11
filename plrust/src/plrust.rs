@@ -13,6 +13,7 @@ use crate::{
 };
 
 use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
+use std::rc::Rc;
 use std::{cell::RefCell, collections::HashMap, process::Output};
 
 use crate::error::PlRustError;
@@ -21,7 +22,7 @@ use crate::plrust_proc::get_target_triple;
 use eyre::WrapErr;
 
 thread_local! {
-    pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, UserCrate<FnReady>>> = Default::default();
+    pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, Rc<UserCrate<FnReady>>>> = Default::default();
 }
 
 pub(crate) fn init() {
@@ -34,7 +35,9 @@ pub(crate) unsafe fn unload_function(fn_oid: pg_sys::Oid) {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
         let removed = loaded_symbols_handle.remove(&fn_oid);
         if let Some(user_crate) = removed {
-            user_crate.close().unwrap();
+            if let Ok(user_crate) = Rc::try_unwrap(user_crate) {
+                user_crate.close().unwrap();
+            }
         }
     })
 }
@@ -44,7 +47,7 @@ pub(crate) unsafe fn evaluate_function(
     fn_oid: pg_sys::Oid,
     fcinfo: FunctionCallInfo,
 ) -> eyre::Result<pg_sys::Datum> {
-    LOADED_SYMBOLS.with(|loaded_symbols| {
+    let user_crate_loaded = LOADED_SYMBOLS.with(|loaded_symbols| {
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
 
         let user_crate_loaded = if let Some(current) = loaded_symbols_handle.get_mut(&fn_oid) {
@@ -71,8 +74,10 @@ pub(crate) unsafe fn evaluate_function(
 
                 // make a best effort to try and close the old loaded function.  If dlclose() fails,
                 // there's nothing we can do but carry on with the newly loaded version
-                if let Err(e) = old.close() {
-                    tracing::warn!("Failed to close the old version of function {fn_oid}.  Ignoring, and continuing with new version: {e}");
+                if let Ok(old) = Rc::try_unwrap(old) {
+                    if let Err(e) = old.close() {
+                        tracing::warn!("Failed to close the old version of function {fn_oid}.  Ignoring, and continuing with new version: {e}");
+                    }
                 }
             }
 
@@ -84,14 +89,16 @@ pub(crate) unsafe fn evaluate_function(
                 .or_insert(plrust_proc::load(fn_oid)?)
         };
 
-        tracing::trace!(
-            "Evaluating symbol {:?} from {}",
-            user_crate_loaded.symbol_name(),
-            user_crate_loaded.shared_object().display()
-        );
+        Ok::<_, eyre::Error>(user_crate_loaded.clone())
+    })?;
 
-        Ok(unsafe { user_crate_loaded.evaluate(fcinfo) })
-    })
+    tracing::trace!(
+        "Evaluating symbol {:?} from {}",
+        user_crate_loaded.symbol_name(),
+        user_crate_loaded.shared_object().display()
+    );
+
+    Ok(unsafe { user_crate_loaded.evaluate(fcinfo) })
 }
 
 #[tracing::instrument(level = "debug")]
