@@ -384,8 +384,8 @@ mod tests {
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
             let pg_proc_oid = 0 as pg_sys::TransactionId;
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
             let target_dir = crate::gucs::work_dir();
             let pg_config = PathBuf::from(crate::gucs::pg_config());
 
