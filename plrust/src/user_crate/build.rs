@@ -8,6 +8,7 @@ use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 
 use crate::gucs::{compilation_targets, CompilationTarget};
+use crate::plrust_proc::get_target_triple;
 use crate::{
     user_crate::{CrateState, FnLoad},
     PlRustError,
@@ -97,13 +98,16 @@ impl FnBuild {
         command.env("PGX_PG_CONFIG_PATH", &self.pg_config);
         command.env("CARGO_TARGET_DIR", &target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
-        command.env(
-            &format!(
-                "CARGO_TARGET_{}_LINKER",
-                &target_triple.as_str().replace('-', "_").to_uppercase()
-            ),
-            &target_triple,
-        );
+
+        if &get_target_triple() != &target_triple {
+            command.env(
+                &format!(
+                    "CARGO_TARGET_{}_LINKER",
+                    &target_triple.as_str().replace('-', "_").to_uppercase()
+                ),
+                &target_triple,
+            );
+        }
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
