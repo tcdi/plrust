@@ -1,6 +1,7 @@
-use crate::user_crate::{CrateState, FnReady};
 use pgx::pg_sys;
-use std::path::{Path, PathBuf};
+
+use crate::gucs::CompilationTarget;
+use crate::user_crate::{CrateState, FnReady};
 
 /// Available and ready-to-load PL/Rust function
 ///
@@ -11,7 +12,8 @@ pub(crate) struct FnLoad {
     pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
-    shared_object: PathBuf,
+    target: CompilationTarget,
+    shared_object: Vec<u8>,
 }
 
 impl CrateState for FnLoad {}
@@ -22,29 +24,23 @@ impl FnLoad {
         pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
-        shared_object: PathBuf,
+        target: CompilationTarget,
+        shared_object: Vec<u8>,
     ) -> Self {
         Self {
             pg_proc_xmin,
             db_oid,
             fn_oid,
+            target,
             shared_object,
         }
     }
 
-    pub(crate) fn shared_object(&self) -> &Path {
-        &self.shared_object
+    pub(crate) fn into_inner(self) -> (CompilationTarget, Vec<u8>) {
+        (self.target, self.shared_object)
     }
 
-    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
-        self.fn_oid
-    }
-
-    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
-        self.db_oid
-    }
-
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, shared_object = %self.shared_object.display()))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) unsafe fn load(self) -> eyre::Result<FnReady> {
         unsafe {
             // SAFETY:  Caller is responsible for ensuring self.shared_object points to the proper

@@ -111,13 +111,17 @@ impl FnVerify {
         }
     }
 
+    // for #[tracing] purposes
     pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
         self.fn_oid
     }
 
+    // for #[tracing] purposes
     pub(crate) fn db_oid(&self) -> pg_sys::Oid {
         self.db_oid
     }
+
+    // for #[tracing] purposes
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
     }

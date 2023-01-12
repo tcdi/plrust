@@ -1,13 +1,14 @@
 //! Routines for managing the `plrust.plrust_proc` extension table along with the data it contains
-use crate::error::PlRustError;
-use crate::gucs;
-use crate::pgproc::PgProc;
-use crate::user_crate::{FnReady, UserCrate};
+use std::ffi::CStr;
+use std::rc::Rc;
+
 use pgx::pg_sys::MyDatabaseId;
 use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
-use std::ffi::CStr;
-use std::path::Path;
-use std::rc::Rc;
+
+use crate::error::PlRustError;
+use crate::gucs::CompilationTarget;
+use crate::pgproc::PgProc;
+use crate::user_crate::{FnReady, UserCrate};
 
 extension_sql!(
     r#"
@@ -29,10 +30,10 @@ SELECT pg_catalog.pg_extension_config_dump('plrust.plrust_proc', '');
 #[tracing::instrument(level = "debug")]
 pub(crate) fn create_or_replace_function(
     pg_proc_oid: pg_sys::Oid,
-    so_path: &Path,
+    target_triple: CompilationTarget,
+    so: Vec<u8>,
 ) -> eyre::Result<()> {
-    let so = std::fs::read(so_path)?;
-    let mut args = pkey_datums(pg_proc_oid);
+    let mut args = pkey_datums(pg_proc_oid, &target_triple);
     args.push((PgBuiltInOids::BYTEAOID.oid(), so.into_datum()));
 
     tracing::debug!("inserting function oid `{pg_proc_oid}`");
@@ -61,19 +62,13 @@ pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) -> spi::Result<()> {
 #[tracing::instrument(level = "debug")]
 pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnReady>>> {
     tracing::debug!("loading function oid `{pg_proc_oid}`");
+    let this_target = get_target_triple();
     // using SPI, read the plrust_proc entry for the provided pg_proc.oid value
-    let so = Spi::get_one_with_args::<&[u8]>(
+    let so_bytes = Spi::get_one_with_args::<Vec<u8>>(
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
-        pkey_datums(pg_proc_oid),
+        pkey_datums(pg_proc_oid, &this_target),
     )?
-    .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_target_triple().to_string()))?;
-
-    // we write the shared object (`so`) bytes out to a temporary file rooted in our
-    // configured `plrust.work_dir`.  This will get removed from disk when this function
-    // exists, which is fine because we'll have dlopen()'d it by then and no longer need it
-    let work_dir = gucs::work_dir();
-    let temp_so_file = tempfile::Builder::new().tempfile_in(work_dir)?;
-    std::fs::write(&temp_so_file, so)?;
+    .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_target_triple().clone()))?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
@@ -82,18 +77,8 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     // fabricate a FnLoad version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
     let meta = PgProc::new(pg_proc_oid).ok_or(PlRustError::NullProcTuple)?;
-    let built = UserCrate::built(
-        meta.xmin(),
-        db_oid,
-        pg_proc_oid,
-        temp_so_file.path().to_path_buf(),
-    );
+    let built = UserCrate::built(meta.xmin(), db_oid, pg_proc_oid, this_target, so_bytes);
     let loaded = unsafe { built.load()? };
-
-    // just to be obvious, the temp_so_file gets deleted here.  Now that it's been loaded, we don't
-    // need it.  If any of the above failed and returned an Error, it'll still get deleted when
-    // the function returns.
-    drop(temp_so_file);
 
     // all good
     Ok(Rc::new(loaded))
@@ -102,10 +87,10 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
 // helper function to build the primary key values used to query `plrust.plrust_proc` via Spi
 #[rustfmt::skip]
 #[inline]
-fn pkey_datums(pg_proc_oid: pg_sys::Oid) -> Vec<(PgOid, Option<pg_sys::Datum>)> {
+fn pkey_datums(pg_proc_oid: pg_sys::Oid, target_triple: &CompilationTarget) -> Vec<(PgOid, Option<pg_sys::Datum>)> {
     vec![
         get_fn_identity_datum(pg_proc_oid),
-        (PgBuiltInOids::TEXTOID.oid(), get_target_triple().into_datum()),
+        (PgBuiltInOids::TEXTOID.oid(), target_triple.as_str().into_datum()),
     ]
 }
 
@@ -152,7 +137,7 @@ fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Dat
 /// Assumes the `target_triple` for the current host is that of the one which compiled the plrust
 /// extension shared library itself.
 #[inline]
-pub(crate) const fn get_target_triple() -> &'static str {
+pub(crate) fn get_target_triple() -> CompilationTarget {
     // NB: This gets set in our `build.rs`
-    env!("TARGET")
+    CompilationTarget::from(env!("TARGET"))
 }

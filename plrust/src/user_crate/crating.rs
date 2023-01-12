@@ -238,14 +238,6 @@ impl FnCrating {
             crate_dir,
         ))
     }
-
-    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
-        self.fn_oid
-    }
-
-    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
-        self.db_oid
-    }
 }
 
 /// Throw all the libs into this, we will write this once.

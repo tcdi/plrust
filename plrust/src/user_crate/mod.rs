@@ -23,6 +23,7 @@ pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
 pub(crate) use verify::FnVerify;
 
+use crate::gucs::CompilationTarget;
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
@@ -99,7 +100,7 @@ impl UserCrate<FnCrating> {
         self.0.cargo_toml()
     }
     /// Provision into a given folder and return the crate directory.
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn provision(&self, parent_dir: &Path) -> eyre::Result<UserCrate<FnVerify>> {
         self.0.provision(parent_dir).map(UserCrate)
     }
@@ -140,10 +141,13 @@ impl UserCrate<FnBuild> {
             crate_dir = %self.0.crate_dir().display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub fn build(self, target_dir: &Path) -> eyre::Result<(UserCrate<FnLoad>, Output)> {
-        self.0
-            .build(target_dir)
+    pub fn build(self, target_dir: &Path) -> eyre::Result<Vec<(UserCrate<FnLoad>, Output)>> {
+        Ok(self
+            .0
+            .build(target_dir)?
+            .into_iter()
             .map(|(state, output)| (UserCrate(state), output))
+            .collect())
     }
 }
 
@@ -153,27 +157,31 @@ impl UserCrate<FnLoad> {
         pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
-        shared_object: PathBuf,
+        target: CompilationTarget,
+        shared_object: Vec<u8>,
     ) -> Self {
         UserCrate(FnLoad::new(
             pg_proc_xmin,
             db_oid,
             fn_oid,
-            shared_object.to_path_buf(),
+            target,
+            shared_object,
         ))
     }
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
-    pub fn shared_object(&self) -> &Path {
-        self.0.shared_object()
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>) {
+        self.0.into_inner()
     }
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.0.db_oid(), fn_oid = %self.0.fn_oid()))]
+
+    #[tracing::instrument(level = "debug", skip_all)]
     pub unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
         unsafe { self.0.load().map(UserCrate) }
     }
 }
 
 impl UserCrate<FnReady> {
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid(), fn_oid = %self.fn_oid()))]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         unsafe { self.0.evaluate(fcinfo) }
     }
@@ -189,18 +197,6 @@ impl UserCrate<FnReady> {
     #[inline]
     pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
         self.0.xmin()
-    }
-
-    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
-        self.0.fn_oid()
-    }
-
-    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
-        self.0.db_oid()
-    }
-
-    pub(crate) fn shared_object(&self) -> &Path {
-        self.0.shared_object()
     }
 }
 

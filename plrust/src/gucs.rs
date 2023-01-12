@@ -7,9 +7,13 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use crate::plrust_proc::get_target_triple;
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
-use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::fmt::{Display, Formatter};
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
@@ -17,6 +21,7 @@ static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
     GucSetting::new(None);
+static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
@@ -65,6 +70,14 @@ pub(crate) fn init() {
         &PLRUST_ALLOWED_DEPENDENCIES,
         GucContext::Postmaster,
     );
+
+    GucRegistry::define_string_guc(
+        "plrust.compilation_targets",
+        "A comma-separated list of rust compilation 'target triples' to compile for",
+        "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecutre",
+        &PLRUST_COMPILATION_TARGETS,
+        GucContext::Postmaster
+    )
 }
 
 pub(crate) fn work_dir() -> PathBuf {
@@ -90,4 +103,59 @@ pub(crate) fn tracing_level() -> tracing::Level {
         .get()
         .map(|v| v.parse().expect("plrust.tracing_level was invalid"))
         .unwrap_or(tracing::Level::INFO)
+}
+
+#[derive(Debug, Clone, PartialOrd, PartialEq, Hash, Ord, Eq)]
+#[repr(transparent)]
+pub(crate) struct CompilationTarget(String);
+impl Deref for CompilationTarget {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl From<&str> for CompilationTarget {
+    fn from(s: &str) -> Self {
+        CompilationTarget(s.into())
+    }
+}
+impl Display for CompilationTarget {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+impl AsRef<Path> for CompilationTarget {
+    fn as_ref(&self) -> &Path {
+        Path::new(&self.0)
+    }
+}
+impl AsRef<OsStr> for CompilationTarget {
+    fn as_ref(&self) -> &OsStr {
+        OsStr::new(&self.0)
+    }
+}
+impl CompilationTarget {
+    pub fn as_str(&self) -> &str {
+        &self
+    }
+}
+
+/// Returns the compilation targets a function should be compiled for.
+///
+/// The return format is `( <This Host's Target Triple>, <Other Configured Target Triples> )`
+pub(crate) fn compilation_targets() -> (CompilationTarget, impl Iterator<Item = CompilationTarget>)
+{
+    let this_target = get_target_triple();
+    let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
+        None => vec![],
+        Some(targets) => targets
+            .split(',')
+            .map(str::trim)
+            .filter(|s| s != &this_target.as_str()) // make sure we don't include "this target" in the list of other targets
+            .map(|s| s.into())
+            .collect::<Vec<_>>(),
+    };
+
+    (this_target.into(), other_targets.into_iter())
 }

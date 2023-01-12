@@ -1,3 +1,5 @@
+use crate::gucs::CompilationTarget;
+
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]
@@ -31,5 +33,5 @@ pub(crate) enum PlRustError {
     #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
     #[error("No plrust.plrust_proc entry for ({0}, {1})")]
-    NoProcEntry(pgx::pg_sys::Oid, String),
+    NoProcEntry(pgx::pg_sys::Oid, CompilationTarget),
 }

@@ -1,13 +1,16 @@
-use crate::{
-    user_crate::{target, CrateState, FnLoad},
-    PlRustError,
-};
-use color_eyre::{Section, SectionExt};
-use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
     process::{Command, Output},
+};
+
+use color_eyre::{Section, SectionExt};
+use eyre::{eyre, WrapErr};
+use pgx::pg_sys;
+
+use crate::gucs::{compilation_targets, CompilationTarget};
+use crate::{
+    user_crate::{CrateState, FnLoad},
+    PlRustError,
 };
 
 /// Build the dynamic library from source
@@ -55,26 +58,50 @@ impl FnBuild {
             crate_dir = %self.crate_dir.display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<(FnLoad, Output)> {
+    pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<Vec<(FnLoad, Output)>> {
+        let (this_target, other_targets) = compilation_targets();
+        let mut results = Vec::new();
+
+        // always build for this host machine
+        results.push(self.build_internal(target_dir, this_target)?);
+
+        // and then do the others, which is guaranteed not to contain the exact same triple as `this_target`
+        for other_target in other_targets {
+            results.push(self.build_internal(target_dir, other_target)?);
+        }
+        Ok(results)
+    }
+
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(
+            db_oid = %self.db_oid,
+            fn_oid = %self.fn_oid,
+            crate_dir = %self.crate_dir.display(),
+            target_dir = tracing::field::display(target_dir.display()),
+            target_triple = %target_triple,
+        ))]
+    fn build_internal(
+        &self,
+        target_dir: &Path,
+        target_triple: CompilationTarget,
+    ) -> eyre::Result<(FnLoad, Output)> {
         let mut command = Command::new("cargo");
-        let target = target::tuple()?;
-        let target_str = &target;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
         command.arg("--release");
         command.arg("--target");
-        command.arg(target_str);
-        command.env("PGX_PG_CONFIG_PATH", self.pg_config);
+        command.arg(&target_triple);
+        command.env("PGX_PG_CONFIG_PATH", &self.pg_config);
         command.env("CARGO_TARGET_DIR", &target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
         if output.status.success() {
-            use std::env::consts::DLL_SUFFIX;
-
-            let crate_name = self.crate_name;
+            let crate_name = &self.crate_name;
 
             #[cfg(any(
                 all(target_os = "macos", target_arch = "x86_64"),
@@ -90,18 +117,24 @@ impl FnBuild {
                 crate_name
             };
 
-            let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
-            let built_shared_object = target_dir
-                .join(target_str)
-                .join("release")
-                .join(&built_shared_object_name);
+            let so_bytes = {
+                use std::env::consts::DLL_SUFFIX;
+                let so_filename = &format!("lib{crate_name}{DLL_SUFFIX}");
+                let so_path = target_dir
+                    .join(&target_triple)
+                    .join("release")
+                    .join(&so_filename);
+
+                std::fs::read(&so_path)?
+            };
 
             Ok((
                 FnLoad::new(
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
-                    built_shared_object,
+                    target_triple,
+                    so_bytes,
                 ),
                 output,
             ))
@@ -121,13 +154,17 @@ impl FnBuild {
         }
     }
 
+    // for #[tracing] purposes
     pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
         self.fn_oid
     }
 
+    // for #[tracing] purposes
     pub(crate) fn db_oid(&self) -> pg_sys::Oid {
         self.db_oid
     }
+
+    // for #[tracing] purposes
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
     }
