@@ -883,7 +883,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.6.1"
-source = "git+https://github.com/tcdi/pgx?branch=develop#d7dd218c2709615b75f7fb6e70a2a4f6c59e1fd6"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f493e38abc8a012e65c61d00b732e9893aefe5ff"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -910,7 +910,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.6.1"
-source = "git+https://github.com/tcdi/pgx?branch=develop#d7dd218c2709615b75f7fb6e70a2a4f6c59e1fd6"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f493e38abc8a012e65c61d00b732e9893aefe5ff"
 dependencies = [
  "pgx-sql-entity-graph",
  "proc-macro2",
@@ -921,7 +921,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.6.1"
-source = "git+https://github.com/tcdi/pgx?branch=develop#d7dd218c2709615b75f7fb6e70a2a4f6c59e1fd6"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f493e38abc8a012e65c61d00b732e9893aefe5ff"
 dependencies = [
  "dirs",
  "eyre",
@@ -937,17 +937,19 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.6.1"
-source = "git+https://github.com/tcdi/pgx?branch=develop#d7dd218c2709615b75f7fb6e70a2a4f6c59e1fd6"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f493e38abc8a012e65c61d00b732e9893aefe5ff"
 dependencies = [
  "bindgen",
  "eyre",
  "libc",
  "memoffset 0.6.5",
+ "once_cell",
  "pgx-macros",
  "pgx-pg-config",
  "pgx-sql-entity-graph",
  "proc-macro2",
  "quote",
+ "serde",
  "shlex",
  "sptr",
  "syn",
@@ -956,7 +958,7 @@ dependencies = [
 [[package]]
 name = "pgx-sql-entity-graph"
 version = "0.6.1"
-source = "git+https://github.com/tcdi/pgx?branch=develop#d7dd218c2709615b75f7fb6e70a2a4f6c59e1fd6"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f493e38abc8a012e65c61d00b732e9893aefe5ff"
 dependencies = [
  "convert_case",
  "cstr_core",
@@ -976,7 +978,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.6.1"
-source = "git+https://github.com/tcdi/pgx?branch=develop#d7dd218c2709615b75f7fb6e70a2a4f6c59e1fd6"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f493e38abc8a012e65c61d00b732e9893aefe5ff"
 dependencies = [
  "clap-cargo",
  "eyre",
@@ -1518,9 +1520,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.105"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60b9b43d45702de4c839cb9b51d9f529c5dd26a4aff255b42b1ebc03e88ee908"
+checksum = "1f4064b5b16e03ae50984a5a8ed5d4f8803e6bc1fd170a3cda91a1be4b18e3f5"
 dependencies = [
  "proc-macro2",
  "quote",

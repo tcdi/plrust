@@ -352,8 +352,8 @@ mod tests {
     fn strict_string() {
         fn wrapped() -> eyre::Result<()> {
             let pg_proc_xmin = 0 as pg_sys::TransactionId;
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = {
                 let argument_oids_and_names =
@@ -423,8 +423,8 @@ mod tests {
     fn non_strict_integer() {
         fn wrapped() -> eyre::Result<()> {
             let pg_proc_xmin = 0 as pg_sys::TransactionId;
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = {
                 let argument_oids_and_names = vec![(
@@ -496,8 +496,8 @@ mod tests {
     fn strict_string_set() {
         fn wrapped() -> eyre::Result<()> {
             let pg_proc_xmin = 0 as pg_sys::TransactionId;
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = {
                 let argument_oids_and_names = vec![(
@@ -569,8 +569,8 @@ mod tests {
     fn trigger() {
         fn wrapped() -> eyre::Result<()> {
             let pg_proc_xmin = 0 as pg_sys::TransactionId;
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = CrateVariant::trigger();
             let user_deps = toml::value::Table::default();

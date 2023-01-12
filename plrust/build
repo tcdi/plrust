@@ -11,8 +11,11 @@ cargo update -p pgx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgx \
-    --version "0.6.1" \
-    --locked # use the Cargo.lock in the pgx repo
+    --git "https://github.com/tcdi/pgx" \
+    --branch "develop" \
+    --force \
+    # --version "0.6.1" \
+    # --locked # use the Cargo.lock in the pgx repo
 fi
 
 # Don't need to run cargo pgx init: user might already have set it up,
@@ -27,7 +30,7 @@ fi
         git clone https://github.com/tcdi/postgrestd.git --branch "1.65" --recurse-submodules
         cd ./postgrestd
     fi
-    rm rust-toolchain.toml
+    rm --force rust-toolchain.toml
     ./run clean
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
