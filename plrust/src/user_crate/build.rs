@@ -97,6 +97,13 @@ impl FnBuild {
         command.env("PGX_PG_CONFIG_PATH", &self.pg_config);
         command.env("CARGO_TARGET_DIR", &target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+        command.env(
+            &format!(
+                "CARGO_TARGET_{}_LINKER",
+                &target_triple.as_str().replace('-', "_")
+            ),
+            &target_triple,
+        );
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 

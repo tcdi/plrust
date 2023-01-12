@@ -18,7 +18,6 @@ use std::{cell::RefCell, collections::HashMap, process::Output};
 
 use crate::error::PlRustError;
 use crate::pgproc::PgProc;
-use crate::plrust_proc::get_target_triple;
 use eyre::WrapErr;
 
 thread_local! {
@@ -129,28 +128,29 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
 
         // store the shared objects in our table
         plrust_proc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
-
-        // cleanup after ourselves
-        tracing::trace!("removing {}", crate_dir.display());
-        std::fs::remove_dir_all(&crate_dir).wrap_err(format!(
-            "Problem deleting temporary crate directory at '{}'",
-            crate_dir.display()
-        ))?;
     }
+
+    // cleanup after ourselves
+    tracing::trace!("removing {}", crate_dir.display());
+    std::fs::remove_dir_all(&crate_dir).wrap_err(format!(
+        "Problem deleting temporary crate directory at '{}'",
+        crate_dir.display()
+    ))?;
 
     Ok(this_output.unwrap())
 }
 
 pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
-    // Include current_platform in the name
-    // There's no guarantee that the compiled library will be
-    // in the same architecture if the database was restored
-    let crate_name = format!(
-        "plrust_fn_oid_{}_{}_{}",
-        db_oid.as_u32(),
-        fn_oid.as_u32(),
-        get_target_triple().replace("-", "_")
-    );
+    // NB:  This once included the compiling host's target triple as part of the crate name for
+    // reasons about restoring a database to the same platform.
+    //
+    // This isn't necessary as our plrust.plrust_proc "catalog" table tracks the .so binaries per
+    // target triple, so if we are restored to a different platform then the .so binary for this
+    // platform won't be used.
+    //
+    // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
+    // multiple targets.
+    let crate_name = format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32(),);
 
     crate_name
 }
