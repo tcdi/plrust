@@ -8,7 +8,7 @@ use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 
 use crate::gucs::{compilation_targets, CompilationTarget};
-use crate::plrust_proc::get_target_triple;
+use crate::plrust_proc::get_host_compilation_target;
 use crate::{
     user_crate::{CrateState, FnLoad},
     PlRustError,
@@ -102,7 +102,7 @@ impl FnBuild {
         // don't specify a linker if the target we're compiling for is the host's target.  This
         // ensure that in non-cross-compilation installs, the host does **NOT** need a cross-compile
         // toolchain
-        if &get_target_triple() != &target_triple {
+        if &get_host_compilation_target() != &target_triple {
             command.env(
                 &format!(
                     "CARGO_TARGET_{}_LINKER",

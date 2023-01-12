@@ -62,13 +62,13 @@ pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) -> spi::Result<()> {
 #[tracing::instrument(level = "debug")]
 pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnReady>>> {
     tracing::debug!("loading function oid `{pg_proc_oid}`");
-    let this_target = get_target_triple();
+    let this_target = get_host_compilation_target();
     // using SPI, read the plrust_proc entry for the provided pg_proc.oid value
     let so_bytes = Spi::get_one_with_args::<Vec<u8>>(
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
         pkey_datums(pg_proc_oid, &this_target),
     )?
-    .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_target_triple().clone()))?;
+    .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, get_host_compilation_target()))?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
@@ -137,7 +137,7 @@ fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Dat
 /// Assumes the `target_triple` for the current host is that of the one which compiled the plrust
 /// extension shared library itself.
 #[inline]
-pub(crate) fn get_target_triple() -> CompilationTarget {
+pub(crate) fn get_host_compilation_target() -> CompilationTarget {
     // NB: This gets set in our `build.rs`
     CompilationTarget::from(env!("TARGET"))
 }

@@ -7,7 +7,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::plrust_proc::get_target_triple;
+use crate::plrust_proc::get_host_compilation_target;
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
 use std::ffi::OsStr;
@@ -146,7 +146,7 @@ impl CompilationTarget {
 /// The return format is `( <This Host's Target Triple>, <Other Configured Target Triples> )`
 pub(crate) fn compilation_targets() -> (CompilationTarget, impl Iterator<Item = CompilationTarget>)
 {
-    let this_target = get_target_triple();
+    let this_target = get_host_compilation_target();
     let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
         None => vec![],
         Some(targets) => targets
