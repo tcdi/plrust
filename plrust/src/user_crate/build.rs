@@ -100,7 +100,7 @@ impl FnBuild {
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
         // don't specify a linker if the target we're compiling for is the host's target.  This
-        // ensure that in non-cross-compilation installs, the host does **NOT** need a cross-compile
+        // ensures that in non-cross-compilation installs, the host does **NOT** need a cross-compile
         // toolchain
         if &get_host_compilation_target() != &target_triple {
             command.env(
