@@ -99,6 +99,9 @@ impl FnBuild {
         command.env("CARGO_TARGET_DIR", &target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
+        // don't specify a linker if the target we're compiling for is the host's target.  This
+        // ensure that in non-cross-compilation installs, the host does **NOT** need a cross-compile
+        // toolchain
         if &get_target_triple() != &target_triple {
             command.env(
                 &format!(
