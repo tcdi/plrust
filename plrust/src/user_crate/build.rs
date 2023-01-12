@@ -108,6 +108,8 @@ impl FnBuild {
                     "CARGO_TARGET_{}_LINKER",
                     &target_triple.as_str().replace('-', "_").to_uppercase()
                 ),
+                // the value for this variable most likely ends with `-gcc` and also dosn't have
+                // the `-unknown-` bit in the middle
                 &format!("{}-gcc", target_triple.replace("-unknown-", "-")),
             );
         }
