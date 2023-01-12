@@ -31,8 +31,8 @@ once_cell = "1.7.2" # polyfills a nightly feature
 semver = "1.0.14"
 
 # pgx core details
-pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
-pgx-pg-config = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx = { version = "0.7.0-beta.0" }
+pgx-pg-config = { version = "0.7.0-beta.0" }
 
 # language handler support
 libloading = "0.7.2"
@@ -55,7 +55,7 @@ quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx-tests = { version = "0.7.0-beta.0" }
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
