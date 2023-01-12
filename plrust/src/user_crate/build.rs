@@ -106,7 +106,11 @@ impl FnBuild {
             command.env(
                 &format!(
                     "CARGO_TARGET_{}_LINKER",
-                    &target_triple.as_str().replace('-', "_").to_uppercase()
+                    &target_triple
+                        .as_str()
+                        .replace('-', "_")
+                        .replace("-unknown-", "-")
+                        .to_uppercase()
                 ),
                 &format!("{}-gcc", target_triple),
             );
