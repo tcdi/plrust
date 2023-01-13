@@ -385,7 +385,7 @@ mod tests {
         fn wrapped() -> eyre::Result<()> {
             let pg_proc_oid = 0 as pg_sys::TransactionId;
             let fn_oid = pg_sys::Oid::INVALID;
-            let db_oid = pg_sys::TemplateDbOid;
+            let db_oid = unsafe { pg_sys::MyDatabaseId };
             let target_dir = crate::gucs::work_dir();
             let pg_config = PathBuf::from(crate::gucs::pg_config());
 
