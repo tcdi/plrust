@@ -35,7 +35,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Some(a.into_iter().map(|v| v.unwrap_or_default()).sum())
+                Ok(Some(a.into_iter().map(|v| v.unwrap_or_default()).sum()))
             $$;
         "#;
         Spi::run(definition)?;
@@ -61,7 +61,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                String::from("booper").into()
+                Ok(String::from("booper").into())
             $$;
         "#;
         Spi::run(definition)?;
@@ -78,7 +78,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                String::from("swooper").into()
+                Ok(Some(String::from("swooper")))
             $$;
         "#;
         Spi::run(definition)?;
@@ -100,8 +100,7 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                let name = Spi::get_one("SELECT name FROM contributors_pets ORDER BY random() LIMIT 1");
-                name.expect("Spi statement failed")
+                Ok(Spi::get_one("SELECT name FROM contributors_pets ORDER BY random() LIMIT 1")?)
             $$;
         "#;
         Spi::run(random_definition)?;
@@ -120,11 +119,10 @@ mod tests {
                 LANGUAGE PLRUST AS
             $$
                 use pgx::IntoDatum;
-                let id = Spi::get_one_with_args(
+                Ok(Spi::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
                     vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
-                ).expect("Spi statement failed");
-                id
+                )?)
             $$;
         "#;
         Spi::run(specific_definition)?;
@@ -151,7 +149,7 @@ mod tests {
                 owo-colors = "3"
             [code]
                 use owo_colors::OwoColorize;
-                Some(input.purple().to_string())
+                Ok(Some(input.purple().to_string()))
             $$;
         "#;
         Spi::run(definition)?;
@@ -190,7 +188,7 @@ mod tests {
                 owo-colors = ">2"
             [code]
                 use owo_colors::OwoColorize;
-                Some(input.purple().to_string())
+                Ok(Some(input.purple().to_string()))
             $$;
         "#;
         Spi::run(definition)?;
@@ -229,7 +227,7 @@ mod tests {
                 tokio = ">=1"
                 owo-colors = "3"
             [code]
-                Some("hello".to_string())
+                Ok(Some("hello".to_string()))
             $$;
         "#;
         Spi::run(definition)?;
@@ -256,7 +254,7 @@ mod tests {
             [dependencies]
                 regex = "1.6.5"
             [code]
-                Some("test")
+                Ok(Some("test"))
             $$;
         "#;
         let res = std::panic::catch_unwind(|| {
@@ -312,7 +310,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Some(state + next)
+                Ok(Some(state + next))
             $$;
             CREATE AGGREGATE plrust_sum(INT)
             (
@@ -379,9 +377,9 @@ mod tests {
                 CREATE FUNCTION make_file(filename TEXT) RETURNS TEXT
                 LANGUAGE PLRUST AS
                 $$
-                    std::fs::File::create(filename.unwrap_or("/somewhere/files/dont/belong.txt"))
+                    Ok(std::fs::File::create(filename.unwrap_or("/somewhere/files/dont/belong.txt"))
                         .err()
-                        .map(|e| e.to_string())
+                        .map(|e| e.to_string()))
                 $$;
             "#;
         Spi::run(definition)?;
@@ -418,7 +416,7 @@ mod tests {
             RETURNS text AS
             $$
                 panic!();
-                None
+                Ok(None)
             $$ LANGUAGE plrust;
         "#;
 
@@ -442,7 +440,7 @@ mod tests {
                     .stdout(std::process::Stdio::piped())
                     .output()
                     .expect("Failed to execute command");
-                Some(String::from_utf8_lossy(&out.stdout).to_string())
+                Ok(Some(String::from_utf8_lossy(&out.stdout).to_string()))
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -470,7 +468,7 @@ mod tests {
                     ptr.write(0x00_1BADC0DE_00);
                     CStr::from_ptr(ptr.cast::<ffi::c_char>())
                 };
-                str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned())
+                Ok(str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned()))
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)
@@ -491,7 +489,7 @@ mod tests {
                 let ptr = int as *mut u64;
                 ptr.write(0x00_1BADC0DE_00);
                 let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
-                str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned())
+                Ok(str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned()))
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)
@@ -521,7 +519,7 @@ mod tests {
                     str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned())
                 }
 
-                super_safe()
+                Ok(super_safe())
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)
@@ -542,7 +540,7 @@ mod tests {
 
                 elog(PgLogLevel::PANIC, "If other tests completed, PL/Rust did not actually destroy the entire database, \
                                          But if you see this in the error output, something might be wrong.");
-                Some("lol".into())
+                Ok(Some("lol".into()))
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -558,7 +556,7 @@ mod tests {
             CREATE FUNCTION ret_1st(a int, b int)
             RETURNS int AS
             $$
-                a
+                Ok(a)
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -574,7 +572,7 @@ mod tests {
             CREATE FUNCTION ret_2nd(a int, b int)
             RETURNS int AS
             $$
-                b
+                Ok(b)
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -590,11 +588,11 @@ mod tests {
             CREATE FUNCTION pick_ret(a int, b int, pick int)
             RETURNS int AS
             $$
-                match pick {
+                Ok(match pick {
                     Some(0) => a,
                     Some(1) => b,
                     _ => None,
-                }
+                })
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -616,23 +614,23 @@ mod tests {
             CREATE FUNCTION ret_1st(a int, b int)
             RETURNS int AS
             $$
-                a
+                Ok(a)
             $$ LANGUAGE plrust;
 
             CREATE FUNCTION ret_2nd(a int, b int)
             RETURNS int AS
             $$
-                b
+                Ok(b)
             $$ LANGUAGE plrust;
 
             CREATE FUNCTION pick_ret(a int, b int, pick int)
             RETURNS int AS
             $$
-                match pick {
+                Ok(match pick {
                     Some(0) => a,
                     Some(1) => b,
                     _ => None,
-                }
+                })
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -659,7 +657,7 @@ mod tests {
             CREATE FUNCTION not_unique(a int, a int)
             RETURNS int AS
             $$
-                a
+                Ok(a)
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -676,7 +674,7 @@ mod tests {
             CREATE FUNCTION not_unique(int, arg0 int)
             RETURNS int AS
             $$
-                arg0
+                Ok(arg0)
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)?;
@@ -693,7 +691,7 @@ mod tests {
             CREATE FUNCTION cant_change_strict_off()
             RETURNS int
             LANGUAGE plrust
-            AS $$ Some(1) $$;
+            AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
         Spi::run("ALTER FUNCTION cant_change_strict() CALLED ON NULL INPUT")
@@ -707,7 +705,7 @@ mod tests {
             CREATE FUNCTION cant_change_strict_on()
             RETURNS int
             LANGUAGE plrust
-            AS $$ Some(1) $$;
+            AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
         Spi::run("ALTER FUNCTION cant_change_strict() RETURNS NULL ON NULL INPUT")
@@ -720,7 +718,7 @@ mod tests {
             CREATE FUNCTION drop_function()
             RETURNS int
             LANGUAGE plrust
-            AS $$ Some(1) $$;
+            AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
         let oid = Spi::get_one::<pg_sys::Oid>(
@@ -752,7 +750,7 @@ mod tests {
             CREATE FUNCTION to_drop.drop_function()
             RETURNS int
             LANGUAGE plrust
-            AS $$ Some(1) $$;
+            AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
         let oid = Spi::get_one::<pg_sys::Oid>(
@@ -800,7 +798,7 @@ mod tests {
                     106, 59, 88, 15, 5,
                 ];
 
-                Some(1)
+                Ok(Some(1))
             $$;
         "#;
         Spi::run(definition)?;
@@ -832,7 +830,7 @@ mod tests {
                     106, 59, 88, 15, 5,
                 ];
 
-                Some(1)
+                Ok(Some(1))
             $$;
         "#;
         Spi::run(definition)?;
@@ -849,7 +847,7 @@ mod tests {
                         LANGUAGE PLRUST AS
                     $$
                         pgx::error!("issue78 works");
-                        Some("hi".to_string())
+                        Ok(Some("hi".to_string()))
                     $$;"#;
         Spi::run(sql)?;
         Spi::get_one::<String>("SELECT raise_error()")?;
@@ -868,14 +866,14 @@ mod tests {
                         client.select(&cmd, None, None);
                     });
                 notice!("{}", "fn1 finished");
-                Some(1)
+                Ok(Some(1))
             $$;
 
             create or replace function fn2(i int) returns int strict language plrust as $$
                 [code]
                 notice!("{}", "fn2 started");
                 notice!("{}", "fn2 finished");
-                Some(2)
+                Ok(Some(2))
             $$;
         "#;
         Spi::run(sql)?;
@@ -885,11 +883,11 @@ mod tests {
 
     #[pg_test]
     fn replace_function() -> spi::Result<()> {
-        Spi::run("CREATE FUNCTION replace_me() RETURNS int LANGUAGE plrust AS $$ Some(1) $$")?;
+        Spi::run("CREATE FUNCTION replace_me() RETURNS int LANGUAGE plrust AS $$ Ok(Some(1)) $$")?;
         assert_eq!(Ok(Some(1)), Spi::get_one("SELECT replace_me()"));
 
         Spi::run(
-            "CREATE OR REPLACE FUNCTION replace_me() RETURNS int LANGUAGE plrust AS $$ Some(2) $$",
+            "CREATE OR REPLACE FUNCTION replace_me() RETURNS int LANGUAGE plrust AS $$ Ok(Some(2)) $$",
         )?;
         assert_eq!(Ok(Some(2)), Spi::get_one("SELECT replace_me()"));
         Ok(())

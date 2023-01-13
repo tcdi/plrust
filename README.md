@@ -20,7 +20,7 @@ An example PL/Rust function:
 ```sql
 // return the character length of a text string
 CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
-    Some(name?.len() as i32)
+    Ok(Some(name?.len() as i32))
 $$;
 
 # select strlen('Hello, PL/Rust');

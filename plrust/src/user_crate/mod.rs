@@ -402,7 +402,7 @@ mod tests {
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
-                { Some(arg0.to_string()) }
+                { Ok(Some(arg0.to_string())) }
             })?;
 
             let generated = UserCrate::generated_for_tests(
@@ -431,8 +431,8 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> Option<String> {
-                    Some(arg0.to_string())
+                fn #symbol_ident(arg0: &str) -> std::result::Result<Option<String>, Box<dyn std::error::Error>> {
+                    Ok(Some(arg0.to_string()))
                 }
             })?;
             let fixture_lib_rs = parse_quote! {

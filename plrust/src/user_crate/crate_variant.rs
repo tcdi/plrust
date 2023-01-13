@@ -71,7 +71,10 @@ impl CrateVariant {
             match return_set {
                 true => syn::parse2(quote! { Option<::pgx::iter::SetOfIterator<Option<#bare>>> })
                     .wrap_err("Wrapping return type")?,
-                false => syn::parse2(quote! { Option<#bare> }).wrap_err("Wrapping return type")?,
+                false => syn::parse2(
+                    quote! { std::result::Result<Option<#bare>, Box<dyn std::error::Error>> },
+                )
+                .wrap_err("Wrapping return type")?,
             }
         };
 
