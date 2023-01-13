@@ -464,12 +464,10 @@ mod tests {
 
             let (validated, _output) = provisioned.validate(pg_config, &target_dir)?;
 
-            let (built, _output) = validated.build(&target_dir)?;
-
-            let _shared_object = built.shared_object();
-
-            // Without an fcinfo, we can't call this.
-            let _loaded = unsafe { built.load()? };
+            for (built, _output) in validated.build(&target_dir)? {
+                // Without an fcinfo, we can't call this.
+                let _loaded = unsafe { built.load()? };
+            }
 
             Ok(())
         }
