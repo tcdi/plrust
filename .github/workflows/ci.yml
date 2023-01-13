@@ -255,7 +255,7 @@ jobs:
         echo ""
 
     - name: Cache cargo registry
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       continue-on-error: false
       with:
         path: |
