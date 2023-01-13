@@ -1,5 +1,5 @@
 #! /usr/bin/sh
-set -e
+set -xe
 
 if [ -z "$PLRUST_TARGET" ]; then
     export PLRUST_TARGET="x86_64-unknown-linux-postgres"
@@ -35,4 +35,4 @@ fi
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
 
-cargo test --verbose --no-default-features --features pg15
+cargo test --verbose --no-default-features --features "pg${PG_VER:-15}"
