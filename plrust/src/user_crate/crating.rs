@@ -1,16 +1,22 @@
+use crate::pgproc::PgProc;
 use crate::{
-    user_crate::{parse_source_and_deps, CrateState, CrateVariant, StateProvisioned},
+    user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
     PlRustError,
 };
 use eyre::WrapErr;
-use pgx::{pg_sys, FromDatum, IntoDatum, PgBox, PgOid};
+use pgx::{pg_sys, PgOid};
 use quote::quote;
 use std::path::Path;
 
-impl CrateState for StateGenerated {}
+impl CrateState for FnCrating {}
 
+/// Entry point into the FSM for new functions
+///
+/// - Requires: PL/Rust source input
+/// - Produces: a provisioned Cargo crate directory
 #[must_use]
-pub(crate) struct StateGenerated {
+pub(crate) struct FnCrating {
+    pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     user_dependencies: toml::value::Table,
@@ -18,9 +24,10 @@ pub(crate) struct StateGenerated {
     variant: CrateVariant,
 }
 
-impl StateGenerated {
+impl FnCrating {
     #[cfg(any(test, feature = "pg_test"))]
     pub(crate) fn for_tests(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -28,6 +35,7 @@ impl StateGenerated {
         variant: CrateVariant,
     ) -> Self {
         Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             user_dependencies: user_deps.into(),
@@ -41,85 +49,38 @@ impl StateGenerated {
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
     ) -> eyre::Result<Self> {
-        let proc_tuple = pg_sys::SearchSysCache(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            fn_oid.into_datum().unwrap(), // TODO: try_from_datum
-            pg_sys::Datum::from(0_u64),
-            pg_sys::Datum::from(0_u64),
-            pg_sys::Datum::from(0_u64),
-        );
-        if proc_tuple.is_null() {
-            return Err(PlRustError::NullProcTuple)?;
-        }
+        let meta = PgProc::new(fn_oid).ok_or(PlRustError::NullProcTuple)?;
+        let pg_proc_xmin = meta.xmin();
+        let (user_code, user_dependencies) = parse_source_and_deps(&meta.prosrc())?;
 
-        let mut is_null = false;
-
-        let lang_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_prolang as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let lang_oid = pg_sys::Oid::from_datum(lang_datum, is_null);
-        let plrust =
-            std::ffi::CString::new("plrust").expect("Expected `\"plrust\"` to be a valid CString");
-        if lang_oid != Some(pg_sys::get_language_oid(plrust.as_ptr(), false)) {
-            return Err(PlRustError::NotPlRustFunction(fn_oid))?;
-        }
-
-        let prosrc_datum = pg_sys::SysCacheGetAttr(
-            pg_sys::SysCacheIdentifier_PROCOID as i32,
-            proc_tuple,
-            pg_sys::Anum_pg_proc_prosrc as pg_sys::AttrNumber,
-            &mut is_null,
-        );
-        let (user_code, user_dependencies) = parse_source_and_deps(
-            &String::from_datum(prosrc_datum, is_null).ok_or(PlRustError::NullSourceCode)?,
-        )?;
-
-        let proc_entry = PgBox::from_pg(pg_sys::heap_tuple_get_struct::<pg_sys::FormData_pg_proc>(
-            proc_tuple,
-        ));
-
-        let return_oid = PgOid::from(proc_entry.prorettype);
-
-        let variant = match return_oid == pgx::PgBuiltInOids::TRIGGEROID.oid() {
+        let variant = match meta.prorettype() == pg_sys::TRIGGEROID {
             true => CrateVariant::trigger(),
             false => {
-                let argnames_datum = pg_sys::SysCacheGetAttr(
-                    pg_sys::SysCacheIdentifier_PROCOID as i32,
-                    proc_tuple,
-                    pg_sys::Anum_pg_proc_proargnames as pg_sys::AttrNumber,
-                    &mut is_null,
-                );
-                let argnames = Vec::<Option<_>>::from_datum(argnames_datum, is_null);
+                let argnames = meta.proargnames();
+                let argtypes = meta.proargtypes();
 
-                let argtypes_datum = pg_sys::SysCacheGetAttr(
-                    pg_sys::SysCacheIdentifier_PROCOID as i32,
-                    proc_tuple,
-                    pg_sys::Anum_pg_proc_proargtypes as pg_sys::AttrNumber,
-                    &mut is_null,
-                );
-                let argtypes = Vec::<_>::from_datum(argtypes_datum, is_null).unwrap();
+                // we must have the same number of argument names and argument types.  It's seemingly
+                // impossible that we never would, but lets make sure as it's an invariant from this
+                // point forward
+                assert_eq!(argnames.len(), argtypes.len());
 
-                let mut argument_oids_and_names = Vec::new();
-                for i in 0..proc_entry.pronargs as usize {
-                    let type_oid = argtypes.get(i).expect("no type_oid for argument");
-                    let name = argnames.as_ref().and_then(|v| v.get(i).cloned()).flatten();
+                let argument_oids_and_names = argtypes
+                    .into_iter()
+                    .map(|oid| PgOid::from(oid))
+                    .zip(argnames.into_iter())
+                    .collect();
 
-                    argument_oids_and_names.push((PgOid::from(*type_oid), name));
-                }
-
-                let is_strict = proc_entry.proisstrict;
-                let return_set = proc_entry.proretset;
-
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    PgOid::from(meta.prorettype()),
+                    meta.proretset(),
+                    meta.proisstrict(),
+                )?
             }
         };
 
-        pg_sys::ReleaseSysCache(proc_tuple);
-
         Ok(Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             user_code,
@@ -128,66 +89,52 @@ impl StateGenerated {
         })
     }
     pub(crate) fn crate_name(&self) -> String {
-        crate::plrust::crate_name(self.db_oid, self.fn_oid)
-    }
-
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let mut skeleton: syn::File = syn::parse_quote!(
-            #![deny(unsafe_op_in_unsafe_fn)]
-            use pgx::prelude::*;
-        );
-
-        let crate_name = self.crate_name();
+        let mut _crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
         #[cfg(any(
             all(target_os = "macos", target_arch = "x86_64"),
             feature = "force_enable_x86_64_darwin_generations"
         ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
+        {
+            let next = crate::generation::next_generation(&_crate_name, true).unwrap_or_default();
+            _crate_name.push_str(&format!("_{}", next));
+        }
+        _crate_name
+    }
 
-            crate_name.push_str(&format!("_{}", next));
-            crate_name
-        };
+    /// Generates the lib.rs to write
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
+    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
+        let crate_name = self.crate_name();
         let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs`");
+        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
 
         let user_code = &self.user_code;
-        let user_function = match &self.variant {
+        let user_fn: syn::ItemFn = match &self.variant {
             CrateVariant::Function {
                 ref arguments,
                 ref return_type,
                 ..
-            } => {
-                let user_fn: syn::ItemFn = syn::parse2(quote! {
-                    #[pg_extern]
-                    fn #symbol_ident(
-                        #( #arguments ),*
-                    ) -> #return_type
-                    #user_code
-                })
-                .wrap_err("Parsing generated user function")?;
-                user_fn
-            }
-            CrateVariant::Trigger => {
-                let user_fn: syn::ItemFn = syn::parse2(quote! {
-                    #[pg_trigger]
-                    fn #symbol_ident(
-                        trigger: &::pgx::PgTrigger,
-                    ) -> core::result::Result<
-                        ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
-                        Box<dyn std::error::Error>,
-                    > #user_code
-                })
-                .wrap_err("Parsing generated user trigger")?;
-                user_fn
-            }
+            } => syn::parse2(quote! {
+                fn #symbol_ident(
+                    #( #arguments ),*
+                ) -> #return_type
+                #user_code
+            })
+            .wrap_err("Parsing generated user function")?,
+            CrateVariant::Trigger => syn::parse2(quote! {
+                fn #symbol_ident(
+                    trigger: &::pgx::PgTrigger,
+                ) -> ::core::result::Result<
+                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Box<dyn std::error::Error>,
+                > #user_code
+            })
+            .wrap_err("Parsing generated user trigger")?,
         };
+        let opened = unsafe_mod(user_fn.clone(), &self.variant)?;
+        let forbidden = safe_mod(user_fn)?;
 
-        skeleton.items.push(user_function.into());
-        Ok(skeleton)
+        compose_lib_from_mods([opened, forbidden])
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -196,49 +143,13 @@ impl StateGenerated {
         let version_feature = format!("pgx/pg{major_version}");
         let crate_name = self.crate_name();
 
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let next = crate::generation::next_generation(&crate_name, true).unwrap_or_default();
-
-            crate_name.push_str(&format!("_{}", next));
-            crate_name
-        };
-
         tracing::trace!(
             crate_name = %crate_name,
             user_dependencies = ?self.user_dependencies.keys().cloned().collect::<Vec<String>>(),
             "Generating `Cargo.toml`"
         );
 
-        let cargo_toml = toml::toml! {
-                    [package]
-                    edition = "2021"
-                    name = crate_name
-                    version = "0.0.0"
-
-                    [features]
-                    default = [version_feature]
-
-                    [lib]
-                    crate-type = ["cdylib"]
-
-                    [dependencies]
-                    pgx =  { version = "0.6.0-alpha.1", features = ["plrust"] }
-                    pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
-                    /* User deps added here */
-
-                    [profile.release]
-                    debug-assertions = true
-                    codegen-units = 1_usize
-                    lto = "fat"
-                    opt-level = 3_usize
-                    panic = "unwind"
-        };
-
+        let cargo_toml = cargo_toml_template(&crate_name, &version_feature);
         match cargo_toml {
             toml::Value::Table(mut cargo_manifest) => {
                 // We have to add the user deps now before we return it.
@@ -298,7 +209,7 @@ impl StateGenerated {
     }
     /// Provision into a given folder and return the crate directory.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, parent_dir = %parent_dir.display()))]
-    pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<StateProvisioned> {
+    pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<FnVerify> {
         let crate_name = self.crate_name();
         let crate_dir = parent_dir.join(&crate_name);
         let src_dir = crate_dir.join("src");
@@ -319,7 +230,8 @@ impl StateGenerated {
         )
         .wrap_err("Writing generated `Cargo.toml`")?;
 
-        Ok(StateProvisioned::new(
+        Ok(FnVerify::new(
+            self.pg_proc_xmin,
             self.db_oid,
             self.fn_oid,
             crate_name,
@@ -327,13 +239,112 @@ impl StateGenerated {
         ))
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
-        &self.fn_oid
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
+        self.fn_oid
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
-        &self.db_oid
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
+        self.db_oid
     }
+}
+
+/// Throw all the libs into this, we will write this once.
+fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<syn::File> {
+    let mut skeleton: syn::File = syn::parse2(quote! {
+        #![deny(unsafe_op_in_unsafe_fn)]
+    })
+    .wrap_err("Generating lib skeleton")?;
+
+    for module in modules {
+        skeleton.items.push(module.into());
+    }
+    Ok(skeleton)
+}
+
+/// Used by both the unsafe and safe module.
+pub(crate) fn shared_imports() -> syn::ItemUse {
+    syn::parse_quote!(
+        // we (plrust + pgx) fully qualify all pgx imports with `::pgx`, so if the user's function
+        // doesn't use any other pgx items we don't want a compiler warning
+        #[allow(unused_imports)]
+        use pgx::prelude::*;
+    )
+}
+
+pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Value {
+    toml::toml! {
+        [package]
+        edition = "2021"
+        name = crate_name
+        version = "0.0.0"
+
+        [features]
+        default = [version_feature]
+
+        [lib]
+        crate-type = ["cdylib"]
+
+        [dependencies]
+        pgx =  { git = "https://github.com/tcdi/plrust", branch = "trusted-pgx", package = "trusted-pgx" }
+        // pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
+
+        /* User deps added here */
+
+        [profile.release]
+        debug-assertions = true
+        codegen-units = 1_usize
+        lto = "fat"
+        opt-level = 3_usize
+        panic = "unwind"
+    }
+}
+
+fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Result<syn::ItemMod> {
+    let imports = shared_imports();
+
+    match variant {
+        CrateVariant::Function { .. } => {
+            called_fn.attrs.push(syn::parse_quote! {
+                #[pg_extern]
+            });
+        }
+        CrateVariant::Trigger => {
+            called_fn.attrs.push(syn::parse_quote! {
+                #[pg_trigger]
+            });
+        }
+    };
+
+    // Use pub mod so that symbols inside are found, opened, and called
+    syn::parse2(quote! {
+        pub mod opened {
+            #imports
+
+            #called_fn
+        }
+    })
+    .wrap_err("Could not create opened module")
+}
+
+fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<syn::ItemMod> {
+    let imports = shared_imports();
+    // Hello from the futurepast!
+    // The only situation in which you should be removing this
+    // `#![forbid(unsafe_code)]` is if you are moving the forbid
+    // command somewhere else  or reconfiguring PL/Rust to also
+    // allow it to be run in a fully "Untrusted PL/Rust" mode.
+    // This enables the code checking not only for `unsafe {}`
+    // but also "unsafe attributes" which are considered unsafe
+    // but don't have the `unsafe` token.
+    syn::parse2(quote! {
+        mod forbidden {
+            #![forbid(unsafe_code)]
+            #imports
+
+            #bare_fn
+        }
+    })
+    .wrap_err("Could not create forbidden module")
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -346,8 +357,9 @@ mod tests {
     #[pg_test]
     fn strict_string() {
         fn wrapped() -> eyre::Result<()> {
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = {
                 let argument_oids_and_names =
@@ -363,7 +375,7 @@ mod tests {
             })?;
 
             let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -381,12 +393,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
-                use pgx::prelude::*;
-                #[pg_extern]
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(arg0: &str) -> Option<String> {
                     Some(arg0.to_string())
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
@@ -402,8 +428,9 @@ mod tests {
     #[pg_test]
     fn non_strict_integer() {
         fn wrapped() -> eyre::Result<()> {
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = {
                 let argument_oids_and_names = vec![(
@@ -421,7 +448,7 @@ mod tests {
             })?;
 
             let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -439,12 +466,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
-                use pgx::prelude::*;
-                #[pg_extern]
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(val: Option<i32>) -> Option<i64> {
                     val.map(|v| v as i64)
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
@@ -460,8 +501,9 @@ mod tests {
     #[pg_test]
     fn strict_string_set() {
         fn wrapped() -> eyre::Result<()> {
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = {
                 let argument_oids_and_names = vec![(
@@ -479,7 +521,7 @@ mod tests {
             })?;
 
             let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -497,12 +539,26 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
-                use pgx::prelude::*;
-                #[pg_extern]
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
                     Some(std::iter::repeat(val).take(5))
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_extern]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(
@@ -518,8 +574,9 @@ mod tests {
     #[pg_test]
     fn trigger() {
         fn wrapped() -> eyre::Result<()> {
-            let fn_oid = 0 as pg_sys::Oid;
-            let db_oid = 1 as pg_sys::Oid;
+            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let fn_oid = pg_sys::Oid::INVALID;
+            let db_oid = pg_sys::TemplateDbOid;
 
             let variant = CrateVariant::trigger();
             let user_deps = toml::value::Table::default();
@@ -528,7 +585,7 @@ mod tests {
             })?;
 
             let generated =
-                StateGenerated::for_tests(db_oid, fn_oid, user_deps, user_code, variant);
+                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
 
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
             #[cfg(any(
@@ -546,17 +603,31 @@ mod tests {
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
-            let fixture_lib_rs = parse_quote! {
-                #![deny(unsafe_op_in_unsafe_fn)]
-                use pgx::prelude::*;
-                #[pg_trigger]
+            let imports = shared_imports();
+            let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(
                     trigger: &::pgx::PgTrigger,
-                ) -> core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated<::pgx::pg_sys::HeapTupleData>>,
+                ) -> ::core::result::Result<
+                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())
+                }
+            })?;
+            let fixture_lib_rs = parse_quote! {
+                #![deny(unsafe_op_in_unsafe_fn)]
+                pub mod opened {
+                    #imports
+
+                    #[pg_trigger]
+                    #bare_fn
+                }
+
+                mod forbidden {
+                    #![forbid(unsafe_code)]
+                    #imports
+
+                    #bare_fn
                 }
             };
             assert_eq!(

@@ -1,0 +1,61 @@
+[package]
+name = "plrust"
+version = "0.0.0"
+authors = ["ZomboDB, LLC <zombodb@gmail.com>"]
+edition = "2021"
+license = "PostgreSQL Open Source License"
+description = "A Rust procedural language for PostgreSQL"
+homepage = "https://github.com/zombodb/plrust/"
+repository = "https://github.com/zombodb/plrust/"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = ["pg14"]
+pg13 = ["pgx/pg13", "pgx-tests/pg13"]
+pg14 = ["pgx/pg14", "pgx-tests/pg14"]
+pg15 = ["pgx/pg15", "pgx-tests/pg15"]
+pg_test = []
+# Be accomodating to sandboxed builds with no network.
+sandboxed = []
+# Forcibly enable a feature used by x86_64 MacOS machines because they're bad at `dlclose()`
+force_enable_x86_64_darwin_generations = []
+target_postgrestd = []
+# verify = [] # Revisit this later for other verification features
+
+[dependencies]
+cfg-if = "1" # platform conditional helper
+once_cell = "1.7.2" # polyfills a nightly feature
+semver = "1.0.14"
+
+# pgx core details
+pgx = { version = "0.7.0-beta.0" }
+pgx-pg-config = { version = "0.7.0-beta.0" }
+
+# language handler support
+libloading = "0.7.2"
+toml = "0.5"
+tempdir = "0.3.7" # for building crates
+tempfile = "3.3.0"
+
+# error handling, tracing, formatting
+thiserror = "1.0"
+eyre = "0.6"
+color-eyre = "0.6"
+tracing = { version = "0.1", features = [ "valuable" ] }
+tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
+tracing-error = "0.2"
+prettyplease = "0.1"
+
+# procedural macro handling
+syn = "1"
+quote = "1"
+proc-macro2 = "1"
+
+[dev-dependencies]
+pgx-tests = { version = "0.7.0-beta.0" }
+tempdir = "0.3.7"
+once_cell = "1.7.2"
+toml = "0.5.8"

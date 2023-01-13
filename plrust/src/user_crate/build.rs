@@ -1,5 +1,5 @@
 use crate::{
-    user_crate::{target, CrateState, StateBuilt},
+    user_crate::{target, CrateState, FnLoad},
     PlRustError,
 };
 use color_eyre::{Section, SectionExt};
@@ -10,31 +10,42 @@ use std::{
     process::{Command, Output},
 };
 
+/// Build the dynamic library from source
+///
+/// - Requires: PL/Rust && Rust source verification
+/// - Produces: a dlopenable artifact
 #[must_use]
-pub(crate) struct StateProvisioned {
+pub(crate) struct FnBuild {
+    pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
+    pg_config: PathBuf,
 }
 
-impl CrateState for StateProvisioned {}
+impl CrateState for FnBuild {}
 
-impl StateProvisioned {
+impl FnBuild {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        pg_config: PathBuf,
     ) -> Self {
         Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             crate_name,
             crate_dir,
+            pg_config,
         }
     }
+
     #[tracing::instrument(
         level = "debug",
         skip_all,
@@ -42,14 +53,9 @@ impl StateProvisioned {
             db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             crate_dir = %self.crate_dir.display(),
-            target_dir = target_dir.map(|v| tracing::field::display(v.display())),
+            target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub(crate) fn build(
-        self,
-        artifact_dir: &Path,
-        pg_config: PathBuf,
-        target_dir: Option<&Path>,
-    ) -> eyre::Result<(StateBuilt, Output)> {
+    pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<(FnLoad, Output)> {
         let mut command = Command::new("cargo");
         let target = target::tuple()?;
         let target_str = &target;
@@ -59,14 +65,9 @@ impl StateProvisioned {
         command.arg("--release");
         command.arg("--target");
         command.arg(target_str);
-        command.env("PGX_PG_CONFIG_PATH", pg_config);
-        if let Some(target_dir) = target_dir {
-            command.env("CARGO_TARGET_DIR", &target_dir);
-        }
-        command.env(
-            "RUSTFLAGS",
-            "-Ctarget-cpu=native -Clink-args=-Wl,-undefined,dynamic_lookup",
-        );
+        command.env("PGX_PG_CONFIG_PATH", self.pg_config);
+        command.env("CARGO_TARGET_DIR", &target_dir);
+        command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
@@ -91,42 +92,22 @@ impl StateProvisioned {
 
             let built_shared_object_name = &format!("lib{crate_name}{DLL_SUFFIX}");
             let built_shared_object = target_dir
-                .map(|d| {
-                    d.join(target_str)
-                        .join("release")
-                        .join(&built_shared_object_name)
-                })
-                .unwrap_or(
-                    self.crate_dir
-                        .join("target")
-                        .join(target_str)
-                        .join("release")
-                        .join(built_shared_object_name),
-                );
-
-            let mut shared_object_name = crate_name.clone();
-
-            shared_object_name.push_str(DLL_SUFFIX);
-
-            let shared_object = artifact_dir.join(&shared_object_name);
-
-            std::fs::rename(&built_shared_object, &shared_object).wrap_err_with(|| {
-                eyre!(
-                    "renaming shared object from `{}` to `{}`",
-                    built_shared_object.display(),
-                    shared_object.display()
-                )
-            })?;
+                .join(target_str)
+                .join("release")
+                .join(&built_shared_object_name);
 
             Ok((
-                StateBuilt::new(self.db_oid, self.fn_oid, shared_object),
+                FnLoad::new(
+                    self.pg_proc_xmin,
+                    self.db_oid,
+                    self.fn_oid,
+                    built_shared_object,
+                ),
                 output,
             ))
         } else {
-            let stdout =
-                String::from_utf8(output.stdout).wrap_err("`cargo`'s stdout was not  UTF-8")?;
-            let stderr =
-                String::from_utf8(output.stderr).wrap_err("`cargo`'s stderr was not  UTF-8")?;
+            let stdout = String::from_utf8(output.stdout).wrap_err("cargo stdout was not UTF-8")?;
+            let stderr = String::from_utf8(output.stderr).wrap_err("cargo stderr was not UTF-8")?;
 
             Err(eyre!(PlRustError::CargoBuildFail)
                 .section(stdout.header("`cargo build` stdout:"))
@@ -140,12 +121,12 @@ impl StateProvisioned {
         }
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
-        &self.fn_oid
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
+        self.fn_oid
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
-        &self.db_oid
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
+        self.db_oid
     }
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir

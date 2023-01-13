@@ -1,0 +1,20 @@
+[package]
+name = "trusted-pgx"
+version = "0.0.0"
+authors = ["TCDI <opensource@tcdi.com>"]
+edition = "2021"
+license = "PostgreSQL Open Source License"
+description = "Minimal set of `pgx` rexports for plrust, which the authors have deemed trusted"
+homepage = "https://github.com/tcdi/plrust/"
+repository = "https://github.com/tcdi/plrust/"
+
+[lib]
+crate-type = ["rlib"]
+
+[features]
+pg13 = ["pgx/pg13"]
+pg14 = ["pgx/pg14"]
+pg15 = ["pgx/pg15"]
+
+[dependencies]
+pgx = { version = "0.7.0-beta.0", features = [ "no-schema-generation", "plrust" ], default-features = false }

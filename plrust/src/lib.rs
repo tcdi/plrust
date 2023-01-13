@@ -7,27 +7,26 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../README.md")]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
-#[deny(unsafe_op_in_unsafe_fn)]
 mod error;
 #[cfg(any(
     all(target_os = "macos", target_arch = "x86_64"),
     feature = "force_enable_x86_64_darwin_generations"
 ))]
 mod generation;
-#[deny(unsafe_op_in_unsafe_fn)]
 mod gucs;
-#[deny(unsafe_op_in_unsafe_fn)]
 mod logging;
-#[deny(unsafe_op_in_unsafe_fn)]
 mod plrust;
 
-#[allow(unsafe_op_in_unsafe_fn)] // this code manipulates symbols, so should be carefully audited
 mod user_crate;
 
+mod hooks;
+mod pgproc;
+mod plrust_proc;
+
 #[cfg(any(test, feature = "pg_test"))]
-#[allow(unsafe_op_in_unsafe_fn)] // waiting on a PGX fix
 pub mod tests;
 
 use error::PlRustError;
@@ -37,8 +36,31 @@ use pgx::{pg_getarg, prelude::*};
 pub use tests::pg_test;
 pgx::pg_module_magic!();
 
+/// this function will raise an ERROR if the `plrust` language isn't installed
+pub(crate) fn plrust_lang_oid() -> Option<pg_sys::Oid> {
+    static PLRUST_LANG_NAME: &[u8] = b"plrust\0"; // want this to look like a c string
+
+    // SAFETY: We pass `missing_ok: false`, which will cause an error if not found.
+    // So we always will return a valid Oid if we return at all.
+    // The first parameter has the same requirements as `&CStr`.
+    Some(unsafe { pg_sys::get_language_oid(PLRUST_LANG_NAME.as_ptr().cast(), false) })
+}
+
 #[pg_guard]
 fn _PG_init() {
+    // Must be loaded with shared_preload_libraries
+    unsafe {
+        // SAFETY:  We're required to be loaded as a "shared preload library", and Postgres will
+        // set this static to true before trying to load any of those libraries
+        if !pg_sys::process_shared_preload_libraries_in_progress {
+            ereport!(
+                ERROR,
+                PgSqlErrorCode::ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE,
+                "plrust must be loaded via shared_preload_libraries"
+            );
+        }
+    }
+
     color_eyre::config::HookBuilder::default()
         .theme(color_eyre::config::Theme::new())
         .into_hooks()
@@ -47,6 +69,7 @@ fn _PG_init() {
         .unwrap();
 
     gucs::init();
+    hooks::init();
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -79,11 +102,12 @@ CREATE FUNCTION plrust_call_handler() RETURNS language_handler
     LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 ")]
 #[tracing::instrument(level = "debug")]
-#[deny(unsafe_op_in_unsafe_fn)]
 unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     unsafe fn plrust_call_handler_inner(
         fcinfo: pg_sys::FunctionCallInfo,
     ) -> eyre::Result<pg_sys::Datum> {
+        // SAFETY: these seemingly innocent invocations of `as_ref` are actually `pointer::as_ref`
+        // but we should have been given this fcinfo by Postgres, so it should be fine
         let fn_oid = unsafe {
             fcinfo
                 .as_ref()
@@ -105,10 +129,11 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
     }
 }
 
+/// Called by Postgres, not you.
+/// # Safety
+/// Don't.
 #[pg_extern]
 #[tracing::instrument(level = "debug")]
-// Don't call this!
-#[deny(unsafe_op_in_unsafe_fn)]
 unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo) {
     unsafe fn plrust_validator_inner(
         fn_oid: pg_sys::Oid,
@@ -129,7 +154,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         unsafe { plrust::unload_function(fn_oid) };
         // NOTE:  We purposely ignore the `check_function_bodies` GUC for compilation as we need to
         // compile the function when it's created to avoid locking during function execution
-        let (_, output) = plrust::compile_function(fn_oid)?;
+        let output = plrust::compile_function(fn_oid)?;
 
         // however, we'll use it to decide if we should go ahead and dynamically load our function
         // SAFETY: This should always be set by Postgres.
@@ -152,33 +177,6 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         Ok(()) => (),
         // Panic into the pgx guard.
         Err(err) => panic!("{:?}", err),
-    }
-}
-
-#[pg_extern]
-#[tracing::instrument(level = "debug")]
-fn recompile_function(
-    fn_oid: pg_sys::Oid,
-) -> TableIterator<
-    'static,
-    (
-        name!(library_path, Option<String>),
-        name!(stdout, Option<String>),
-        name!(stderr, Option<String>),
-        name!(plrust_error, Option<String>),
-    ),
-> {
-    unsafe {
-        plrust::unload_function(fn_oid);
-    }
-    match plrust::compile_function(fn_oid) {
-        Ok((work_dir, output)) => TableIterator::once((
-            Some(work_dir.display().to_string()),
-            Some(String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8")),
-            Some(String::from_utf8(output.stderr.clone()).expect("`cargo`'s stderr was not UTF-8")),
-            None,
-        )),
-        Err(err) => TableIterator::once((None, None, None, Some(format!("{:?}", err)))),
     }
 }
 

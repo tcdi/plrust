@@ -8,8 +8,6 @@ pub(crate) enum PlRustError {
     NullFmgrInfo,
     #[error("The Procedure Tuple was NULL")]
     NullProcTuple,
-    #[error("The source code of the function was NULL")]
-    NullSourceCode,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
     #[cfg(any(
@@ -22,16 +20,16 @@ pub(crate) enum PlRustError {
     CargoBuildFail,
     #[error("Generating `Cargo.toml`")]
     GeneratingCargoToml,
-    #[error("Function `{0}` was not a PL/Rust function")]
-    NotPlRustFunction(pgx::pg_sys::Oid),
+    #[error("Function `{0}` does not exist")]
+    NoSuchFunction(pgx::pg_sys::Oid),
     #[error("Oid `{0}` was not mappable to a Rust type")]
     NoOidToRustMapping(pgx::pg_sys::Oid),
     #[error("Generated Rust type (`{1}`) for `{0}` was unparsable: {2}")]
     ParsingRustMapping(pgx::pg_sys::Oid, String, syn::Error),
-    #[error("Parsing `[dependencies]` block: {0}")]
-    ParsingDependenciesBlock(toml::de::Error),
     #[error("Parsing `[code]` block: {0}")]
     ParsingCodeBlock(syn::Error),
     #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
+    #[error("No plrust.plrust_proc entry for ({0}, {1})")]
+    NoProcEntry(pgx::pg_sys::Oid, String),
 }

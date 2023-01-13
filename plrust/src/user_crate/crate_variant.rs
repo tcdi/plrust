@@ -4,7 +4,12 @@ use pgx::PgOid;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 
+/// What kind of PL/Rust function must be built
+
+/// Includes arguments and return type, if applicable
+/// Used to create the source code that is built
 #[must_use]
+#[derive(Clone)]
 pub(crate) enum CrateVariant {
     Function {
         arguments: Vec<syn::FnArg>,

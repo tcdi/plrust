@@ -3,10 +3,15 @@ use libloading::os::unix::{Library, Symbol};
 use pgx::pg_sys;
 use std::path::{Path, PathBuf};
 
-impl CrateState for StateLoaded {}
+impl CrateState for FnReady {}
 
+/// Ready-to-evaluate PL/Rust function
+///
+/// - Requires: dlopened artifact
+/// - Produces: evaluation of the PL/Rust function
 #[must_use]
-pub(crate) struct StateLoaded {
+pub(crate) struct FnReady {
+    pg_proc_xmin: pg_sys::TransactionId,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     symbol_name: String,
@@ -16,9 +21,10 @@ pub(crate) struct StateLoaded {
     symbol: Symbol<unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
 }
 
-impl StateLoaded {
+impl FnReady {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, shared_object = %shared_object.display()))]
     pub(crate) unsafe fn load(
+        pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         shared_object: PathBuf,
@@ -27,7 +33,7 @@ impl StateLoaded {
             "Loading {shared_object}",
             shared_object = shared_object.display()
         );
-        let library = Library::new(&shared_object)?;
+        let library = unsafe { Library::new(&shared_object)? };
         let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
 
         #[cfg(any(
@@ -45,9 +51,10 @@ impl StateLoaded {
         let symbol_name = crate_name + "_wrapper";
 
         tracing::trace!("Getting symbol `{symbol_name}`");
-        let symbol = library.get(symbol_name.as_bytes())?;
+        let symbol = unsafe { library.get(symbol_name.as_bytes())? };
 
         Ok(Self {
+            pg_proc_xmin,
             db_oid,
             fn_oid,
             symbol_name,
@@ -59,7 +66,11 @@ impl StateLoaded {
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, ?fcinfo))]
     pub(crate) unsafe fn evaluate(&self, fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-        (self.symbol)(fcinfo)
+        // SAFETY:  First off, `self.symbol` is some function in the dlopened shared library, so
+        // FFI into that is inherently unsafe.  Secondly, it's an FFI function, so we need to protect
+        // that boundary to properly handle Rust panics and Postgres errors, hence the use of
+        // `pg_guard_ffi_boundary()`.
+        unsafe { pg_sys::submodules::ffi::pg_guard_ffi_boundary(|| (self.symbol)(fcinfo)) }
     }
 
     #[tracing::instrument(
@@ -73,6 +84,7 @@ impl StateLoaded {
         ))]
     pub(crate) fn close(self) -> eyre::Result<()> {
         let Self {
+            pg_proc_xmin: _,
             db_oid: _,
             fn_oid: _,
             library,
@@ -88,12 +100,17 @@ impl StateLoaded {
         &self.symbol_name
     }
 
-    pub(crate) fn fn_oid(&self) -> &u32 {
-        &self.fn_oid
+    #[inline]
+    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
+        self.pg_proc_xmin
     }
 
-    pub(crate) fn db_oid(&self) -> &u32 {
-        &self.db_oid
+    pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
+        self.fn_oid
+    }
+
+    pub(crate) fn db_oid(&self) -> pg_sys::Oid {
+        self.db_oid
     }
 
     pub(crate) fn shared_object(&self) -> &Path {
