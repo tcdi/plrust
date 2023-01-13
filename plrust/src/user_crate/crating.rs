@@ -516,7 +516,7 @@ mod tests {
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
-                { Some(std::iter::repeat(val).take(5)) }
+                { Ok(Some(std::iter::repeat(val).take(5))) }
             })?;
 
             let generated =
@@ -540,8 +540,8 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(val: &str) -> Option<::pgx::iter::SetOfIterator<Option<String>>> {
-                    Some(std::iter::repeat(val).take(5))
+                fn #symbol_ident(val: &str) -> std::result::Result<Option<::pgx::iter::SetOfIterator<Option<String>>>, Box<dyn std::error::Error>> {
+                    Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
             let fixture_lib_rs = parse_quote! {
