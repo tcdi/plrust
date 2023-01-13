@@ -59,8 +59,10 @@ pub(crate) fn tuple() -> Result<String, TargetErr> {
         Ok(v) => Ok(v),
         Err(env::VarError::NotPresent) => {
             cfg_if::cfg_if! {
-                if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux"))] {
-                    Ok("x86_64-unknown-linux-postgres".to_string())
+                if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux", target_env = "gnu"))] {
+                    Ok("x86_64-postgres-linux-gnu".to_string())
+                } else if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux", target_env = "gnu"))] {
+                    Ok("aarch64-postgres-linux-gnu".to_string())
                 } else if #[cfg(feature = "target_postgrestd")] {
                     Err(TargetErr::Unsupported)
                 } else {
