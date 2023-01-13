@@ -45,6 +45,7 @@ jobs:
         echo ""
 
         echo "----- Set up dynamic variables -----"
+        echo "PG_VER=14" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
         echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
