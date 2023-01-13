@@ -48,7 +48,7 @@ Option | Description
 
 # Using PL/Rust with Postgrestd
 PL/Rust currently supports being used with an experimental fork of Rust's std entitled `postgrestd` which supports an
-`x86_64-unknown-linux-postgres` target. This is built via the `build` script, which pulls in `postgrestd`.
+`x86_64-postgres-linux-gnu` target. This is built via the `build` script, which pulls in `postgrestd`.
 Doing so places a copy of the necessary libraries used by Rust for `std` into the appropriate "sysroot",
 which is the location that rustc will look for building those libraries.
 
@@ -65,7 +65,7 @@ and for the relevant location to be writeable on the building host.
 ```bash
 cd plrust
 ./build
-PLRUST_TARGET="x86_64-unknown-linux-postgres" cargo build
+PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo build
 ```
 
 # Installation

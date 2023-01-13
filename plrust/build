@@ -2,7 +2,7 @@
 set -xe
 
 if [ -z "$PLRUST_TARGET" ]; then
-    export PLRUST_TARGET="x86_64-unknown-linux-postgres"
+    export PLRUST_TARGET="x86_64-postgres-linux-gnu"
 fi
 
 # Make sure the tip of pgx's develop branch is used,
@@ -11,9 +11,6 @@ cargo update -p pgx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgx \
-#    --git "https://github.com/tcdi/pgx" \
-#    --branch "develop" \
-#    --force \
      --version "0.7.0-beta.0" \
      --locked # use the Cargo.lock in the pgx repo
 fi
@@ -27,7 +24,7 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --branch "1.65" --recurse-submodules
+        git clone https://github.com/tcdi/postgrestd.git --branch "1.65-vendor-postgres" --recurse-submodules
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml
@@ -35,4 +32,4 @@ fi
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
 
-cargo test --verbose --no-default-features --features "pg${PG_VER:-15}"
+cargo test --verbose --no-default-features --features "pg${PG_VER:-15} target_postgrestd"

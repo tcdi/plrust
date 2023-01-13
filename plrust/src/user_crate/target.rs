@@ -8,7 +8,7 @@ use std::env;
 use std::ffi::OsString;
 
 pub(crate) mod host {
-    use std::env::consts::*;
+    use std::env::consts::ARCH;
     cfg_if::cfg_if! { if #[cfg(target_env = "gnu")] {
         pub(crate) const ENV: &str = "gnu";
     } else if #[cfg(target_env = "musl")] {
@@ -16,7 +16,9 @@ pub(crate) mod host {
     } else {
         pub(crate) const ENV: &str = "";
     }}
-    cfg_if::cfg_if! { if #[cfg(target_vendor = "apple")] {
+    cfg_if::cfg_if! { if #[cfg(feature = "target_postgrestd")] {
+        pub(crate) const VENDOR: &str = "postgres";
+    } else if #[cfg(target_vendor = "apple")] {
         pub(crate) const VENDOR: &str = "apple";
     } else if #[cfg(target_os = "windows")] {
         pub(crate) const VENDOR: &str = "pc";
@@ -24,25 +26,23 @@ pub(crate) mod host {
         pub(crate) const VENDOR: &str = "unknown";
     }}
 
-    pub(crate) fn target_tuple() -> String {
-        let os = match OS {
-            "macos" => "darwin",
-            os => os,
-        };
-        super::stringify_tuple([ARCH, VENDOR, os, ENV])
-    }
-}
+    cfg_if::cfg_if! { if #[cfg(target_os = "macos")] {
+        pub(crate) const OS: &str = "darwin";
+    } else {
+        pub(crate) const OS: &str = std::env::consts::OS;
+    }}
 
-// Assemble a String from the components of a build tuple.
-fn stringify_tuple(tuple: [&str; 4]) -> String {
-    let mut s = String::from(tuple[0]);
-    for t in &tuple[1..] {
-        if t != &"" {
-            s.push('-');
-            s.push_str(t);
+    pub(crate) fn target_tuple() -> String {
+        let tuple = [ARCH, VENDOR, OS, ENV];
+        let mut s = String::from(tuple[0]);
+        for t in &tuple[1..] {
+            if t != &"" {
+                s.push('-');
+                s.push_str(t);
+            }
         }
+        s
     }
-    s
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -59,8 +59,12 @@ pub(crate) fn tuple() -> Result<String, TargetErr> {
         Ok(v) => Ok(v),
         Err(env::VarError::NotPresent) => {
             cfg_if::cfg_if! {
-                if #[cfg(all(feature = "target_postgrestd", target_arch = "x86_64", target_os = "linux"))] {
-                    Ok("x86_64-unknown-linux-postgres".to_string())
+                if #[cfg(all(feature = "target_postgrestd",
+                    any(target_arch = "x86_64", target_arch = "aarch64"),
+                    target_os = "linux",
+                    target_env = "gnu"))]
+                {
+                    Ok(host::target_tuple())
                 } else if #[cfg(feature = "target_postgrestd")] {
                     Err(TargetErr::Unsupported)
                 } else {
