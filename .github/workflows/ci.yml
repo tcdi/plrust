@@ -28,7 +28,7 @@ jobs:
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Generate cache filename checksum
       run: |
@@ -45,6 +45,7 @@ jobs:
         echo ""
 
         echo "----- Set up dynamic variables -----"
+        echo "PG_VER=14" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
         echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
@@ -160,13 +161,13 @@ jobs:
 
     strategy:
       matrix:
-        version: ["postgres-13", "postgres-14"]
+        version: ["pg13", "pg14", "pg15"]
         os: ["ubuntu-20.04"]
         # it would be nice to other contributors to return "macos-11" to the above array
       fail-fast: false
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up (Linux) prerequisites and environment
       if: matrix.os == 'ubuntu-20.04'
@@ -174,7 +175,7 @@ jobs:
         echo ""
 
         echo "----- Set up dynamic variables -----"
-        export PG_VER=$(echo ${{ matrix.version }} | cut -d '-' -f2)
+        export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         cat $GITHUB_ENV
@@ -254,7 +255,7 @@ jobs:
         echo ""
 
     - name: Cache cargo registry
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       continue-on-error: false
       with:
         path: |
@@ -279,7 +280,7 @@ jobs:
         cargo test --features "pg$PG_VER" --no-default-features --lib plrust
 
     - name: Run PL/Rust + postgrestd tests
-      if: matrix.os == 'ubuntu-20.04' && matrix.version == 'postgres-14'
+      if: matrix.os == 'ubuntu-20.04' && (matrix.version == 'pg14' || matrix.version == 'pg15')
       run: cd plrust && ./build
 
     # Attempt to make the cache payload slightly smaller.
