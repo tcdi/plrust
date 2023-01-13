@@ -60,7 +60,7 @@ impl FnBuild {
             target_dir = tracing::field::display(target_dir.display()),
         ))]
     pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<Vec<(FnLoad, Output)>> {
-        let (this_target, other_targets) = compilation_targets();
+        let (this_target, other_targets) = compilation_targets()?;
         let mut results = Vec::new();
 
         // always build for this host machine
@@ -68,7 +68,7 @@ impl FnBuild {
 
         // and then do the others, which is guaranteed not to contain the exact same triple as `this_target`
         for other_target in other_targets {
-            results.push(self.build_internal(target_dir, other_target)?);
+            results.push(self.build_internal(target_dir, &other_target)?);
         }
         Ok(results)
     }
@@ -86,7 +86,7 @@ impl FnBuild {
     fn build_internal(
         &self,
         target_dir: &Path,
-        target_triple: CompilationTarget,
+        target_triple: &CompilationTarget,
     ) -> eyre::Result<(FnLoad, Output)> {
         let mut command = Command::new("cargo");
 
@@ -102,7 +102,7 @@ impl FnBuild {
         // don't specify a linker if the target we're compiling for is the host's target.  This
         // ensures that in non-cross-compilation installs, the host does **NOT** need a cross-compile
         // toolchain
-        if &get_host_compilation_target() != &target_triple {
+        if get_host_compilation_target()? != target_triple {
             command.env(
                 &format!(
                     "CARGO_TARGET_{}_LINKER",
@@ -149,7 +149,7 @@ impl FnBuild {
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
-                    target_triple,
+                    target_triple.clone(),
                     so_bytes,
                 ),
                 output,

@@ -120,6 +120,16 @@ impl From<&str> for CompilationTarget {
         CompilationTarget(s.into())
     }
 }
+impl From<&String> for CompilationTarget {
+    fn from(s: &String) -> Self {
+        CompilationTarget(s.clone())
+    }
+}
+impl From<String> for CompilationTarget {
+    fn from(s: String) -> Self {
+        CompilationTarget(s)
+    }
+}
 impl Display for CompilationTarget {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
@@ -144,9 +154,11 @@ impl CompilationTarget {
 /// Returns the compilation targets a function should be compiled for.
 ///
 /// The return format is `( <This Host's Target Triple>, <Other Configured Target Triples> )`
-pub(crate) fn compilation_targets() -> (CompilationTarget, impl Iterator<Item = CompilationTarget>)
-{
-    let this_target = get_host_compilation_target();
+pub(crate) fn compilation_targets() -> eyre::Result<(
+    &'static CompilationTarget,
+    impl Iterator<Item = CompilationTarget>,
+)> {
+    let this_target = get_host_compilation_target()?;
     let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
         None => vec![],
         Some(targets) => targets
@@ -157,5 +169,5 @@ pub(crate) fn compilation_targets() -> (CompilationTarget, impl Iterator<Item = 
             .collect::<Vec<_>>(),
     };
 
-    (this_target.into(), other_targets.into_iter())
+    Ok((this_target, other_targets.into_iter()))
 }

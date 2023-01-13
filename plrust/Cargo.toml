@@ -7,7 +7,6 @@ license = "PostgreSQL Open Source License"
 description = "A Rust procedural language for PostgreSQL"
 homepage = "https://github.com/zombodb/plrust/"
 repository = "https://github.com/zombodb/plrust/"
-build = "build.rs"
 
 [lib]
 crate-type = ["cdylib"]
