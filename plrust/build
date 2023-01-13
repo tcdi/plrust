@@ -32,4 +32,4 @@ fi
     STD_TARGET="$PLRUST_TARGET" ./run install
 )
 
-cargo test --verbose --no-default-features --features "pg${PG_VER:-15}"
+cargo test --verbose --no-default-features --features "pg${PG_VER:-15} target_postgrestd"
