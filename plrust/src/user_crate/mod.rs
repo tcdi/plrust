@@ -431,7 +431,7 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> std::result::Result<Option<String>, Box<dyn std::error::Error>> {
+                fn #symbol_ident(arg0: &str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
                     Ok(Some(arg0.to_string()))
                 }
             })?;
