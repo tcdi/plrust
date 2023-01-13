@@ -11,9 +11,6 @@ cargo update -p pgx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgx \
-#    --git "https://github.com/tcdi/pgx" \
-#    --branch "develop" \
-#    --force \
      --version "0.7.0-beta.0" \
      --locked # use the Cargo.lock in the pgx repo
 fi
