@@ -1,5 +1,6 @@
 use libloading::os::unix::{Library, Symbol};
 use pgx::pg_sys;
+use std::io::Write;
 
 use crate::gucs;
 use crate::user_crate::CrateState;
@@ -20,20 +21,36 @@ pub(crate) struct FnReady {
 }
 
 impl FnReady {
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid))]
+    // #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid))]
     pub(crate) unsafe fn load(
         pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
-        // we write the shared object (`so`) bytes out to a temporary file rooted in our
-        // configured `plrust.work_dir`.  This will get removed from disk when this function
-        // exists, which is fine because we'll have dlopen()'d it by then and no longer need it
-        let temp_so_file = tempfile::Builder::new().tempfile_in(gucs::work_dir())?;
-        std::fs::write(&temp_so_file, shared_object)?;
+        let library = if cfg!(target_os = "linux") {
+            use std::os::unix::io::IntoRawFd;
+            let options = memfd::MemfdOptions::default().allow_sealing(true);
+            let mfd = options.create(&format!("plrust-fn-{db_oid}-{fn_oid}"))?;
+            mfd.as_file().set_len(shared_object.len() as u64)?;
+            mfd.add_seals(&[memfd::FileSeal::SealShrink, memfd::FileSeal::SealGrow])?;
+            mfd.add_seal(memfd::FileSeal::SealSeal)?;
 
-        let library = unsafe { Library::new(temp_so_file.path())? };
+            let raw_fd = mfd.as_file().into_raw_fd();
+            let filename = format!("/proc/self/fd/{raw_fd}");
+            let mut file = std::fs::File::open(&filename)?;
+            file.write_all(&shared_object)?;
+            unsafe { Library::new(&filename)? }
+        } else {
+            // we write the shared object (`so`) bytes out to a temporary file rooted in our
+            // configured `plrust.work_dir`.  This will get removed from disk when this function
+            // exists, which is fine because we'll have dlopen()'d it by then and no longer need it
+            let temp_so_file = tempfile::Builder::new().tempfile_in(gucs::work_dir())?;
+            std::fs::write(&temp_so_file, shared_object)?;
+
+            unsafe { Library::new(temp_so_file.path())? }
+        };
+
         let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
 
         #[cfg(any(
