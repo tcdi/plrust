@@ -40,7 +40,14 @@ impl FnReady {
             let filename = format!("/proc/self/fd/{raw_fd}");
             let mut file = std::fs::File::open(&filename)?;
             file.write_all(&shared_object)?;
-            unsafe { Library::new(&filename)? }
+            let library = unsafe { Library::new(&filename)? };
+
+            // just to be obvious, the `memfd` instance gets dropped here.  Now that it's been loaded, we don't
+            // need it.  If any of the above failed and returned an Error, it'll still get dropped when
+            // the function returns.
+            drop(mfd);
+
+            library
         } else {
             // we write the shared object (`so`) bytes out to a temporary file rooted in our
             // configured `plrust.work_dir`.  This will get removed from disk when this function
@@ -48,7 +55,14 @@ impl FnReady {
             let temp_so_file = tempfile::Builder::new().tempfile_in(gucs::work_dir())?;
             std::fs::write(&temp_so_file, shared_object)?;
 
-            unsafe { Library::new(temp_so_file.path())? }
+            let library = unsafe { Library::new(temp_so_file.path())? };
+
+            // just to be obvious, the temp_so_file gets deleted here.  Now that it's been loaded, we don't
+            // need it.  If any of the above failed and returned an Error, it'll still get deleted when
+            // the function returns.
+            drop(temp_so_file);
+
+            library
         };
 
         let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
@@ -69,11 +83,6 @@ impl FnReady {
 
         tracing::trace!("Getting symbol `{symbol_name}`");
         let symbol = unsafe { library.get(symbol_name.as_bytes())? };
-
-        // just to be obvious, the temp_so_file gets deleted here.  Now that it's been loaded, we don't
-        // need it.  If any of the above failed and returned an Error, it'll still get deleted when
-        // the function returns.
-        drop(temp_so_file);
 
         Ok(Self {
             pg_proc_xmin,
