@@ -6,6 +6,8 @@ use crate::user_crate::CrateState;
 
 impl CrateState for FnReady {}
 
+pub(crate) struct FileHolder<T>(T);
+
 /// Ready-to-evaluate PL/Rust function
 ///
 /// - Requires: dlopened artifact
@@ -17,6 +19,12 @@ pub(crate) struct FnReady {
     #[allow(dead_code)] // We must hold this handle for `symbol`
     library: Library,
     symbol: Symbol<unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
+    file_holder: FileHolder<
+        #[cfg(target_os = "linux")]
+        memfd::Memfd
+        #[cfg(not(target_os = "linux"))]
+        ()
+    >,
 }
 
 impl FnReady {
@@ -27,7 +35,7 @@ impl FnReady {
         fn_oid: pg_sys::Oid,
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
-        let library = if cfg!(target_os = "linux") {
+        let (file_holder, library) = if cfg!(target_os = "linux") {
             // for Linux we write the `shared_object` bytes to a memory-mapped file of exactly the
             // right size.  Then we ask `libloading::Library` to "dlopen" it using a direct path
             // to its file descriptor in "/proc/self/fd/{raw_fd}".
@@ -57,7 +65,9 @@ impl FnReady {
 
             // finally, load the library.  When this block ends the memory-mapped file will be
             // discarded, which is exactly what we want since "dlopen" has done what it needs with it
-            unsafe { Library::new(&filename)? }
+            let library = unsafe { Library::new(&filename)? };
+
+            (mfd, library)
         } else {
             // for all other platforms we write the `shared_object` bytes out to a temporary file rooted in our
             // configured `plrust.work_dir`.  This will get removed from disk when this function
@@ -72,7 +82,7 @@ impl FnReady {
             // the function returns.
             drop(temp_so_file);
 
-            library
+            ((), library)
         };
 
         let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
@@ -99,6 +109,7 @@ impl FnReady {
             symbol_name,
             library,
             symbol,
+            file_holder: FileHolder(file_holder)
         })
     }
 
@@ -123,6 +134,7 @@ impl FnReady {
             library,
             symbol: _,
             symbol_name: _,
+            file_holder: _,
         } = self;
         library.close()?;
         Ok(())
