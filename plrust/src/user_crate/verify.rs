@@ -16,7 +16,7 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::plrust_proc::get_host_compilation_target;
+use crate::target;
 use crate::user_crate::{CrateState, FnBuild, PlRustError};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
@@ -77,7 +77,7 @@ impl FnVerify {
         // As PL/Rust is not fully configured to run user commands here,
         // this just echoes to smoke-test the ability to run a command
         let mut command = Command::new("echo");
-        let target = get_host_compilation_target()?;
+        let target = target::tuple()?;
         let target_str = &target;
 
         let args = format!(

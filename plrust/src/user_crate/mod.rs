@@ -22,7 +22,7 @@ pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
 pub(crate) use verify::FnVerify;
 
-use crate::gucs::CompilationTarget;
+use crate::target::CompilationTarget;
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;

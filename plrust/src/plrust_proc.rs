@@ -1,5 +1,4 @@
 //! Routines for managing the `plrust.plrust_proc` extension table along with the data it contains
-use once_cell::sync::Lazy;
 use std::ffi::CStr;
 use std::rc::Rc;
 
@@ -7,9 +6,9 @@ use pgx::pg_sys::MyDatabaseId;
 use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
 
 use crate::error::PlRustError;
-use crate::gucs::CompilationTarget;
 use crate::pgproc::PgProc;
 use crate::target;
+use crate::target::CompilationTarget;
 use crate::user_crate::{FnReady, UserCrate};
 
 extension_sql!(
@@ -64,7 +63,7 @@ pub(crate) fn drop_function(pg_proc_oid: pg_sys::Oid) -> spi::Result<()> {
 #[tracing::instrument(level = "debug")]
 pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnReady>>> {
     tracing::debug!("loading function oid `{pg_proc_oid}`");
-    let this_target = get_host_compilation_target()?;
+    let this_target = target::tuple()?;
     // using SPI, read the plrust_proc entry for the provided pg_proc.oid value
     let so_bytes = Spi::get_one_with_args::<Vec<u8>>(
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
@@ -140,18 +139,4 @@ fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Dat
     }
 
     result
-}
-
-/// Assumes the `target_triple` for the current host is that of the one which compiled the plrust
-/// extension shared library itself.
-#[inline]
-pub(crate) fn get_host_compilation_target(
-) -> Result<&'static CompilationTarget, &'static target::TargetErr> {
-    pub(crate) static HOST_COMPILATION_TARGET: Lazy<Result<CompilationTarget, target::TargetErr>> =
-        Lazy::new(|| match target::tuple() {
-            Ok(tuple) => Ok(CompilationTarget::from(&tuple)),
-            Err(e) => Err(e),
-        });
-
-    HOST_COMPILATION_TARGET.as_ref()
 }

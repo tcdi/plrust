@@ -1,6 +1,6 @@
 use pgx::pg_sys;
 
-use crate::gucs::CompilationTarget;
+use crate::target::CompilationTarget;
 use crate::user_crate::{CrateState, FnReady};
 
 /// Available and ready-to-load PL/Rust function

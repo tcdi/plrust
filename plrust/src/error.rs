@@ -1,4 +1,4 @@
-use crate::gucs::CompilationTarget;
+use crate::target::CompilationTarget;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum PlRustError {

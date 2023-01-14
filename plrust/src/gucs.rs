@@ -7,13 +7,11 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::plrust_proc::get_host_compilation_target;
+use crate::target;
+use crate::target::CompilationTarget;
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
-use std::ffi::OsStr;
-use std::fmt::{Display, Formatter};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
@@ -105,52 +103,6 @@ pub(crate) fn tracing_level() -> tracing::Level {
         .unwrap_or(tracing::Level::INFO)
 }
 
-#[derive(Debug, Clone, PartialOrd, PartialEq, Hash, Ord, Eq)]
-#[repr(transparent)]
-pub(crate) struct CompilationTarget(String);
-impl Deref for CompilationTarget {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl From<&str> for CompilationTarget {
-    fn from(s: &str) -> Self {
-        CompilationTarget(s.into())
-    }
-}
-impl From<&String> for CompilationTarget {
-    fn from(s: &String) -> Self {
-        CompilationTarget(s.clone())
-    }
-}
-impl From<String> for CompilationTarget {
-    fn from(s: String) -> Self {
-        CompilationTarget(s)
-    }
-}
-impl Display for CompilationTarget {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-impl AsRef<Path> for CompilationTarget {
-    fn as_ref(&self) -> &Path {
-        Path::new(&self.0)
-    }
-}
-impl AsRef<OsStr> for CompilationTarget {
-    fn as_ref(&self) -> &OsStr {
-        OsStr::new(&self.0)
-    }
-}
-impl CompilationTarget {
-    pub fn as_str(&self) -> &str {
-        &self
-    }
-}
-
 /// Returns the compilation targets a function should be compiled for.
 ///
 /// The return format is `( <This Host's Target Triple>, <Other Configured Target Triples> )`
@@ -158,7 +110,7 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
     &'static CompilationTarget,
     impl Iterator<Item = CompilationTarget>,
 )> {
-    let this_target = get_host_compilation_target()?;
+    let this_target = target::tuple()?;
     let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
         None => vec![],
         Some(targets) => targets
