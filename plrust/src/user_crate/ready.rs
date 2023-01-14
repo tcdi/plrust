@@ -33,7 +33,8 @@ impl FnReady {
         fn_oid: pg_sys::Oid,
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
-        let (file_holder, library) = if cfg!(target_os = "linux") {
+        #[cfg(target_os = "linux")]
+        let (file_holder, library) = {
             // for Linux we write the `shared_object` bytes to a memory-mapped file of exactly the
             // right size.  Then we ask `libloading::Library` to "dlopen" it using a direct path
             // to its file descriptor in "/proc/self/fd/{raw_fd}".
@@ -66,7 +67,10 @@ impl FnReady {
             let library = unsafe { Library::new(&filename)? };
 
             (mfd, library)
-        } else {
+        };
+
+        #[cfg(not(target_os = "linux"))]
+        let (file_holder, library) = {
             // for all other platforms we write the `shared_object` bytes out to a temporary file rooted in our
             // configured `plrust.work_dir`.  This will get removed from disk when this function
             // exists, which is fine because we'll have dlopen()'d it by then and no longer need it
