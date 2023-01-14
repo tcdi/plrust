@@ -115,7 +115,7 @@ impl FnReady {
             symbol_name,
             library,
             symbol,
-            _file_holder,
+            _file_holder: file_holder,
         })
     }
 
