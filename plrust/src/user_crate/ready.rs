@@ -29,19 +29,36 @@ impl FnReady {
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
         let library = if cfg!(target_os = "linux") {
+            // for Linux we write the `shared_object` bytes to a memory-mapped file of exactly the
+            // right size.  Then we ask `libloading::Library` to "dlopen" it using a direct path
+            // to its file descriptor in "/proc/self/fd/{raw_fd}".
+            //
+            // This is an added "safety" measure as we can (reasonably) assure ourselves that the
+            // file won't be overwritten between when we finish writing it and when it is dlopen'd
             use std::os::unix::io::AsRawFd;
-            let options = memfd::MemfdOptions::default().allow_sealing(true);
-            let mfd = options.create(&format!("plrust-fn-{db_oid}-{fn_oid}"))?;
+            let mfd = memfd::MemfdOptions::default()
+                .allow_sealing(true)
+                .create(&format!("plrust-fn-{db_oid}-{fn_oid}-{pg_proc_xmin}"))?;
+
+            // set the filesize to exactly what we know it should be
             mfd.as_file().set_len(shared_object.len() as u64)?;
+
+            // make sure we can't change the filesize
             mfd.add_seals(&[memfd::FileSeal::SealShrink, memfd::FileSeal::SealGrow])?;
             mfd.add_seal(memfd::FileSeal::SealSeal)?;
+
+            // and write the shared_object bytes
             mfd.as_file().write_all(&shared_object)?;
 
+            // generate a direct filename to the underlying raw file descriptor that `mfd` created
             let raw_fd = mfd.as_raw_fd();
             let filename = format!("/proc/self/fd/{raw_fd}");
+
+            // finally, load the library.  When this block ends the memory-mapped file will be
+            // discarded, which is exactly what we want since "dlopen" has done what it needs with it
             unsafe { Library::new(&filename)? }
         } else {
-            // we write the shared object (`so`) bytes out to a temporary file rooted in our
+            // for all other platforms we write the `shared_object` bytes out to a temporary file rooted in our
             // configured `plrust.work_dir`.  This will get removed from disk when this function
             // exists, which is fine because we'll have dlopen()'d it by then and no longer need it
             let temp_so_file = tempfile::Builder::new().tempfile_in(gucs::work_dir())?;
