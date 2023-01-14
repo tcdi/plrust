@@ -25,6 +25,7 @@ mod user_crate;
 mod hooks;
 mod pgproc;
 mod plrust_proc;
+pub(crate) mod target;
 
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;

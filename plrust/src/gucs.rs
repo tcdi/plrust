@@ -7,6 +7,8 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use crate::target;
+use crate::target::CompilationTarget;
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
 use std::path::PathBuf;
@@ -17,6 +19,7 @@ static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
     GucSetting::new(None);
+static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
@@ -65,6 +68,14 @@ pub(crate) fn init() {
         &PLRUST_ALLOWED_DEPENDENCIES,
         GucContext::Postmaster,
     );
+
+    GucRegistry::define_string_guc(
+        "plrust.compilation_targets",
+        "A comma-separated list of rust compilation 'target triples' to compile for",
+        "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecutre",
+        &PLRUST_COMPILATION_TARGETS,
+        GucContext::Postmaster
+    )
 }
 
 pub(crate) fn work_dir() -> PathBuf {
@@ -90,4 +101,25 @@ pub(crate) fn tracing_level() -> tracing::Level {
         .get()
         .map(|v| v.parse().expect("plrust.tracing_level was invalid"))
         .unwrap_or(tracing::Level::INFO)
+}
+
+/// Returns the compilation targets a function should be compiled for.
+///
+/// The return format is `( <This Host's Target Triple>, <Other Configured Target Triples> )`
+pub(crate) fn compilation_targets() -> eyre::Result<(
+    &'static CompilationTarget,
+    impl Iterator<Item = CompilationTarget>,
+)> {
+    let this_target = target::tuple()?;
+    let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
+        None => vec![],
+        Some(targets) => targets
+            .split(',')
+            .map(str::trim)
+            .filter(|s| s != &this_target.as_str()) // make sure we don't include "this target" in the list of other targets
+            .map(|s| s.into())
+            .collect::<Vec<_>>(),
+    };
+
+    Ok((this_target, other_targets.into_iter()))
 }

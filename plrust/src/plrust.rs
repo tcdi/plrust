@@ -18,7 +18,6 @@ use std::{cell::RefCell, collections::HashMap, process::Output};
 
 use crate::error::PlRustError;
 use crate::pgproc::PgProc;
-use crate::plrust_proc::get_target_triple;
 use eyre::WrapErr;
 
 thread_local! {
@@ -93,9 +92,9 @@ pub(crate) unsafe fn evaluate_function(
     })?;
 
     tracing::trace!(
-        "Evaluating symbol {:?} from {}",
+        "Evaluating symbol {:?} for function {}",
         user_crate_loaded.symbol_name(),
-        user_crate_loaded.shared_object().display()
+        fn_oid
     );
 
     Ok(unsafe { user_crate_loaded.evaluate(fcinfo) })
@@ -115,37 +114,43 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     // We want to introduce validation here.
     let crate_dir = provisioned.crate_dir().to_path_buf();
     let (validated, _output) = provisioned.validate(pg_config, target_dir.as_path())?;
-    let (built, output) = validated.build(target_dir.as_path())?;
-    let shared_object = built.shared_object();
+    let target_builds = validated.build(target_dir.as_path())?;
 
-    // store the shared object in our table
-    plrust_proc::create_or_replace_function(fn_oid, shared_object)?;
+    // we gotta have at least one built crate and it's for this host's target triple
+    assert!(target_builds.len() >= 1);
+
+    let mut this_output = None;
+    for (built, output) in target_builds {
+        if this_output.is_none() {
+            this_output = Some(output)
+        }
+        let (target_triple, shared_object) = built.into_inner();
+
+        // store the shared objects in our table
+        plrust_proc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
+    }
 
     // cleanup after ourselves
-    tracing::trace!("removing {}", shared_object.display());
-    std::fs::remove_file(&shared_object).wrap_err(format!(
-        "Problem deleting temporary shared object file at '{}'",
-        shared_object.display()
-    ))?;
     tracing::trace!("removing {}", crate_dir.display());
     std::fs::remove_dir_all(&crate_dir).wrap_err(format!(
         "Problem deleting temporary crate directory at '{}'",
         crate_dir.display()
     ))?;
 
-    Ok(output)
+    Ok(this_output.unwrap())
 }
 
 pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
-    // Include current_platform in the name
-    // There's no guarantee that the compiled library will be
-    // in the same architecture if the database was restored
-    let crate_name = format!(
-        "plrust_fn_oid_{}_{}_{}",
-        db_oid.as_u32(),
-        fn_oid.as_u32(),
-        get_target_triple().replace("-", "_")
-    );
+    // NB:  This once included the compiling host's target triple as part of the crate name for
+    // reasons about restoring a database to the same platform.
+    //
+    // This isn't necessary as our plrust.plrust_proc "catalog" table tracks the .so binaries per
+    // target triple, so if we are restored to a different platform then the .so binary for this
+    // platform won't be used.
+    //
+    // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
+    // multiple targets.
+    let crate_name = format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32(),);
 
     crate_name
 }

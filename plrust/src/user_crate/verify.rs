@@ -16,7 +16,8 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::{target, CrateState, FnBuild, PlRustError};
+use crate::target;
+use crate::user_crate::{CrateState, FnBuild, PlRustError};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 use std::{
@@ -111,13 +112,17 @@ impl FnVerify {
         }
     }
 
+    // for #[tracing] purposes
     pub(crate) fn fn_oid(&self) -> pg_sys::Oid {
         self.fn_oid
     }
 
+    // for #[tracing] purposes
     pub(crate) fn db_oid(&self) -> pg_sys::Oid {
         self.db_oid
     }
+
+    // for #[tracing] purposes
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
     }
