@@ -21,7 +21,7 @@ pub(crate) struct FnReady {
 }
 
 impl FnReady {
-    // #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid))]
+    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid))]
     pub(crate) unsafe fn load(
         pg_proc_xmin: pg_sys::TransactionId,
         db_oid: pg_sys::Oid,
