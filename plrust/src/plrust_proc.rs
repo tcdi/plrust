@@ -9,7 +9,7 @@ use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
 use crate::error::PlRustError;
 use crate::gucs::CompilationTarget;
 use crate::pgproc::PgProc;
-use crate::user_crate::target::TargetErr;
+use crate::target;
 use crate::user_crate::{FnReady, UserCrate};
 
 extension_sql!(
@@ -145,10 +145,10 @@ fn get_fn_identity_datum(pg_proc_oid: pg_sys::Oid) -> (PgOid, Option<pg_sys::Dat
 /// Assumes the `target_triple` for the current host is that of the one which compiled the plrust
 /// extension shared library itself.
 #[inline]
-pub(crate) fn get_host_compilation_target() -> Result<&'static CompilationTarget, &'static TargetErr>
-{
-    pub(crate) static HOST_COMPILATION_TARGET: Lazy<Result<CompilationTarget, TargetErr>> =
-        Lazy::new(|| match crate::user_crate::target::tuple() {
+pub(crate) fn get_host_compilation_target(
+) -> Result<&'static CompilationTarget, &'static target::TargetErr> {
+    pub(crate) static HOST_COMPILATION_TARGET: Lazy<Result<CompilationTarget, target::TargetErr>> =
+        Lazy::new(|| match target::tuple() {
             Ok(tuple) => Ok(CompilationTarget::from(&tuple)),
             Err(e) => Err(e),
         });

@@ -13,7 +13,6 @@ mod crate_variant;
 mod crating;
 mod loading;
 mod ready;
-pub(crate) mod target;
 mod verify;
 
 pub(crate) use build::FnBuild;

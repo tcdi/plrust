@@ -7,32 +7,32 @@
 use std::env;
 use std::ffi::OsString;
 
-pub(crate) mod host {
+mod host {
     use std::env::consts::ARCH;
     cfg_if::cfg_if! { if #[cfg(target_env = "gnu")] {
-        pub(crate) const ENV: &str = "gnu";
+        const ENV: &str = "gnu";
     } else if #[cfg(target_env = "musl")] {
-        pub(crate) const ENV: &str = "musl";
+        const ENV: &str = "musl";
     } else {
-        pub(crate) const ENV: &str = "";
+        const ENV: &str = "";
     }}
     cfg_if::cfg_if! { if #[cfg(feature = "target_postgrestd")] {
-        pub(crate) const VENDOR: &str = "postgres";
+        const VENDOR: &str = "postgres";
     } else if #[cfg(target_vendor = "apple")] {
-        pub(crate) const VENDOR: &str = "apple";
+        const VENDOR: &str = "apple";
     } else if #[cfg(target_os = "windows")] {
-        pub(crate) const VENDOR: &str = "pc";
+        const VENDOR: &str = "pc";
     } else {
-        pub(crate) const VENDOR: &str = "unknown";
+        const VENDOR: &str = "unknown";
     }}
 
     cfg_if::cfg_if! { if #[cfg(target_os = "macos")] {
-        pub(crate) const OS: &str = "darwin";
+        const OS: &str = "darwin";
     } else {
-        pub(crate) const OS: &str = std::env::consts::OS;
+        const OS: &str = std::env::consts::OS;
     }}
 
-    pub(crate) fn target_tuple() -> String {
+    pub(super) fn target_tuple() -> String {
         let tuple = [ARCH, VENDOR, OS, ENV];
         let mut s = String::from(tuple[0]);
         for t in &tuple[1..] {
