@@ -1,6 +1,5 @@
 use libloading::os::unix::{Library, Symbol};
 use pgx::pg_sys;
-use std::io::Write;
 
 use crate::gucs;
 use crate::user_crate::CrateState;
@@ -35,7 +34,9 @@ impl FnReady {
             //
             // This is an added "safety" measure as we can (reasonably) assure ourselves that the
             // file won't be overwritten between when we finish writing it and when it is dlopen'd
+            use std::io::Write;
             use std::os::unix::io::AsRawFd;
+
             let mfd = memfd::MemfdOptions::default()
                 .allow_sealing(true)
                 .create(&format!("plrust-fn-{db_oid}-{fn_oid}-{pg_proc_xmin}"))?;
