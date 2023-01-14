@@ -35,11 +35,10 @@ impl FnReady {
             mfd.as_file().set_len(shared_object.len() as u64)?;
             mfd.add_seals(&[memfd::FileSeal::SealShrink, memfd::FileSeal::SealGrow])?;
             mfd.add_seal(memfd::FileSeal::SealSeal)?;
+            mfd.as_file().write_all(&shared_object)?;
 
             let raw_fd = mfd.as_raw_fd();
             let filename = format!("/proc/self/fd/{raw_fd}");
-            let mut file = std::fs::File::open(&filename)?;
-            file.write_all(&shared_object)?;
             unsafe { Library::new(&filename)? }
         } else {
             // we write the shared object (`so`) bytes out to a temporary file rooted in our
