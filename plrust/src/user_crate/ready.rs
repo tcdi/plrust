@@ -6,7 +6,10 @@ use crate::user_crate::CrateState;
 
 impl CrateState for FnReady {}
 
-pub(crate) struct FileHolder<T>(T);
+#[cfg(target_os = "linux")]
+type FileHolder = memfd::Memfd;
+#[cfg(not(target_os = "linux"))]
+type FileHolder = ();
 
 /// Ready-to-evaluate PL/Rust function
 ///
@@ -19,12 +22,7 @@ pub(crate) struct FnReady {
     #[allow(dead_code)] // We must hold this handle for `symbol`
     library: Library,
     symbol: Symbol<unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
-    file_holder: FileHolder<
-        #[cfg(target_os = "linux")]
-        memfd::Memfd
-        #[cfg(not(target_os = "linux"))]
-        ()
-    >,
+    file_holder: FileHolder,
 }
 
 impl FnReady {
@@ -109,7 +107,7 @@ impl FnReady {
             symbol_name,
             library,
             symbol,
-            file_holder: FileHolder(file_holder)
+            file_holder,
         })
     }
 
