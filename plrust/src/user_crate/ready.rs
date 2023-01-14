@@ -36,7 +36,7 @@ impl FnReady {
             mfd.add_seals(&[memfd::FileSeal::SealShrink, memfd::FileSeal::SealGrow])?;
             mfd.add_seal(memfd::FileSeal::SealSeal)?;
 
-            let raw_fd = mfd.as_file().as_raw_fd();
+            let raw_fd = mfd.as_raw_fd();
             let filename = format!("/proc/self/fd/{raw_fd}");
             let mut file = std::fs::File::open(&filename)?;
             file.write_all(&shared_object)?;
