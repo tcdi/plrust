@@ -40,14 +40,7 @@ impl FnReady {
             let filename = format!("/proc/self/fd/{raw_fd}");
             let mut file = std::fs::File::open(&filename)?;
             file.write_all(&shared_object)?;
-            let library = unsafe { Library::new(&filename)? };
-
-            // just to be obvious, the `memfd` instance gets dropped here.  Now that it's been loaded, we don't
-            // need it.  If any of the above failed and returned an Error, it'll still get dropped when
-            // the function returns.
-            drop(mfd);
-
-            library
+            unsafe { Library::new(&filename)? }
         } else {
             // we write the shared object (`so`) bytes out to a temporary file rooted in our
             // configured `plrust.work_dir`.  This will get removed from disk when this function
