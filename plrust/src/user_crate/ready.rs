@@ -39,7 +39,7 @@ impl FnReady {
     ) -> eyre::Result<Self> {
         #[cfg(target_os = "linux")]
         let (file_holder, library) = {
-            // for Linux we write the `shared_object` bytes to a memory-mapped file of exactly the
+            // for Linux we write the `shared_object` bytes to an anonymous file of exactly the
             // right size.  Then we ask `libloading::Library` to "dlopen" it using a direct path
             // to its file descriptor in "/proc/self/fd/{raw_fd}".
             //
@@ -66,10 +66,12 @@ impl FnReady {
             let raw_fd = mfd.as_raw_fd();
             let filename = format!("/proc/self/fd/{raw_fd}");
 
-            // finally, load the library.  When this block ends the memory-mapped file will be
-            // discarded, which is exactly what we want since "dlopen" has done what it needs with it
+            // finally, load the library
             let library = unsafe { Library::new(&filename)? };
 
+            // we need to also return the `Memfd` instance as well as if it gets dropped
+            // Linux might re-use its filedescriptor and dlopen() won't open the new library
+            // behind it
             (mfd, library)
         };
 

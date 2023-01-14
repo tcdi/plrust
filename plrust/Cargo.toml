@@ -28,7 +28,6 @@ target_postgrestd = []
 cfg-if = "1" # platform conditional helper
 once_cell = "1.7.2" # polyfills a nightly feature
 semver = "1.0.14"
-memfd = "0.6.2" # for loading user function .so
 
 # pgx core details
 pgx = { version = "0.7.0-beta.0" }
@@ -53,6 +52,10 @@ prettyplease = "0.1"
 syn = "1"
 quote = "1"
 proc-macro2 = "1"
+
+[target.'cfg(target_os="linux")'.dependenciesa]
+memfd = "0.6.2" # for anonymously writing/loading user function .so
+
 
 [dev-dependencies]
 pgx-tests = { version = "0.7.0-beta.0" }
