@@ -1,7 +1,6 @@
 use libloading::os::unix::{Library, Symbol};
 use pgx::pg_sys;
 
-use crate::gucs;
 use crate::user_crate::CrateState;
 
 impl CrateState for FnReady {}
@@ -22,7 +21,12 @@ pub(crate) struct FnReady {
     #[allow(dead_code)] // We must hold this handle for `symbol`
     library: Library,
     symbol: Symbol<unsafe extern "C" fn(pg_sys::FunctionCallInfo) -> pg_sys::Datum>,
-    file_holder: FileHolder,
+
+    // used to hang onto the thing where the "shared object bytes" were written
+    // mainly, this is to hold the `Memfd` instance on Linux so that we can support
+    // loading more than one user function .so at a time.  Linux seems to have a memory
+    // of what it dlopen()'d based on the file descriptor number
+    _file_holder: FileHolder,
 }
 
 impl FnReady {
@@ -74,7 +78,7 @@ impl FnReady {
             // for all other platforms we write the `shared_object` bytes out to a temporary file rooted in our
             // configured `plrust.work_dir`.  This will get removed from disk when this function
             // exists, which is fine because we'll have dlopen()'d it by then and no longer need it
-            let temp_so_file = tempfile::Builder::new().tempfile_in(gucs::work_dir())?;
+            let temp_so_file = tempfile::Builder::new().tempfile_in(crate::gucs::work_dir())?;
             std::fs::write(&temp_so_file, shared_object)?;
 
             let library = unsafe { Library::new(temp_so_file.path())? };
@@ -111,7 +115,7 @@ impl FnReady {
             symbol_name,
             library,
             symbol,
-            file_holder,
+            _file_holder,
         })
     }
 
@@ -136,7 +140,7 @@ impl FnReady {
             library,
             symbol: _,
             symbol_name: _,
-            file_holder: _,
+            _file_holder: _,
         } = self;
         library.close()?;
         Ok(())
