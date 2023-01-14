@@ -5,11 +5,6 @@ use crate::user_crate::CrateState;
 
 impl CrateState for FnReady {}
 
-#[cfg(target_os = "linux")]
-type FileHolder = memfd::Memfd;
-#[cfg(not(target_os = "linux"))]
-type FileHolder = ();
-
 /// Ready-to-evaluate PL/Rust function
 ///
 /// - Requires: dlopened artifact
@@ -26,7 +21,12 @@ pub(crate) struct FnReady {
     // mainly, this is to hold the `Memfd` instance on Linux so that we can support
     // loading more than one user function .so at a time.  Linux seems to have a memory
     // of what it dlopen()'d based on the file descriptor number
-    _file_holder: FileHolder,
+    //
+    // and it's different based on platform!
+    #[cfg(target_os = "linux")]
+    _file_holder: memfd::Memfd,
+    #[cfg(not(target_os = "linux"))]
+    _file_holder: (),
 }
 
 impl FnReady {
