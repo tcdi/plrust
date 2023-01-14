@@ -907,6 +907,18 @@ mod tests {
         assert_eq!(Ok(Some(1)), Spi::get_one::<i32>("SELECT fn1(1)"));
         Ok(())
     }
+
+    #[pg_test]
+    fn replace_function() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION replace_me() RETURNS int LANGUAGE plrust AS $$ Some(1) $$")?;
+        assert_eq!(Ok(Some(1)), Spi::get_one("SELECT replace_me()"));
+
+        Spi::run(
+            "CREATE OR REPLACE FUNCTION replace_me() RETURNS int LANGUAGE plrust AS $$ Some(2) $$",
+        )?;
+        assert_eq!(Ok(Some(2)), Spi::get_one("SELECT replace_me()"));
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
