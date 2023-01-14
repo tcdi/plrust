@@ -29,14 +29,14 @@ impl FnReady {
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
         let library = if cfg!(target_os = "linux") {
-            use std::os::unix::io::IntoRawFd;
+            use std::os::unix::io::AsRawFd;
             let options = memfd::MemfdOptions::default().allow_sealing(true);
             let mfd = options.create(&format!("plrust-fn-{db_oid}-{fn_oid}"))?;
             mfd.as_file().set_len(shared_object.len() as u64)?;
             mfd.add_seals(&[memfd::FileSeal::SealShrink, memfd::FileSeal::SealGrow])?;
             mfd.add_seal(memfd::FileSeal::SealSeal)?;
 
-            let raw_fd = mfd.into_file().into_raw_fd();
+            let raw_fd = mfd.as_file().as_raw_fd();
             let filename = format!("/proc/self/fd/{raw_fd}");
             let mut file = std::fs::File::open(&filename)?;
             file.write_all(&shared_object)?;
