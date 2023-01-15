@@ -277,7 +277,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         crate-type = ["cdylib"]
 
         [dependencies]
-        pgx =  { git = "https://github.com/tcdi/plrust", branch = "trusted-pgx", package = "trusted-pgx" }
+        pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
         // pallocator = { version = "0.1.0", git = "https://github.com/tcdi/postgrestd", branch = "1.61" }
 
         /* User deps added here */
