@@ -68,8 +68,9 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     let so_bytes = Spi::get_one_with_args::<Vec<u8>>(
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
         pkey_datums(pg_proc_oid, &this_target),
-    )?
-    .ok_or_else(|| PlRustError::NoProcEntry(pg_proc_oid, this_target.clone()))?;
+    )
+    .map_err(|| Err(PlRustError::NoProcEntry(pg_proc_oid, this_target.clone())))?
+    .ok_or_else(|| Err(PlRustError::NullPlRustProcSharedLibraryBytes))?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
