@@ -34,4 +34,6 @@ pub(crate) enum PlRustError {
     Parse(#[from] syn::Error),
     #[error("No plrust.plrust_proc entry for ({0}, {1})")]
     NoProcEntry(pgx::pg_sys::Oid, CompilationTarget),
+    #[error("plrust.plrust_proc.so bytes are NULL")]
+    NullPlRustProcSharedLibraryBytes,
 }
