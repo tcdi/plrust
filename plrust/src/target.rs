@@ -133,8 +133,8 @@ impl CrossCompilationTarget {
 
     pub(crate) fn linker_envar(&self) -> (String, String) {
         let key = format!(
-            "CARGO_TARGET_{}_POSTGRES_LINUX_GNU_LINKER",
-            self.to_string().to_uppercase()
+            "CARGO_TARGET_{}_LINKER",
+            self.target().as_str().to_uppercase().replace('-', "_")
         );
 
         // TODO:  get overides from postgresql.conf GUC
