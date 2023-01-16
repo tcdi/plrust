@@ -50,7 +50,7 @@ on either x86_64 or aarch64 Linux systems.  This can be turned off.
 `postgrestd` and the `trusted` feature flag are **not** supported on other platforms.  As such, PL/Rust cannot be 
 considered fully trusted on those platforms.
 
-## TODO:  PL/Rust is also Cross Compiler
+## TODO:  PL/Rust is also a Cross Compiler
 ...
 
 ## Installing `postgrestd`
