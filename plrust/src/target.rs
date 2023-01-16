@@ -115,8 +115,8 @@ impl CompilationTarget {
 
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub(crate) enum CrossCompilationTarget {
-    X86_64 = 1,
-    Aarch64 = 2,
+    X86_64,
+    Aarch64,
 }
 
 impl Display for CrossCompilationTarget {
