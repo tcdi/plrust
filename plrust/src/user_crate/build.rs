@@ -7,7 +7,7 @@ use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 
-use crate::gucs::compilation_targets;
+use crate::gucs::{compilation_targets, get_linker_for_target};
 use crate::target::CompilationTarget;
 use crate::{
     target,
@@ -104,15 +104,12 @@ impl FnBuild {
         // ensures that in non-cross-compilation installs, the host does **NOT** need a cross-compile
         // toolchain
         if target::tuple()? != target_triple {
-            command.env(
-                &format!(
-                    "CARGO_TARGET_{}_LINKER",
-                    &target_triple.as_str().replace('-', "_").to_uppercase()
-                ),
-                // the value for this variable most likely ends with `-gcc` and also doesn't have
-                // the `-unknown-` bit in the middle
-                &format!("{}-gcc", target_triple.replace("-unknown-", "-")),
+            let varname = format!(
+                "CARG_TARGET_{}_LINKER",
+                target_triple.as_str().replace('-', "_").to_uppercase()
             );
+            let value = get_linker_for_target(target_triple)?;
+            command.env(varname, value);
         }
 
         let output = command.output().wrap_err("`cargo` execution failure")?;

@@ -11,6 +11,9 @@ use crate::target;
 use crate::target::CompilationTarget;
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
+use pgx::pg_sys;
+use pgx::pg_sys::AsPgCStr;
+use std::ffi::CStr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -122,4 +125,25 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
     };
 
     Ok((this_target, other_targets.into_iter()))
+}
+
+pub(crate) fn get_linker_for_target(target: &CompilationTarget) -> eyre::Result<String> {
+    unsafe {
+        let guc_name = format!("plrust.{}_linker", target.as_str().replace('-', "_"));
+        let value = pg_sys::GetConfigOption(guc_name.as_pg_cstr(), true, true);
+        if value.is_null() {
+            Ok(match target.as_str() {
+                "aarch64-postgres-linux-gnu" | "aarch64-unknown-linux-gnu" => {
+                    "aarch64-linux-gnu-gcc".into()
+                }
+                "x86_64-postgres-linux-gnu" | "x86_64-unknown-linux-gnu" => {
+                    "x86_64-linux-gnu-gcc".into()
+                }
+                _ => return Err(eyre::eyre!("unrecognized compilation target: {target}")),
+            })
+        } else {
+            let value_cstr = CStr::from_ptr(value);
+            Ok(value_cstr.to_string_lossy().to_string())
+        }
+    }
 }
