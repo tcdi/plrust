@@ -7,15 +7,17 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::target;
-use crate::target::CompilationTarget;
+use std::ffi::CStr;
+use std::path::PathBuf;
+use std::str::FromStr;
+
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
 use pgx::pg_sys;
 use pgx::pg_sys::AsPgCStr;
-use std::ffi::CStr;
-use std::path::PathBuf;
-use std::str::FromStr;
+
+use crate::target;
+use crate::target::CompilationTarget;
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None);
@@ -23,6 +25,14 @@ static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
     GucSetting::new(None);
 static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
+
+/// Only Linux on x86_64 and aarch64 support `postgrestd`, so the default is `true` and we don't
+/// bother defining this variable otherwise
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))] // use the same expression over in [`crate::target::host::VENDOR()`]
+pub(crate) static PLRUST_USE_POSTGRESTD: GucSetting<bool> = GucSetting::new(true);
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
@@ -78,7 +88,18 @@ pub(crate) fn init() {
         "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecutre",
         &PLRUST_COMPILATION_TARGETS,
         GucContext::Postmaster
-    )
+    );
+
+    // only Linux supports `postgrestd`
+    #[cfg(target_os = "linux")]
+    {
+        GucRegistry::define_bool_guc("plrust.use_postgrestd",
+                                     "If true (the default), plrust will use the `postgrestd` std implementation instead of Rust's default std",
+                                     "Using `postgrestd` allows plrust to meet the Postgres requirements for a \"Trusted Procedural Language\", including no filesystem access",
+                                     &PLRUST_USE_POSTGRESTD,
+                                     GucContext::Postmaster
+        );
+    }
 }
 
 pub(crate) fn work_dir() -> PathBuf {

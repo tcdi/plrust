@@ -5,7 +5,6 @@
 */
 
 use once_cell::sync::Lazy;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -20,15 +19,28 @@ mod host {
     } else {
         const ENV: &str = "";
     }}
-    cfg_if::cfg_if! { if #[cfg(feature = "target_postgrestd")] {
-        const VENDOR: &str = "postgres";
-    } else if #[cfg(target_vendor = "apple")] {
-        const VENDOR: &str = "apple";
-    } else if #[cfg(target_os = "windows")] {
-        const VENDOR: &str = "pc";
-    } else {
-        const VENDOR: &str = "unknown";
-    }}
+
+    #[allow(non_snake_case)]
+    fn VENDOR() -> &'static str {
+        cfg_if::cfg_if! {
+        if #[cfg(all(
+               target_os = "linux",
+               any(target_arch = "x86_64", target_arch = "aarch64")
+           ))]
+        {
+            if crate::gucs::PLRUST_USE_POSTGRESTD.get() {
+                "postgres"
+            } else {
+                "unknown"
+            }
+        } else if #[cfg(target_vendor = "apple")] {
+            "apple"
+        } else if #[cfg(target_os = "windows")] {
+            "pc"
+        } else {
+            "unknown"
+        }}
+    }
 
     cfg_if::cfg_if! { if #[cfg(target_os = "macos")] {
         const OS: &str = "darwin";
@@ -37,7 +49,7 @@ mod host {
     }}
 
     pub(super) fn target_tuple() -> String {
-        let tuple = [ARCH, VENDOR, OS, ENV];
+        let tuple = [ARCH, VENDOR(), OS, ENV];
         let mut s = String::from(tuple[0]);
         for t in &tuple[1..] {
             if t != &"" {
@@ -105,26 +117,7 @@ impl CompilationTarget {
 }
 
 pub(crate) fn tuple() -> Result<&'static CompilationTarget, &'static TargetErr> {
-    pub(crate) static TARGET_TUPLE: Lazy<Result<CompilationTarget, TargetErr>> =
-        Lazy::new(|| match env::var("PLRUST_TARGET") {
-            Ok(v) => Ok(v.into()),
-            Err(env::VarError::NotPresent) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(all(feature = "target_postgrestd",
-                        any(target_arch = "x86_64", target_arch = "aarch64"),
-                        target_os = "linux",
-                        target_env = "gnu"))]
-                    {
-                        Ok(host::target_tuple().into())
-                    } else if #[cfg(feature = "target_postgrestd")] {
-                        Err(TargetErr::Unsupported)
-                    } else {
-                        Ok(host::target_tuple().into())
-                    }
-                }
-            }
-            Err(env::VarError::NotUnicode(s)) => Err(TargetErr::InvalidSpec(s)),
-        });
-
-    TARGET_TUPLE.as_ref()
+    static TARGET_TRIPLE: Lazy<Result<CompilationTarget, TargetErr>> =
+        Lazy::new(|| Ok(host::target_tuple().into()));
+    TARGET_TRIPLE.as_ref()
 }

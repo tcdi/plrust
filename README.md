@@ -36,36 +36,43 @@ Failure to do so will cause unexpected behavior around the DROP FUNCTION, DROP S
 
 Additionally, there are two `postgresql.conf` settings that must be configured:
 
-Option | Description
---------------|-----------
-`plrust.pg_config` | The full path of the `pg_config` binary (required).
-`plrust.work_dir` | The directory where pl/rust will build functions with cargo (required).
-`plrust.tracing_level` | A [tracing directive][docs-rs-tracing-directive]. (Default `info`)
+| Option                  | Type    | Description                                                 | Required | Default  |
+|-------------------------|---------|-------------------------------------------------------------|----------|----------|
+| `plrust.pg_config`      | string  | The full path of the `pg_config` binary                     | yes      | <none>.  |
+| `plrust.work_dir`       | string  | The directory where pl/rust will build functions with cargo | yes      | <none>   |
+| `plrust.tracing_level`  | string  | A [tracing directive][docs-rs-tracing-directive]            | no       | `'info'` |
+| `plrust.use_postgrestd` | boolean | Should PL/Rust use `postgrestd` for user functions?         | no       | `true`   |
 
 [github-pgx]: https://github.com/zombodb/pgx
 [github-fpm]: https://github.com/jordansissel/fpm
 [docs-rs-tracing-directive]: https://docs.rs/tracing-subscriber/0.3.11/tracing_subscriber/filter/struct.EnvFilter.html
 
 # Using PL/Rust with Postgrestd
-PL/Rust currently supports being used with an experimental fork of Rust's std entitled `postgrestd` which supports an
-`x86_64-postgres-linux-gnu` target. This is built via the `build` script, which pulls in `postgrestd`.
+PL/Rust currently supports, and in fact defaults to, being used with a fork of Rust's std entitled `postgrestd` which 
+supports both `x86_64-postgres-linux-gnu` and `aarch64-postgres-linux-gnu` targets.
+
+When using `postgrestd`, PL/Rust disallows the ability for user functions to use the filesystem, execute processes, and
+many other things, to meet Postgres' requirements of a "Trusted Procedural Language".
+
+These Rust targets are built via the [`build`](plrust/build) script, which pulls in `postgrestd` from https://github.com/tcdi/postgrestd.
+
 Doing so places a copy of the necessary libraries used by Rust for `std` into the appropriate "sysroot",
 which is the location that rustc will look for building those libraries.
 
-Further usage requires setting the `PLRUST_TARGET` to the appropriate tuple, as this is still an experimental feature,
-and so is not currently set by default. Passing `--features target_postgrestd` to `cargo` also works. These are subtly different:
+PL/Rust will always use the `${arch}-postgres-linux-gnu` rust targets on either x86_64 or aarch64 Linux distros.  This
+can be turned off by setting the `plrust.use_postgrestd` GUC to false in `postgresql.conf`.
 
-- `PLRUST_TARGET` is evaluated when the PL/Rust handler builds a function
-- `--features target_postgrestd` is evaluated when the PL/Rust handler is built
-- `PLRUST_TARGET` prevails over `target_postgrestd` if both are set
+`postgrestd` is **not** supported on other platforms, so plrust cannot be considered fully trusted on those platforms.
 
 This initial build process requires a normal installation of Rust via [`rustup`](https://rustup.rs)
 and for the relevant location to be writeable on the building host.
 
 ```bash
 cd plrust
+rustup target install aarch64-unknown-linux-gnu
+rustup target install x86_64-unknown-linux-gnu
 ./build
-PLRUST_TARGET="x86_64-postgres-linux-gnu" cargo build
+cargo build
 ```
 
 # Installation

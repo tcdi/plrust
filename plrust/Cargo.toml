@@ -21,7 +21,6 @@ pg_test = []
 sandboxed = []
 # Forcibly enable a feature used by x86_64 MacOS machines because they're bad at `dlclose()`
 force_enable_x86_64_darwin_generations = []
-target_postgrestd = []
 # verify = [] # Revisit this later for other verification features
 
 [dependencies]

@@ -124,8 +124,8 @@ jobs:
     - name: Run cargo pgx init for PG14
       run: cargo pgx init --pg14 $(which pg_config)
 
-    - name: Run build plrust script
-      run: cd plrust && PLRUST_TARGET="aarch64-postgres-linux-gnu" ./build
+    - name: Run build plrust script targeting aarch64-postgres-linux-gnu
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats

@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 set -xe
 
-if [ -z "$PLRUST_TARGETS" ]; then
-    export PLRUST_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
+if [ -z "$STD_TARGETS" ]; then
+    # if none specified, always build for these two targets
+    STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
+fi
+
+# and depending on the platform we're building on, we need to set a linker flag for the other
+# this'll get hairy when we support more platforms and we should port this script to Rust
+if [ `uname -m` == "x86_64" ]; then
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+    CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+elif [ `uname -m` == "aarch64" ]; then
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+    CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+else
+    echo unsupported build platform: $(uname -m)
+    exit 1
 fi
 
 # Make sure the tip of pgx's develop branch is used,
@@ -28,8 +42,8 @@ fi
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml
-    STD_TARGETS="$PLRUST_TARGETS" ./run clean
-    STD_TARGETS="$PLRUST_TARGETS" ./run install
+    ./run clean
+    ./run install
 )
 
-cargo test --verbose --no-default-features --features "pg${PG_VER:-15} target_postgrestd"
+cargo test --verbose --no-default-features --features "pg${PG_VER:-15}"
