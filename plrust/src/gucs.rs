@@ -81,17 +81,6 @@ pub(crate) fn init() {
         &PLRUST_COMPILATION_TARGETS,
         GucContext::Postmaster
     );
-
-    // only Linux supports `postgrestd`
-    #[cfg(target_os = "linux")]
-    {
-        GucRegistry::define_bool_guc("plrust.use_postgrestd",
-                                     "If true (the default), plrust will use the `postgrestd` std implementation instead of Rust's default std",
-                                     "Using `postgrestd` allows plrust to meet the Postgres requirements for a \"Trusted Procedural Language\", including no filesystem access",
-                                     &PLRUST_USE_POSTGRESTD,
-                                     GucContext::Postmaster
-        );
-    }
 }
 
 pub(crate) fn work_dir() -> PathBuf {
