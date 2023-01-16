@@ -103,9 +103,10 @@ impl FnBuild {
         // don't specify a linker if the target we're compiling for is the host's target.  This
         // ensures that in non-cross-compilation installs, the host does **NOT** need a cross-compile
         // toolchain
+
         if target::tuple()? != target_triple {
             let varname = format!(
-                "CARG_TARGET_{}_LINKER",
+                "CARGO_TARGET_{}_LINKER",
                 target_triple.as_str().replace('-', "_").to_uppercase()
             );
             let value = get_linker_for_target(target_triple)?;
