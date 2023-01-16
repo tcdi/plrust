@@ -1,8 +1,8 @@
-#! /usr/bin/sh
+#!/usr/bin/env bash
 set -xe
 
-if [ -z "$PLRUST_TARGET" ]; then
-    export PLRUST_TARGET="x86_64-postgres-linux-gnu"
+if [ -z "$PLRUST_TARGETS" ]; then
+    export PLRUST_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
 fi
 
 # Make sure the tip of pgx's develop branch is used,
@@ -24,12 +24,12 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --branch "1.65-vendor-postgres" --recurse-submodules
+        git clone https://github.com/tcdi/postgrestd.git --branch "thomcc/multi-target" --recurse-submodules
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml
-    ./run clean
-    STD_TARGET="$PLRUST_TARGET" ./run install
+    STD_TARGETS="$PLRUST_TARGETS" ./run clean
+    STD_TARGETS="$PLRUST_TARGETS" ./run install
 )
 
 cargo test --verbose --no-default-features --features "pg${PG_VER:-15} target_postgrestd"
