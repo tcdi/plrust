@@ -129,23 +129,15 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
     Ok((this_target, other_targets.into_iter()))
 }
 
-pub(crate) fn get_linker_for_target(target: &CompilationTarget) -> eyre::Result<String> {
+pub(crate) fn get_linker_for_target(target: &CrossCompilationTarget) -> Option<String> {
     unsafe {
-        let guc_name = format!("plrust.{}_linker", target.as_str().replace('-', "_"));
+        let guc_name = format!("plrust.{target}_linker");
         let value = pg_sys::GetConfigOption(guc_name.as_pg_cstr(), true, true);
         if value.is_null() {
-            Ok(match target.as_str() {
-                "aarch64-postgres-linux-gnu" | "aarch64-unknown-linux-gnu" => {
-                    "aarch64-linux-gnu-gcc".into()
-                }
-                "x86_64-postgres-linux-gnu" | "x86_64-unknown-linux-gnu" => {
-                    "x86_64-linux-gnu-gcc".into()
-                }
-                _ => return Err(eyre::eyre!("unrecognized compilation target: {target}")),
-            })
+            None
         } else {
             let value_cstr = CStr::from_ptr(value);
-            Ok(value_cstr.to_string_lossy().to_string())
+            Some(value_cstr.to_string_lossy().to_string())
         }
     }
 }

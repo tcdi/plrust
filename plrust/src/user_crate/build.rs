@@ -7,9 +7,9 @@ use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 
-use crate::gucs::{compilation_targets, get_linker_for_target};
 use crate::target::{CompilationTarget, CrossCompilationTarget};
 use crate::{
+    gucs,
     user_crate::{CrateState, FnLoad},
     PlRustError,
 };
@@ -60,7 +60,7 @@ impl FnBuild {
             target_dir = tracing::field::display(target_dir.display()),
         ))]
     pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<Vec<(FnLoad, Output)>> {
-        let (this_target, cross_compilation_targets) = compilation_targets()?;
+        let (this_target, cross_compilation_targets) = gucs::compilation_targets()?;
         let mut results = Vec::new();
 
         // always build for this host machine

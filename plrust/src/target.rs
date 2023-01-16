@@ -4,6 +4,7 @@
     so a normal build-and-test cycle may create artifacts for multiple targets.
 */
 
+use crate::gucs;
 use once_cell::sync::Lazy;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
@@ -137,14 +138,12 @@ impl CrossCompilationTarget {
             self.target().as_str().to_uppercase().replace('-', "_")
         );
 
-        // TODO:  get overides from postgresql.conf GUC
-        let value = match self {
-            CrossCompilationTarget::X86_64 => "x86_64-linux-gnu-gcc",
-            CrossCompilationTarget::Aarch64 => "aarch64-linux-gnu-gcc",
-        }
-        .into();
+        let linker = gucs::get_linker_for_target(self).unwrap_or_else(|| match self {
+            CrossCompilationTarget::X86_64 => "x86_64-linux-gnu-gcc".into(),
+            CrossCompilationTarget::Aarch64 => "aarch64-linux-gnu-gcc".into(),
+        });
 
-        (key, value)
+        (key, linker)
     }
 }
 
