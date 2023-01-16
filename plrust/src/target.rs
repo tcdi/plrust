@@ -111,6 +111,73 @@ impl CompilationTarget {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub(crate) enum CrossCompilationTarget {
+    X86_64 = 1,
+    Aarch64 = 2,
+}
+
+impl Display for CrossCompilationTarget {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CrossCompilationTarget::X86_64 => write!(f, "x86_64"),
+            CrossCompilationTarget::Aarch64 => write!(f, "aarch64"),
+        }
+    }
+}
+
+impl CrossCompilationTarget {
+    pub(crate) fn target(self) -> CompilationTarget {
+        self.into()
+    }
+
+    pub(crate) fn linker_envar(&self) -> (String, String) {
+        let key = format!(
+            "CARGO_TARGET_{}_POSTGRESTD_LINUX_GNU_LINKER",
+            self.to_string().to_uppercase()
+        );
+
+        // TODO:  get overides from postgresql.conf GUC
+        let value = match self {
+            CrossCompilationTarget::X86_64 => "x86_64-linux-gnu-gcc",
+            CrossCompilationTarget::Aarch64 => "aarch64-linux-gnu-gcc",
+        }
+        .into();
+
+        (key, value)
+    }
+}
+
+impl TryFrom<&str> for CrossCompilationTarget {
+    type Error = TargetErr;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "x86_64" => Ok(CrossCompilationTarget::X86_64),
+            "aarch64" => Ok(CrossCompilationTarget::Aarch64),
+            _ => Err(TargetErr::Unsupported),
+        }
+    }
+}
+
+impl From<CrossCompilationTarget> for CompilationTarget {
+    fn from(cct: CrossCompilationTarget) -> Self {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "trusted")] {
+                match cct {
+                    CrossCompilationTarget::X86_64 => "x86_64-postgres-linux-gnu",
+                    CrossCompilationTarget::Aarch64 => "aarch64-postgres-linux-gnu",
+                }.into()
+            } else {
+                match cct {
+                    CrossCompilationTarget::X86_64 => "x86_64-unknown-linux-gnu",
+                    CrossCompilationTarget::Aarch64 => "aarch64-unknown-linux-gnu",
+                }.into()
+            }
+        }
+    }
+}
+
 pub(crate) fn tuple() -> Result<&'static CompilationTarget, &'static TargetErr> {
     static TARGET_TRIPLE: Lazy<Result<CompilationTarget, TargetErr>> =
         Lazy::new(|| Ok(host::target_tuple().into()));

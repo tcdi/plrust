@@ -8,9 +8,8 @@ use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 
 use crate::gucs::{compilation_targets, get_linker_for_target};
-use crate::target::CompilationTarget;
+use crate::target::{CompilationTarget, CrossCompilationTarget};
 use crate::{
-    target,
     user_crate::{CrateState, FnLoad},
     PlRustError,
 };
@@ -61,15 +60,15 @@ impl FnBuild {
             target_dir = tracing::field::display(target_dir.display()),
         ))]
     pub(crate) fn build(self, target_dir: &Path) -> eyre::Result<Vec<(FnLoad, Output)>> {
-        let (this_target, other_targets) = compilation_targets()?;
+        let (this_target, cross_compilation_targets) = compilation_targets()?;
         let mut results = Vec::new();
 
         // always build for this host machine
-        results.push(self.build_internal(target_dir, this_target)?);
+        results.push(self.build_internal(target_dir, this_target.clone(), None)?);
 
         // and then do the others, which is guaranteed not to contain the exact same triple as `this_target`
-        for other_target in other_targets {
-            results.push(self.build_internal(target_dir, &other_target)?);
+        for target in cross_compilation_targets {
+            results.push(self.build_internal(target_dir, target.target(), Some(target))?);
         }
         Ok(results)
     }
@@ -81,13 +80,15 @@ impl FnBuild {
             db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             crate_dir = %self.crate_dir.display(),
-            target_dir = tracing::field::display(target_dir.display()),
+            target_dir = tracing::field::display(cargo_target_dir.display()),
             target_triple = %target_triple,
+            cross_compilation_target
         ))]
     fn build_internal(
         &self,
-        target_dir: &Path,
-        target_triple: &CompilationTarget,
+        cargo_target_dir: &Path,
+        target_triple: CompilationTarget,
+        cross_compilation_target: Option<CrossCompilationTarget>,
     ) -> eyre::Result<(FnLoad, Output)> {
         let mut command = Command::new("cargo");
 
@@ -97,20 +98,16 @@ impl FnBuild {
         command.arg("--target");
         command.arg(&target_triple);
         command.env("PGX_PG_CONFIG_PATH", &self.pg_config);
-        command.env("CARGO_TARGET_DIR", &target_dir);
+        command.env("CARGO_TARGET_DIR", &cargo_target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
         // don't specify a linker if the target we're compiling for is the host's target.  This
         // ensures that in non-cross-compilation installs, the host does **NOT** need a cross-compile
         // toolchain
 
-        if target::tuple()? != target_triple {
-            let varname = format!(
-                "CARGO_TARGET_{}_LINKER",
-                target_triple.as_str().replace('-', "_").to_uppercase()
-            );
-            let value = get_linker_for_target(target_triple)?;
-            command.env(varname, value);
+        if let Some(target_triple) = cross_compilation_target {
+            let (k, v) = target_triple.linker_envar();
+            command.env(k, v);
         }
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
@@ -135,7 +132,7 @@ impl FnBuild {
             let so_bytes = {
                 use std::env::consts::DLL_SUFFIX;
                 let so_filename = &format!("lib{crate_name}{DLL_SUFFIX}");
-                let so_path = target_dir
+                let so_path = cargo_target_dir
                     .join(&target_triple)
                     .join("release")
                     .join(&so_filename);
@@ -148,7 +145,7 @@ impl FnBuild {
                     self.pg_proc_xmin,
                     self.db_oid,
                     self.fn_oid,
-                    target_triple.clone(),
+                    target_triple,
                     so_bytes,
                 ),
                 output,
