@@ -27,7 +27,7 @@ cfg_if::cfg_if! {
     } else {
         /// We are NOT a trusted language handler.  This will cause plrust user functions to be compiled
         /// with the standard Rust `std`
-        pub(crate) const TRUSTED:bool = false;
+        pub(crate) const TRUSTED: bool = false;
     }
 }
 
