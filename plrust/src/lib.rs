@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "trusted")] {
         /// We are a trusted language handler.  This will cause plrust user functions to be compiled
         /// with `postgrestd`
-        pub(crate) const TRUSTED:bool = true;
+        pub(crate) const TRUSTED: bool = true;
     } else {
         /// We are NOT a trusted language handler.  This will cause plrust user functions to be compiled
         /// with the standard Rust `std`
