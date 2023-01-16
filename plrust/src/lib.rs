@@ -10,6 +10,27 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #![doc = include_str!("../../README.md")]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+#[cfg(all(
+    feature = "trusted",
+    not(all(
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))
+))]
+compile_error!("This platform does not support the 'trusted' version of plrust");
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "trusted")] {
+        /// We are a trusted language handler.  This will cause plrust user functions to be compiled
+        /// with `postgrestd`
+        pub(crate) const TRUSTED:bool = true;
+    } else {
+        /// We are NOT a trusted language handler.  This will cause plrust user functions to be compiled
+        /// with the standard Rust `std`
+        pub(crate) const TRUSTED:bool = false;
+    }
+}
+
 mod error;
 #[cfg(any(
     all(target_os = "macos", target_arch = "x86_64"),
@@ -191,4 +212,17 @@ COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
 "#,
     name = "language_handler",
     requires = [plrust_call_handler, plrust_validator]
+);
+
+#[cfg(not(feature = "trusted"))]
+extension_sql!(
+    r#"
+DO LANGUAGE plpgsql $$
+BEGIN
+    RAISE WARNING 'plrust is **NOT** compiled to be a trusted procedural language';
+END;
+$$;
+"#,
+    name = "untrusted_warning",
+    requires = ["language_handler"]
 );

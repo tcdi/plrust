@@ -16,6 +16,8 @@ default = ["pg14"]
 pg13 = ["pgx/pg13", "pgx-tests/pg13"]
 pg14 = ["pgx/pg14", "pgx-tests/pg14"]
 pg15 = ["pgx/pg15", "pgx-tests/pg15"]
+# is plrust to be compiled as a "trusted" language handler, meaning it requires postgrestd at runtime
+trusted = []
 pg_test = []
 # Be accomodating to sandboxed builds with no network.
 sandboxed = []

@@ -362,6 +362,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
     fn postgrestd_dont_make_files() -> spi::Result<()> {
@@ -418,6 +419,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]

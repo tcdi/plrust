@@ -46,4 +46,4 @@ fi
     ./run install
 )
 
-cargo test --verbose --no-default-features --features "pg${PG_VER:-15}"
+cargo test --verbose --no-default-features --features "pg${PG_VER:-15} trusted"

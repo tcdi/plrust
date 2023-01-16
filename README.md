@@ -1,27 +1,69 @@
-# `plrust` Extension for PostgreSQL
+# PL/Rust: A Trusted Procedural Language Handler 
 
-![CI status](https://github.com/zombodb/plrust/actions/workflows/ci.yml/badge.svg)
+PL/Rust is a loadable procedural language that enables you to write PostgreSQL functions  in the Rust programming
+language. These functions are compiled to native machine code (ie, not interpreted like PL/Pgsql or PL/Perl).
 
-Support for `plrust` in PostgreSQL functions.
+The top advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance, 
+access to Rust's large development ecosystem, and Rust's compile-time safety guarantees.
 
-```SQL
-CREATE EXTENSION IF NOT EXISTS plrust;
-CREATE OR REPLACE FUNCTION sum_array(a BIGINT[]) RETURNS BIGINT
-    IMMUTABLE STRICT
-    LANGUAGE PLRUST AS
-$$
-[dependencies]
-    # Add Cargo.toml dependencies here.
-[code]
-    Some(a.into_iter().map(|v| v.unwrap_or_default()).sum())
+On x86_64 and aarch64 systems, PL/Rust can be considered a fully trusted procedural language, assuming the proper
+compilation and host system requirements are met.  On other systems, it is perfectly usable as an "untrusted" language
+but cannot provide the same level of safety guarantees.
+
+This is an example PL/Rust function:
+
+```sql
+CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
+    Some(name?.len() as i32)
 $$;
-SELECT sum_array(ARRAY[1,2,3]);
-/*
-sum_array
-----------------
-              6
-(1 row)
-*/
+
+# select strlen('Hello, PL/Rust');
+strlen 
+--------
+     14
+```
+
+# General Safety, by Rust
+
+
+
+# Trusted-ness with `postgrestd`
+
+PL/Rust uses a unique fork of Rust's `std` entitled [`postgrestd`](https://github.com/tcdi/postgrestd) when compiling 
+user `LANGUAGE plrust` functions. `postgrestd` allows PL/Rust to be a "Trusted Procedural Language" on platforms where 
+it's supported.  Currently, this is only x86_64 and aarch64 Linux systems.
+
+When `plrust` user functions are compiled and linked against `postgrestd`, PL/Rust prohibits them from using the 
+filesystem, executing processes, and otherwise interacting with the host operating system.  All in an effort to meet 
+Postgres' "Trusted Procedural Language" requirements.
+
+In order for PL/Rust to use `postgrestd`, its targets must be installed on the Postgres server.  This happens via
+the [`build`](plrust/build) script, which clones `postgrestd` from https://github.com/tcdi/postgrestd, compiles it,
+by default, for both x86_64 and aarch64 architectures, and ultimately places a copy of the necessary libraries used by 
+Rust for `std` into the appropriate "sysroot", which is the location that rustc will look for building those libraries.
+
+Additionally, PL/Rust itself must be compiled with the `trusted` feature flag.  More on this below.
+
+When compiled with the `trusted` feature flag PL/Rust will **always** use the `${arch}-postgres-linux-gnu` rust targets 
+on either x86_64 or aarch64 Linux systems.  This can be turned off.
+
+`postgrestd` and the `trusted` feature flag are **not** supported on other platforms.  As such, PL/Rust cannot be 
+considered fully trusted on those platforms.
+
+## TODO:  PL/Rust is also Cross Compiler
+...
+
+## Installing `postgrestd`
+
+This initial build process requires a normal installation of Rust via [`rustup`](https://rustup.rs)
+and for the relevant location to be writeable on the building host.
+
+```bash
+cd plrust
+rustup target install aarch64-unknown-linux-gnu
+rustup target install x86_64-unknown-linux-gnu
+./build
+cargo build
 ```
 
 # Configuration
@@ -38,42 +80,13 @@ Additionally, there are two `postgresql.conf` settings that must be configured:
 
 | Option                  | Type    | Description                                                 | Required | Default  |
 |-------------------------|---------|-------------------------------------------------------------|----------|----------|
-| `plrust.pg_config`      | string  | The full path of the `pg_config` binary                     | yes      | <none>.  |
+| `plrust.pg_config`      | string  | The full path of the `pg_config` binary                     | yes      | <none>   |
 | `plrust.work_dir`       | string  | The directory where pl/rust will build functions with cargo | yes      | <none>   |
 | `plrust.tracing_level`  | string  | A [tracing directive][docs-rs-tracing-directive]            | no       | `'info'` |
-| `plrust.use_postgrestd` | boolean | Should PL/Rust use `postgrestd` for user functions?         | no       | `true`   |
 
 [github-pgx]: https://github.com/zombodb/pgx
 [github-fpm]: https://github.com/jordansissel/fpm
 [docs-rs-tracing-directive]: https://docs.rs/tracing-subscriber/0.3.11/tracing_subscriber/filter/struct.EnvFilter.html
-
-# Using PL/Rust with Postgrestd
-PL/Rust currently supports, and in fact defaults to, being used with a fork of Rust's std entitled `postgrestd` which 
-supports both `x86_64-postgres-linux-gnu` and `aarch64-postgres-linux-gnu` targets.
-
-When using `postgrestd`, PL/Rust disallows the ability for user functions to use the filesystem, execute processes, and
-many other things, to meet Postgres' requirements of a "Trusted Procedural Language".
-
-These Rust targets are built via the [`build`](plrust/build) script, which pulls in `postgrestd` from https://github.com/tcdi/postgrestd.
-
-Doing so places a copy of the necessary libraries used by Rust for `std` into the appropriate "sysroot",
-which is the location that rustc will look for building those libraries.
-
-PL/Rust will always use the `${arch}-postgres-linux-gnu` rust targets on either x86_64 or aarch64 Linux distros.  This
-can be turned off by setting the `plrust.use_postgrestd` GUC to false in `postgresql.conf`.
-
-`postgrestd` is **not** supported on other platforms, so plrust cannot be considered fully trusted on those platforms.
-
-This initial build process requires a normal installation of Rust via [`rustup`](https://rustup.rs)
-and for the relevant location to be writeable on the building host.
-
-```bash
-cd plrust
-rustup target install aarch64-unknown-linux-gnu
-rustup target install x86_64-unknown-linux-gnu
-./build
-cargo build
-```
 
 # Installation
 
@@ -194,8 +207,8 @@ plrust=# \dx+ plrust
 -----------------------------------------
  function plrust.plrust_call_handler()
  function plrust.plrust_validator(oid)
- function plrust.recompile_function(oid)
  language plrust
+ table plrust.plrust_proc
 (4 rows)
 ```
 

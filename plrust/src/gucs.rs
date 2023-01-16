@@ -26,14 +26,6 @@ pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> 
     GucSetting::new(None);
 static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
 
-/// Only Linux on x86_64 and aarch64 support `postgrestd`, so the default is `true` and we don't
-/// bother defining this variable otherwise
-#[cfg(all(
-    target_os = "linux",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))] // use the same expression over in [`crate::target::host::VENDOR()`]
-pub(crate) static PLRUST_USE_POSTGRESTD: GucSetting<bool> = GucSetting::new(true);
-
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
         let path = PathBuf::from_str(

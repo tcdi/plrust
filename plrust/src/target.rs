@@ -21,25 +21,20 @@ mod host {
     }}
 
     #[allow(non_snake_case)]
-    fn VENDOR() -> &'static str {
-        cfg_if::cfg_if! {
-        if #[cfg(all(
-               target_os = "linux",
-               any(target_arch = "x86_64", target_arch = "aarch64")
-           ))]
-        {
-            if crate::gucs::PLRUST_USE_POSTGRESTD.get() {
-                "postgres"
-            } else {
-                "unknown"
-            }
-        } else if #[cfg(target_vendor = "apple")] {
-            "apple"
-        } else if #[cfg(target_os = "windows")] {
-            "pc"
+    const fn VENDOR() -> &'static str {
+        if crate::TRUSTED {
+            "postgres"
         } else {
-            "unknown"
-        }}
+            cfg_if::cfg_if! {
+                if #[cfg(target_vendor = "apple")] {
+                    "apple"
+                } else if #[cfg(target_os = "windows")] {
+                    "pc"
+                } else {
+                    "unknown"
+                }
+            }
+        }
     }
 
     cfg_if::cfg_if! { if #[cfg(target_os = "macos")] {
