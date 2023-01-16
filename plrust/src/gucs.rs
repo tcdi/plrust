@@ -132,10 +132,31 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
 pub(crate) fn get_linker_for_target(target: &CrossCompilationTarget) -> Option<String> {
     unsafe {
         let guc_name = format!("plrust.{target}_linker");
+        // SAFETY:  GetConfigOption returns a possibly NULL `char *` because `missing_ok` is true
+        // but that's okay as we account for that possibility.  The named GUC not being in the
+        // configuration is a perfectly fine thing.
         let value = pg_sys::GetConfigOption(guc_name.as_pg_cstr(), true, true);
         if value.is_null() {
             None
         } else {
+            // SAFETY:  GetConfigOption gave us a valid `char *` that is usable as a CStr
+            let value_cstr = CStr::from_ptr(value);
+            Some(value_cstr.to_string_lossy().to_string())
+        }
+    }
+}
+
+pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Option<String> {
+    unsafe {
+        let guc_name = format!("plrust.{target}_pgx_bindings_path");
+        // SAFETY:  GetConfigOption returns a possibly NULL `char *` because `missing_ok` is true
+        // but that's okay as we account for that possibility.  The named GUC not being in the
+        // configuration is a perfectly fine thing.
+        let value = pg_sys::GetConfigOption(guc_name.as_pg_cstr(), true, true);
+        if value.is_null() {
+            None
+        } else {
+            // SAFETY:  GetConfigOption gave us a valid `char *` that is usable as a CStr
             let value_cstr = CStr::from_ptr(value);
             Some(value_cstr.to_string_lossy().to_string())
         }

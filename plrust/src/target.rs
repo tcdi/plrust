@@ -6,6 +6,7 @@
 
 use crate::gucs;
 use once_cell::sync::Lazy;
+use pgx::pg_sys;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -144,6 +145,16 @@ impl CrossCompilationTarget {
         });
 
         (key, linker)
+    }
+
+    pub(crate) fn bindings_envar(&self) -> Option<(String, String)> {
+        match gucs::get_pgx_bindings_for_target(self) {
+            Some(path) => Some((
+                format!("PGX_TARGET_INFO_PATH_PG{}", pg_sys::PG_MAJORVERSION_NUM),
+                path,
+            )),
+            None => None,
+        }
     }
 }
 

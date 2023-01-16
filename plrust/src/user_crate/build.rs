@@ -101,10 +101,16 @@ impl FnBuild {
         command.env("CARGO_TARGET_DIR", &cargo_target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
-        // set CARGO_TARGET_xxx_LINKER envar here if what we're really doing is cross compiling
+        // set environment variables we need in order for a cross compile
         if let Some(target_triple) = cross_compilation_target {
+            // the CARGO_TARGET_xx_LINKER variable
             let (k, v) = target_triple.linker_envar();
             command.env(k, v);
+
+            // pgx-specified variable for where the bindings are
+            if let Some((k, v)) = target_triple.bindings_envar() {
+                command.env(k, v);
+            }
         }
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
