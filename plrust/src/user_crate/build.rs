@@ -101,10 +101,7 @@ impl FnBuild {
         command.env("CARGO_TARGET_DIR", &cargo_target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
-        // don't specify a linker if the target we're compiling for is the host's target.  This
-        // ensures that in non-cross-compilation installs, the host does **NOT** need a cross-compile
-        // toolchain
-
+        // set CARGO_TARGET_xxx_LINKER envar here if what we're really doing is cross compiling
         if let Some(target_triple) = cross_compilation_target {
             let (k, v) = target_triple.linker_envar();
             command.env(k, v);
