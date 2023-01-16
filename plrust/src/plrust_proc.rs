@@ -3,7 +3,9 @@ use std::ffi::CStr;
 use std::rc::Rc;
 
 use pgx::pg_sys::MyDatabaseId;
-use pgx::{extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgOid, Spi};
+use pgx::{
+    extension_sql, pg_sys, spi, IntoDatum, PgBuiltInOids, PgLogLevel, PgOid, PgSqlErrorCode, Spi,
+};
 
 use crate::error::PlRustError;
 use crate::pgproc::PgProc;
@@ -69,7 +71,15 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
         "SELECT so FROM plrust.plrust_proc WHERE (id, target_triple) = ($1, $2)",
         pkey_datums(pg_proc_oid, &this_target),
     )
-    .map_err(|_| PlRustError::NoProcEntry(pg_proc_oid, this_target.clone()))?
+    .unwrap_or_else(|_| {
+        pgx::ereport!(
+            PgLogLevel::ERROR,
+            PgSqlErrorCode::ERRCODE_UNDEFINED_FUNCTION,
+            "function not available for this platform",
+            "The function does not exist in 'plrust.plrust_proc' for this platform"
+        );
+        unreachable!()
+    })
     .ok_or_else(|| PlRustError::NullPlRustProcSharedLibraryBytes)?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
