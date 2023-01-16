@@ -121,7 +121,7 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
         Some(targets) => targets
             .split(',')
             .map(str::trim)
-            .filter(|s| s != &this_target.as_str()) // make sure we don't include "this target" in the list of other targets
+            .filter(|s| s != std::env::consts::ARCH) // make sure we don't include this architecture in the list of other targets
             .map(|s| s.try_into())
             .collect::<Result<Vec<CrossCompilationTarget>, TargetErr>>()?,
     };
