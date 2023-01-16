@@ -30,6 +30,6 @@ pub(crate) enum PlRustError {
     ParsingCodeBlock(syn::Error),
     #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
-    #[error("plrust.plrust_proc.so bytes are NULL")]
+    #[error("plrust.plrust_proc.so is an SQL NULL despite being NOT NULL")]
     NullPlRustProcSharedLibraryBytes,
 }
