@@ -3,7 +3,6 @@ excludes:
   - Cargo.toml
   - Cargo.lock
   - LICENSE
-  - pgx-utils/assets/ansi.tmTheme
   - ".envrc"
   - ".gitignore"
   - "flake\\..*"
@@ -20,11 +19,9 @@ licenses:
     ident: PostgreSQL
     authors:
       - name: Technology Concepts & Design, Inc.
-        email: support@tcdi.com
+        email: opensource@tcdi.com
     template: |
-      Portions Copyright 2020-2021 ZomboDB, LLC.
-      
-      Portions Copyright 2021-[year] [name of author]
+      Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
       
       Use of this source code is governed by the [ident] license that can be found in the LICENSE.md file.
 comments:
@@ -50,4 +47,3 @@ comments:
       type: line
       comment_char: "#"
       trailing_lines: 0
-    

@@ -1,12 +1,12 @@
 [package]
 name = "plrust"
-version = "0.0.0"
-authors = ["ZomboDB, LLC <zombodb@gmail.com>"]
+version = "0.7.0-beta.1"
+authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL Open Source License"
-description = "A Rust procedural language for PostgreSQL"
-homepage = "https://github.com/zombodb/plrust/"
-repository = "https://github.com/zombodb/plrust/"
+description = "A Trusted Rust procedural language for PostgreSQL"
+homepage = "https://github.com/tcdi/plrust/"
+repository = "https://github.com/tcdi/plrust/"
 
 [lib]
 crate-type = ["cdylib"]
