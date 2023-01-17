@@ -202,13 +202,14 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
     }
 }
 
+#[cfg(feature = "trusted")]
 extension_sql!(
     r#"
-CREATE LANGUAGE plrust
+CREATE TRUSTED LANGUAGE plrust
     HANDLER plrust.plrust_call_handler
     VALIDATOR plrust.plrust_validator;
 
-COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
+COMMENT ON LANGUAGE plrust IS 'Trusted PL/rust procedural language';
 "#,
     name = "language_handler",
     requires = [plrust_call_handler, plrust_validator]
@@ -217,12 +218,18 @@ COMMENT ON LANGUAGE plrust IS 'PL/rust procedural language';
 #[cfg(not(feature = "trusted"))]
 extension_sql!(
     r#"
+CREATE LANGUAGE plrust
+    HANDLER plrust.plrust_call_handler
+    VALIDATOR plrust.plrust_validator;
+
+COMMENT ON LANGUAGE plrust IS 'Untrusted PL/Rust procedural language';
+
 DO LANGUAGE plpgsql $$
 BEGIN
     RAISE WARNING 'plrust is **NOT** compiled to be a trusted procedural language';
 END;
 $$;
 "#,
-    name = "untrusted_warning",
-    requires = ["language_handler"]
+    name = "language_handler",
+    requires = [plrust_call_handler, plrust_validator]
 );
