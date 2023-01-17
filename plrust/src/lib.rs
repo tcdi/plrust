@@ -222,7 +222,7 @@ CREATE LANGUAGE plrust
     HANDLER plrust.plrust_call_handler
     VALIDATOR plrust.plrust_validator;
 
-COMMENT ON LANGUAGE plrust IS 'Untrused PL/rust procedural language';
+COMMENT ON LANGUAGE plrust IS 'Untrusted PL/Rust procedural language';
 
 DO LANGUAGE plpgsql $$
 BEGIN
