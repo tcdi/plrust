@@ -1,3 +1,11 @@
+/*
+Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]

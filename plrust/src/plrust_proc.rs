@@ -1,3 +1,11 @@
+/*
+Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 //! Routines for managing the `plrust.plrust_proc` extension table along with the data it contains
 use std::ffi::CStr;
 use std::rc::Rc;

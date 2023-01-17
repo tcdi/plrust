@@ -1,3 +1,11 @@
+/*
+Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 #![cfg(any(
     all(target_os = "macos", target_arch = "x86_64"),
     feature = "force_enable_x86_64_darwin_generations"

@@ -84,7 +84,7 @@ Additionally, there are two `postgresql.conf` settings that must be configured:
 | `plrust.work_dir`       | string  | The directory where pl/rust will build functions with cargo | yes      | <none>   |
 | `plrust.tracing_level`  | string  | A [tracing directive][docs-rs-tracing-directive]            | no       | `'info'` |
 
-[github-pgx]: https://github.com/zombodb/pgx
+[github-pgx]: https://github.com/tcdi/pgx
 [github-fpm]: https://github.com/jordansissel/fpm
 [docs-rs-tracing-directive]: https://docs.rs/tracing-subscriber/0.3.11/tracing_subscriber/filter/struct.EnvFilter.html
 
@@ -109,7 +109,7 @@ writable `work_dir`:
     balance the upcoming bash glob with a comment-open: /* -->
 ```bash
 PG_CONFIG=$(find ~/.pgx/14.*/pgx-install/bin/pg_config)
-SCRATCH_DIR=/home/${USER}/git/zombodb/plrust/scratch
+SCRATCH_DIR=/home/${USER}/git/tcdi/plrust/scratch
 cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
   plrust.pg_config = '${PG_CONFIG}'
   plrust.work_dir = '${SCRATCH_DIR}'
@@ -173,7 +173,7 @@ The output should resemble the following:
 $ cargo pgx package
 building extension with features ``
 "cargo" "build" "--release" "--message-format=json-render-diagnostics"
-   Compiling plrust v0.0.0 (/home/${USER}/git/zombodb/plrust)
+   Compiling plrust v0.0.0 (/home/${USER}/git/tcdi/plrust)
     Finished release [optimized] target(s) in 28.37s
 
 installing extension

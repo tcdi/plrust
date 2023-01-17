@@ -1,3 +1,11 @@
+/*
+Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 /*! PL/Rust adopts the tactic of always explicitly specifying which target to build for.
     This prevents using the "fallback" logic of Cargo leaving builds in an unlabeled directory.
     This is a precaution as PL/Rust is a cross-compiler.

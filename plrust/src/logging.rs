@@ -1,3 +1,11 @@
+/*
+Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 use std::io::Write;
 
 pub(crate) struct PgxGuestWriter<const IS_STDERR: bool>;

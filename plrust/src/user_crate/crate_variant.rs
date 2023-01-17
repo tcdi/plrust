@@ -1,3 +1,11 @@
+/*
+Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
+
 use crate::{user_crate::oid_to_syn_type, PlRustError};
 use eyre::WrapErr;
 use pgx::PgOid;

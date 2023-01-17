@@ -2,7 +2,7 @@ The PostgreSQL License
 
 Portions Copyright 2020-2021 ZomboDB, LLC.
 
-Portions Copyright 2021-2022 Technology Concepts & Design, Inc. <support@tcdi.com>
+Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <opensource@tcdi.com>
 
 Permission to use, copy, modify, and distribute this software and its documentation for any purpose, without fee, and without a written agreement is hereby granted, provided that the above copyright notice and this paragraph and the following two paragraphs appear in all copies.
 
