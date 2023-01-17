@@ -124,8 +124,11 @@ jobs:
     - name: Run cargo pgx init for PG14
       run: cargo pgx init --pg14 $(which pg_config)
 
-    - name: Run build plrust script
-      run: cd plrust && PLRUST_TARGET="aarch64-postgres-linux-gnu" ./build
+    - name: Test PL/rust as "untrusted"
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
+
+    - name: Test PL/rust as "trusted" (inc. postgrestd)
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
@@ -274,14 +277,11 @@ jobs:
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
-    - name: Run PL/Rust tests
-      run: |
-        cargo test --features "pg$PG_VER" --no-default-features --lib user_crate
-        cargo test --features "pg$PG_VER" --no-default-features --lib plrust
+    - name: Test PL/rust as "untrusted"
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
 
-    - name: Run PL/Rust + postgrestd tests
-      if: matrix.os == 'ubuntu-20.04' && (matrix.version == 'pg14' || matrix.version == 'pg15')
-      run: cd plrust && ./build
+    - name: Test PL/rust as "trusted" (inc. postgrestd)
+      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
 
     # Attempt to make the cache payload slightly smaller.
     - name: Clean up built PGX files

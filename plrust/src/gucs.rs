@@ -7,12 +7,17 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::target;
-use crate::target::CompilationTarget;
-use once_cell::sync::Lazy;
-use pgx::guc::{GucContext, GucRegistry, GucSetting};
+use std::ffi::CStr;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use once_cell::sync::Lazy;
+use pgx::guc::{GucContext, GucRegistry, GucSetting};
+use pgx::pg_sys;
+use pgx::pg_sys::AsPgCStr;
+
+use crate::target;
+use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None);
@@ -71,11 +76,11 @@ pub(crate) fn init() {
 
     GucRegistry::define_string_guc(
         "plrust.compilation_targets",
-        "A comma-separated list of rust compilation 'target triples' to compile for",
-        "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecutre",
+        "A comma-separated list of architectures to target for cross compilation.  Supported values are: x86_64, aarch64",
+        "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecture",
         &PLRUST_COMPILATION_TARGETS,
         GucContext::Postmaster
-    )
+    );
 }
 
 pub(crate) fn work_dir() -> PathBuf {
@@ -108,7 +113,7 @@ pub(crate) fn tracing_level() -> tracing::Level {
 /// The return format is `( <This Host's Target Triple>, <Other Configured Target Triples> )`
 pub(crate) fn compilation_targets() -> eyre::Result<(
     &'static CompilationTarget,
-    impl Iterator<Item = CompilationTarget>,
+    impl Iterator<Item = CrossCompilationTarget>,
 )> {
     let this_target = target::tuple()?;
     let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
@@ -116,10 +121,44 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
         Some(targets) => targets
             .split(',')
             .map(str::trim)
-            .filter(|s| s != &this_target.as_str()) // make sure we don't include "this target" in the list of other targets
-            .map(|s| s.into())
-            .collect::<Vec<_>>(),
+            .filter(|s| s != &std::env::consts::ARCH) // make sure we don't include this architecture in the list of other targets
+            .map(|s| s.try_into())
+            .collect::<Result<Vec<CrossCompilationTarget>, TargetErr>>()?,
     };
 
     Ok((this_target, other_targets.into_iter()))
+}
+
+pub(crate) fn get_linker_for_target(target: &CrossCompilationTarget) -> Option<String> {
+    unsafe {
+        let guc_name = format!("plrust.{target}_linker");
+        // SAFETY:  GetConfigOption returns a possibly NULL `char *` because `missing_ok` is true
+        // but that's okay as we account for that possibility.  The named GUC not being in the
+        // configuration is a perfectly fine thing.
+        let value = pg_sys::GetConfigOption(guc_name.as_pg_cstr(), true, true);
+        if value.is_null() {
+            None
+        } else {
+            // SAFETY:  GetConfigOption gave us a valid `char *` that is usable as a CStr
+            let value_cstr = CStr::from_ptr(value);
+            Some(value_cstr.to_string_lossy().to_string())
+        }
+    }
+}
+
+pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Option<String> {
+    unsafe {
+        let guc_name = format!("plrust.{target}_pgx_bindings_path");
+        // SAFETY:  GetConfigOption returns a possibly NULL `char *` because `missing_ok` is true
+        // but that's okay as we account for that possibility.  The named GUC not being in the
+        // configuration is a perfectly fine thing.
+        let value = pg_sys::GetConfigOption(guc_name.as_pg_cstr(), true, true);
+        if value.is_null() {
+            None
+        } else {
+            // SAFETY:  GetConfigOption gave us a valid `char *` that is usable as a CStr
+            let value_cstr = CStr::from_ptr(value);
+            Some(value_cstr.to_string_lossy().to_string())
+        }
+    }
 }

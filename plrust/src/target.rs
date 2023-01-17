@@ -4,8 +4,9 @@
     so a normal build-and-test cycle may create artifacts for multiple targets.
 */
 
+use crate::gucs;
 use once_cell::sync::Lazy;
-use std::env;
+use pgx::pg_sys;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -20,15 +21,23 @@ mod host {
     } else {
         const ENV: &str = "";
     }}
-    cfg_if::cfg_if! { if #[cfg(feature = "target_postgrestd")] {
-        const VENDOR: &str = "postgres";
-    } else if #[cfg(target_vendor = "apple")] {
-        const VENDOR: &str = "apple";
-    } else if #[cfg(target_os = "windows")] {
-        const VENDOR: &str = "pc";
-    } else {
-        const VENDOR: &str = "unknown";
-    }}
+
+    #[allow(non_snake_case)]
+    const fn VENDOR() -> &'static str {
+        if crate::TRUSTED {
+            "postgres"
+        } else {
+            cfg_if::cfg_if! {
+                if #[cfg(target_vendor = "apple")] {
+                    "apple"
+                } else if #[cfg(target_os = "windows")] {
+                    "pc"
+                } else {
+                    "unknown"
+                }
+            }
+        }
+    }
 
     cfg_if::cfg_if! { if #[cfg(target_os = "macos")] {
         const OS: &str = "darwin";
@@ -37,7 +46,7 @@ mod host {
     }}
 
     pub(super) fn target_tuple() -> String {
-        let tuple = [ARCH, VENDOR, OS, ENV];
+        let tuple = [ARCH, VENDOR(), OS, ENV];
         let mut s = String::from(tuple[0]);
         for t in &tuple[1..] {
             if t != &"" {
@@ -104,27 +113,83 @@ impl CompilationTarget {
     }
 }
 
-pub(crate) fn tuple() -> Result<&'static CompilationTarget, &'static TargetErr> {
-    pub(crate) static TARGET_TUPLE: Lazy<Result<CompilationTarget, TargetErr>> =
-        Lazy::new(|| match env::var("PLRUST_TARGET") {
-            Ok(v) => Ok(v.into()),
-            Err(env::VarError::NotPresent) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(all(feature = "target_postgrestd",
-                        any(target_arch = "x86_64", target_arch = "aarch64"),
-                        target_os = "linux",
-                        target_env = "gnu"))]
-                    {
-                        Ok(host::target_tuple().into())
-                    } else if #[cfg(feature = "target_postgrestd")] {
-                        Err(TargetErr::Unsupported)
-                    } else {
-                        Ok(host::target_tuple().into())
-                    }
-                }
-            }
-            Err(env::VarError::NotUnicode(s)) => Err(TargetErr::InvalidSpec(s)),
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub(crate) enum CrossCompilationTarget {
+    X86_64,
+    Aarch64,
+}
+
+impl Display for CrossCompilationTarget {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CrossCompilationTarget::X86_64 => write!(f, "x86_64"),
+            CrossCompilationTarget::Aarch64 => write!(f, "aarch64"),
+        }
+    }
+}
+
+impl CrossCompilationTarget {
+    pub(crate) fn target(self) -> CompilationTarget {
+        self.into()
+    }
+
+    pub(crate) fn linker_envar(&self) -> (String, String) {
+        let key = format!(
+            "CARGO_TARGET_{}_LINKER",
+            self.target().as_str().to_uppercase().replace('-', "_")
+        );
+
+        let linker = gucs::get_linker_for_target(self).unwrap_or_else(|| match self {
+            CrossCompilationTarget::X86_64 => "x86_64-linux-gnu-gcc".into(),
+            CrossCompilationTarget::Aarch64 => "aarch64-linux-gnu-gcc".into(),
         });
 
-    TARGET_TUPLE.as_ref()
+        (key, linker)
+    }
+
+    pub(crate) fn bindings_envar(&self) -> Option<(String, String)> {
+        match gucs::get_pgx_bindings_for_target(self) {
+            Some(path) => Some((
+                format!("PGX_TARGET_INFO_PATH_PG{}", pg_sys::PG_MAJORVERSION_NUM),
+                path,
+            )),
+            None => None,
+        }
+    }
+}
+
+impl TryFrom<&str> for CrossCompilationTarget {
+    type Error = TargetErr;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "x86_64" => Ok(CrossCompilationTarget::X86_64),
+            "aarch64" => Ok(CrossCompilationTarget::Aarch64),
+            _ => Err(TargetErr::Unsupported),
+        }
+    }
+}
+
+impl From<CrossCompilationTarget> for CompilationTarget {
+    fn from(cct: CrossCompilationTarget) -> Self {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "trusted")] {
+                match cct {
+                    CrossCompilationTarget::X86_64 => "x86_64-postgres-linux-gnu",
+                    CrossCompilationTarget::Aarch64 => "aarch64-postgres-linux-gnu",
+                }.into()
+            } else {
+                match cct {
+                    CrossCompilationTarget::X86_64 => "x86_64-unknown-linux-gnu",
+                    CrossCompilationTarget::Aarch64 => "aarch64-unknown-linux-gnu",
+                }.into()
+            }
+        }
+    }
+}
+
+pub(crate) fn tuple() -> Result<&'static CompilationTarget, &'static TargetErr> {
+    static TARGET_TRIPLE: Lazy<Result<CompilationTarget, TargetErr>> =
+        Lazy::new(|| Ok(host::target_tuple().into()));
+    TARGET_TRIPLE.as_ref()
 }
