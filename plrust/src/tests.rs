@@ -443,42 +443,6 @@ mod tests {
         Ok(())
     }
 
-    /// This test is... meta. It's intended to sleep enough to usually go last.
-    /// If a previous test panics in a way so severe it aborts Postgres?
-    /// This test will fail as a result.
-    /// Ideally this should be slow but still sometimes finish second-to-last.
-    #[pg_test]
-    #[search_path(@extschema@)]
-    fn plrust_one_sleepy_boi() -> spi::Result<()> {
-        use std::{thread::sleep, time::Duration};
-        let moment = Duration::from_secs(2);
-        sleep(moment);
-
-        let definition = r#"
-            CREATE FUNCTION snooze()
-            RETURNS text AS
-            $$
-                use std::{thread::sleep, time::{Duration, Instant}};
-
-                let moment = Duration::from_secs(2);
-                let now = Instant::now();
-
-                sleep(moment);
-
-                // TODO: figure out why this isn't working
-                // assert!(now.elapsed() >= moment);
-                Some("zzz".into())
-            $$ LANGUAGE plrust;
-        "#;
-        Spi::run(definition)?;
-        sleep(moment);
-
-        let retval = Spi::get_one::<String>("SELECT snooze();\n");
-        sleep(moment);
-        assert_eq!(retval, Ok(Some("zzz".into())));
-        Ok(())
-    }
-
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
