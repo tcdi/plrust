@@ -265,6 +265,19 @@ strlen
 ```
 
 
+# Other Notes
+
+In the Postgres world it seems common for procedural languages to have two styles, "trusted" and "untrusted".  The consensus is to name those as "lang" and "langu", respectively -- where the "u" is supposed to represent "untrusted" (see "plperl" v/s "plperlu" for example).
+
+plrust does not do this.  The only thing that Postgres uses to determine if a language handler is considered "trusted" is if it was created using `CREATE TRUSTED LANGUAGE`.  It does not inspect the name.
+
+plrust stores the compiled user function binaries as a `bytea` in an extension-specific table uniquely key'd with its compilation target.
+
+As such, compiling a function with an "untrusted" version of plrust, then installing the "trusted" version and trying to run that function will fail -- "trusted" and "untrusted" are considered different compilation targets and are not compatible with each other, even if the underlying hardware is exactly the same.
+
+This does mean that it won't be possible to install both "trusted" and "untrusted" versions of plrust on the same Postgres database cluster.  In my humble opinion, that is a bad idea and one ought not do that anyways.   ¯\\\_(ツ)\_/
+
+
 # Security Notice
 
 Please read the [Security](SECURITY.md) for directions on reporting a potential security issue.
