@@ -200,8 +200,8 @@ The other available configuration, some of which are **required** are:
 | `plrust.compilation_targets`       | string | Comma separated list of CPU targets (x86_64, aarch64)       | no       | <none>                    |
 | `plrust.x86_64_linker`             | string | Name of the linker `rustc` should use on fo cross-compile   | no       | `'x86_64_linux_gnu_gcc'`  |
 | `plrust.aarch64_linker`            | string | Name of the linker `rustc` should use on for cross-compile  | no       | `'aarch64_linux_gnu_gcc'` |
-| \`plrust.x86_64_pgx_bindings_path  | string | Path to output from `cargo pgx cross pgx-target` on x86_64  | no-ish   | <none>                    |
-| \`plrust.aarch64_pgx_bindings_path | string | Path to output form `cargo pgx cross pgx-target` on aarch64 | no-ish   | <none>                    |
+| `plrust.x86_64_pgx_bindings_path`  | string | Path to output from `cargo pgx cross pgx-target` on x86_64  | no-ish   | <none>                    |
+| `plrust.aarch64_pgx_bindings_path` | string | Path to output form `cargo pgx cross pgx-target` on aarch64 | no-ish   | <none>                    |
 
 For PL/Rust to cross compile user functions it needs to know which CPU architectures via
 `plrust.compilation_targets`. This is a comma-separated list of values, of which only `x86_64` and `aarch64` are
