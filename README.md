@@ -1,7 +1,7 @@
 # PL/Rust: A Trusted Procedural Language Handler
 
 PL/Rust is a loadable procedural language that enables writing PostgreSQL functions in the Rust programming
-language. These functions are compiled to native machine code. Unlike other procedural lanagues, PL/Rust functions
+language. These functions are compiled to native machine code. Unlike other procedural languages, PL/Rust functions
 are not interpreted.
 
 The top advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance,
