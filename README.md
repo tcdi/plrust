@@ -137,23 +137,32 @@ $ cargo install cargo-pgx --version 0.7.0-beta.1 --locked
 $ cargo pgx init
 ```
 
+Next, lets clone this repo:
+
+```bash
+$ git clone https://github.com/tcdi/plrust.git
+$ cd plrust
+```
+
 ## Cross Compilation Support
 
 If you want cross-compilation support, install the Rust targets for aarch64 and x86_64, then install `postgrestd`.
 These are necessary to cross compile `postgrestd` and PL/Rust user functions.
 
 ```bash
-cd plrust
-rustup target install aarch64-unknown-linux-gnu
-rustup target install x86_64-unknown-linux-gnu
+$ cd plrust
+$ rustup target install aarch64-unknown-linux-gnu
+$ rustup target install x86_64-unknown-linux-gnu
 ```
 
-Once finished, while still in the plrust directory subdirectory, simply run the `postgrestd` build script. This
+Once finished, while still in the plrust directory subdirectory, run the `postgrestd` build script. This
 example assumes that the `pg_config` binary from Postgres v15 is on your $PATH. If v15 is not your intended
-Postgres version, simply change it to the proper major version number.
+Postgres version, change it to the proper major version number.
 
 ```bash
-PG_VER=15 STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu" ./build
+$ PG_VER=15 \
+STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu" \
+./build
 ```
 
 (note: the above environment variables are the default... you can just run `./build`)
