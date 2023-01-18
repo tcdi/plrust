@@ -219,15 +219,18 @@ currently supported.
 The architecture linker names have sane defaults and shouldn't need to be be changed (unless the host is some
 esoteric Linux distro we haven't encountered yet).
 
-The `_pgx_bindings_path` settings are actually required but PL/Rust will happily cross compile without them. It'll
-simply use the pgx bindings of the hose architecture for the cross compilation target architecture too. In other
-words, if the host is `x86_64` and PL/Rust is configured to cross compile to `aarch64` and the
-`plrust.aarch64_pgx_bindings_path` is *not* configured, it'll blindly use the bindings it already has for `x86_64`.
-This may or may not actually work.
+The `plrust.{arch}_pgx_bindings_path` settings are actually required but PL/Rust will happily cross compile without them. If unspecified,
+PL/Rust will use the pgx bindings of the host architecture for the cross compilation target architecture too. In other words, if the host 
+is `x86_64` and PL/Rust is configured to cross compile to `aarch64` and the `plrust.aarch64_pgx_bindings_path` is *not* configured, it'll
+blindly use the bindings it already has for `x86_64`.  This may or may not actually work.
 
-To get the bindings, install `cargo-pgx` on the other system and simply run `cargo pgx cross pgx-target`. That'll
-generate a tarball. Copy that back to the primary host machine and untar it somewhere (plrust doesn't care where),
-and use that path as the configuration setting.
+To get the bindings, install `cargo-pgx` on the other system and run `cargo pgx cross pgx-target`. That'll generate a tarball. Copy that back 
+to the primary host machine and untar it somewhere (plrust doesn't care where), and use that path as the configuration setting.
+
+
+Note that it is perfectly fine (and really, expected) to set all of these configuration settings on both architectures.
+plrust will silently ignore the one for the current host.  In other words, plrust only uses them when cross compiling for 
+the other architecture.
 
 
 # Quickly Getting Started
