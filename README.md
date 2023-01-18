@@ -8,7 +8,7 @@ The top advantages of PL/Rust include writing natively-compiled functions to ach
 access to Rust's large development ecosystem, and Rust's compile-time safety guarantees.
 
 PL/Rust provides access to Postgres' Server Programming Interface (SPI) including dynamic queries, prepared
-statements, and cursos. It also provides safe Rust types over most of Postgres built-in data types, including (but
+statements, and cursors. It also provides safe Rust types over most of Postgres built-in data types, including (but
 not limited to), TEXT, INT, BIGINT, NUMERIC, FLOAT, DOUBLE PRECISION, DATE, TIME, etc.
 
 On x86_64 and aarch64 systems PL/Rust can be a "trusted" procedural language, assuming the proper compilation
