@@ -278,7 +278,9 @@ plrust stores the compiled user function binaries as a `bytea` in an extension-s
 
 As such, compiling a function with an "untrusted" version of plrust, then installing the "trusted" version and trying to run that function will fail -- "trusted" and "untrusted" are considered different compilation targets and are not compatible with each other, even if the underlying hardware is exactly the same.
 
-This does mean that it won't be possible to install both "trusted" and "untrusted" versions of plrust on the same Postgres database cluster.  In my humble opinion, that is a bad idea and one ought not do that anyways.   ¯\\\_(ツ)\_/
+This does mean that it is not possible to install both "trusted" and "untrusted" versions of plrust on the same Postgres database cluster.
+
+In the future, as `postgrestd` is ported to more platforms we'll will seriously consider having both `plrust` and `plrustu`.  Right now, since "trusted" is only possible on Linux x86_64/aarch64, our objective is to drive production installations to be "trusted", while allowing non-Linux developers the ability to use `LANGUAGE plrust` too.
 
 
 # Security Notice
