@@ -29,7 +29,7 @@ strlen
      14
 ```
 
-PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)`-based Postgres extension.  Furthermore, each `LANGUAGE
+PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore, each `LANGUAGE
 plrust` function are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgx`
 is developed by [TCDI](https://www.tcdi.com).
 
