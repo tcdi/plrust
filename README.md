@@ -280,7 +280,7 @@ As such, compiling a function with an "untrusted" version of plrust, then instal
 
 This does mean that it is not possible to install both "trusted" and "untrusted" versions of plrust on the same Postgres database cluster.
 
-In the future, as `postgrestd` is ported to more platforms we'll will seriously consider having both `plrust` and `plrustu`.  Right now, since "trusted" is only possible on Linux x86_64/aarch64, our objective is to drive production installations to be "trusted", while allowing non-Linux developers the ability to use `LANGUAGE plrust` too.
+In the future, as `postgrestd` is ported to more platforms, we will seriously consider having both `plrust` and `plrustu`.  Right now, since "trusted" is only possible on Linux x86_64/aarch64, our objective is to drive production installations to be "trusted", while allowing non-Linux developers the ability to use `LANGUAGE plrust` too.
 
 
 # Security Notice
