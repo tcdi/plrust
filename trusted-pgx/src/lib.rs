@@ -43,6 +43,7 @@ pub mod pgbox {
     pub use ::pgx::pgbox::{PgBox, WhoAllocated};
 }
 
+pub use pg_sys::panic::ErrorReportable;
 pub use pg_sys::*;
 pub mod pg_sys {
     pub use ::pgx::pg_sys::elog::PgLogLevel;
