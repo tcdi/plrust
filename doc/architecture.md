@@ -8,6 +8,7 @@ RETURNS {ret}
 -- function attributes can go here
 AS $$
     // PL/Rust function body goes here
+    // All PL/Rust functions return Result<Option<{ret}>>
 $$ LANGUAGE plrust;
 ```
 

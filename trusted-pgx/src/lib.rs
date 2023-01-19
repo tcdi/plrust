@@ -43,6 +43,7 @@ pub mod pgbox {
     pub use ::pgx::pgbox::{PgBox, WhoAllocated};
 }
 
+pub use pg_sys::panic::ErrorReportable;
 pub use pg_sys::*;
 pub mod pg_sys {
     pub use ::pgx::pg_sys::elog::PgLogLevel;
@@ -55,6 +56,10 @@ pub mod pg_sys {
     pub use ::pgx::pg_sys::Pg_finfo_record;
     pub use ::pgx::pg_sys::{ItemPointerData, Oid};
 
+    pub mod panic {
+        pub use super::submodules::panic::ErrorReportable;
+    }
+
     pub mod submodules {
         pub mod elog {
             pub use ::pgx::pg_sys::submodules::elog::PgLogLevel;
@@ -66,6 +71,7 @@ pub mod pg_sys {
 
         pub mod panic {
             pub use ::pgx::pg_sys::submodules::panic::pgx_extern_c_guard;
+            pub use ::pgx::pg_sys::submodules::panic::ErrorReportable;
         }
     }
 }
