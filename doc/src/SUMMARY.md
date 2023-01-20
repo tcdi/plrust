@@ -15,4 +15,4 @@
 
 - [Design Decisions](./design-decisions.md)
     - [Architecture](./architecture.md)
-    - [Designing for Trust](./designing_for_trust.md)
+    - [Designing for Trust](./designing-for-trust.md)
