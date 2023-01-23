@@ -6,7 +6,8 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use pgx::{pg_sys, FromDatum, IntoDatum};
+use crate::error::PlRustError;
+use pgx::{pg_sys, FromDatum, IntoDatum, PgRelation};
 use std::ptr::NonNull;
 
 /// Provides a safe wrapper around a Postgres "SysCache" entry from `pg_catalog.pg_proc`.
@@ -25,7 +26,7 @@ impl Drop for PgProc {
 
 impl PgProc {
     #[inline]
-    pub(crate) fn new(pg_proc_oid: pg_sys::Oid) -> Option<PgProc> {
+    pub(crate) fn new(pg_proc_oid: pg_sys::Oid) -> std::result::Result<PgProc, PlRustError> {
         unsafe {
             // SAFETY:  SearchSysCache1 will give us a valid HeapTuple or it'll return null.
             // Either way, using NonNull::new()? will make the right decision for us
@@ -33,9 +34,29 @@ impl PgProc {
                 pg_sys::SysCacheIdentifier_PROCOID as _,
                 pg_proc_oid.into_datum().unwrap(),
             );
-            Some(PgProc {
-                inner: NonNull::new(entry)?,
-            })
+            let inner = match NonNull::new(entry) {
+                Some(inner) => inner,
+                None => return Err(PlRustError::NoSuchFunction(pg_proc_oid)),
+            };
+            Ok(PgProc { inner })
+        }
+    }
+
+    pub(crate) fn relation() -> PgRelation {
+        unsafe {
+            // SAFETY:  [`pg_sys::ProcedureRelationId`] is a compiled-in relation oid, and
+            // [`pg_sys::AccessShareLock`] is a valid lock value
+            PgRelation::with_lock(pg_sys::ProcedureRelationId, pg_sys::AccessShareLock as _)
+        }
+    }
+
+    /// Return a copy of the backing [`pg_sys::HeapTupleData`] allocated in the `CurrentMemoryContext`
+    #[inline]
+    pub(crate) fn heap_tuple(&self) -> *mut pg_sys::HeapTupleData {
+        unsafe {
+            // SAFETY:  we know that `self.inner` is always a valid [pg_sys::HeapTupleData] pointer
+            // because we're the only one that creates it
+            pg_sys::heap_copytuple(self.inner.as_ptr())
         }
     }
 
@@ -52,6 +73,14 @@ impl PgProc {
                 .t_choice
                 .t_heap
                 .t_xmin
+        }
+    }
+
+    pub(crate) fn ctid(&self) -> pg_sys::ItemPointerData {
+        unsafe {
+            // SAFETY:  self.inner will be valid b/c that's part of what pg_sys::SearchSysCache1()
+            // does for us.  Same is true for t_data
+            (*self.inner.as_ref().t_data).t_ctid
         }
     }
 

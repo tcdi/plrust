@@ -6,6 +6,8 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use crate::target::CompilationTarget;
+
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]
@@ -14,8 +16,6 @@ pub(crate) enum PlRustError {
     NullFunctionCallInfo,
     #[error("pgx::pg_sys::FmgrInfo was Null")]
     NullFmgrInfo,
-    #[error("The Procedure Tuple was NULL")]
-    NullProcTuple,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
     #[cfg(any(
@@ -38,6 +38,6 @@ pub(crate) enum PlRustError {
     ParsingCodeBlock(syn::Error),
     #[error("Parsing error at span `{:?}`", .0.span())]
     Parse(#[from] syn::Error),
-    #[error("plrust.plrust_proc.so is an SQL NULL despite being NOT NULL")]
-    NullPlRustProcSharedLibraryBytes,
+    #[error("Function was not compiled for this host (`{0}`)")]
+    FunctionNotCompiledForTarget(CompilationTarget),
 }

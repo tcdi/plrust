@@ -7,18 +7,17 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use crate::{
-    gucs, plrust_proc,
-    user_crate::{FnReady, UserCrate},
-};
-
-use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
 use std::rc::Rc;
 use std::{cell::RefCell, collections::HashMap, process::Output};
 
-use crate::error::PlRustError;
-use crate::pgproc::PgProc;
 use eyre::WrapErr;
+use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
+
+use crate::pgproc::PgProc;
+use crate::{
+    gucs, prosrc,
+    user_crate::{FnReady, UserCrate},
+};
 
 thread_local! {
     pub(crate) static LOADED_SYMBOLS: RefCell<HashMap<pg_sys::Oid, Rc<UserCrate<FnReady>>>> = Default::default();
@@ -50,9 +49,7 @@ pub(crate) unsafe fn evaluate_function(
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
 
         let user_crate_loaded = if let Some(current) = loaded_symbols_handle.get_mut(&fn_oid) {
-            let current_xmin = PgProc::new(fn_oid)
-                .ok_or_else(|| PlRustError::NoSuchFunction(fn_oid))?
-                .xmin();
+            let current_xmin = PgProc::new(fn_oid)?.xmin();
 
             // xmin represents the transaction id that inserted this row (in this case into
             // pg_catalog.pg_proc).  So if it's changed from the last time we loaded the function
@@ -66,7 +63,7 @@ pub(crate) unsafe fn evaluate_function(
                 );
 
                 // load the new function
-                let new = plrust_proc::load(fn_oid)?;
+                let new = prosrc::load(fn_oid)?;
 
                 // swap out the currently loaded function for the new one
                 let old = std::mem::replace(current, new);
@@ -85,7 +82,7 @@ pub(crate) unsafe fn evaluate_function(
             // loading the function for the first time
             loaded_symbols_handle
                 .entry(fn_oid)
-                .or_insert(plrust_proc::load(fn_oid)?)
+                .or_insert(prosrc::load(fn_oid)?)
         };
 
         Ok::<_, eyre::Error>(user_crate_loaded.clone())
@@ -127,7 +124,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
         let (target_triple, shared_object) = built.into_inner();
 
         // store the shared objects in our table
-        plrust_proc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
+        prosrc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
     }
 
     // cleanup after ourselves
@@ -144,9 +141,8 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     // NB:  This once included the compiling host's target triple as part of the crate name for
     // reasons about restoring a database to the same platform.
     //
-    // This isn't necessary as our plrust.plrust_proc "catalog" table tracks the .so binaries per
-    // target triple, so if we are restored to a different platform then the .so binary for this
-    // platform won't be used.
+    // This isn't necessary a we store the .so binaries by target triple in `pg_catalog.pg_proc.prosrc`,
+    // so if we are restored to a different platform then the .so binary for this platform won't be used.
     //
     // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
     // multiple targets.
