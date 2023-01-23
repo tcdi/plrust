@@ -92,11 +92,15 @@ pub(crate) fn create_or_replace_function(
     let datum = heap_tuple.into_trigger_datum().unwrap();
     let heap_tuple = datum.cast_mut_ptr();
 
+    // Update the catalog entry in `pg_catalog.pg_proc.prosrc`
     unsafe {
         // SAFETY:  We know that `relation` is valid because we made it above, the `ctid` represents
         // a valid row on disk because the SysCache gave it to us, and `heap_tuple` is a valid pointer
         // to a `pg_sys::HeapTupleData` because `.into_trigger_datm()` gave that to us above
         pg_sys::CatalogTupleUpdate(relation.as_ptr(), &mut ctid, heap_tuple);
+
+        // Advance command counter so new tuple can be seen by validator
+        pg_sys::CommandCounterIncrement();
     }
     Ok(())
 }
