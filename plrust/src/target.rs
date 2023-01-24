@@ -15,6 +15,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::gucs;
 use once_cell::sync::Lazy;
 use pgx::pg_sys;
+use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -75,7 +76,7 @@ pub(crate) enum TargetErr {
     InvalidSpec(OsString),
 }
 
-#[derive(Debug, Clone, PartialOrd, PartialEq, Hash, Ord, Eq)]
+#[derive(Debug, Clone, PartialOrd, PartialEq, Hash, Ord, Eq, Serialize, Deserialize)]
 #[repr(transparent)]
 pub(crate) struct CompilationTarget(String);
 impl Deref for CompilationTarget {

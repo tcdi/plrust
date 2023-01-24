@@ -24,7 +24,7 @@ use crate::user_crate::{FnReady, UserCrate};
 #[derive(Default, Debug, Serialize, Deserialize)]
 struct ProSrcEntry {
     src: String,
-    lib: BTreeMap<String, Vec<u8>>,
+    lib: BTreeMap<CompilationTarget, Vec<u8>>,
 }
 
 impl TryFrom<&PgProc> for ProSrcEntry {
@@ -47,7 +47,7 @@ impl ProSrcEntry {
         compilation_target: &CompilationTarget,
     ) -> Result<Vec<u8>, PlRustError> {
         self.lib
-            .remove(compilation_target.as_str())
+            .remove(compilation_target)
             .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))
     }
 }
@@ -71,7 +71,7 @@ pub(crate) fn create_or_replace_function(
 
     // always replace any existing bytes for the specified target_triple.  we only trust
     // what was given to us
-    entry.lib.insert(target_triple.to_string(), so_bytes);
+    entry.lib.insert(target_triple, so_bytes);
 
     let mut ctid = pg_proc.ctid();
     let relation = PgProc::relation();
@@ -87,7 +87,7 @@ pub(crate) fn create_or_replace_function(
     heap_tuple.set_by_name("prosrc", prosrc_value)?;
 
     // TODO:  [`pgx::PgHeapTuple`] really needs a `.into_pg() -> *mut pg_sys::HeapTupleData` function.
-    //        in the meantime, `.into_trigger_datum()` essentially does what that function should do,
+    //        in the meantime, `.into_trigger_datum()` essentially does what that function would do,
     //        we just need to cast it to the right pointer type
     let datum = heap_tuple.into_trigger_datum().unwrap();
     let heap_tuple = datum.cast_mut_ptr();
