@@ -3,7 +3,7 @@ set -xe
 
 if [ -z "$STD_TARGETS" ]; then
     # if none specified, always build for these two targets
-    export STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
+    STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
 fi
 
 # and depending on the platform we're building on, we need to set a linker flag for the other
@@ -46,8 +46,8 @@ fi
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml
-    ./run clean
-    ./run install
+    STD_TARGETS="$STD_TARGETS" ./run clean
+    STD_TARGETS="$STD_TARGETS" ./run install
 )
 
 cargo test --verbose --no-default-features --features "pg${PG_VER:-15} trusted"
