@@ -9,11 +9,15 @@ fi
 # and depending on the platform we're building on, we need to set a linker flag for the other
 # this'll get hairy when we support more platforms and we should port this script to Rust
 if [ `uname -m` == "x86_64" ]; then
-    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-    CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+    if [[ -z "$CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" ]] && [[ -z "$CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER" ]]; then
+        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+        export CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+    fi
 elif [ `uname -m` == "aarch64" ]; then
-    CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
-    CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+    if [[ -z "$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" ]] && [[ -z "$CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER" ]]; then
+        export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+        export CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+    fi
 else
     echo unsupported build platform: $(uname -m)
     exit 1
@@ -42,8 +46,8 @@ fi
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml
-    ./run clean
-    ./run install
+    STD_TARGETS="$STD_TARGETS" ./run clean
+    STD_TARGETS="$STD_TARGETS" ./run install
 )
 
 cargo test --verbose --no-default-features --features "pg${PG_VER:-15} trusted"
