@@ -8,8 +8,12 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 //! Routines for managing the `pg_catalog.pg_proc.prosrc` entry for plrust functions
 use std::collections::BTreeMap;
+use std::io::prelude::*;
 use std::rc::Rc;
 
+use base64::Engine;
+use flate2::read::{GzDecoder, GzEncoder};
+use flate2::Compression;
 use pgx::pg_sys;
 use pgx::pg_sys::MyDatabaseId;
 use pgx::prelude::PgHeapTuple;
@@ -21,10 +25,49 @@ use crate::target;
 use crate::target::CompilationTarget;
 use crate::user_crate::{FnReady, UserCrate};
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+enum Encoding {
+    GzBase64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SharedLibrary {
+    encoding: Encoding,
+    encoded: String,
+}
+
+impl SharedLibrary {
+    const CUSTOM_ENGINE: base64::engine::GeneralPurpose = base64::engine::GeneralPurpose::new(
+        &base64::alphabet::URL_SAFE,
+        base64::engine::general_purpose::NO_PAD,
+    );
+
+    fn new(so_bytes: Vec<u8>) -> eyre::Result<Self> {
+        let mut gz = GzEncoder::new(&so_bytes[..], Compression::best());
+        let mut compressed_bytes = Vec::new();
+        gz.read_to_end(&mut compressed_bytes)?;
+        Ok(SharedLibrary {
+            encoding: Encoding::GzBase64,
+            encoded: Self::CUSTOM_ENGINE.encode(compressed_bytes),
+        })
+    }
+
+    fn decode(&self) -> eyre::Result<Vec<u8>> {
+        match self.encoding {
+            Encoding::GzBase64 => {
+                let mut bytes = Vec::new();
+                let b64_decoded = Self::CUSTOM_ENGINE.decode(&self.encoded)?;
+                GzDecoder::new(&b64_decoded[..]).read_to_end(&mut bytes)?;
+                Ok(bytes)
+            }
+        }
+    }
+}
+
 #[derive(Default, Debug, Serialize, Deserialize)]
 struct ProSrcEntry {
     src: String,
-    lib: BTreeMap<CompilationTarget, Vec<u8>>,
+    lib: BTreeMap<CompilationTarget, SharedLibrary>,
 }
 
 impl TryFrom<&PgProc> for ProSrcEntry {
@@ -42,13 +85,12 @@ impl Into<String> for ProSrcEntry {
 }
 
 impl ProSrcEntry {
-    fn take_so_bytes(
-        &mut self,
-        compilation_target: &CompilationTarget,
-    ) -> Result<Vec<u8>, PlRustError> {
-        self.lib
+    fn take_so_bytes(&mut self, compilation_target: &CompilationTarget) -> eyre::Result<Vec<u8>> {
+        Ok(self
+            .lib
             .remove(compilation_target)
-            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))
+            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?
+            .decode()?)
     }
 }
 
@@ -71,7 +113,9 @@ pub(crate) fn create_or_replace_function(
 
     // always replace any existing bytes for the specified target_triple.  we only trust
     // what was given to us
-    entry.lib.insert(target_triple, so_bytes);
+    entry
+        .lib
+        .insert(target_triple, SharedLibrary::new(so_bytes)?);
 
     let mut ctid = pg_proc.ctid();
     let relation = PgProc::relation();
