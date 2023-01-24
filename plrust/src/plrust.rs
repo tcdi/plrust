@@ -141,7 +141,7 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     // NB:  This once included the compiling host's target triple as part of the crate name for
     // reasons about restoring a database to the same platform.
     //
-    // This isn't necessary a we store the .so binaries by target triple in `pg_catalog.pg_proc.prosrc`,
+    // This isn't necessary as we store the .so binaries by target triple in `pg_catalog.pg_proc.prosrc`,
     // so if we are restored to a different platform then the .so binary for this platform won't be used.
     //
     // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
