@@ -713,68 +713,6 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    fn plrust_drop_function() -> spi::Result<()> {
-        let definition = r#"
-            CREATE FUNCTION drop_function()
-            RETURNS int
-            LANGUAGE plrust
-            AS $$ Ok(Some(1)) $$;
-        "#;
-        Spi::run(definition)?;
-        let oid = Spi::get_one::<pg_sys::Oid>(
-            "SELECT oid FROM pg_catalog.pg_proc WHERE proname = 'drop_function'",
-        )?
-        .expect("failed to lookup function oid")
-        .as_u32();
-
-        let procedure_id = pg_sys::ProcedureRelationId.as_u32();
-        let identity = Spi::get_one::<String>(&format!(
-            "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)",
-        ))?
-        .expect("call to pg_identify_object returned NULL");
-
-        Spi::run("DROP FUNCTION drop_function")?;
-
-        let our_id = Spi::get_one::<String>(&format!(
-            "SELECT id FROM plrust.plrust_proc WHERE id = '{identity}'"
-        ));
-        assert_eq!(our_id, Err(spi::Error::InvalidPosition));
-        Ok(())
-    }
-
-    #[pg_test]
-    #[search_path(@extschema@)]
-    fn plrust_drop_schema() -> spi::Result<()> {
-        let definition = r#"
-            CREATE SCHEMA to_drop;
-            CREATE FUNCTION to_drop.drop_function()
-            RETURNS int
-            LANGUAGE plrust
-            AS $$ Ok(Some(1)) $$;
-        "#;
-        Spi::run(definition)?;
-        let oid = Spi::get_one::<pg_sys::Oid>(
-            "SELECT oid FROM pg_catalog.pg_proc WHERE oid = 'to_drop.drop_function'::regproc::oid",
-        )?
-        .expect("failed to lookup function oid")
-        .as_u32();
-
-        let procedure_id = pg_sys::ProcedureRelationId.as_u32();
-        let identity = Spi::get_one::<String>(&format!(
-            "SELECT identity from pg_identify_object({procedure_id}, {oid}, 0)"
-        ))?
-        .expect("call to pg_identify_object returned NULL");
-
-        Spi::run("DROP SCHEMA to_drop CASCADE")?;
-        let our_id = Spi::get_one::<String>(&format!(
-            "SELECT id FROM plrust.plrust_proc WHERE id = '{identity}'"
-        ));
-        assert_eq!(our_id, Err(spi::Error::InvalidPosition));
-        Ok(())
-    }
-
-    #[pg_test]
-    #[search_path(@extschema@)]
     #[should_panic(expected = "error: declaration of a `no_mangle` static")]
     fn plrust_block_unsafe_no_mangle() -> spi::Result<()> {
         let definition = r#"

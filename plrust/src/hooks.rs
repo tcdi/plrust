@@ -9,13 +9,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use std::ffi::CStr;
 
-use pgx::{
-    ereport, pg_guard, pg_sys, spi, IntoDatum, PgBox, PgBuiltInOids, PgList, PgLogLevel,
-    PgSqlErrorCode, Spi,
-};
+use pgx::{pg_guard, pg_sys, PgBox, PgList, PgLogLevel, PgSqlErrorCode};
 
 use crate::pgproc::PgProc;
-use crate::{plrust_lang_oid, plrust_proc};
+use crate::plrust_lang_oid;
 
 static mut PREVIOUS_PROCESS_UTILITY_HOOK: pg_sys::ProcessUtility_hook_type = None;
 
@@ -96,42 +93,8 @@ fn plrust_process_utility_hook_internal(
         PgBox::from_pg(pstmt.utilityStmt)
     };
 
-    // examine the UtilityStatement itself.  We're interested in three different commands,
-    // "DROP FUNCTION", "DROP SCHEMA", and "ALTER FUNCTION".  Two different node types are used
-    // for these -- `DropStmt` and `AlterFunctionStmt`
-
-    // Note that we handle calling the previous hook (if there is one) differently for DROP and ALTER
-
-    if utility_stmt.type_ == pg_sys::NodeTag_T_DropStmt {
-        let drop_stmt = unsafe {
-            // SAFETY:  we already determined that pstmt.utilityStmt is valid, and we just determined
-            // its "node type" is a DropStmt, so the cast is clean
-            PgBox::from_pg(pstmt.utilityStmt.cast::<pg_sys::DropStmt>())
-        };
-
-        // in the case of DropStmt, if the object being dropped is a FUNCTION or a SCHEMA, we'll
-        // go off and handle those two cases
-        match drop_stmt.removeType {
-            pg_sys::ObjectType_OBJECT_FUNCTION => handle_drop_function(&drop_stmt),
-            pg_sys::ObjectType_OBJECT_SCHEMA => handle_drop_schema(&drop_stmt),
-
-            // we don't do anything for the other objects
-            _ => Ok(()),
-        }
-        .unwrap_or_else(|e| {
-            ereport!(
-                PgLogLevel::ERROR,
-                PgSqlErrorCode::ERRCODE_INTERNAL_ERROR,
-                "failed to handle drop statement",
-                &format!("{}", e)
-            )
-        });
-
-        // call the previous hook last.  We want to call it after our work because we need the catalog
-        // entries in place to find/ensure that we only affect plrust functions.
-        #[rustfmt::skip]
-        call_prev_hook(pstmt.into_pg(), query_string, read_only_tree, context, params, query_env, dest, qc);
-    } else if utility_stmt.type_ == pg_sys::NodeTag_T_AlterFunctionStmt {
+    // examine the UtilityStatement itself.  We're only interested in  "ALTER FUNCTION".
+    if utility_stmt.type_ == pg_sys::NodeTag_T_AlterFunctionStmt {
         // for ALTER FUNCTION we call the previous hook first as it could decide it needs to change
         // the STRICT-ness of the function and we absolutely need to stop that in its tracks
         #[rustfmt::skip]
@@ -145,7 +108,7 @@ fn plrust_process_utility_hook_internal(
         };
 
         // and for AlterFunctionStmt, we'll just go do it.
-        handle_alter_function(&alter_stmt);
+        handle_alter_function(&alter_stmt).expect("failed to ALTER FUNCTION");
     } else {
         // this is not a utility statement we care about, so call the previous hook
         #[rustfmt::skip]
@@ -200,13 +163,13 @@ fn call_prev_hook(
 
 /// if the function being altered is `LANGUAGE plrust`, block any attempted change to the `STRICT`
 /// property, even if to the current value
-fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
+fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) -> eyre::Result<()> {
     let pg_proc_oid = unsafe {
         // SAFETY:  specifying missing_ok=false ensures that LookupFuncWithArgs won't return for
         // something that doesn't exist.
         pg_sys::LookupFuncWithArgs(alter_stmt.objtype, alter_stmt.func, false)
     };
-    let lang_oid = lookup_func_lang(pg_proc_oid);
+    let lang_oid = lookup_func_lang(pg_proc_oid)?;
 
     if lang_oid == plrust_lang_oid() {
         // block a change to the 'STRICT' property
@@ -247,99 +210,11 @@ fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) {
             }
         }
     }
-}
-
-/// drop all the `LANGUAGE plrust` functions from the set of all functions being dropped by the [`DropStmt`]
-fn handle_drop_function(drop_stmt: &PgBox<pg_sys::DropStmt>) -> spi::Result<()> {
-    let plrust_lang_oid = plrust_lang_oid();
-
-    for pg_proc_oid in objects(drop_stmt, pg_sys::ProcedureRelationId).filter_map(|oa| {
-        let lang_oid = lookup_func_lang(oa.objectId);
-        // if it's a pl/rust function we can drop it
-        (lang_oid == plrust_lang_oid).then(|| oa.objectId)
-    }) {
-        plrust_proc::drop_function(pg_proc_oid)?;
-    }
     Ok(())
-}
-
-/// drop all `LANGUAGE plrust` functions in any of the schemas being dropped by the [`DropStmt`]
-fn handle_drop_schema(drop_stmt: &PgBox<pg_sys::DropStmt>) -> spi::Result<()> {
-    for object in objects(drop_stmt, pg_sys::NamespaceRelationId) {
-        for pg_proc_oid in all_in_namespace(object.objectId)? {
-            plrust_proc::drop_function(pg_proc_oid)?;
-        }
-    }
-    Ok(())
-}
-
-/// Returns an iterator over the `objects` in the `[DropStmt]`, filtered by only those of the
-/// specified `filter_class_id`
-fn objects(
-    drop_stmt: &PgBox<pg_sys::DropStmt>,
-    filter_class_id: pg_sys::Oid,
-) -> impl Iterator<Item = pg_sys::ObjectAddress> {
-    let list = unsafe {
-        // SAFETY:  Postgres documents DropStmt.object as being a "list of names", which are in fact
-        // compatible with generic pg_sys::Node types
-        PgList::<pg_sys::Node>::from_pg(drop_stmt.objects)
-    };
-
-    list.iter_ptr()
-        .filter_map(move |object| {
-            let mut rel = std::ptr::null_mut();
-
-            unsafe {
-                // SAFETY:  "object" is a valid Node pointer from the list, and the value returned
-                // from get_object_address is never null.  We don't particularly care about the
-                // value of "missing_ok" as if the named object is missing the returned
-                // "ObjectAddress.objectId" will be InvalidOid and we filter that out here
-                let address = pg_sys::get_object_address(
-                    drop_stmt.removeType,
-                    object,
-                    &mut rel,
-                    pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE,
-                    drop_stmt.missing_ok,
-                );
-
-                if address.objectId == pg_sys::InvalidOid || address.classId != filter_class_id {
-                    None
-                } else {
-                    Some(address)
-                }
-            }
-        })
-        .collect::<Vec<_>>()
-        .into_iter()
-}
-
-/// Returns an Iterator of `LANGUAGE plrust` function oids (`pg_catalog.pg_proc.oid`) in a specific namespace
-#[tracing::instrument(level = "debug")]
-pub(crate) fn all_in_namespace(pg_namespace_oid: pg_sys::Oid) -> spi::Result<Vec<pg_sys::Oid>> {
-    Spi::connect(|client| {
-        let results = client.select(
-            r#"
-                        SELECT oid
-                        FROM pg_catalog.pg_proc
-                        WHERE pronamespace = $1
-                          AND prolang = (SELECT oid FROM pg_catalog.pg_language WHERE lanname = 'plrust')
-                  "#,
-            None,
-            Some(vec![(
-                PgBuiltInOids::OIDOID.oid(),
-                pg_namespace_oid.into_datum(),
-            )]),
-        )?;
-
-        results
-            .into_iter()
-            .map(|row| Ok(row.get::<pg_sys::Oid>(1)?.unwrap()))
-            .collect::<spi::Result<Vec<_>>>()
-    })
 }
 
 /// Return the specified function's `prolang` value from `pg_catalog.pg_proc`
-fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> Option<pg_sys::Oid> {
+fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Option<pg_sys::Oid>> {
     let meta = PgProc::new(pg_proc_oid)?;
-    Some(meta.prolang())
+    Ok(Some(meta.prolang()))
 }

@@ -57,7 +57,7 @@ impl FnCrating {
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
     ) -> eyre::Result<Self> {
-        let meta = PgProc::new(fn_oid).ok_or(PlRustError::NullProcTuple)?;
+        let meta = PgProc::new(fn_oid)?;
         let pg_proc_xmin = meta.xmin();
         let (user_code, user_dependencies) = parse_source_and_deps(&meta.prosrc())?;
 
