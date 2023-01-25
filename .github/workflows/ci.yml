@@ -273,6 +273,8 @@ jobs:
       # continue-on-error: true # We might have it.
       run: |
         set -ex
+        cargo --version
+        exit 1
         # cargo pgx --version
         export CARGO_PGX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version')
 
