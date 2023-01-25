@@ -720,7 +720,7 @@ mod tests {
         // or might override depending on how the OS and loader feel today.
         // Let's not leave it up to forces beyond our control.
         let definition = r#"
-            CREATE OR REPLACE FUNCTION overrides_free() RETURNS BIGINT
+            CREATE OR REPLACE FUNCTION export_hacked_free() RETURNS BIGINT
             IMMUTABLE STRICT
             LANGUAGE PLRUST AS
             $$
@@ -733,7 +733,7 @@ mod tests {
             $$;
         "#;
         Spi::run(definition)?;
-        let result = Spi::get_one::<i32>("SELECT overrides_free();\n");
+        let result = Spi::get_one::<i32>("SELECT export_hacked_free();\n");
         assert_eq!(Ok(Some(1)), result);
         Ok(())
     }
@@ -743,7 +743,7 @@ mod tests {
     #[should_panic(expected = "error: declaration of a `no_mangle` static")]
     fn plrust_block_unsafe_no_mangle() -> spi::Result<()> {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION no_mangle() RETURNS BIGINT
+            CREATE OR REPLACE FUNCTION not_mangled() RETURNS BIGINT
             IMMUTABLE STRICT
             LANGUAGE PLRUST AS
             $$
@@ -767,7 +767,7 @@ mod tests {
             $$;
         "#;
         Spi::run(definition)?;
-        let result = Spi::get_one::<i32>("SELECT no_mangle();\n");
+        let result = Spi::get_one::<i32>("SELECT not_mangled();\n");
         assert_eq!(Ok(Some(1)), result);
         Ok(())
     }
@@ -777,7 +777,7 @@ mod tests {
     #[should_panic(expected = "error: declaration of a static with `link_section`")]
     fn plrust_block_unsafe_link_section() -> spi::Result<()> {
         let definition = r#"
-            CREATE OR REPLACE FUNCTION link_section() RETURNS BIGINT
+            CREATE OR REPLACE FUNCTION link_evil_section() RETURNS BIGINT
             IMMUTABLE STRICT
             LANGUAGE PLRUST AS
             $$
@@ -799,7 +799,7 @@ mod tests {
             $$;
         "#;
         Spi::run(definition)?;
-        let result = Spi::get_one::<i32>("SELECT link_section();\n");
+        let result = Spi::get_one::<i32>("SELECT link_evil_section();\n");
         assert_eq!(Ok(Some(1)), result);
         Ok(())
     }
