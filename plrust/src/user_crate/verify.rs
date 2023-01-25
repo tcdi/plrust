@@ -83,23 +83,10 @@ impl FnVerify {
         // This is the step which would be used for running validation
         // after writing the lib.rs but before actually building it.
         // As PL/Rust is not fully configured to run user commands here,
-        // this just echoes to smoke-test the ability to run a command
-        let mut command = Command::new("echo");
-        let target = target::tuple()?;
-        let target_str = &target;
-
-        let args = format!(
-            r#"'
-            --target {target_str}
-            PGX_PG_CONFIG_PATH = {config}
-            CARGO_TARGET_DIR = {dir}
-            RUSTFLAGS = -Clink-args=-Wl,-undefined,dynamic_lookup'"#,
-            config = pg_config.display(),
-            dir = target_dir.display()
-        );
-
-        command.current_dir(&self.crate_dir);
-        command.arg(args);
+        // this version check just smoke-tests the ability to run a command
+        let mut command = Command::new("cargo");
+        command.arg("--version");
+        command.arg("--verbose");
 
         let output = command.output().wrap_err("verification failure")?;
 
