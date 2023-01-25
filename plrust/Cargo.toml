@@ -1,6 +1,6 @@
 [package]
 name = "plrust"
-version = "0.7.0-beta.1"
+version = "0.7.0"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL Open Source License"
@@ -37,8 +37,8 @@ serde = "1.0.152"
 serde_json = "1.0.91"
 
 # pgx core details
-pgx = { version = "0.7.0-beta.1" }
-pgx-pg-config = { version = "0.7.0-beta.1" }
+pgx = { version = "0.7.0" }
+pgx-pg-config = { version = "0.7.0" }
 
 # language handler support
 libloading = "0.7.2"
@@ -65,7 +65,7 @@ memfd = "0.6.2" # for anonymously writing/loading user function .so
 
 
 [dev-dependencies]
-pgx-tests = { version = "0.7.0-beta.1" }
+pgx-tests = { version = "0.7.0" }
 tempdir = "0.3.7"
 once_cell = "1.7.2"
 toml = "0.5.8"
