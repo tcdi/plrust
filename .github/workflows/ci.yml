@@ -295,17 +295,17 @@ jobs:
     # - name: Test PL/rust as "trusted" (inc. postgrestd)
     #   run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
 
-    # Attempt to make the cache payload slightly smaller.
-    - name: Clean up built PGX files
-      run: |
-        cd target/debug/deps/
-        for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
-          base_name=$(echo $built_file | cut -d- -f1);
-          for basefile in "$base_name".*; do
-            [ -f "$basefile" ] || continue;
-            echo "Removing $basefile"
-            rm $basefile
-          done;
-          echo "Removing $built_file"
-          rm $built_file
-        done
+    # # Attempt to make the cache payload slightly smaller.
+    # - name: Clean up built PGX files
+    #   run: |
+    #     cd target/debug/deps/
+    #     for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
+    #       base_name=$(echo $built_file | cut -d- -f1);
+    #       for basefile in "$base_name".*; do
+    #         [ -f "$basefile" ] || continue;
+    #         echo "Removing $basefile"
+    #         rm $basefile
+    #       done;
+    #       echo "Removing $built_file"
+    #       rm $built_file
+    #     done
