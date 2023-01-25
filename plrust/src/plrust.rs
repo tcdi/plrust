@@ -100,7 +100,6 @@ pub(crate) unsafe fn evaluate_function(
 #[tracing::instrument(level = "debug")]
 pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     let work_dir = gucs::work_dir();
-    let pg_config = gucs::pg_config();
     let target_dir = work_dir.join("target");
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
@@ -110,7 +109,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     let provisioned = generated.provision(&work_dir)?;
     // We want to introduce validation here.
     let crate_dir = provisioned.crate_dir().to_path_buf();
-    let (validated, _output) = provisioned.validate(pg_config, target_dir.as_path())?;
+    let (validated, _output) = provisioned.validate(target_dir.as_path())?;
     let target_builds = validated.build(target_dir.as_path())?;
 
     // we gotta have at least one built crate and it's for this host's target triple

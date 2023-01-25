@@ -203,7 +203,6 @@ The other available configuration, some of which are **required** are:
 
 | Option                             | Type   | Description                                                 | Required | Default                   |
 | ---------------------------------- | ------ | ----------------------------------------------------------- | -------- | ------------------------- |
-| `plrust.pg_config`                 | string | The full path of the `pg_config` binary                     | yes      | <none>                    |
 | `plrust.work_dir`                  | string | The directory where pl/rust will build functions with cargo | yes      | <none>                    |
 | `plrust.tracing_level`             | string | A [tracing directive][docs-rs-tracing-directive]            | no       | `'info'`                  |
 | `plrust.compilation_targets`       | string | Comma separated list of CPU targets (x86_64, aarch64)       | no       | <none>                    |
@@ -243,10 +242,8 @@ $ cd plrust/plrust
 $ cargo pgx run pg14
 psql> \q
 
-$ PG_CONFIG=$(find ~/.pgx/14.*/pgx-install/bin/pg_config)
 $ SCRATCH_DIR=/home/${USER}/plrust-scratch
 $ cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
-  plrust.pg_config = '${PG_CONFIG}'
   plrust.work_dir = '${SCRATCH_DIR}'
 EOF
 $ mkdir -p scratch
