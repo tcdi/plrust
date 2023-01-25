@@ -111,7 +111,7 @@ impl FnBuild {
         //
         // This turned out to be an unwanted bit of user, system, and operational complexity.
         //
-        // Instead, we tell tell the environment that "pg_config" is described as environment
+        // Instead, we tell the environment that "pg_config" is described as environment
         // variables, and set every property Postgres can tell us (which is essentially how
         // `pg_config` itself works) as individual environment variables, each prefixed with
         // "PGX_PG_CONFIG_".
