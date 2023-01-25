@@ -713,6 +713,33 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    #[should_panic(expected = "error: declaration of a function with `export_name`")]
+    fn plrust_block_unsafe_export_name() -> spi::Result<()> {
+        // A separate test covers #[no_mangle], but what about #[export_name]?
+        // Same idea. This tries to collide with free, which may symbol clash,
+        // or might override depending on how the OS and loader feel today.
+        // Let's not leave it up to forces beyond our control.
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION overrides_free() RETURNS BIGINT
+            IMMUTABLE STRICT
+            LANGUAGE PLRUST AS
+            $$
+                #[export_name = "free"]
+                pub extern "C" fn own_free(ptr: *mut c_void) {
+                    // the contents don't matter
+                }
+
+                Ok(Some(1))
+            $$;
+        "#;
+        Spi::run(definition)?;
+        let result = Spi::get_one::<i32>("SELECT overrides_free();\n");
+        assert_eq!(Ok(Some(1)), result);
+        Ok(())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     #[should_panic(expected = "error: declaration of a `no_mangle` static")]
     fn plrust_block_unsafe_no_mangle() -> spi::Result<()> {
         let definition = r#"
