@@ -20,7 +20,6 @@ use crate::target;
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
-static PLRUST_PG_CONFIG: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
     GucSetting::new(None);
@@ -47,14 +46,6 @@ pub(crate) fn init() {
         "The directory where pl/rust will build functions with cargo",
         "The directory where pl/rust will build functions with cargo",
         &PLRUST_WORK_DIR,
-        GucContext::Sighup,
-    );
-
-    GucRegistry::define_string_guc(
-        "plrust.pg_config",
-        "What is the full path to the `pg_config` tool for this Postgres installation?",
-        "What is the full path to the `pg_config` tool for this Postgres installation?",
-        &PLRUST_PG_CONFIG,
         GucContext::Sighup,
     );
 
@@ -90,15 +81,6 @@ pub(crate) fn work_dir() -> PathBuf {
             .expect("plrust.work_dir is not set in postgresql.conf"),
     )
     .expect("plrust.work_dir is not a valid path")
-}
-
-pub(crate) fn pg_config() -> PathBuf {
-    PathBuf::from_str(
-        &PLRUST_PG_CONFIG
-            .get()
-            .expect("plrust.pg_config is not set in postgresql.conf"),
-    )
-    .expect("plrust.pg_config is not a valid path")
 }
 
 pub(crate) fn tracing_level() -> tracing::Level {
