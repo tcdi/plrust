@@ -273,6 +273,7 @@ jobs:
       # continue-on-error: true # We might have it.
       run: |
         set -ex
+        env
         cargo --version
         exit 1
         # cargo pgx --version
