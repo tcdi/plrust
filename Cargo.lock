@@ -1117,7 +1117,6 @@ dependencies = [
  "memfd",
  "once_cell",
  "pgx",
- "pgx-pg-config",
  "pgx-tests",
  "prettyplease",
  "proc-macro2",
