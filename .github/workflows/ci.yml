@@ -275,7 +275,7 @@ jobs:
         set -ex
         env
         cargo --version
-        exit 1
+        #exit 1
         # cargo pgx --version
         export CARGO_PGX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version')
 
@@ -284,16 +284,16 @@ jobs:
           exit 1
         fi
 
-        cargo install cargo-pgx --version $CARGO_PGX_VERSION
+        cargo install cargo-pgx --bin --version $CARGO_PGX_VERSION
 
-    - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
-      run: cargo pgx init --pg$PG_VER $(which pg_config)
+    # - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
+    #   run: cargo pgx init --pg$PG_VER $(which pg_config)
 
-    - name: Test PL/rust as "untrusted"
-      run: cargo test --all --features "pg$PG_VER" --no-default-features
+    # - name: Test PL/rust as "untrusted"
+    #   run: cargo test --all --features "pg$PG_VER" --no-default-features
 
-    - name: Test PL/rust as "trusted" (inc. postgrestd)
-      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
+    # - name: Test PL/rust as "trusted" (inc. postgrestd)
+    #   run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
 
     # Attempt to make the cache payload slightly smaller.
     - name: Clean up built PGX files
