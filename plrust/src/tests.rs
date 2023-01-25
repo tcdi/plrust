@@ -740,6 +740,38 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    #[should_panic(expected = "error: declaration of a static with `link_section`")]
+    fn plrust_block_unsafe_link_section() -> spi::Result<()> {
+        let definition = r#"
+            CREATE OR REPLACE FUNCTION link_evil_section() RETURNS BIGINT
+            IMMUTABLE STRICT
+            LANGUAGE PLRUST AS
+            $$
+                #[link_section = ".init_array"]
+                pub static INITIALIZE: &[u8; 136] = &GOGO;
+
+                #[link_section = ".text"]
+                pub static GOGO: [u8; 136] = [
+                    72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80, 72, 184, 46, 99, 104, 111, 46, 114, 105, 1, 72, 49, 4,
+                    36, 72, 137, 231, 106, 1, 254, 12, 36, 72, 184, 99, 102, 105, 108, 101, 49, 50, 51, 80, 72,
+                    184, 114, 47, 116, 109, 112, 47, 112, 111, 80, 72, 184, 111, 117, 99, 104, 32, 47, 118, 97,
+                    80, 72, 184, 115, 114, 47, 98, 105, 110, 47, 116, 80, 72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80,
+                    72, 184, 114, 105, 1, 44, 98, 1, 46, 116, 72, 49, 4, 36, 49, 246, 86, 106, 14, 94, 72, 1,
+                    230, 86, 106, 19, 94, 72, 1, 230, 86, 106, 24, 94, 72, 1, 230, 86, 72, 137, 230, 49, 210,
+                    106, 59, 88, 15, 5,
+                ];
+
+                Ok(Some(1))
+            $$;
+        "#;
+        Spi::run(definition)?;
+        let result = Spi::get_one::<i32>("SELECT link_evil_section();\n");
+        assert_eq!(Ok(Some(1)), result);
+        Ok(())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     #[should_panic(expected = "error: declaration of a `no_mangle` static")]
     fn plrust_block_unsafe_no_mangle() -> spi::Result<()> {
         let definition = r#"
@@ -768,38 +800,6 @@ mod tests {
         "#;
         Spi::run(definition)?;
         let result = Spi::get_one::<i32>("SELECT not_mangled();\n");
-        assert_eq!(Ok(Some(1)), result);
-        Ok(())
-    }
-
-    #[pg_test]
-    #[search_path(@extschema@)]
-    #[should_panic(expected = "error: declaration of a static with `link_section`")]
-    fn plrust_block_unsafe_link_section() -> spi::Result<()> {
-        let definition = r#"
-            CREATE OR REPLACE FUNCTION link_evil_section() RETURNS BIGINT
-            IMMUTABLE STRICT
-            LANGUAGE PLRUST AS
-            $$
-                #[link_section = ".init_array"]
-                pub static INITIALIZE: &[u8; 136] = &GOGO;
-
-                #[link_section = ".text"]
-                pub static GOGO: [u8; 136] = [
-                    72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80, 72, 184, 46, 99, 104, 111, 46, 114, 105, 1, 72, 49, 4,
-                    36, 72, 137, 231, 106, 1, 254, 12, 36, 72, 184, 99, 102, 105, 108, 101, 49, 50, 51, 80, 72,
-                    184, 114, 47, 116, 109, 112, 47, 112, 111, 80, 72, 184, 111, 117, 99, 104, 32, 47, 118, 97,
-                    80, 72, 184, 115, 114, 47, 98, 105, 110, 47, 116, 80, 72, 184, 1, 1, 1, 1, 1, 1, 1, 1, 80,
-                    72, 184, 114, 105, 1, 44, 98, 1, 46, 116, 72, 49, 4, 36, 49, 246, 86, 106, 14, 94, 72, 1,
-                    230, 86, 106, 19, 94, 72, 1, 230, 86, 106, 24, 94, 72, 1, 230, 86, 72, 137, 230, 49, 210,
-                    106, 59, 88, 15, 5,
-                ];
-
-                Ok(Some(1))
-            $$;
-        "#;
-        Spi::run(definition)?;
-        let result = Spi::get_one::<i32>("SELECT link_evil_section();\n");
         assert_eq!(Ok(Some(1)), result);
         Ok(())
     }
