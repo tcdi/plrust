@@ -267,7 +267,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
+        key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/ci.yml') }}
 
     - name: Install cargo-pgx defined in plrust/Cargo.toml
       # continue-on-error: true # We might have it.
