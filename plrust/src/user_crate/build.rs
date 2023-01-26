@@ -190,11 +190,11 @@ impl FnBuild {
                         .header("Source Code:")
                 }));
 
-            // Clean up on error
+            // Clean up on error but propagate the more relevant error
             std::fs::remove_dir_all(&self.crate_dir).wrap_err(format!(
                 "Problem deleting temporary crate directory at '{}'",
                 self.crate_dir.display()
-            ))?;
+            ));
 
             err?
         }
