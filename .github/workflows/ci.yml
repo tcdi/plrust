@@ -262,18 +262,42 @@ jobs:
       continue-on-error: false
       with:
         path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
+          ~/.cargo
           target/
         key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/ci.yml') }}
 
-    # Under normal conditions, runing "cargo install cargo-pgx --version x.y.z" would either install (if not installed) or
-    # warn+exit 0 that the binary was already installed. For some reason, in GHA, "cargo install cargo-pgx --version x.y.z"
-    # in a situation where the binary is already installed results in a error+exit 101 (which halts the build). We'd rather
-    # not duplicate the logic if need be, but at the time of this writing it's the only way to do it in GHA. This should be
-    # revisited later to see if anything has changed.
+    # # Under normal conditions, runing "cargo install cargo-pgx --version x.y.z" would either install (if not installed) or
+    # # warn+exit 0 that the binary was already installed. For some reason, in GHA, "cargo install cargo-pgx --version x.y.z"
+    # # in a situation where the binary is already installed results in a error+exit 101 (which halts the build). We'd rather
+    # # not duplicate the logic if need be, but at the time of this writing it's the only way to do it in GHA. This should be
+    # # revisited later to see if anything has changed.
+    # - name: Install cargo-pgx defined in plrust/Cargo.toml
+    #   run: |
+    #     #!/bin/bash
+
+    #     set -o pipefail
+    #     set -e
+
+    #     if TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version'); then
+    #       echo "TARGET_VERSION: $TARGET_VERSION"
+    #       if command -v cargo-pgx &> /dev/null; then
+    #         echo "cargo-pgx is already installed"
+    #         VERSION_OUTPUT=$(cargo pgx --version)
+    #         INSTALLED_VERSION="${VERSION_OUTPUT##* }"
+
+    #         if [[ "$TARGET_VERSION" == "$INSTALLED_VERSION" ]]; then
+    #           echo "Installed version ($INSTALLED_VERSION) matches target version ($TARGET_VERSION). Skipping installation of cargo-pgx"
+    #         else
+    #           echo "Installed version ($INSTALLED_VERSION) is not the same as target version ($TARGET_VERSION). Removing existing cargo-pgx and reinstalling from cargo"
+    #           cargo uninstall cargo-pgx
+    #           cargo install cargo-pgx --version "$TARGET_VERSION"
+    #         fi
+    #       else
+    #         echo "cargo-pgx is not installed. Installing now."
+    #         cargo install cargo-pgx --version "$TARGET_VERSION"
+    #       fi
+    #     fi
+
     - name: Install cargo-pgx defined in plrust/Cargo.toml
       run: |
         #!/bin/bash
@@ -282,23 +306,11 @@ jobs:
         set -e
 
         if TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version'); then
-          echo "TARGET_VERSION: $TARGET_VERSION"
-          if command -v cargo-pgx &> /dev/null; then
-            echo "cargo-pgx is already installed"
-            VERSION_OUTPUT=$(cargo pgx --version)
-            INSTALLED_VERSION="${VERSION_OUTPUT##* }"
-
-            if [[ "$TARGET_VERSION" == "$INSTALLED_VERSION" ]]; then
-              echo "Installed version ($INSTALLED_VERSION) matches target version ($TARGET_VERSION). Skipping installation of cargo-pgx"
-            else
-              echo "Installed version ($INSTALLED_VERSION) is not the same as target version ($TARGET_VERSION). Removing existing cargo-pgx and reinstalling from cargo"
-              cargo uninstall cargo-pgx
-              cargo install cargo-pgx --version "$TARGET_VERSION"
-            fi
-          else
-            echo "cargo-pgx is not installed. Installing now."
-            cargo install cargo-pgx --version "$TARGET_VERSION"
-          fi
+          echo "Installing/upgrading cargo-pgx to version $TARGET_VERSION"
+          cargo install cargo-pgx --version "$TARGET_VERSION"
+        else
+          echo "Could not determine cargo-pgx version to install."
+          exit 1
         fi
 
     # - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
