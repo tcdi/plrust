@@ -267,7 +267,7 @@ jobs:
     # See <plrust-root>/.github/scripts/install_cargo_pgx.sh for more details
     - name: Install cargo-pgx defined in plrust/Cargo.toml
       run: |
-        . $WORK_DIR/.github/scripts/install_cargo_pgx.sh
+        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
