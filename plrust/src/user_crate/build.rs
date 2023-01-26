@@ -146,7 +146,7 @@ impl FnBuild {
                 feature = "force_enable_x86_64_darwin_generations"
             ))]
             let crate_name = {
-                let mut crate_name = crate_name;
+                let mut crate_name = crate_name.clone();
                 let next = crate::generation::next_generation(&crate_name, true)
                     .map(|gen_num| gen_num)
                     .unwrap_or_default();
@@ -180,7 +180,7 @@ impl FnBuild {
             let stdout = String::from_utf8(output.stdout).wrap_err("cargo stdout was not UTF-8")?;
             let stderr = String::from_utf8(output.stderr).wrap_err("cargo stderr was not UTF-8")?;
 
-            Err(eyre!(PlRustError::CargoBuildFail)
+            let err = Err(eyre!(PlRustError::CargoBuildFail)
                 .section(stdout.header("`cargo build` stdout:"))
                 .section(stderr.header("`cargo build` stderr:"))
                 .with_section(|| {
@@ -188,7 +188,15 @@ impl FnBuild {
                         .wrap_err("Writing generated `lib.rs`")
                         .expect("Reading generated `lib.rs` to output during error")
                         .header("Source Code:")
-                }))?
+                }));
+
+            // Clean up on error but propagate the more relevant error
+            std::fs::remove_dir_all(&self.crate_dir).wrap_err(format!(
+                "Problem deleting temporary crate directory at '{}'",
+                self.crate_dir.display()
+            ));
+
+            err?
         }
     }
 
