@@ -88,7 +88,8 @@ fn plrust_process_utility_hook_internal(
         //
         // plrust must be configured as a `shared_preload_libraries` entry, so this hook will be
         // running in every database, including those without the plrust extension
-        return;
+        #[rustfmt::skip]
+        return call_prev_hook(pstmt, query_string, read_only_tree, context, params, query_env, dest, qc);
     }
 
     let pstmt = unsafe {
