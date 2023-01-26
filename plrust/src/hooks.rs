@@ -12,7 +12,6 @@ use std::ffi::CStr;
 use pgx::{pg_guard, pg_sys, PgBox, PgList, PgLogLevel, PgSqlErrorCode};
 
 use crate::pgproc::PgProc;
-use crate::plrust_lang_oid;
 
 static mut PREVIOUS_PROCESS_UTILITY_HOOK: pg_sys::ProcessUtility_hook_type = None;
 
@@ -83,6 +82,15 @@ fn plrust_process_utility_hook_internal(
     dest: *mut pg_sys::DestReceiver,
     qc: *mut pg_sys::QueryCompletion,
 ) {
+    let plrust_lang_oid = plrust_lang_oid();
+    if plrust_lang_oid == pg_sys::Oid::INVALID {
+        // it's okay if the plrust language isn't installed in this database -- we just won't do anything
+        //
+        // plrust must be configured as a `shared_preload_libraries` entry, so this hook will be
+        // running in every database, including those without the plrust extension
+        return;
+    }
+
     let pstmt = unsafe {
         // SAFETY:  Postgres will have provided us with a valid PlannedStmt pointer, which it allocated
         PgBox::from_pg(pstmt)
@@ -108,7 +116,7 @@ fn plrust_process_utility_hook_internal(
         };
 
         // and for AlterFunctionStmt, we'll just go do it.
-        handle_alter_function(&alter_stmt).expect("failed to ALTER FUNCTION");
+        handle_alter_function(&alter_stmt, plrust_lang_oid).expect("failed to ALTER FUNCTION");
     } else {
         // this is not a utility statement we care about, so call the previous hook
         #[rustfmt::skip]
@@ -163,7 +171,10 @@ fn call_prev_hook(
 
 /// if the function being altered is `LANGUAGE plrust`, block any attempted change to the `STRICT`
 /// property, even if to the current value
-fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) -> eyre::Result<()> {
+fn handle_alter_function(
+    alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>,
+    plrust_lang_oid: pg_sys::Oid,
+) -> eyre::Result<()> {
     let pg_proc_oid = unsafe {
         // SAFETY:  specifying missing_ok=false ensures that LookupFuncWithArgs won't return for
         // something that doesn't exist.
@@ -171,7 +182,7 @@ fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) -> eyre:
     };
     let lang_oid = lookup_func_lang(pg_proc_oid)?;
 
-    if lang_oid == plrust_lang_oid() {
+    if lang_oid == plrust_lang_oid {
         // block a change to the 'STRICT' property
         let actions = unsafe {
             // SAFETY:  AlterFunctionStmt.actions is known to be a "list of DefElem"
@@ -214,7 +225,16 @@ fn handle_alter_function(alter_stmt: &PgBox<pg_sys::AlterFunctionStmt>) -> eyre:
 }
 
 /// Return the specified function's `prolang` value from `pg_catalog.pg_proc`
-fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Option<pg_sys::Oid>> {
+fn lookup_func_lang(pg_proc_oid: pg_sys::Oid) -> eyre::Result<pg_sys::Oid> {
     let meta = PgProc::new(pg_proc_oid)?;
-    Ok(Some(meta.prolang()))
+    Ok(meta.prolang())
+}
+
+/// Returns [`pg_sys::Oid::INVALID`] if the `plrust` language isn't installed in the current database
+pub(crate) fn plrust_lang_oid() -> pg_sys::Oid {
+    static PLRUST_LANG_NAME: &[u8] = b"plrust\0"; // want this to look like a c string
+
+    // SAFETY: We pass `missing_ok: true`, which will return `Oid::INVALID` if the plrust language
+    // isn't installed in the current database. The first parameter has the same requirements as `&CStr`.
+    unsafe { pg_sys::get_language_oid(PLRUST_LANG_NAME.as_ptr().cast(), true) }
 }
