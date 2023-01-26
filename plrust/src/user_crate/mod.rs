@@ -36,10 +36,7 @@ use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
 use semver;
-use std::{
-    path::{Path, PathBuf},
-    process::Output,
-};
+use std::{path::Path, process::Output};
 
 /**
 Finite state machine with "typestate" generic
@@ -123,13 +120,9 @@ impl UserCrate<FnVerify> {
             crate_dir = %self.0.crate_dir().display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub fn validate(
-        self,
-        pg_config: PathBuf,
-        target_dir: &Path,
-    ) -> eyre::Result<(UserCrate<FnBuild>, Output)> {
+    pub fn validate(self, target_dir: &Path) -> eyre::Result<(UserCrate<FnBuild>, Output)> {
         self.0
-            .validate(pg_config, target_dir)
+            .validate(target_dir)
             .map(|(state, output)| (UserCrate(state), output))
     }
 
@@ -390,7 +383,6 @@ mod tests {
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
             let target_dir = crate::gucs::work_dir();
-            let pg_config = PathBuf::from(crate::gucs::pg_config());
 
             let variant = {
                 let argument_oids_and_names =
@@ -469,7 +461,7 @@ mod tests {
 
             let provisioned = generated.provision(&target_dir)?;
 
-            let (validated, _output) = provisioned.validate(pg_config, &target_dir)?;
+            let (validated, _output) = provisioned.validate(&target_dir)?;
 
             for (built, _output) in validated.build(&target_dir)? {
                 // Without an fcinfo, we can't call this.

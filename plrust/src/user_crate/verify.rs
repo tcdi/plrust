@@ -24,7 +24,6 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::target;
 use crate::user_crate::{CrateState, FnBuild, PlRustError};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
@@ -75,11 +74,7 @@ impl FnVerify {
             crate_dir = %self.crate_dir.display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub(crate) fn validate(
-        self,
-        pg_config: PathBuf,
-        target_dir: &Path,
-    ) -> eyre::Result<(FnBuild, Output)> {
+    pub(crate) fn validate(self, target_dir: &Path) -> eyre::Result<(FnBuild, Output)> {
         // This is the step which would be used for running validation
         // after writing the lib.rs but before actually building it.
         // As PL/Rust is not fully configured to run user commands here,
@@ -98,7 +93,6 @@ impl FnVerify {
                     self.fn_oid,
                     self.crate_name,
                     self.crate_dir,
-                    pg_config,
                 ),
                 output,
             ))

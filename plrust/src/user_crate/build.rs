@@ -6,6 +6,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use std::ffi::CStr;
 use std::{
     path::{Path, PathBuf},
     process::{Command, Output},
@@ -13,7 +14,7 @@ use std::{
 
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
+use pgx::{pg_sys, PgMemoryContexts};
 
 use crate::target::{CompilationTarget, CrossCompilationTarget};
 use crate::{
@@ -33,7 +34,6 @@ pub(crate) struct FnBuild {
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
-    pg_config: PathBuf,
 }
 
 impl CrateState for FnBuild {}
@@ -46,7 +46,6 @@ impl FnBuild {
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
-        pg_config: PathBuf,
     ) -> Self {
         Self {
             pg_proc_xmin,
@@ -54,7 +53,6 @@ impl FnBuild {
             fn_oid,
             crate_name,
             crate_dir,
-            pg_config,
         }
     }
 
@@ -105,9 +103,26 @@ impl FnBuild {
         command.arg("--release");
         command.arg("--target");
         command.arg(&target_triple);
-        command.env("PGX_PG_CONFIG_PATH", &self.pg_config);
         command.env("CARGO_TARGET_DIR", &cargo_target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+
+        // There was a time in the past where plrust had a `plrust.pg_config` GUC whose value was
+        // passed down to the "pgx-pg-sys" transient dependency via an environment variable.
+        //
+        // This turned out to be an unwanted bit of user, system, and operational complexity.
+        //
+        // Instead, we tell the environment that "pg_config" is described as environment
+        // variables, and set every property Postgres can tell us (which is essentially how
+        // `pg_config` itself works) as individual environment variables, each prefixed with
+        // "PGX_PG_CONFIG_".
+        //
+        // "pgx-pg-sys"'s build.rs knows how to interpret these environment variables to get what
+        // it needs to properly generate bindings.
+        command.env("PGX_PG_CONFIG_AS_ENV", "true");
+        for (k, v) in pg_config_values() {
+            let k = format!("PGX_PG_CONFIG_{k}");
+            command.env(k, v);
+        }
 
         // set environment variables we need in order for a cross compile
         if let Some(target_triple) = cross_compilation_target {
@@ -131,7 +146,7 @@ impl FnBuild {
                 feature = "force_enable_x86_64_darwin_generations"
             ))]
             let crate_name = {
-                let mut crate_name = crate_name;
+                let mut crate_name = crate_name.clone();
                 let next = crate::generation::next_generation(&crate_name, true)
                     .map(|gen_num| gen_num)
                     .unwrap_or_default();
@@ -165,7 +180,7 @@ impl FnBuild {
             let stdout = String::from_utf8(output.stdout).wrap_err("cargo stdout was not UTF-8")?;
             let stderr = String::from_utf8(output.stderr).wrap_err("cargo stderr was not UTF-8")?;
 
-            Err(eyre!(PlRustError::CargoBuildFail)
+            let err = Err(eyre!(PlRustError::CargoBuildFail)
                 .section(stdout.header("`cargo build` stdout:"))
                 .section(stderr.header("`cargo build` stderr:"))
                 .with_section(|| {
@@ -173,7 +188,15 @@ impl FnBuild {
                         .wrap_err("Writing generated `lib.rs`")
                         .expect("Reading generated `lib.rs` to output during error")
                         .header("Source Code:")
-                }))?
+                }));
+
+            // Clean up on error but propagate the more relevant error
+            std::fs::remove_dir_all(&self.crate_dir).wrap_err(format!(
+                "Problem deleting temporary crate directory at '{}'",
+                self.crate_dir.display()
+            ));
+
+            err?
         }
     }
 
@@ -190,5 +213,41 @@ impl FnBuild {
     // for #[tracing] purposes
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
+    }
+}
+
+/// Asks Postgres, via FFI, for all of its compile-time configuration data.  This is the full
+/// set of things that Postgres' `pg_config` configuration tool can report.
+///
+/// The returned tuple is a `(key, value)` pair of the configuration name and its value.
+fn pg_config_values() -> impl Iterator<Item = (String, String)> {
+    unsafe {
+        // SAFETY:  we know the memory context we're switching to is valid because we're also making
+        // it right here.  We're also responsible for pfreeing the result of `get_configdata()` and
+        // the easiest way to do that is to simply free an entire memory context at once
+        PgMemoryContexts::new("configdata").switch_to(|_| {
+            let mut nprops = 0;
+            // SAFETY:  `get_configdata` needs to know where the "postmaster" executable is located
+            // and `pg_sys::my_exec_path` is that global, which Postgres assigns once early in its
+            // startup process
+            let configdata = pg_sys::get_configdata(pg_sys::my_exec_path.as_ptr(), &mut nprops);
+
+            // SAFETY:  `get_configdata` will never return the NULL pointer
+            let slice = std::slice::from_raw_parts(configdata, nprops);
+
+            let mut values = Vec::with_capacity(nprops);
+            for e in slice {
+                // SAFETY:  the members (we use) in `ConfigData` are properly allocated char pointers,
+                // done so by the `get_configdata()` call above
+                let name = CStr::from_ptr(e.name);
+                let setting = CStr::from_ptr(e.setting);
+                values.push((
+                    name.to_string_lossy().to_string(),
+                    setting.to_string_lossy().to_string(),
+                ))
+            }
+
+            values.into_iter()
+        })
     }
 }
