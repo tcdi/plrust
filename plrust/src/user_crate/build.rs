@@ -194,7 +194,7 @@ impl FnBuild {
             std::fs::remove_dir_all(&self.crate_dir).wrap_err(format!(
                 "Problem deleting temporary crate directory at '{}'",
                 self.crate_dir.display()
-            ));
+            ))?;
 
             err?
         }
