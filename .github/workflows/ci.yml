@@ -130,14 +130,14 @@ jobs:
           exit 1
         fi
 
-    # - name: Run cargo pgx init for PG14
-    #   run: cargo pgx init --pg14 $(which pg_config)
+    - name: Run cargo pgx init for PG14
+      run: cargo pgx init --pg14 $(which pg_config)
 
-    # - name: Test PL/rust as "untrusted"
-    #   run: cargo test --all --features "pg$PG_VER" --no-default-features
+    - name: Test PL/rust as "untrusted"
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
 
-    # - name: Test PL/rust as "trusted" (inc. postgrestd)
-    #   run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
+    - name: Test PL/rust as "trusted" (inc. postgrestd)
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
