@@ -161,8 +161,7 @@ jobs:
 
     strategy:
       matrix:
-        # version: ["pg13", "pg14", "pg15"]
-        version: ["pg15"]
+        version: ["pg13", "pg14", "pg15"]
         os: ["ubuntu-20.04"]
         # it would be nice to other contributors to return "macos-11" to the above array
       fail-fast: false
