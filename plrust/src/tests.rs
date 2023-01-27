@@ -450,6 +450,26 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "trusted")]
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    fn postgrestd_no_include_str() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION include_str()
+            RETURNS text AS
+            $$
+                let s = include_str!("/etc/passwd");
+                Ok(Some(s.into()))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)?;
+
+        let retval = Spi::get_one::<String>("SELECT include_str();\n");
+        assert!(retval.is_ok());
+        Ok(())
+    }
+
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
