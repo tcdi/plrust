@@ -10,7 +10,6 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  CARGO_PGX_VERSION: "0.6.0"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
@@ -116,10 +115,11 @@ jobs:
     - name: Print sccache stats (before build)
       run: sccache --show-stats
 
-    - name: Install cargo-pgx
-      continue-on-error: true # We might have it.
-      run: cargo install cargo-pgx --git "https://github.com/tcdi/pgx" --branch "develop" --force
-      # run: cargo install cargo-pgx --locked --version "${CARGO_PGX_VERSION}"
+    # See <plrust-root>/.github/scripts/install_cargo_pgx.sh for more details
+    - name: Install cargo-pgx defined in plrust/Cargo.toml
+      run: |
+        . $WORK_DIR/.github/scripts/install_cargo_pgx.sh
+        install_cargo_pgx
 
     - name: Run cargo pgx init for PG14
       run: cargo pgx init --pg14 $(which pg_config)
@@ -142,10 +142,7 @@ jobs:
         # See <plrust-root>/.github/scripts/save_cache.sh for more details
         cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
         cargo_dirs=( \
-            $HOME/.cargo/bin \
-            $HOME/.cargo/registry/index \
-            $HOME/.cargo/registry/cache/ \
-            $HOME/.cargo/git/db \
+            $HOME/.cargo/ \
         )
         savecache $cargo_cache_key "${cargo_dirs[@]}"
 
@@ -262,17 +259,15 @@ jobs:
       continue-on-error: false
       with:
         path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
+          ~/.cargo
           target/
-        key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/tests.yml') }}
+        key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/ci.yml') }}
 
-    - name: Install cargo-pgx
-      continue-on-error: true # We might have it.
-      run: cargo install cargo-pgx --git "https://github.com/tcdi/pgx" --branch "develop" --force
-      # run: cargo install cargo-pgx --locked --version "${CARGO_PGX_VERSION}"
+    # See <plrust-root>/.github/scripts/install_cargo_pgx.sh for more details
+    - name: Install cargo-pgx defined in plrust/Cargo.toml
+      run: |
+        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgx.sh
+        install_cargo_pgx
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)
@@ -283,17 +278,18 @@ jobs:
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
 
-    # Attempt to make the cache payload slightly smaller.
-    - name: Clean up built PGX files
-      run: |
-        cd target/debug/deps/
-        for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
-          base_name=$(echo $built_file | cut -d- -f1);
-          for basefile in "$base_name".*; do
-            [ -f "$basefile" ] || continue;
-            echo "Removing $basefile"
-            rm $basefile
-          done;
-          echo "Removing $built_file"
-          rm $built_file
-        done
+    # # Maybe this is not necessary if we switch to sccache?
+    # # Attempt to make the cache payload slightly smaller.
+    # - name: Clean up built PGX files
+    #   run: |
+    #     cd target/debug/deps/
+    #     for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
+    #       base_name=$(echo $built_file | cut -d- -f1);
+    #       for basefile in "$base_name".*; do
+    #         [ -f "$basefile" ] || continue;
+    #         echo "Removing $basefile"
+    #         rm $basefile
+    #       done;
+    #       echo "Removing $built_file"
+    #       rm $built_file
+    #     done
