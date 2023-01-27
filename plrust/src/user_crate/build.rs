@@ -191,10 +191,9 @@ impl FnBuild {
                 }));
 
             // Clean up on error but propagate the more relevant error
-            std::fs::remove_dir_all(&self.crate_dir).wrap_err(format!(
-                "Problem deleting temporary crate directory at '{}'",
-                self.crate_dir.display()
-            ));
+            if let Err(e)= std::fs::remove_dir_all(&self.crate_dir) {
+                pgx::warning!("Problem during removing crate directory: {e}")
+            };
 
             err?
         }
