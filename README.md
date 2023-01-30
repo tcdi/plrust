@@ -20,7 +20,7 @@ An example PL/Rust function:
 ```sql
 // return the character length of a text string
 CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
-    Ok(Some(name?.len() as i32))
+    Ok(Some(name.unwrap().len() as i32))
 $$;
 
 # select strlen('Hello, PL/Rust');
@@ -256,7 +256,7 @@ Then run it for real and start writing functions!
 $ cargo pgx run pg14
 psql> CREATE EXTENSION plrust;
 psql> CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
-    Some(name?.len() as i32)
+    Ok(Some(name.unwrap().len() as i32))
 $$;
 psql> select strlen('Hello, PL/Rust');
 strlen 
