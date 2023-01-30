@@ -453,7 +453,6 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
     fn postgrestd_no_include_str() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION include_str()
@@ -465,8 +464,8 @@ mod tests {
         "#;
         Spi::run(definition)?;
 
-        let retval = Spi::get_one::<String>("SELECT include_str();\n");
-        assert!(retval.is_ok());
+        let retval = Spi::get_one::<String>("SELECT include_str();\n")?;
+        assert_eq!(retval.unwrap(), "");
         Ok(())
     }
 
