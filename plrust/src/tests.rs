@@ -453,6 +453,7 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
+    #[cfg(target_os = "linux")]
     fn postgrestd_no_include_str() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION include_str()
