@@ -20,6 +20,7 @@ use crate::target;
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
+pub(crate) static PLRUST_PATH_OVERRIDE: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
     GucSetting::new(None);
@@ -48,6 +49,13 @@ pub(crate) fn init() {
         &PLRUST_WORK_DIR,
         GucContext::Sighup,
     );
+
+    GucRegistry::define_string_guc(
+          "plrust.PATH_override", 
+          "The $PATH setting to use for building plrust user functions",
+          "It may be necessary to override $PATH in order to find compilation dependencies such as `cargo`, `cc`, etc",
+          &PLRUST_PATH_OVERRIDE,
+          GucContext::Sighup);
 
     GucRegistry::define_string_guc(
         "plrust.tracing_level",

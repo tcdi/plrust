@@ -1111,6 +1111,7 @@ dependencies = [
  "base64 0.21.0",
  "cfg-if",
  "color-eyre",
+ "dirs",
  "eyre",
  "flate2",
  "libloading",

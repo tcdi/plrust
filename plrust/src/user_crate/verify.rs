@@ -24,12 +24,12 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::{CrateState, FnBuild, PlRustError};
+use crate::user_crate::{cargo, CrateState, FnBuild, PlRustError};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::Output,
 };
 
 /// Available and ready-to-validate PL/Rust crate
@@ -79,7 +79,7 @@ impl FnVerify {
         // after writing the lib.rs but before actually building it.
         // As PL/Rust is not fully configured to run user commands here,
         // this version check just smoke-tests the ability to run a command
-        let mut command = Command::new("cargo");
+        let mut command = cargo();
         command.arg("--version");
         command.arg("--verbose");
 

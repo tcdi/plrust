@@ -30,12 +30,15 @@ pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
 pub(crate) use verify::FnVerify;
 
+use crate::gucs::PLRUST_PATH_OVERRIDE;
 use crate::target::CompilationTarget;
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
 use semver;
+use std::env::VarError;
+use std::process::Command;
 use std::{path::Path, process::Output};
 
 /**
@@ -246,6 +249,35 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 
     syn::parse2(rust_type.clone())
         .map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
+}
+
+/// Builds a `Command::new("cargo")` with necessary environment variables pre-configured
+pub(crate) fn cargo() -> Command {
+    let mut command = Command::new("cargo");
+
+    if let Some(path) = PLRUST_PATH_OVERRIDE.get() {
+        // we were configured with an explicit $PATH to use
+        command.env("PATH", path);
+    } else {
+        let path = std::env::var("PATH");
+
+        if path == Err(VarError::NotPresent) || path == Ok(String::default()) {
+            // the environment has no $PATH, so lets try and make a good one based on where
+            // we'd expect 'cargo' to be installed
+            if let Some(home_directory) = dirs::home_dir() {
+                command.env(
+                    "PATH",
+                    format!("{}/.cargo/bin:/usr/bin", home_directory.display()),
+                );
+            } else {
+                // we don't have a home directory... where could cargo be?  Ubuntu installed cargo
+                // at least puts it in /usr/bin
+                command.env("PATH", "/usr/bin");
+            }
+        }
+    }
+
+    command
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
