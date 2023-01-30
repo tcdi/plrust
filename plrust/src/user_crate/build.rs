@@ -9,7 +9,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use std::ffi::CStr;
 use std::{
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::Output,
 };
 
 use color_eyre::{Section, SectionExt};
@@ -17,6 +17,7 @@ use eyre::{eyre, WrapErr};
 use pgx::{pg_sys, PgMemoryContexts};
 
 use crate::target::{CompilationTarget, CrossCompilationTarget};
+use crate::user_crate::cargo;
 use crate::{
     gucs,
     user_crate::{CrateState, FnLoad},
@@ -96,7 +97,7 @@ impl FnBuild {
         target_triple: CompilationTarget,
         cross_compilation_target: Option<CrossCompilationTarget>,
     ) -> eyre::Result<(FnLoad, Output)> {
-        let mut command = Command::new("cargo");
+        let mut command = cargo()?;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
@@ -191,7 +192,7 @@ impl FnBuild {
                 }));
 
             // Clean up on error but don't let this error replace our user's error!
-            if let Err(e)= std::fs::remove_dir_all(&self.crate_dir) {
+            if let Err(e) = std::fs::remove_dir_all(&self.crate_dir) {
                 pgx::log!("Problem during removing crate directory: {e}")
             };
 

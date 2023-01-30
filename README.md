@@ -201,15 +201,16 @@ Failure to do so will cause the plrust extension to raise an ERROR whenever Post
 
 The other available configuration, some of which are **required** are:
 
-| Option                             | Type   | Description                                                 | Required | Default                   |
-| ---------------------------------- | ------ | ----------------------------------------------------------- | -------- | ------------------------- |
-| `plrust.work_dir`                  | string | The directory where pl/rust will build functions with cargo | yes      | <none>                    |
-| `plrust.tracing_level`             | string | A [tracing directive][docs-rs-tracing-directive]            | no       | `'info'`                  |
-| `plrust.compilation_targets`       | string | Comma separated list of CPU targets (x86_64, aarch64)       | no       | <none>                    |
-| `plrust.x86_64_linker`             | string | Name of the linker `rustc` should use on fo cross-compile   | no       | `'x86_64_linux_gnu_gcc'`  |
-| `plrust.aarch64_linker`            | string | Name of the linker `rustc` should use on for cross-compile  | no       | `'aarch64_linux_gnu_gcc'` |
-| `plrust.x86_64_pgx_bindings_path`  | string | Path to output from `cargo pgx cross pgx-target` on x86_64  | no-ish   | <none>                    |
-| `plrust.aarch64_pgx_bindings_path` | string | Path to output form `cargo pgx cross pgx-target` on aarch64 | no-ish   | <none>                    |
+| Option                             | Type   | Description                                                        | Required | Default                                                    |
+|------------------------------------| ------ |--------------------------------------------------------------------|----------|------------------------------------------------------------|
+| `plrust.work_dir`                  | string | The directory where pl/rust will build functions with cargo        | yes      | <none>                                                     |
+| `plrust.PATH_override`             | string | If `cargo` and `cc` aren't in the `postmaster`'s `$PATH`, set this | no       | environment or `~/.cargo/bin:/usr/bin` if `$PATH` is unset |
+| `plrust.tracing_level`             | string | A [tracing directive][docs-rs-tracing-directive]                   | no       | `'info'`                                                   |
+| `plrust.compilation_targets`       | string | Comma separated list of CPU targets (x86_64, aarch64)              | no       | <none>                                                     |
+| `plrust.x86_64_linker`             | string | Name of the linker `rustc` should use on fo cross-compile          | no       | `'x86_64_linux_gnu_gcc'`                                   |
+| `plrust.aarch64_linker`            | string | Name of the linker `rustc` should use on for cross-compile         | no       | `'aarch64_linux_gnu_gcc'`                                  |
+| `plrust.x86_64_pgx_bindings_path`  | string | Path to output from `cargo pgx cross pgx-target` on x86_64         | no-ish   | <none>                                                     |
+| `plrust.aarch64_pgx_bindings_path` | string | Path to output form `cargo pgx cross pgx-target` on aarch64        | no-ish   | <none>                                                     |
 
 For PL/Rust to cross compile user functions it needs to know which CPU architectures via
 `plrust.compilation_targets`. This is a comma-separated list of values, of which only `x86_64` and `aarch64` are
