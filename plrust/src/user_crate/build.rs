@@ -97,7 +97,7 @@ impl FnBuild {
         target_triple: CompilationTarget,
         cross_compilation_target: Option<CrossCompilationTarget>,
     ) -> eyre::Result<(FnLoad, Output)> {
-        let mut command = cargo();
+        let mut command = cargo()?;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");

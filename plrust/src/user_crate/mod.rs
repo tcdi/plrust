@@ -252,22 +252,28 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 }
 
 /// Builds a `Command::new("cargo")` with necessary environment variables pre-configured
-pub(crate) fn cargo() -> Command {
+pub(crate) fn cargo() -> eyre::Result<Command> {
     let mut command = Command::new("cargo");
 
     if let Some(path) = PLRUST_PATH_OVERRIDE.get() {
         // we were configured with an explicit $PATH to use
         command.env("PATH", path);
     } else {
-        let path = std::env::var("PATH");
+        let is_empty = match std::env::var("PATH") {
+            Ok(s) if s.trim().is_empty() => true,
+            Ok(_) => false,
+            Err(VarError::NotPresent) => true,
+            Err(e) => return Err(eyre::eyre!(e)),
+        };
 
-        if path == Err(VarError::NotPresent) || path == Ok(String::default()) {
+        if is_empty {
             // the environment has no $PATH, so lets try and make a good one based on where
             // we'd expect 'cargo' to be installed
-            if let Some(home_directory) = dirs::home_dir() {
+            if let Ok(path) = home::cargo_home() {
+                let path = path.join("bin");
                 command.env(
                     "PATH",
-                    format!("{}/.cargo/bin:/usr/bin", home_directory.display()),
+                    std::env::join_paths(vec![path.as_path(), std::path::Path::new("/usr/bin")])?,
                 );
             } else {
                 // we don't have a home directory... where could cargo be?  Ubuntu installed cargo
@@ -277,7 +283,7 @@ pub(crate) fn cargo() -> Command {
         }
     }
 
-    command
+    Ok(command)
 }
 
 #[tracing::instrument(level = "debug", skip_all)]

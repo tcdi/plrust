@@ -29,7 +29,7 @@ force_enable_x86_64_darwin_generations = []
 cfg-if = "1" # platform conditional helper
 once_cell = "1.7.2" # polyfills a nightly feature
 semver = "1.0.14"
-dirs = "4.0.0" # where might our home directory be?
+home = "0.5.4" # where can we find cargo?
 
 # working with our entry in pg_catalog.pg_proc
 base64 = "0.21.0"

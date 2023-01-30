@@ -79,7 +79,7 @@ impl FnVerify {
         // after writing the lib.rs but before actually building it.
         // As PL/Rust is not fully configured to run user commands here,
         // this version check just smoke-tests the ability to run a command
-        let mut command = cargo();
+        let mut command = cargo()?;
         command.arg("--version");
         command.arg("--verbose");
 
