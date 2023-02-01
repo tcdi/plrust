@@ -24,10 +24,6 @@ $$
 
 As `postgres` linux user
 
-```bash
-cargo install qrcode_generator
-```
-
 
 ```sql
 CREATE FUNCTION strlen(name TEXT)

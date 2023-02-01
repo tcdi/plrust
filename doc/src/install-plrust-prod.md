@@ -1,5 +1,7 @@
 # Install PL/Rust for Production
 
+> This documentation is under development.
+
 These instructions explain how to install `plrust` for production use case.
 This includes creating a `plrust` binary to be installed on production
 PostgreSQL instances as well as configuration and security best practices.

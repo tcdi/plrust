@@ -104,6 +104,8 @@ Install the `plrust` extension.
 cargo pgx install --release -c /usr/bin/pg_config
 ```
 
+> Note: The above installs `plrust` in untrusted mode by leaving off `--features "trusted"`.
+
 Update `postgresql.conf` -- add `plrust` to `shared_preload_libraries`
 
 ```bash
