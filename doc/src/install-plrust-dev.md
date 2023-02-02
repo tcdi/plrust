@@ -33,13 +33,6 @@ Switch to the Linux `postgres` user.
 sudo su - postgres
 ```
 
-Clone the `plrust` repo from GitHub and change into this directory.
-
-```bash
-git clone https://github.com/tcdi/plrust.git
-cd plrust/plrust
-```
-
 Install `rustc` using `rustup`.
 
 ```bash
@@ -49,11 +42,20 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Use `exit` to log out of the `postgres` user, and switch back to the `postgres`
 user.  This ensures your terminal is using the proper `rustc` installation.
 
+
 ```bash
 # Log in  as postgres fresh with rustc installed
 exit
 sudo su - postgres
 ```
+
+Clone the `plrust` repo from GitHub and change into this directory.
+
+```bash
+git clone https://github.com/tcdi/plrust.git
+cd plrust/plrust
+```
+
 
 Change into the `plrust/plrust` directory and check the version of `rustc`.
 
@@ -98,17 +100,21 @@ Initialize `pgx` for PostgreSQL 15 using the standard Ubuntu path to `pg_config`
 cargo pgx init --pg15 /usr/bin/pg_config
 ```
 
-Install the `plrust` extension.
+Install the `plrust` extension in untrusted mode.
 
 ```bash
 cargo pgx install --release -c /usr/bin/pg_config
 ```
 
-> Note: The above installs `plrust` in untrusted mode by leaving off `--features "trusted"`.
+> Note: To use **trusted** mode add `--features "trusted"`.  You must have installed `postgrestd` and the cross-compile toolchain for this feature.
 
 Update `postgresql.conf` -- add `plrust` to `shared_preload_libraries`
 
 ```bash
+nano /etc/postgresql/15/main/postgresql.conf
+```
+
+```
 shared_preload_libraries = 'plrust'
 plrust.work_dir = '/tmp'
 ```
@@ -139,8 +145,27 @@ psql -c "CREATE DATABASE plrust;"
 psql -d plrust
 ```
 
-```bash
+```sql
 CREATE EXTENSION plrust;
-create function one() returns int language plrust as $$ Ok(Some(1)) $$;
+```
+
+You'll see the warning that the extension is untrusted.
+
+```bash
+WARNING:  plrust is **NOT** compiled to be a trusted procedural language
+```
+
+
+Create a test extension using `plrust`.
+
+
+
+```sql
+CREATE FUNCTION one()
+    RETURNS INT LANGUAGE plrust
+AS
+$$
+    Ok(Some(1))
+$$;
 ```
 

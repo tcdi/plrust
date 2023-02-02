@@ -1,4 +1,4 @@
-# PL/Rust
+# What is PL/Rust?
 
 > This documentation is under development.
 
