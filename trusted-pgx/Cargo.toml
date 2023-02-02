@@ -17,4 +17,4 @@ pg14 = ["pgx/pg14"]
 pg15 = ["pgx/pg15"]
 
 [dependencies]
-pgx = { version = "0.7.0", features = [ "no-schema-generation", "plrust" ], default-features = false }
+pgx = { version = "0.7.1", features = [ "no-schema-generation", "plrust" ], default-features = false }

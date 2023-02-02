@@ -157,64 +157,55 @@ impl FnCrating {
             "Generating `Cargo.toml`"
         );
 
-        let cargo_toml = cargo_toml_template(&crate_name, &version_feature);
-        match cargo_toml {
-            toml::Value::Table(mut cargo_manifest) => {
-                // We have to add the user deps now before we return it.
-                match cargo_manifest.entry("dependencies") {
-                    toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
-                        toml::Value::Table(dependencies) => {
-                            for (user_dep_name, user_dep_version) in &self.user_dependencies {
-                                dependencies
-                                    .insert(user_dep_name.clone(), user_dep_version.clone());
-                            }
-                        }
-                        _ => {
-                            return Err(PlRustError::GeneratingCargoToml)
-                                .wrap_err("Getting `[dependencies]` as table")?
-                        }
-                    },
-                    _ => {
-                        return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `[dependencies]`")?
+        let mut cargo_manifest = cargo_toml_template(&crate_name, &version_feature);
+        // We have to add the user deps now before we return it.
+        match cargo_manifest.entry("dependencies") {
+            toml::map::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
+                toml::Value::Table(dependencies) => {
+                    for (user_dep_name, user_dep_version) in &self.user_dependencies {
+                        dependencies.insert(user_dep_name.clone(), user_dep_version.clone());
                     }
-                };
-
-                match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
-                    Err(_) => (),
-                    Ok(path) => {
-                        match cargo_manifest
-                            .entry("patch")
-                            .or_insert(toml::Value::Table(Default::default()))
-                            .as_table_mut()
-                            .unwrap() // infallible
-                            .entry("crates-io")
-                        {
-                            entry @ toml::value::Entry::Vacant(_) => {
-                                let mut pgx_table = toml::value::Table::new();
-                                pgx_table
-                                    .insert("path".into(), toml::Value::String(path.to_string()));
-                                let mut crates_io_table = toml::value::Table::new();
-                                crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
-                                entry.or_insert(toml::Value::Table(crates_io_table));
-                            }
-                            _ => {
-                                return Err(PlRustError::GeneratingCargoToml).wrap_err(
-                                    "Setting `[patch]`, already existed (and wasn't expected to)",
-                                )?
-                            }
-                        }
-                    }
-                };
-
-                Ok(cargo_manifest)
-            }
+                }
+                _ => {
+                    return Err(PlRustError::GeneratingCargoToml)
+                        .wrap_err("Getting `[dependencies]` as table")?
+                }
+            },
             _ => {
                 return Err(PlRustError::GeneratingCargoToml)
-                    .wrap_err("Getting `Cargo.toml` as table")?
+                    .wrap_err("Getting `[dependencies]`")?
             }
-        }
+        };
+
+        match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
+            Err(_) => (),
+            Ok(path) => {
+                match cargo_manifest
+                    .entry("patch")
+                    .or_insert(toml::Value::Table(Default::default()))
+                    .as_table_mut()
+                    .unwrap() // infallible
+                    .entry("crates-io")
+                {
+                    entry @ toml::map::Entry::Vacant(_) => {
+                        let mut pgx_table = toml::value::Table::new();
+                        pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
+                        let mut crates_io_table = toml::value::Table::new();
+                        crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
+                        entry.or_insert(toml::Value::Table(crates_io_table));
+                    }
+                    _ => {
+                        return Err(PlRustError::GeneratingCargoToml).wrap_err(
+                            "Setting `[patch]`, already existed (and wasn't expected to)",
+                        )?
+                    }
+                }
+            }
+        };
+
+        Ok(cargo_manifest)
     }
+
     /// Provision into a given folder and return the crate directory.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, parent_dir = %parent_dir.display()))]
     pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<FnVerify> {
@@ -271,7 +262,7 @@ pub(crate) fn shared_imports() -> syn::ItemUse {
     )
 }
 
-pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Value {
+pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Table {
     toml::toml! {
         [package]
         edition = "2021"
