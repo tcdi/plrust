@@ -1,4 +1,4 @@
-comment = 'plrust:  Created by pgx'
+comment = 'plrust:  A Trusted Rust procedural language for PostgreSQL'
 default_version = '1.0'
 module_pathname = '$libdir/plrust'
 relocatable = false
