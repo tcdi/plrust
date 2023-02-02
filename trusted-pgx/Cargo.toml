@@ -1,5 +1,6 @@
 [package]
 name = "trusted-pgx"
+# version set to match that of the pgx version it sits on top of, rather than matching plrust's version
 version = "0.7.1"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
