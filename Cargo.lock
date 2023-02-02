@@ -1920,7 +1920,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-pgx"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "pgx",
 ]
