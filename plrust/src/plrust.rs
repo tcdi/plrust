@@ -123,7 +123,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
         let (target_triple, shared_object) = built.into_inner();
 
         // store the shared objects in our table
-        prosrc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
+        prosrc::create_or_replace_function(db_oid, fn_oid, target_triple, shared_object)?;
     }
 
     // cleanup after ourselves
@@ -134,6 +134,10 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     ))?;
 
     Ok(this_output.unwrap())
+}
+
+pub(crate) fn symbol_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
+    format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32())
 }
 
 pub(crate) fn crate_name(

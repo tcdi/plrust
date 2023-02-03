@@ -103,9 +103,9 @@ impl FnCrating {
     /// Generates the lib.rs to write
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let crate_name = self.crate_name();
-        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
+        let symbol_name = crate::plrust::symbol_name(self.db_oid, self.fn_oid);
+        let symbol_ident = proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
+        tracing::trace!(symbol_name = %symbol_name, "Generating `lib.rs` for validation step");
 
         let user_code = &self.user_code;
         let user_fn: syn::ItemFn = match &self.variant {

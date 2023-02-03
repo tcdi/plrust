@@ -43,6 +43,7 @@ impl FnReady {
         generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
         #[cfg(target_os = "linux")]
@@ -101,8 +102,8 @@ impl FnReady {
             ((), library)
         };
 
-        let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
-        let symbol_name = crate_name + "_wrapper";
+        let symbol_name = symbol.unwrap_or_else(|| crate::plrust::symbol_name(db_oid, fn_oid));
+        let symbol_name = symbol_name + "_wrapper"; // + "_wrapper" b/c pgx' `#[pg_extern]` adds that
 
         tracing::trace!("Getting symbol `{symbol_name}`");
         let symbol = unsafe { library.get(symbol_name.as_bytes())? };

@@ -21,6 +21,7 @@ pub(crate) struct FnLoad {
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     target: CompilationTarget,
+    symbol: Option<String>,
     shared_object: Vec<u8>,
 }
 
@@ -33,6 +34,7 @@ impl FnLoad {
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
     ) -> Self {
         Self {
@@ -40,6 +42,7 @@ impl FnLoad {
             db_oid,
             fn_oid,
             target,
+            symbol,
             shared_object,
         }
     }
@@ -57,6 +60,7 @@ impl FnLoad {
                 self.generation_number,
                 self.db_oid,
                 self.fn_oid,
+                self.symbol,
                 self.shared_object,
             )
         }

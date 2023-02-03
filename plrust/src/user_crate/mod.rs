@@ -161,6 +161,7 @@ impl UserCrate<FnLoad> {
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
     ) -> Self {
         UserCrate(FnLoad::new(
@@ -168,6 +169,7 @@ impl UserCrate<FnLoad> {
             db_oid,
             fn_oid,
             target,
+            symbol,
             shared_object,
         ))
     }

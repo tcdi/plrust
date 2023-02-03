@@ -157,6 +157,7 @@ impl FnBuild {
                     self.db_oid,
                     self.fn_oid,
                     target_triple,
+                    Some(crate::plrust::symbol_name(self.db_oid, self.fn_oid)),
                     so_bytes,
                 ),
                 output,
