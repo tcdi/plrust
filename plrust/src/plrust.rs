@@ -49,12 +49,12 @@ pub(crate) unsafe fn evaluate_function(
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
 
         let user_crate_loaded = if let Some(current) = loaded_symbols_handle.get_mut(&fn_oid) {
-            let current_xmin = PgProc::new(fn_oid)?.xmin();
+            let current_generation_number = PgProc::new(fn_oid)?.generation_number();
 
-            // xmin represents the transaction id that inserted this row (in this case into
-            // pg_catalog.pg_proc).  So if it's changed from the last time we loaded the function
-            // then we have more work to do...
-            if current.xmin() != current_xmin {
+            // `generation_number`` represents the transaction id and command id that inserted this 
+            // row (in this case into pg_catalog.pg_proc).  So if it's changed from the last time we 
+            // loaded the function then we have more work to do...
+            if current.generation_number() != current_generation_number {
                 // the function, which we've previously loaded, was changed by a concurrent session.
                 // This could be caused by (at least) the "OR REPLACE" bit of CREATE OR REPLACE or
                 // by an ALTER FUNCTION that changed one of the attributes of the function.
@@ -136,7 +136,11 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     Ok(this_output.unwrap())
 }
 
-pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
+pub(crate) fn crate_name(
+    db_oid: pg_sys::Oid,
+    fn_oid: pg_sys::Oid,
+    generation_number: u64,
+) -> String {
     // NB:  This once included the compiling host's target triple as part of the crate name for
     // reasons about restoring a database to the same platform.
     //
@@ -145,7 +149,12 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     //
     // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
     // multiple targets.
-    let crate_name = format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32(),);
+    let crate_name = format!(
+        "plrust_fn_oid_{}_{}_{}",
+        db_oid.as_u32(),
+        fn_oid.as_u32(),
+        generation_number
+    );
 
     crate_name
 }

@@ -32,11 +32,6 @@ cfg_if::cfg_if! {
 }
 
 mod error;
-#[cfg(any(
-    all(target_os = "macos", target_arch = "x86_64"),
-    feature = "force_enable_x86_64_darwin_generations"
-))]
-mod generation;
 mod gucs;
 mod logging;
 mod plrust;

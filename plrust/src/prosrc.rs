@@ -166,7 +166,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     // fabricate a FnLoad version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
     let built = UserCrate::built(
-        pg_proc.xmin(),
+        pg_proc.generation_number(),
         db_oid,
         pg_proc_oid,
         this_target.clone(),

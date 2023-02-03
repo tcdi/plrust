@@ -17,7 +17,7 @@ use crate::user_crate::{CrateState, FnReady};
 /// - Produces: a dlopened artifact
 #[must_use]
 pub(crate) struct FnLoad {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     target: CompilationTarget,
@@ -29,14 +29,14 @@ impl CrateState for FnLoad {}
 impl FnLoad {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
         shared_object: Vec<u8>,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             target,
@@ -54,7 +54,7 @@ impl FnLoad {
             // SAFETY:  Caller is responsible for ensuring self.shared_object points to the proper
             // shared library to be loaded
             FnReady::load(
-                self.pg_proc_xmin,
+                self.generation_number,
                 self.db_oid,
                 self.fn_oid,
                 self.shared_object,

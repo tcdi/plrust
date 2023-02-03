@@ -24,7 +24,7 @@ impl CrateState for FnCrating {}
 /// - Produces: a provisioned Cargo crate directory
 #[must_use]
 pub(crate) struct FnCrating {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     user_dependencies: toml::value::Table,
@@ -35,7 +35,7 @@ pub(crate) struct FnCrating {
 impl FnCrating {
     #[cfg(any(test, feature = "pg_test"))]
     pub(crate) fn for_tests(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -43,7 +43,7 @@ impl FnCrating {
         variant: CrateVariant,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             user_dependencies: user_deps.into(),
@@ -58,7 +58,7 @@ impl FnCrating {
         fn_oid: pg_sys::Oid,
     ) -> eyre::Result<Self> {
         let meta = PgProc::new(fn_oid)?;
-        let pg_proc_xmin = meta.xmin();
+        let generation_number = meta.generation_number();
         let (user_code, user_dependencies) = parse_source_and_deps(&meta.prosrc())?;
 
         let variant = match meta.prorettype() == pg_sys::TRIGGEROID {
@@ -88,7 +88,7 @@ impl FnCrating {
         };
 
         Ok(Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             user_code,
@@ -97,16 +97,7 @@ impl FnCrating {
         })
     }
     pub(crate) fn crate_name(&self) -> String {
-        let mut _crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        {
-            let next = crate::generation::next_generation(&_crate_name, true).unwrap_or_default();
-            _crate_name.push_str(&format!("_{}", next));
-        }
-        _crate_name
+        crate::plrust::crate_name(self.db_oid, self.fn_oid, self.generation_number)
     }
 
     /// Generates the lib.rs to write
@@ -230,7 +221,7 @@ impl FnCrating {
         .wrap_err("Writing generated `Cargo.toml`")?;
 
         Ok(FnVerify::new(
-            self.pg_proc_xmin,
+            self.generation_number,
             self.db_oid,
             self.fn_oid,
             crate_name,
@@ -347,7 +338,7 @@ mod tests {
     #[pg_test]
     fn strict_string() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -364,22 +355,16 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
@@ -418,7 +403,7 @@ mod tests {
     #[pg_test]
     fn non_strict_integer() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -437,22 +422,16 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
@@ -491,7 +470,7 @@ mod tests {
     #[pg_test]
     fn strict_string_set() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -510,22 +489,16 @@ mod tests {
                 { Ok(Some(std::iter::repeat(val).take(5))) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
@@ -564,7 +537,7 @@ mod tests {
     #[pg_test]
     fn trigger() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -574,22 +547,16 @@ mod tests {
                 { Ok(trigger.current().unwrap().into_owned()) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
