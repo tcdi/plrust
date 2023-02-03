@@ -9,10 +9,16 @@
 
 # User Guide
 
-- [Getting started with PL/Rust](./use-plrust.md)
+- [PL/Rust Functions and Arguments](./use-plrust.md)
+- [Data types](./data-types.md)
+- [Built-in functions](./built-in-functions.md)
+- [SPI](./spi.md)
+- [Trusted and Untrusted PL/Rust](./trusted-untrusted.md)
+- [Triggers](./triggers.md)
+- [Additional Features](./additional-features.md)
 
-# Design and Architecture
 
-- [Design Decisions](./design-decisions.md)
-    - [Architecture](./architecture.md)
-    - [Designing for Trust](./designing-for-trust.md)
+# PL/Rust Under the Hood
+
+- [Architecture](./architecture.md)
+- [Designing for Trust](./designing-for-trust.md)

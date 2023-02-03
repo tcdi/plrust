@@ -44,4 +44,10 @@ SELECT strlen('Hello, PL/Rust');
 ```
 
 
+## Built on pgx
+
+PL/Rust is built on the `pgx` framework.  Documentation on the pgx crate is
+[found here](https://docs.rs/pgx/latest/pgx/).
+
+
 

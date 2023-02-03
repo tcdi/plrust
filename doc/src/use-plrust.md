@@ -1,4 +1,4 @@
-# Creating functions with PL/Rust
+# PL/Rust Functions and Arguments
 
 These instructions explain how to create PostgreSQL functions using the Rust
 language and `plrust`.
