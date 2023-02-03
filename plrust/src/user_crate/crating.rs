@@ -364,8 +364,9 @@ mod tests {
                 variant,
             );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
@@ -431,8 +432,9 @@ mod tests {
                 variant,
             );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
@@ -498,8 +500,9 @@ mod tests {
                 variant,
             );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
@@ -556,8 +559,9 @@ mod tests {
                 variant,
             );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();

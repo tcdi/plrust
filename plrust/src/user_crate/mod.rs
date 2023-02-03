@@ -445,8 +445,9 @@ mod tests {
                 user_code,
                 variant,
             );
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
@@ -479,6 +480,7 @@ mod tests {
 
             let generated_cargo_toml = generated.cargo_toml()?;
             let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let fixture_cargo_toml = cargo_toml_template(&crate_name, &version_feature);
 
             assert_eq!(
