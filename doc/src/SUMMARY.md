@@ -12,11 +12,10 @@
 - [PL/Rust Functions and Arguments](./use-plrust.md)
 - [Data types](./data-types.md)
 - [Built-in functions](./built-in-functions.md)
-- [SPI](./spi.md)
+    - [SPI](./spi.md)
+    - [Triggers](./triggers.md)
+    - [Additional Features](./additional-features.md)
 - [Trusted and Untrusted PL/Rust](./trusted-untrusted.md)
-- [Triggers](./triggers.md)
-- [Additional Features](./additional-features.md)
-
 
 # PL/Rust Under the Hood
 

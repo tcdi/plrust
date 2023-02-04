@@ -1,23 +1,40 @@
 # PL/Rust Functions and Arguments
 
-These instructions explain how to create PostgreSQL functions using the Rust
-language and `plrust`.
+To create a function in the PL/Rust language,
+use the standard [`CREATE FUNCTION`](https://www.postgresql.org/docs/current/sql-createfunction.html)
+syntax.
 
-
-## Basic Example
-
-The following example creates a simple `plrust` function named `one()`
-that simply returns the integer `1`.
 
 ```sql
-CREATE FUNCTION one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;
+CREATE FUNCTION funcname (argument-list)
+    RETURNS return-type
+    -- function attributes can go here
+AS $$
+    # PL/Rust function body goes here
+$$ LANGUAGE plrust;
 ```
 
-The ability to one-line the above example is nice. The following example is
-the same function definition showing the PostgreSQL function structure more clearly.
-The `CREATE FUNCTION` structure is outlined in the
-[PostgreSQL documentation](https://www.postgresql.org/docs/current/sql-createfunction.html).
-The final statement of the function's body returns `Ok(Some(<something>))`.
+The body of the function is ordinary Rust code. At
+`CREATE FUNCTION` time the Rust code is complied using the `pgx`
+framework. This compile process does take a bit of time
+so anonymous blocks (`DO` blocks) are not supported at this time.
+
+The syntax of the `CREATE FUNCTION` command requires the function
+body to be written as a string constant. It is usually most convenient 
+to use dollar quoting (see [Section 4.1.2.4](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING))
+for the string constant. If you choose to use escape string syntax
+`E''`, you must double any single quote marks (') and
+backslashes (\) used in the body of the function (see
+[Section 4.1.2.1](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS)).
+
+
+
+## Basic PL/Rust Example
+
+The following example creates a basic `plrust`
+function named `one()` to simply returns the
+integer `1`.
+
 
 ```sql
 CREATE FUNCTION one()
@@ -34,9 +51,8 @@ $$
 ## Function with parameters
 
 The next example creates a function named `strlen` that accepts a parameter
-named `val`.
-The function returns a `BIGINT` representing the character count of the text
-in `val`.
+named `val`. The function returns a `BIGINT` representing the character
+count of the text in `val`.
 
 ```sql
 CREATE FUNCTION strlen(val TEXT)
@@ -76,6 +92,12 @@ SELECT strlen('Hello, PL/Rust');
 └────────┘
 ```
 
+
+Function arguments are not required to have a name.
+
+```sql
+SELECT example FROM future WHERE coming_soon;
+```
 
 ## Calculations
 
