@@ -1,0 +1,13 @@
+[package]
+name = "plrust_plugins"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# TODO: plugins are deprecated, we should switch to a custom rustc driver.
+plugin = true
+
+[dependencies]
+
+[package.metadata.rust-analyzer]
+rustc_private = true
