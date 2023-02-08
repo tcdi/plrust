@@ -281,7 +281,7 @@ requirements.
 As a pre-emptive measure, PL/Rust proactively unsets a few environment variables that could possibly impact user function
 compilation:  
  `DOCS_RS, PGX_BUILD_VERBOSE, PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE, CARGO_MANIFEST_DIR, OUT_DIR, RUSTC`
-These are generally things used by the `pgx` development team and not at all necessary for proper PL/Rust.
+These are generally things used by the `pgx` development team and not at all necessary for PL/Rust.
 
 
 # Quickly Getting Started
