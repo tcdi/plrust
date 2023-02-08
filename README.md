@@ -18,7 +18,7 @@ same level of safety guarantees.
 An example PL/Rust function:
 
 ```sql
-// return the character length of a text string
+-- return the character length of a text string
 CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
     Ok(Some(name.unwrap().len() as i32))
 $$;
@@ -227,10 +227,61 @@ blindly use the bindings it already has for `x86_64`.  This may or may not actua
 To get the bindings, install `cargo-pgx` on the other system and run `cargo pgx cross pgx-target`. That'll generate a tarball. Copy that back 
 to the primary host machine and untar it somewhere (plrust doesn't care where), and use that path as the configuration setting.
 
-
 Note that it is perfectly fine (and really, expected) to set all of these configuration settings on both architectures.
 plrust will silently ignore the one for the current host.  In other words, plrust only uses them when cross compiling for 
 the other architecture.
+
+
+## Environment Variables
+
+As part of PL/Rust's function compilation machinery, and in conjunction with `pgx` which does the hard work, a number
+of environment variables are set when PL/Rust executes `cargo`.
+
+These are not environment variables that need to set manually.  Generally, these are auto-detected and cannot be 
+overridden through configuration.
+
+| Name                                        | Value                                                                         | How it's Used                                                                                                                                                                                                        |
+|---------------------------------------------|-------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| PATH                                        | `~/cargo/bin:/usr/bin` or `/usr/bin` if "postgres" user has no home directory | The `PATH` environment variable is **only** set by PL/Rust if it detects that one isn't already set.  <br/>As mentioned above, this one *can* be overridden via the `plrust.PATH_override` GUC in `postgresql.conf`  |
+ | RUSTFLAGS                                   | `"-Clink-args=-Wl,-undefined,dynamic_lookup"`                                 | Used by `rustc` to indicate that Postgres internal symbols are only available at run-time, not compile-time                                                                                                          |
+| CARGO_TARGET_DIR                            | value of GUC `plrust.work_dir`/`target`                                       | This is the filesystem path `cargo` will store its intermediate compilation artifacts                                                                                                                                |
+ | CARGO_TARGET_X86_64_LINKER                  | `x86_64-linux-gnu-gcc`                                                        | Used only when cross-compiling *to* x86_64, this tells `rustc` which linker to use.  The `plrust.x86_64_linker` GUC can override the default                                                                         |
+| CARGO_TARGET_AARCH64_LINKER                 | `aarch64-linux-gnu-gcc`                                                       | Used only when cross-compiling *to* aarch64, this tells `rustc` which linker to use.  The `plrust.aarch64_linker` GUC can override the default                                                                       |
+ | PGX_TARGET_INFO_PATH_PG${MAJOR_VERSION_NUM} | unset unless `plrust.{x86_64/aarch64}_pgx_bindings_path` GUC is set           | Used only when cross-compiling *to* the specified target.  This tells `pgx` where to find the generated Postgres bindings for that platform.                                                                         | 
+| PGX_PG_CONFIG_AS_EN_VAR                     | `true`                                                                        | Indicates to the `trusted-pgx` dependency, and ultimately `pgx` itself that instead of getting the values it needs for compilation from the Postgres `pg_config` tool, it should get them from environment variables |
+| PGX_PG_CONFIG_VERSION                       | Provided by the running Postgres instance                                     | Used by `pgx` to build the PL/Rust user function                                                                                                                                                                     |
+| PGX_PG_CONFIG_CPPFLAGS                      | Provided by the running Postgres instance                                     | Used by `pgx` to build the PL/Rust user function (technically unused by PL/Rust's build process as PL/Rust does not include the pgx "cshim" for which this is normally used)                                         |
+| PGX_PG_CONFIG_INCLUDEDIR-SERVER             | Provided by the running Postgres instance                                     | Used by `pgx` to build the PL/Rust user function                                                                                                                                                                     |
+| PGX_PG_CONFIG_BINDIR                        | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |        
+| PGX_PG_CONFIG_DOCDIR                        | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_HTMLDIR                       | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_INCLUDEDIR                    | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_PKGINCLUDEDIR                 | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_LIBDIR                        | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_PKGLIBDIR                     | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_LOCALEDIR                     | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_MANDIR                        | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_SHAREDIR                      | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_SYSCONFDIR                    | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_PGXS                          | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_CONFIGURE                     | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_CC                            | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_CFLAGS                        | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_CFLAGS_SL                     | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_LDFLAGS                       | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_LDFLAGS_EX                    | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_LDFLAGS_SL                    | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+| PGX_PG_CONFIG_LIBS                          | Provided by the running Postgres instance                                     | Reserved for future use by `pgx` to build the PL/Rust user function                                                                                                                                                  |
+
+Note that PL/Rust uses Rust's [`std::process::Command`](https://doc.rust-lang.org/beta/std/process/struct.Command.html) 
+to exec `cargo`.  As such, it **will** inherit **all** environment variables active under the active backend `postgres` 
+process.  We recommend you ensure Postgres' overall environment has been properly sanitized to your organizations 
+requirements.
+
+As a pre-emptive measure, PL/Rust proactively unsets a few environment variables that could possibly impact user function
+compilation:  
+ `DOCS_RS, PGX_BUILD_VERBOSE, PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE, CARGO_MANIFEST_DIR, OUT_DIR, RUSTC`
+These are generally things used by the `pgx` development team and not at all necessary for proper PL/Rust.
 
 
 # Quickly Getting Started
