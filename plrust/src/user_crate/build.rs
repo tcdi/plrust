@@ -104,6 +104,17 @@ impl FnBuild {
         command.arg("--release");
         command.arg("--target");
         command.arg(&target_triple);
+
+        // these are environment variables that could possibly impact pgx compilation that we don't
+        // want to accidentally or purposely be inherited from the running "postgres" process
+
+        command.env_remove("DOCS_RS"); // we'll never be building user function on https://docs.rs
+        command.env_remove("PGX_BUILD_VERBOSE"); // unnecessary to ever build a user function in verbose mode
+        command.env_remove("PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE"); // while an interesting idea, PL/Rust user functions are not used to generate a `pgx` release
+        command.env_remove("CARGO_MANIFEST_DIR"); // we are in the manifest directory b/c of `command.current_dir()` above
+        command.env_remove("OUT_DIR"); // rust's default decision for OUT_DIR is perfectly acceptable to PL/Rust
+        command.env_remove("RUSTC"); // don't let pgx trust the host w.r.t telling it to use a different `rustc`
+
         command.env("CARGO_TARGET_DIR", &cargo_target_dir);
         command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
 
