@@ -1,17 +1,6 @@
-#![feature(rustc_private)]
-
-extern crate rustc_ast;
-extern crate rustc_driver;
-extern crate rustc_hir;
-extern crate rustc_lint;
-extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_session;
-extern crate rustc_span;
-
-use rustc_driver::plugin::Registry;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext, LintStore};
+use rustc_session::Session;
 
 declare_lint!(
     pub(crate) EXTERN_BLOCKS,
@@ -60,12 +49,8 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeParamTraitPass {
     }
 }
 
-#[no_mangle]
-fn __rustc_plugin_registrar(reg: &mut Registry) {
-    reg.lint_store
-        .register_lints(&[&EXTERN_BLOCKS, &LIFETIME_PARAMETERIZED_TRAITS]);
-    reg.lint_store
-        .register_late_pass(move |_| Box::new(NoExternBlockPass));
-    reg.lint_store
-        .register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
+pub fn register(store: &mut LintStore, _sess: &Session) {
+    store.register_lints(&[&EXTERN_BLOCKS, &LIFETIME_PARAMETERIZED_TRAITS]);
+    store.register_late_pass(move |_| Box::new(NoExternBlockPass));
+    store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
 }

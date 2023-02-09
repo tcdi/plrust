@@ -1,3 +1,5 @@
 [env]
 # Just for local dev.
 RUSTC_BOOTSTRAP = "1"
+# [build]
+# RUSTFLAGS = ""
