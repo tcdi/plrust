@@ -245,7 +245,7 @@ impl FnCrating {
 }
 
 /// Throw all the libs into this, we will write this once.
-fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<syn::File> {
+fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<[syn::File; N]> {
     let mut skeleton: syn::File = syn::parse2(quote! {
         #![deny(unsafe_op_in_unsafe_fn)]
     })
