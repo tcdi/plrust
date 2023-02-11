@@ -1,29 +1,50 @@
 # Built-in functions
 
+This page documents many of the high level functions,
+targeted functionality is covered on dedicated sub-sections.
 
-Most of what is found here can be used.
+- [Server Programming Interface (SPI)](spi.md)
+- [Triggers](triggers.md)
+- [Additional features](additional-features.md)
 
-https://github.com/tcdi/plrust/blob/main/trusted-pgx/src/lib.rs
 
-## Note - Cleanup
+## Functions available
 
-`plrust` user functions won't compile if they use the `unsafe` keyword.
-There's a handful of functions in `trusted-pgx` that are declared unsafe,
-so `plrust` functions can not use them because they would need an `unsafe {}`
-block.
+Functions available to PL/Rust are defined under
+the [`trusted-pgx` directory in `lib.rs`](https://github.com/tcdi/plrust/blob/main/trusted-pgx/src/lib.rs). User functions in `plrust` will not compile if they use
+the `unsafe` keyword.
+There are a handful of functions in `trusted-pgx` that are
+declared unsafe; `plrust` functions cannot use them because they would need an `unsafe {}` block.
 
 
 ## Datum functions
 
-`AnyNumeric`
+PL/Rust function support for various Datums are documented by
+[pgx on docs.rs](https://docs.rs/pgx/latest/pgx/datum/index.html),
+the source is [on GitHub](https://github.com/tcdi/pgx/tree/master/pgx/src/datum) for those interested.
+There are Datums defined in `pgx` that are not included in PL/Rust
+because they have not been imported by `plrust`.
 
-`Date`
 
-`FromDatum` / `IntoDatum`
+[`AnyNumeric`](https://docs.rs/pgx/latest/pgx/datum/numeric/struct.AnyNumeric.html):
+A plain PostgreSQL `NUMERIC` with default precision and scale values. This is a sufficient type to represent any Rust primitive value from `i128::MIN` to `u128::MAX` and anything in between.
 
-`Json` / `JsonB`
+[`FromDatum`](https://docs.rs/pgx/latest/pgx/datum/trait.FromDatum.html) and [`IntoDatum`](https://docs.rs/pgx/latest/pgx/datum/trait.IntoDatum.html): Provide conversions between `pg_sys::Datum` and Rust types. 
+
+
+[`Json`](https://docs.rs/pgx/latest/pgx/datum/struct.Json.html)
+and
+[`JsonB`](https://docs.rs/pgx/latest/pgx/datum/struct.JsonB.html)
+match the types in PostgreSQL of the same name.
+
+
+[`Date`](https://docs.rs/pgx/latest/pgx/datum/struct.Date.html):
+A plain PostgreSQL `DATE` type without a time component.
+
 
 `Time` / `TimeWithTimeZone` / `Timestamp` / `TimestampWithTimeZone`
+
+
 
 
 ## fcinfo functions
