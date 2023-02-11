@@ -5,7 +5,7 @@ targeted functionality is covered on dedicated sub-sections.
 
 - [Server Programming Interface (SPI)](spi.md)
 - [Triggers](triggers.md)
-- [Additional features](additional-features.md)
+- [Logging to PostgreSQL from PL/Rust](logging.md)
 
 
 ## Functions available

@@ -14,7 +14,7 @@
 - [Built-in functions](./built-in-functions.md)
     - [SPI](./spi.md)
     - [Triggers](./triggers.md)
-    - [Additional Features](./additional-features.md)
+    - [Logging to PostgreSQL from PL/Rust](./logging.md)
 - [Trusted and Untrusted PL/Rust](./trusted-untrusted.md)
 
 # PL/Rust Under the Hood

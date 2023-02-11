@@ -1,8 +1,4 @@
-# Additional Features
-
-Other Postgres-things `plrust` can do.
-
-## Logging
+# Logging to PostgreSQL from PL/Rust
 
 
 ```sql
