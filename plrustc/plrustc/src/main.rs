@@ -5,7 +5,7 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 
 extern crate rustc_lint;
-#[macro_use]
+extern crate rustc_lint_defs;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_tools_util;
@@ -48,6 +48,7 @@ impl rustc_driver::Callbacks for PlrustcCallbacks {
         }
     }
 }
+
 fn main() {
     // Snapshot the environment before we call functions which may mess with it.
     // let env_snapshot = env::vars_os().collect::<Vec<_>>();
@@ -125,16 +126,11 @@ fn main() {
         //     exit(0);
         // }
 
-        // let mut args: Vec<String> = orig_args.clone();
-        // if !have_sysroot_arg {
-        //     args.extend(["--sysroot".into(), sysroot]);
-        // };
+        // let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
+        //     && arg_value(&orig_args, "--force-warn", |val| val.contains("plrustc_lints")).is_none();
+        // let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
-        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
-            && arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::")).is_none();
-        let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
-
-        let lints_enabled = !cap_lints_allow && in_primary_package;
+        let lints_enabled = true; // !cap_lints_allow && in_primary_package;
 
         run_compiler(
             args,
@@ -174,14 +170,14 @@ fn arg_value<'a, T: AsRef<str>>(
 // - runtime environment
 //    - PLRUSTC_SYSROOT
 //    - SYSROOT
-//    - RUSTUP_HOME, MULTIRUST_HOME, RUSTUP_TOOLCHAIN, MULTIRUST_TOOLCHAIN
+//    - RUSTUP_HOME, RUSTUP_TOOLCHAIN
 //
 // - sysroot from rustc in the path
 //
 // - compile-time environment
 //    - PLRUSTC_SYSROOT
 //    - SYSROOT
-//    - RUSTUP_HOME, MULTIRUST_HOME, RUSTUP_TOOLCHAIN, MULTIRUST_TOOLCHAIN
+//    - RUSTUP_HOME, RUSTUP_TOOLCHAIN
 fn guess_sysroot() -> Option<String> {
     std::env::var("PLRUSTC_SYSROOT")
         .ok()
@@ -195,14 +191,12 @@ fn guess_sysroot() -> Option<String> {
             )
         })
         .or_else(|| {
-            // Command::new("rustc")
-            //     .arg("--print")
-            //     .arg("sysroot")
-            //     .output()
-            //     .ok()
-            //     .and_then(|out| String::from_utf8(out.stdout).ok())
-            //     .map(|s| PathBuf::from(s.trim()))
-            None
+            std::process::Command::new("rustc")
+                .arg("--print=sysroot")
+                .output()
+                .ok()
+                .and_then(|out| String::from_utf8(out.stdout).ok())
+                .map(|s| PathBuf::from(s.trim()))
         })
         .or_else(|| {
             let plrust_sysroot: Option<_> = option_env!("PLRUSTC_SYSROOT");
@@ -231,7 +225,7 @@ fn run_compiler(
 ) -> ! {
     let mut extra_args = vec![];
     if target_crate {
-        extra_args.push("--cfg=plrustc");
+        extra_args.push("--cfg=plrust");
     }
     args.splice(1..1, extra_args.iter().map(ToString::to_string));
 
