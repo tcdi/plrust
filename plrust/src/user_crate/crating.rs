@@ -282,8 +282,6 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
 
         [profile.release]
         debug-assertions = true
-        codegen-units = 1_usize
-        lto = "thin"
         opt-level = 3_usize
         panic = "unwind"
     }
