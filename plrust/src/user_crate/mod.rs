@@ -17,6 +17,7 @@ cargo doc --no-deps --document-private-items --open
 ```
 */
 mod build;
+mod cargo;
 mod crate_variant;
 mod crating;
 mod loading;
@@ -30,15 +31,12 @@ pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
 pub(crate) use verify::FnVerify;
 
-use crate::gucs::PLRUST_PATH_OVERRIDE;
 use crate::target::CompilationTarget;
 use crate::PlRustError;
 use pgx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
 use semver;
-use std::env::VarError;
-use std::process::Command;
 use std::{path::Path, process::Output};
 
 /**
@@ -249,41 +247,6 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 
     syn::parse2(rust_type.clone())
         .map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
-}
-
-/// Builds a `Command::new("cargo")` with necessary environment variables pre-configured
-pub(crate) fn cargo() -> eyre::Result<Command> {
-    let mut command = Command::new("cargo");
-
-    if let Some(path) = PLRUST_PATH_OVERRIDE.get() {
-        // we were configured with an explicit $PATH to use
-        command.env("PATH", path);
-    } else {
-        let is_empty = match std::env::var("PATH") {
-            Ok(s) if s.trim().is_empty() => true,
-            Ok(_) => false,
-            Err(VarError::NotPresent) => true,
-            Err(e) => return Err(eyre::eyre!(e)),
-        };
-
-        if is_empty {
-            // the environment has no $PATH, so lets try and make a good one based on where
-            // we'd expect 'cargo' to be installed
-            if let Ok(path) = home::cargo_home() {
-                let path = path.join("bin");
-                command.env(
-                    "PATH",
-                    std::env::join_paths(vec![path.as_path(), std::path::Path::new("/usr/bin")])?,
-                );
-            } else {
-                // we don't have a home directory... where could cargo be?  Ubuntu installed cargo
-                // at least puts it in /usr/bin
-                command.env("PATH", "/usr/bin");
-            }
-        }
-    }
-
-    Ok(command)
 }
 
 #[tracing::instrument(level = "debug", skip_all)]

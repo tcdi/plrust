@@ -24,7 +24,8 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::{cargo, CrateState, FnBuild, PlRustError};
+use crate::user_crate::cargo::cargo;
+use crate::user_crate::{CrateState, FnBuild, PlRustError};
 use eyre::{eyre, WrapErr};
 use pgx::pg_sys;
 use std::{
@@ -72,14 +73,14 @@ impl FnVerify {
             db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             crate_dir = %self.crate_dir.display(),
-            target_dir = tracing::field::display(target_dir.display()),
+            target_dir = tracing::field::display(cargo_target_dir.display()),
         ))]
-    pub(crate) fn validate(self, target_dir: &Path) -> eyre::Result<(FnBuild, Output)> {
+    pub(crate) fn validate(self, cargo_target_dir: &Path) -> eyre::Result<(FnBuild, Output)> {
         // This is the step which would be used for running validation
         // after writing the lib.rs but before actually building it.
         // As PL/Rust is not fully configured to run user commands here,
         // this version check just smoke-tests the ability to run a command
-        let mut command = cargo()?;
+        let mut command = cargo(cargo_target_dir, None)?;
         command.arg("--version");
         command.arg("--verbose");
 
