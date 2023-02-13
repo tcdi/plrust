@@ -6,12 +6,12 @@ description = "`rustc_driver` wrapper for plrust"
 
 [dependencies]
 once_cell = "1.17.0"
-rustc_tools_util = "0.3.0"
+# rustc_tools_util = "0.3.0"
 # log = "0.4"
 # env-logger = "0.10"
 
-[build-dependencies]
-rustc_tools_util = "0.3.0"
+# [build-dependencies]
+# rustc_tools_util = "0.3.0"
 
 [dev-dependencies]
 compiletest_rs = "0.9"

@@ -8,7 +8,7 @@ extern crate rustc_lint;
 extern crate rustc_lint_defs;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_tools_util;
+// extern crate rustc_tools_util;
 
 use rustc_interface::interface;
 // use rustc_session::parse::ParseSess;

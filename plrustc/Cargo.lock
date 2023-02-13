@@ -183,7 +183,6 @@ version = "0.1.0"
 dependencies = [
  "compiletest_rs",
  "once_cell",
- "rustc_tools_util",
 ]
 
 [[package]]
@@ -240,12 +239,6 @@ name = "regex-syntax"
 version = "0.6.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
-
-[[package]]
-name = "rustc_tools_util"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
 
 [[package]]
 name = "rustfix"

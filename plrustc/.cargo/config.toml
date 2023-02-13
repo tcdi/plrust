@@ -1,3 +1,3 @@
-[env]
-# FIXME :(
-RUSTC_BOOTSTRAP = "1"
+# [env]
+# # FIXME :(
+# RUSTC_BOOTSTRAP = "1"
