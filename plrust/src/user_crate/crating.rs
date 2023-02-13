@@ -143,8 +143,9 @@ impl FnCrating {
             })
             .wrap_err("Parsing generated user trigger")?,
         };
-        let opened = unsafe_mod(user_fn.clone(), &self.variant)?;
-        let (forbidden, lints) = safe_mod(user_fn)?;
+
+        let opened = unsafe_lib(user_fn.clone(), &self.variant)?;
+        let (forbidden, lints) = safe_lib(user_fn)?;
 
         Ok((compose_lib_from_mods([opened, forbidden])?, lints))
     }
@@ -244,17 +245,35 @@ impl FnCrating {
     }
 }
 
+type Code = syn::File;
+
 /// Throw all the libs into this, we will write this once.
-fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<[syn::File; N]> {
+fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<[Code; N]> {
+    prepare_files(modules)
+}
+
+struct Source {
+    name: String,
+    code: syn::File,
+}
+
+fn prepare_files<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<[Code; N]> {
     let mut skeleton: syn::File = syn::parse2(quote! {
         #![deny(unsafe_op_in_unsafe_fn)]
     })
     .wrap_err("Generating lib skeleton")?;
+    let skeletons = std::array::from_fn(|s| skeleton.clone());
 
-    for module in modules {
-        skeleton.items.push(module.into());
-    }
-    Ok(skeleton)
+    Ok(skeletons)
+}
+
+pub(crate) fn root_lib() -> syn::File {
+    syn::parse_quote!(
+        #[cfg(feature = "check_forbidden")]
+        mod forbidden;
+        #[cfg(feature = "build_opened")]
+        mod opened;
+    )
 }
 
 /// Used by both the unsafe and safe module.
@@ -316,7 +335,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
     toml
 }
 
-fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Result<syn::ItemMod> {
+fn unsafe_lib(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Result<syn::File> {
     let imports = shared_imports();
 
     match variant {
@@ -334,29 +353,27 @@ fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Resul
 
     // Use pub mod so that symbols inside are found, opened, and called
     syn::parse2(quote! {
-        pub mod opened {
+            #![deny(unsafe_op_in_unsafe_fn)]
             #imports
 
             #[allow(unused_lifetimes)]
             #called_fn
-        }
     })
     .wrap_err("Could not create opened module")
 }
 
-fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
+fn safe_lib(bare_fn: syn::ItemFn) -> eyre::Result<(syn::File, LintSet)> {
     let imports = shared_imports();
     let lints = compile_lints();
 
-    let code = syn::parse2(quote! {
-        #[deny(unknown_lints)]
-        mod forbidden {
-            #lints
-            #imports
 
-            #[allow(unused_lifetimes)]
-            #bare_fn
-        }
+    let code = syn::parse2(quote! {
+        #![deny(unknown_lints)]
+        #lints
+        #imports
+        
+        #[allow(unused_lifetimes)]
+        #bare_fn
     })
     .wrap_err("Could not create forbidden module")?;
     Ok((code, lints))
