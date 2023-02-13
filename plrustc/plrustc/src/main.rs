@@ -100,25 +100,36 @@ fn main() {
             - rustup installation",
         );
 
-        // if orig_args.iter().any(|a| a == "--version" || a == "-V") {
-        //     let version_info = get_version_info!();
-        //     println!("{}", version_info);
-        //     exit(0);
+        // let is_info_query = orig_args.iter().any(|a| {
+        //     matches!(a.as_str(), "--version" | "-V" | "-vV" | "-Vv" | "--print")
+        //         || a.starts_with("--print=")
+        // });
+        // if is_info_query {
+        //     let exit_code = rustc_driver::catch_with_exit_code(move || {
+        //         rustc_driver::RunCompiler::new(&args, &mut PlRustcPassthroughCallbacks).run()
+        //     });
+        //     std::process::exit(exit_code);
         // }
+        let our_exe_filename = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_stem().map(ToOwned::to_owned))
+            .unwrap_or_else(|| "plrustc".into());
 
-        // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first
-        // argument. We're invoking the compiler programmatically, so we ignore
-        // this, and ensure we can still invoke it normally.
         let wrapper_mode = orig_args
             .get(1)
             .map(std::path::Path::new)
             .and_then(std::path::Path::file_stem)
-            == Some("rustc".as_ref());
+            .map_or(false, |name| {
+                name == our_exe_filename || name == "plrustc" || name == "rustc"
+            });
 
         if wrapper_mode {
             args.remove(1);
         }
-
+        // Hmmmmm...
+        // if args[0] == "plrustc" || args[0] == our_exe_filename {
+        //     args[0] = "rustc".into();
+        // }
         // if !wrapper_mode
         //     && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1)
         // {
@@ -130,6 +141,7 @@ fn main() {
         //     && arg_value(&orig_args, "--force-warn", |val| val.contains("plrustc_lints")).is_none();
         // let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
+        // FIXME!
         let lints_enabled = true; // !cap_lints_allow && in_primary_package;
 
         run_compiler(
