@@ -123,7 +123,7 @@ impl FnCrating {
                 ref return_type,
                 ..
             } => syn::parse2(quote! {
-                fn #symbol_ident(
+                fn #symbol_ident<'a>(
                     #( #arguments ),*
                 ) -> #return_type
                 #user_code
@@ -310,6 +310,7 @@ fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Resul
         pub mod opened {
             #imports
 
+            #[allow(unused_lifetimes)]
             #called_fn
         }
     })
@@ -331,6 +332,7 @@ fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<syn::ItemMod> {
             #![forbid(unsafe_code)]
             #imports
 
+            #[allow(unused_lifetimes)]
             #bare_fn
         }
     })
@@ -385,7 +387,7 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
                     Some(arg0.to_string())
                 }
             })?;
@@ -394,6 +396,7 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
@@ -402,6 +405,7 @@ mod tests {
                     #![forbid(unsafe_code)]
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -458,7 +462,7 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
                     val.map(|v| v as i64)
                 }
             })?;
@@ -467,6 +471,7 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
@@ -475,6 +480,7 @@ mod tests {
                     #![forbid(unsafe_code)]
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -531,7 +537,7 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(val: &str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<Option<String>>>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
@@ -540,6 +546,7 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
@@ -548,6 +555,7 @@ mod tests {
                     #![forbid(unsafe_code)]
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -609,6 +617,7 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_trigger]
                     #bare_fn
                 }
@@ -617,6 +626,7 @@ mod tests {
                     #![forbid(unsafe_code)]
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };

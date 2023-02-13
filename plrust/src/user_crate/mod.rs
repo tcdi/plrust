@@ -218,7 +218,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
             PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
-            PgBuiltInOids::BYTEAOID if !owned => quote! { &[u8] },
+            PgBuiltInOids::BYTEAOID if !owned => quote! { &'a [u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
@@ -232,7 +232,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::NUMERICOID => quote! { AnyNumeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
-            PgBuiltInOids::TEXTOID if !owned => quote! { &str },
+            PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
@@ -461,7 +461,7 @@ mod tests {
             let generated_lib_rs = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
                     Ok(Some(arg0.to_string()))
                 }
             })?;
@@ -470,6 +470,7 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
@@ -478,6 +479,7 @@ mod tests {
                     #![forbid(unsafe_code)]
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
