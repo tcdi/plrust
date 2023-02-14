@@ -8,4 +8,9 @@ sql/*.generated.sql
 scratch
 postgrestd/
 .vscode/
+/build
+config.toml
+builder/target
+builder/sysroot/target
+builder/Cargo.lock
 

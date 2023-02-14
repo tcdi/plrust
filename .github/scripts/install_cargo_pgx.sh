@@ -18,7 +18,7 @@ function install_cargo_pgx() {
 
   if TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version'); then
     echo "Installing/upgrading cargo-pgx to version $TARGET_VERSION"
-    cargo install cargo-pgx --version "$TARGET_VERSION"
+    cargo install cargo-pgx --force --version "$TARGET_VERSION"
   else
     echo "Could not determine cargo-pgx version to install."
     exit 1
