@@ -378,7 +378,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let (generated_lib_rs, _lints) = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
@@ -396,10 +396,8 @@ mod tests {
                 }
 
                 mod forbidden {
-                    #![forbid(implied_bounds_entailment)]
-                    #![forbid(plrust_extern_blocks)]
-                    #![forbid(plrust_lifetime_parameterized_traits)]
                     #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -451,7 +449,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let (generated_lib_rs, _lints) = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
@@ -469,10 +467,8 @@ mod tests {
                 }
 
                 mod forbidden {
-                    #![forbid(implied_bounds_entailment)]
-                    #![forbid(plrust_extern_blocks)]
-                    #![forbid(plrust_lifetime_parameterized_traits)]
                     #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -524,7 +520,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let (generated_lib_rs, _lints) = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
@@ -542,10 +538,8 @@ mod tests {
                 }
 
                 mod forbidden {
-                    #![forbid(implied_bounds_entailment)]
-                    #![forbid(plrust_extern_blocks)]
-                    #![forbid(plrust_lifetime_parameterized_traits)]
                     #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -588,7 +582,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let (generated_lib_rs, _lints) = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(
@@ -611,10 +605,8 @@ mod tests {
                 }
 
                 mod forbidden {
-                    #![forbid(implied_bounds_entailment)]
-                    #![forbid(plrust_extern_blocks)]
-                    #![forbid(plrust_lifetime_parameterized_traits)]
                     #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]

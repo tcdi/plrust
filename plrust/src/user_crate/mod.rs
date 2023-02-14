@@ -426,7 +426,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let (generated_lib_rs, _lints) = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
@@ -445,6 +445,7 @@ mod tests {
 
                 mod forbidden {
                     #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
