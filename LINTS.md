@@ -5,7 +5,16 @@ these custom lints, PL/Rust uses some standard Rust lints to enforce safety.
 In all cases, these lints are added to the generated code which wraps the user's `LANGUAGE plrust` function, as 
 `#![forbid(${lint_name})]`.  They are used with "forbid" to ensure a user function cannot change it back to "allow".
 
-Any code that triggers one of these lints will fail to compile, indicating the triggered lint.
+PL/Rust does **not** apply these lints to dependant, external crates.  Dependencies *are* allowed to internally use 
+whatever code they want, including `unsafe`.  Note that any public-facing `unsafe` functions won't be callable by a plrust 
+function.
+
+Dependencies are granted more freedom as the usable set can be controlled via the `plrust.allowed_dependencies` GUC.
+
+> **It is the administrator's responsibility to properly vet external dependencies for safety issues that may impact
+the running environment.**
+
+Any `LANGUAGE plrust` code that triggers any of the below lints will fail to compile, indicating the triggered lint.
 
 # Standard Rust Lints
 
@@ -22,13 +31,6 @@ https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#unsafe-cod
 
 PL/Rust does not allow usage of `unsafe` code in `LANGUAGE plrust` functions.  This includes all the unsafe idioms such
 as dereferencing pointers and calling other `unsafe` functions.
-
-Dependencies *are* allowed to use `unsafe` internally (any public-facing `unsafe` functions won't be callable by a plrust function).
-This is allowed as the set of external dependencies can be independently controlled via the `plrust.allowed_dependencies`
-GUC.  
-
-It is the administrator's responsibility to properly vet external dependencies for safety issues that may impact
-the running environment.
 
 ## `implied_bounds_entailment`
 
