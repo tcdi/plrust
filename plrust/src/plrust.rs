@@ -136,10 +136,23 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     Ok(this_output.unwrap())
 }
 
+/// Represents the generated name PL/Rust gives to the user's function (at least the one to which
+/// we apply a `#[pg_extern]` annotation).  When the user function shared library is loaded, this
+/// is the only symbol we access from the library.
+///
+/// The name itself doesn't matter, but we keep it closely tied to the Postgres `pg_proc` catalog
+/// entry by including the that Oid value along with the database's Oid value.
 pub(crate) fn symbol_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32())
 }
 
+/// Represents the name PL/Rust gives the crate we generate to hold the user's function.  For any
+/// given function we want this to be unique every time we generate a new crate for the function.
+/// This is coax platforms like MacOS into properly dlopen-ing the final .so.
+///
+/// The value here is based on the [`symbol_name`] name plus the specified `generation_number` for
+/// uniqueness.  It's up to the caller to make a generation number that is sufficiently unique
+/// for the specified (`db_oid`, `fn_oid`) pair.
 pub(crate) fn crate_name(
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
@@ -153,12 +166,5 @@ pub(crate) fn crate_name(
     //
     // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
     // multiple targets.
-    let crate_name = format!(
-        "plrust_fn_oid_{}_{}_{}",
-        db_oid.as_u32(),
-        fn_oid.as_u32(),
-        generation_number
-    );
-
-    crate_name
+    format!("{}_{}", symbol_name(db_oid, fn_oid), generation_number)
 }
