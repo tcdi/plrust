@@ -49,12 +49,12 @@ pub(crate) unsafe fn evaluate_function(
         let mut loaded_symbols_handle = loaded_symbols.borrow_mut();
 
         let user_crate_loaded = if let Some(current) = loaded_symbols_handle.get_mut(&fn_oid) {
-            let current_xmin = PgProc::new(fn_oid)?.xmin();
+            let current_generation_number = PgProc::new(fn_oid)?.generation_number();
 
-            // xmin represents the transaction id that inserted this row (in this case into
-            // pg_catalog.pg_proc).  So if it's changed from the last time we loaded the function
-            // then we have more work to do...
-            if current.xmin() != current_xmin {
+            // `generation_number`` represents the transaction id and command id that inserted this 
+            // row (in this case into pg_catalog.pg_proc).  So if it's changed from the last time we 
+            // loaded the function then we have more work to do...
+            if current.generation_number() != current_generation_number {
                 // the function, which we've previously loaded, was changed by a concurrent session.
                 // This could be caused by (at least) the "OR REPLACE" bit of CREATE OR REPLACE or
                 // by an ALTER FUNCTION that changed one of the attributes of the function.
@@ -123,7 +123,7 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
         let (target_triple, shared_object) = built.into_inner();
 
         // store the shared objects in our table
-        prosrc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
+        prosrc::create_or_replace_function(db_oid, fn_oid, target_triple, shared_object)?;
     }
 
     // cleanup after ourselves
@@ -136,7 +136,28 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
     Ok(this_output.unwrap())
 }
 
-pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
+/// Represents the generated name PL/Rust gives to the user's function (at least the one to which
+/// we apply a `#[pg_extern]` annotation).  When the user function shared library is loaded, this
+/// is the only symbol we access from the library.
+///
+/// The name itself doesn't matter, but we keep it closely tied to the Postgres `pg_proc` catalog
+/// entry by including the that Oid value along with the database's Oid value.
+pub(crate) fn symbol_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
+    format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32())
+}
+
+/// Represents the name PL/Rust gives the crate we generate to hold the user's function.  For any
+/// given function we want this to be unique every time we generate a new crate for the function.
+/// This is coax platforms like MacOS into properly dlopen-ing the final .so.
+///
+/// The value here is based on the [`symbol_name`] name plus the specified `generation_number` for
+/// uniqueness.  It's up to the caller to make a generation number that is sufficiently unique
+/// for the specified (`db_oid`, `fn_oid`) pair.
+pub(crate) fn crate_name(
+    db_oid: pg_sys::Oid,
+    fn_oid: pg_sys::Oid,
+    generation_number: u64,
+) -> String {
     // NB:  This once included the compiling host's target triple as part of the crate name for
     // reasons about restoring a database to the same platform.
     //
@@ -145,7 +166,5 @@ pub(crate) fn crate_name(db_oid: pg_sys::Oid, fn_oid: pg_sys::Oid) -> String {
     //
     // This also drastically un-complicates what we'd otherwise have to do when cross-compiling for
     // multiple targets.
-    let crate_name = format!("plrust_fn_oid_{}_{}", db_oid.as_u32(), fn_oid.as_u32(),);
-
-    crate_name
+    format!("{}_{}", symbol_name(db_oid, fn_oid), generation_number)
 }
