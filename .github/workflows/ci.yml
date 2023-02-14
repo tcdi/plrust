@@ -121,6 +121,9 @@ jobs:
         . $WORK_DIR/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
 
+    - name: install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
     - name: Run cargo pgx init for PG14
       run: cargo pgx init --pg14 $(which pg_config)
 
@@ -268,6 +271,9 @@ jobs:
       run: |
         . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
+
+    - name: install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)
