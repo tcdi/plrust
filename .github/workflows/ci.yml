@@ -121,6 +121,9 @@ jobs:
         . $WORK_DIR/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
 
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview
+
     - name: install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
@@ -272,7 +275,10 @@ jobs:
         . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
 
-    - name: install plrustc
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview
+
+    - name: Install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
