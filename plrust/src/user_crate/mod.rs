@@ -75,7 +75,7 @@ impl UserCrate<FnCrating> {
     #[cfg(any(test, feature = "pg_test"))]
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn generated_for_tests(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -83,7 +83,7 @@ impl UserCrate<FnCrating> {
         variant: CrateVariant,
     ) -> Self {
         Self(FnCrating::for_tests(
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             user_deps.into(),
@@ -157,17 +157,19 @@ impl UserCrate<FnBuild> {
 impl UserCrate<FnLoad> {
     #[tracing::instrument(level = "debug")]
     pub(crate) fn built(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
     ) -> Self {
         UserCrate(FnLoad::new(
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             target,
+            symbol,
             shared_object,
         ))
     }
@@ -198,8 +200,8 @@ impl UserCrate<FnReady> {
     }
 
     #[inline]
-    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
-        self.0.xmin()
+    pub(crate) fn generation_number(&self) -> u64 {
+        self.0.generation_number()
     }
 }
 
@@ -218,7 +220,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
             PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
-            PgBuiltInOids::BYTEAOID if !owned => quote! { &[u8] },
+            PgBuiltInOids::BYTEAOID if !owned => quote! { &'a [u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
@@ -232,7 +234,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::NUMERICOID => quote! { AnyNumeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
-            PgBuiltInOids::TEXTOID if !owned => quote! { &str },
+            PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
@@ -417,7 +419,7 @@ mod tests {
     #[pg_test]
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_oid = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
             let target_dir = crate::gucs::work_dir();
@@ -436,32 +438,21 @@ mod tests {
             })?;
 
             let generated = UserCrate::generated_for_tests(
-                pg_proc_oid,
+                generation_number,
                 db_oid,
                 fn_oid,
                 user_deps,
                 user_code,
                 variant,
             );
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let generated_lib_rs = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
                     Ok(Some(arg0.to_string()))
                 }
             })?;
@@ -470,6 +461,7 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
@@ -478,6 +470,7 @@ mod tests {
                     #![forbid(unsafe_code)]
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -489,6 +482,7 @@ mod tests {
 
             let generated_cargo_toml = generated.cargo_toml()?;
             let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let fixture_cargo_toml = cargo_toml_template(&crate_name, &version_feature);
 
             assert_eq!(
