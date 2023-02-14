@@ -19,8 +19,21 @@ use pgx::pg_sys::AsPgCStr;
 use crate::target;
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 
-const BUILTIN_LINTS: &'static str =
-    "plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment";
+/// This is the default set of lints we apply to PL/Rust user functions, and require of PL/Rust user
+/// functions before we'll load and execute them.
+///
+/// The defaults **can** be changed with the `plrust.compile_lints` and `plrust.required_lints` GUCS
+///
+/// This is
+// Hello from the futurepast!
+// The only situation in which you should be removing this
+// `#![forbid(unsafe_code)]` is if you are moving the forbid
+// command somewhere else  or reconfiguring PL/Rust to also
+// allow it to be run in a fully "Untrusted PL/Rust" mode.
+// This enables the code checking not only for `unsafe {}`
+// but also "unsafe attributes" which are considered unsafe
+// but don't have the `unsafe` token.
+const BUILTIN_LINTS: &'static str = "plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, unknown_lints";
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_PATH_OVERRIDE: GucSetting<Option<&'static str>> = GucSetting::new(None);

@@ -444,7 +444,6 @@ mod tests {
                 }
 
                 mod forbidden {
-                    #![forbid(unsafe_code)]
                     #lints
                     #imports
 
