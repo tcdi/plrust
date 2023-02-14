@@ -2,13 +2,18 @@
 set -e
 # set -x
 
-# TODO: This should handle more than just building plrustc...
+abs_path() {
+    local path="$1"
+    (unset CDPATH && cd "$path" > /dev/null && pwd)
+}
 
-srcroot="$(cd "$(dirname "$0")" > /dev/null && pwd)"
-cd "$srcroot"
+script_root="$(abs_path "$(dirname "$0")")"
+repo_root="$(abs_path "$script_root/..")"
+
+cd "$repo_root"
 
 if [ -z "$CARGO_TARGET_DIR" ]; then
-    export CARGO_TARGET_DIR="$srcroot/plrustc/target"
+    export CARGO_TARGET_DIR="$repo_root/plrustc/target"
 fi
 if [ -z "$CARGO" ]; then
     CARGO="cargo"
@@ -34,13 +39,21 @@ if ! [ -d "$libdir" ]; then
     exit 2
 fi
 
-cd "$srcroot/plrustc/plrustc"
+cd "$repo_root/plrustc/plrustc"
 
 # if [ -z "$RUSTFLAGS" ]; then
 RUSTFLAGS="-Zunstable-options -Zbinary-dep-depinfo"
 # fi
 
+
 if [ "$NO_RPATH" != "1" ]; then
+    # This produces a portable binary assuming that the rust toolchain location
+    # will not not moved, which is reasonable when using rustup, during
+    # development, and probably in some production usage. For final install,
+    # we'll want to have an option to do the fully correct rpath dance, with
+    # `$ORIGIN` and `-z,origin` and similar shenanigans (with completely
+    # different names) on macOS. In such a case, we should consider installing
+    # to the same directory as e.g. rustc and/or cargo-clippy
     RUSTFLAGS="-Clink-args=-Wl,-rpath,$libdir $RUSTFLAGS"
 fi
 
@@ -56,10 +69,10 @@ env RUSTFLAGS="$RUSTFLAGS" \
         -p plrustc --bin plrustc \
         --target "$host"
 
-cd "$srcroot"
+cd "$repo_root"
 
-mkdir -p "$srcroot/build/bin"
-cp "$CARGO_TARGET_DIR/$host/release/plrustc" "$srcroot/build/bin/plrustc"
+mkdir -p "$repo_root/build/bin"
+cp "$CARGO_TARGET_DIR/$host/release/plrustc" "$repo_root/build/bin/plrustc"
 
 echo "plrustc build completed" >&2
-echo "  result binary is located at '$srcroot/build/bin/plrustc'" >&2
+echo "  result binary is located at '$repo_root/build/bin/plrustc'" >&2
