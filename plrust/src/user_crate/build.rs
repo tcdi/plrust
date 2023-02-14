@@ -17,6 +17,7 @@ use pgx::pg_sys;
 
 use crate::target::{CompilationTarget, CrossCompilationTarget};
 use crate::user_crate::cargo::cargo;
+use crate::user_crate::lint::LintSet;
 use crate::{
     gucs,
     user_crate::{CrateState, FnLoad},
@@ -34,6 +35,7 @@ pub(crate) struct FnBuild {
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
+    lints: LintSet,
 }
 
 impl CrateState for FnBuild {}
@@ -46,6 +48,7 @@ impl FnBuild {
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        lints: LintSet,
     ) -> Self {
         Self {
             pg_proc_xmin,
@@ -53,6 +56,7 @@ impl FnBuild {
             fn_oid,
             crate_name,
             crate_dir,
+            lints,
         }
     }
 
@@ -124,7 +128,6 @@ impl FnBuild {
             };
 
             let so_bytes = {
-                use std::env::consts::DLL_SUFFIX;
                 let so_filename = &format!("lib{crate_name}{DLL_SUFFIX}");
                 let so_path = cargo_target_dir
                     .join(&target_triple)
@@ -141,6 +144,7 @@ impl FnBuild {
                     self.fn_oid,
                     target_triple,
                     so_bytes,
+                    self.lints.clone(),
                 ),
                 output,
             ))

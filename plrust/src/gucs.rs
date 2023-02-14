@@ -19,12 +19,19 @@ use pgx::pg_sys::AsPgCStr;
 use crate::target;
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 
+const BUILTIN_LINTS: &'static str =
+    "plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment";
+
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_PATH_OVERRIDE: GucSetting<Option<&'static str>> = GucSetting::new(None);
 static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
     GucSetting::new(None);
 static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
+pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static str>> =
+    GucSetting::new(Some(BUILTIN_LINTS));
+pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> =
+    GucSetting::new(Some(BUILTIN_LINTS));
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
@@ -67,8 +74,8 @@ pub(crate) fn init() {
 
     GucRegistry::define_string_guc(
         "plrust.allowed_dependencies",
-        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions.",
-        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions.",
+        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions",
+        "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions",
         &PLRUST_ALLOWED_DEPENDENCIES,
         GucContext::Postmaster,
     );
@@ -78,7 +85,23 @@ pub(crate) fn init() {
         "A comma-separated list of architectures to target for cross compilation.  Supported values are: x86_64, aarch64",
         "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecture",
         &PLRUST_COMPILATION_TARGETS,
-        GucContext::Postmaster
+        GucContext::Postmaster,
+    );
+
+    GucRegistry::define_string_guc(
+        "plrust.compile_lints",
+        "A comma-separated list of Rust code lints to apply to user functions during compilation",
+        "If unspecified, PL/Rust will use a set of defaults",
+        &PLRUST_COMPILE_LINTS,
+        GucContext::Sighup,
+    );
+
+    GucRegistry::define_string_guc(
+        "plrust.required_lints",
+        "A comma-separated list of Rust code lints that are required to have been applied to a PL/Rust user function before PL/Rust will execute it",
+        "If unspecified, PL/Rust will use a set of defaults",
+        &PLRUST_REQUIRED_LINTS,
+        GucContext::Sighup,
     );
 }
 

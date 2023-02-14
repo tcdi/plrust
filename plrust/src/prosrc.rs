@@ -23,6 +23,7 @@ use crate::error::PlRustError;
 use crate::pgproc::PgProc;
 use crate::target;
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 use crate::user_crate::{FnReady, UserCrate};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -34,6 +35,12 @@ enum Encoding {
 struct SharedLibrary {
     encoding: Encoding,
     encoded: String,
+    lints: LintSet,
+}
+
+struct CompiledSharedLibrary {
+    bytes: Vec<u8>,
+    metadata: SharedLibrary,
 }
 
 impl SharedLibrary {
@@ -42,13 +49,14 @@ impl SharedLibrary {
         base64::engine::general_purpose::NO_PAD,
     );
 
-    fn new(so_bytes: Vec<u8>) -> eyre::Result<Self> {
+    fn new(so_bytes: Vec<u8>, lints: LintSet) -> eyre::Result<Self> {
         let mut gz = GzEncoder::new(&so_bytes[..], Compression::best());
         let mut compressed_bytes = Vec::new();
         gz.read_to_end(&mut compressed_bytes)?;
         Ok(SharedLibrary {
             encoding: Encoding::GzBase64,
             encoded: Self::CUSTOM_ENGINE.encode(compressed_bytes),
+            lints,
         })
     }
 
@@ -85,12 +93,19 @@ impl Into<String> for ProSrcEntry {
 }
 
 impl ProSrcEntry {
-    fn take_so_bytes(&mut self, compilation_target: &CompilationTarget) -> eyre::Result<Vec<u8>> {
-        Ok(self
+    fn decode_shared_library(
+        &mut self,
+        compilation_target: &CompilationTarget,
+    ) -> eyre::Result<CompiledSharedLibrary> {
+        let shared_library = self
             .lib
             .remove(compilation_target)
-            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?
-            .decode()?)
+            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?;
+
+        Ok(CompiledSharedLibrary {
+            bytes: shared_library.decode()?,
+            metadata: shared_library,
+        })
     }
 }
 
@@ -101,6 +116,7 @@ pub(crate) fn create_or_replace_function(
     pg_proc_oid: pg_sys::Oid,
     target_triple: CompilationTarget,
     so_bytes: Vec<u8>,
+    lints: LintSet,
 ) -> eyre::Result<()> {
     let pg_proc = PgProc::new(pg_proc_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc).unwrap_or_else(|_| {
@@ -115,7 +131,7 @@ pub(crate) fn create_or_replace_function(
     // what was given to us
     entry
         .lib
-        .insert(target_triple, SharedLibrary::new(so_bytes)?);
+        .insert(target_triple, SharedLibrary::new(so_bytes, lints)?);
 
     let mut ctid = pg_proc.ctid();
     let relation = PgProc::relation();
@@ -157,7 +173,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     let pg_proc = PgProc::new(pg_proc_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc)?;
     let this_target = target::tuple()?;
-    let so_bytes = entry.take_so_bytes(this_target)?;
+    let so = entry.decode_shared_library(this_target)?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
@@ -170,9 +186,11 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
         db_oid,
         pg_proc_oid,
         this_target.clone(),
-        so_bytes,
+        so.bytes,
+        so.metadata.lints,
     );
-    let loaded = unsafe { built.load()? };
+    let validated = unsafe { built.validate()? };
+    let loaded = unsafe { validated.load()? };
 
     // all good
     Ok(Rc::new(loaded))

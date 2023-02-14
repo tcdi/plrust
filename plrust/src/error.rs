@@ -7,6 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum PlRustError {
@@ -40,4 +41,6 @@ pub(crate) enum PlRustError {
     Parse(#[from] syn::Error),
     #[error("Function was not compiled for this host (`{0}`)")]
     FunctionNotCompiledForTarget(CompilationTarget),
+    #[error("Function not compiled with required lints: {0}")]
+    MissingLints(LintSet),
 }

@@ -9,8 +9,8 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use std::ffi::CStr;
 
-use pgx::{pg_guard, pg_sys, PgBox, PgList, PgLogLevel, PgSqlErrorCode};
 use pgx::pg_sys::Oid;
+use pgx::{pg_guard, pg_sys, PgBox, PgList, PgLogLevel, PgSqlErrorCode};
 
 use crate::pgproc::PgProc;
 
@@ -242,7 +242,7 @@ fn plrust_lang_oid() -> pg_sys::Oid {
         // If for some reason we're not currently in a transaction, we can't lookup the plrust
         // language Oid, so we must return the best value we can: Oid::INVALID
         if !pg_sys::IsTransactionState() {
-            return Oid::INVALID
+            return Oid::INVALID;
         }
     }
 

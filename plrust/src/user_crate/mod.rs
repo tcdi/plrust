@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 /*!
 How to actually build and load a PL/Rust function
-*/
+ */
 
 /*
 Consider opening the documentation like so:
@@ -16,28 +16,34 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
-mod build;
-mod cargo;
-mod crate_variant;
-mod crating;
-mod loading;
-mod ready;
-mod verify;
+use std::{path::Path, process::Output};
+
+use pgx::{pg_sys, PgBuiltInOids, PgOid};
+use proc_macro2::TokenStream;
+use quote::quote;
+use semver;
 
 pub(crate) use build::FnBuild;
 use crate_variant::CrateVariant;
 pub(crate) use crating::FnCrating;
 pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
+pub(crate) use validate::FnValidate;
 pub(crate) use verify::FnVerify;
 
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 use crate::PlRustError;
-use pgx::{pg_sys, PgBuiltInOids, PgOid};
-use proc_macro2::TokenStream;
-use quote::quote;
-use semver;
-use std::{path::Path, process::Output};
+
+mod build;
+mod cargo;
+mod crate_variant;
+mod crating;
+pub(crate) mod lint;
+mod loading;
+mod ready;
+mod validate;
+mod verify;
 
 /**
 Finite state machine with "typestate" generic
@@ -95,9 +101,8 @@ impl UserCrate<FnCrating> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     #[allow(unused)] // used in tests
-    pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let lib_rs = self.0.lib_rs()?;
-        Ok(lib_rs)
+    pub fn lib_rs(&self) -> eyre::Result<(syn::File, LintSet)> {
+        self.0.lib_rs()
     }
     #[tracing::instrument(level = "debug", skip_all)]
     #[allow(unused)] // used in tests
@@ -160,6 +165,7 @@ impl UserCrate<FnLoad> {
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
         shared_object: Vec<u8>,
+        lints: LintSet,
     ) -> Self {
         UserCrate(FnLoad::new(
             pg_proc_xmin,
@@ -167,16 +173,24 @@ impl UserCrate<FnLoad> {
             fn_oid,
             target,
             shared_object,
+            lints,
         ))
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>) {
+    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>, LintSet) {
         self.0.into_inner()
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
+    pub unsafe fn validate(self) -> eyre::Result<UserCrate<FnValidate>> {
+        unsafe { self.0.validate().map(UserCrate) }
+    }
+}
+
+impl UserCrate<FnValidate> {
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
         unsafe { self.0.load().map(UserCrate) }
     }
 }
@@ -371,11 +385,11 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 #[pgx::pg_schema]
 mod tests {
     use pgx::*;
+    use quote::quote;
+    use syn::parse_quote;
 
     use crate::user_crate::crating::cargo_toml_template;
     use crate::user_crate::*;
-    use quote::quote;
-    use syn::parse_quote;
 
     #[pg_test]
     fn full_workflow() {

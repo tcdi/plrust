@@ -6,13 +6,15 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 //! Helper functions for figuring out how to configure the `cargo` execution environment
-use crate::gucs::PLRUST_PATH_OVERRIDE;
-use crate::target::CrossCompilationTarget;
-use pgx::{pg_sys, PgMemoryContexts};
 use std::env::VarError;
 use std::ffi::CStr;
 use std::path::Path;
 use std::process::Command;
+
+use pgx::{pg_sys, PgMemoryContexts};
+
+use crate::gucs::PLRUST_PATH_OVERRIDE;
+use crate::target::CrossCompilationTarget;
 
 /// Builds a `Command::new("cargo")` with necessary environment variables pre-configured
 pub(crate) fn cargo(
@@ -22,6 +24,7 @@ pub(crate) fn cargo(
     let mut command = Command::new("cargo");
 
     configure_path(&mut command)?;
+    configure_rustc(&mut command);
     configure_pg_config(&mut command, cross_compilation_target);
     sanitize_env(&mut command);
 
@@ -64,6 +67,13 @@ fn configure_path(command: &mut Command) -> eyre::Result<()> {
         }
     }
     Ok(())
+}
+
+/// PL/Rust uses is own rustc driver named `plrustc`, and it is expected that it be on the path.
+/// We use our own rustc driver so we can enable our various lints
+fn configure_rustc(command: &mut Command) {
+    // TODO:  Do we want a GUC to set this if maybe `which plrustc` fails?
+    command.env("RUSTC", "plrustc");
 }
 
 /// There was a time in the past where plrust had a `plrust.pg_config` GUC whose value was

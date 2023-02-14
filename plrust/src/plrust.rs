@@ -120,10 +120,10 @@ pub(crate) fn compile_function(fn_oid: pg_sys::Oid) -> eyre::Result<Output> {
         if this_output.is_none() {
             this_output = Some(output)
         }
-        let (target_triple, shared_object) = built.into_inner();
+        let (target_triple, shared_object, lints) = built.into_inner();
 
         // store the shared objects in our table
-        prosrc::create_or_replace_function(fn_oid, target_triple, shared_object)?;
+        prosrc::create_or_replace_function(fn_oid, target_triple, shared_object, lints)?;
     }
 
     // cleanup after ourselves

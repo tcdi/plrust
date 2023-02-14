@@ -24,14 +24,17 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::cargo::cargo;
-use crate::user_crate::{CrateState, FnBuild, PlRustError};
-use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
     process::Output,
 };
+
+use eyre::{eyre, WrapErr};
+use pgx::pg_sys;
+
+use crate::user_crate::cargo::cargo;
+use crate::user_crate::lint::LintSet;
+use crate::user_crate::{CrateState, FnBuild, PlRustError};
 
 /// Available and ready-to-validate PL/Rust crate
 ///
@@ -44,6 +47,7 @@ pub(crate) struct FnVerify {
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
+    lints: LintSet,
 }
 
 impl CrateState for FnVerify {}
@@ -56,6 +60,7 @@ impl FnVerify {
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        lints: LintSet,
     ) -> Self {
         Self {
             pg_proc_xmin,
@@ -63,6 +68,7 @@ impl FnVerify {
             fn_oid,
             crate_name,
             crate_dir,
+            lints,
         }
     }
 
@@ -94,6 +100,7 @@ impl FnVerify {
                     self.fn_oid,
                     self.crate_name,
                     self.crate_dir,
+                    self.lints,
                 ),
                 output,
             ))
