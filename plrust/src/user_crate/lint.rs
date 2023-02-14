@@ -126,7 +126,7 @@ pub(crate) fn required_lints() -> LintSet {
     // whatever might be configured in postgresql.conf
     let mut configured = PLRUST_REQUIRED_LINTS
         .get()
-        .unwrap_or_default()
+        .unwrap_or_else(|| PLRUST_COMPILE_LINTS.get().unwrap_or_default())
         .split(',')
         .filter_map(filter_map)
         .collect::<LintSet>();
