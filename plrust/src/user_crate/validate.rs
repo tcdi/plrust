@@ -5,9 +5,10 @@ use crate::user_crate::lint::{required_lints, LintSet};
 use crate::user_crate::{CrateState, FnReady};
 
 pub(crate) struct FnValidate {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
+    symbol: Option<String>,
     shared_object: Vec<u8>,
 }
 
@@ -16,9 +17,10 @@ impl CrateState for FnValidate {}
 impl FnValidate {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
         lints: LintSet,
     ) -> eyre::Result<Self> {
@@ -33,9 +35,10 @@ impl FnValidate {
         }
 
         Ok(Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
+            symbol,
             shared_object,
         })
     }
@@ -45,9 +48,10 @@ impl FnValidate {
             // SAFETY:  Caller is responsible for ensuring self.shared_object points to the proper
             // shared library to be loaded
             FnReady::load(
-                self.pg_proc_xmin,
+                self.generation_number,
                 self.db_oid,
                 self.fn_oid,
+                self.symbol,
                 self.shared_object,
             )
         }

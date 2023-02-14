@@ -34,6 +34,7 @@ enum Encoding {
 #[derive(Debug, Serialize, Deserialize)]
 struct SharedLibrary {
     encoding: Encoding,
+    symbol: Option<String>,
     encoded: String,
     lints: LintSet,
 }
@@ -49,12 +50,13 @@ impl SharedLibrary {
         base64::engine::general_purpose::NO_PAD,
     );
 
-    fn new(so_bytes: Vec<u8>, lints: LintSet) -> eyre::Result<Self> {
+    fn new(symbol: String, so_bytes: Vec<u8>, lints: LintSet) -> eyre::Result<Self> {
         let mut gz = GzEncoder::new(&so_bytes[..], Compression::best());
         let mut compressed_bytes = Vec::new();
         gz.read_to_end(&mut compressed_bytes)?;
         Ok(SharedLibrary {
             encoding: Encoding::GzBase64,
+            symbol: Some(symbol),
             encoded: Self::CUSTOM_ENGINE.encode(compressed_bytes),
             lints,
         })
@@ -113,12 +115,13 @@ impl ProSrcEntry {
 /// `so_bytes` mapped to the specified `target_triple`
 #[tracing::instrument(level = "debug")]
 pub(crate) fn create_or_replace_function(
-    pg_proc_oid: pg_sys::Oid,
+    db_oid: pg_sys::Oid,
+    fn_oid: pg_sys::Oid,
     target_triple: CompilationTarget,
     so_bytes: Vec<u8>,
     lints: LintSet,
 ) -> eyre::Result<()> {
-    let pg_proc = PgProc::new(pg_proc_oid)?;
+    let pg_proc = PgProc::new(fn_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc).unwrap_or_else(|_| {
         // the pg_proc.prosrc didn't parse as json, so assume it's just the raw function source code
         // likely means it's the first time this function is being CREATEd
@@ -129,9 +132,11 @@ pub(crate) fn create_or_replace_function(
 
     // always replace any existing bytes for the specified target_triple.  we only trust
     // what was given to us
-    entry
-        .lib
-        .insert(target_triple, SharedLibrary::new(so_bytes, lints)?);
+    let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+    entry.lib.insert(
+        target_triple,
+        SharedLibrary::new(symbol_name, so_bytes, lints)?,
+    );
 
     let mut ctid = pg_proc.ctid();
     let relation = PgProc::relation();
@@ -182,10 +187,11 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     // fabricate a FnLoad version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
     let built = UserCrate::built(
-        pg_proc.xmin(),
+        pg_proc.generation_number(),
         db_oid,
         pg_proc_oid,
         this_target.clone(),
+        so.metadata.symbol,
         so.bytes,
         so.metadata.lints,
     );

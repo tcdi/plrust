@@ -42,7 +42,7 @@ use crate::user_crate::{CrateState, FnBuild, PlRustError};
 /// - Produces: verified Rust source code
 #[must_use]
 pub(crate) struct FnVerify {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     crate_name: String,
@@ -55,7 +55,7 @@ impl CrateState for FnVerify {}
 impl FnVerify {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         crate_name: String,
@@ -63,7 +63,7 @@ impl FnVerify {
         lints: LintSet,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             crate_name,
@@ -95,7 +95,7 @@ impl FnVerify {
         if output.status.success() {
             Ok((
                 FnBuild::new(
-                    self.pg_proc_xmin,
+                    self.generation_number,
                     self.db_oid,
                     self.fn_oid,
                     self.crate_name,

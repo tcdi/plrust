@@ -35,6 +35,14 @@ impl Display for LintSet {
     }
 }
 
+impl ToTokens for LintSet {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        for lint in self.iter() {
+            lint.to_tokens(tokens);
+        }
+    }
+}
+
 impl FromIterator<Lint> for LintSet {
     fn from_iter<T: IntoIterator<Item = Lint>>(iter: T) -> Self {
         Self(iter.into_iter().collect())

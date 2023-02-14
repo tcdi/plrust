@@ -61,7 +61,7 @@ impl PgProc {
     }
 
     #[inline]
-    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
+    fn xmin(&self) -> pg_sys::TransactionId {
         // SAFETY:  self.inner will be valid b/c that's part of what pg_sys::SearchSysCache1()
         // does for us.  Same is true for t_data
         unsafe {
@@ -74,6 +74,28 @@ impl PgProc {
                 .t_heap
                 .t_xmin
         }
+    }
+
+    #[inline]
+    fn cmin(&self) -> pg_sys::CommandId {
+        // SAFETY:  self.inner will be valid b/c that's part of what pg_sys::SearchSysCache1()
+        // does for us.  Same is true for t_data
+        unsafe {
+            self.inner
+                .as_ref()
+                .t_data
+                .as_ref()
+                .unwrap_unchecked() // SAFETY: t_data will never be null and `cmin()` is called in a potentially hot path
+                .t_choice
+                .t_heap
+                .t_field3
+                .t_cid
+        }
+    }
+
+    #[inline]
+    pub(crate) fn generation_number(&self) -> u64 {
+        ((self.xmin() as u64) << 32_u64) | self.cmin() as u64
     }
 
     pub(crate) fn ctid(&self) -> pg_sys::ItemPointerData {

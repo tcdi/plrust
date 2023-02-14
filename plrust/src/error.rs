@@ -19,12 +19,6 @@ pub(crate) enum PlRustError {
     NullFmgrInfo,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
-    #[cfg(any(
-        all(target_os = "macos", target_arch = "x86_64"),
-        feature = "force_enable_x86_64_darwin_generations"
-    ))]
-    #[error("Generation error (Mac OS x86_64 specific): {0}")]
-    Generation(#[from] crate::generation::Error),
     #[error("`cargo build` failed")]
     CargoBuildFail,
     #[error("Generating `Cargo.toml`")]

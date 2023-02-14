@@ -18,10 +18,11 @@ use crate::user_crate::{CrateState, FnValidate};
 /// - Produces: a dlopened artifact
 #[must_use]
 pub(crate) struct FnLoad {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     target: CompilationTarget,
+    symbol: Option<String>,
     shared_object: Vec<u8>,
     lints: LintSet,
 }
@@ -31,18 +32,20 @@ impl CrateState for FnLoad {}
 impl FnLoad {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
         lints: LintSet,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             target,
+            symbol,
             shared_object,
             lints,
         }
@@ -55,9 +58,10 @@ impl FnLoad {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = % self.db_oid, fn_oid = % self.fn_oid))]
     pub(crate) unsafe fn validate(self) -> eyre::Result<FnValidate> {
         FnValidate::new(
-            self.pg_proc_xmin,
+            self.generation_number,
             self.db_oid,
             self.fn_oid,
+            self.symbol,
             self.shared_object,
             self.lints,
         )

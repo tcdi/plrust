@@ -30,10 +30,9 @@ use crate::{
 /// - Produces: a dlopenable artifact
 #[must_use]
 pub(crate) struct FnBuild {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
-    crate_name: String,
     crate_dir: PathBuf,
     lints: LintSet,
 }
@@ -43,7 +42,7 @@ impl CrateState for FnBuild {}
 impl FnBuild {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         crate_name: String,
@@ -51,10 +50,9 @@ impl FnBuild {
         lints: LintSet,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
-            crate_name,
             crate_dir,
             lints,
         }
@@ -111,23 +109,10 @@ impl FnBuild {
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
         if output.status.success() {
-            let crate_name = &self.crate_name;
-
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name.clone();
-                let next = crate::generation::next_generation(&crate_name, true)
-                    .map(|gen_num| gen_num)
-                    .unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", next));
-                crate_name
-            };
-
             let so_bytes = {
+                let crate_name =
+                    crate::plrust::crate_name(self.db_oid, self.fn_oid, self.generation_number);
+                use std::env::consts::DLL_SUFFIX;
                 let so_filename = &format!("lib{crate_name}{DLL_SUFFIX}");
                 let so_path = cargo_target_dir
                     .join(&target_triple)
@@ -139,10 +124,11 @@ impl FnBuild {
 
             Ok((
                 FnLoad::new(
-                    self.pg_proc_xmin,
+                    self.generation_number,
                     self.db_oid,
                     self.fn_oid,
                     target_triple,
+                    Some(crate::plrust::symbol_name(self.db_oid, self.fn_oid)),
                     so_bytes,
                     self.lints.clone(),
                 ),
