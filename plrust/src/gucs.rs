@@ -33,7 +33,7 @@ use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 // This enables the code checking not only for `unsafe {}`
 // but also "unsafe attributes" which are considered unsafe
 // but don't have the `unsafe` token.
-const BUILTIN_LINTS: &'static str = "plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, unknown_lints";
+const BUILTIN_LINTS: &'static str = "plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code";
 
 static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_PATH_OVERRIDE: GucSetting<Option<&'static str>> = GucSetting::new(None);

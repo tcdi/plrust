@@ -119,7 +119,6 @@ fn sanitize_env(command: &mut Command) {
     command.env_remove("PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE"); // while an interesting idea, PL/Rust user functions are not used to generate a `pgx` release
     command.env_remove("CARGO_MANIFEST_DIR"); // we are in the manifest directory b/c of `command.current_dir()` above
     command.env_remove("OUT_DIR"); // rust's default decision for OUT_DIR is perfectly acceptable to PL/Rust
-    command.env_remove("RUSTC"); // don't let pgx trust the host w.r.t telling it to use a different `rustc`
 }
 
 /// Asks Postgres, via FFI, for all of its compile-time configuration data.  This is the full

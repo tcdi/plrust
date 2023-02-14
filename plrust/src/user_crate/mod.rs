@@ -443,6 +443,7 @@ mod tests {
                     #bare_fn
                 }
 
+                #[forbid(unknown_lints)]
                 mod forbidden {
                     #lints
                     #imports
