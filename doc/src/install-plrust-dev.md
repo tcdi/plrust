@@ -169,3 +169,28 @@ $$
 $$;
 ```
 
+## Update Development PL/Rust installation
+
+Follow these steps to upgrade PL/Rust from GitLab to test
+the latest release.  Start as a user with `sudo` access.
+
+```bash
+sudo chown postgres -R /usr/share/postgresql/15/extension/
+sudo chown postgres -R /usr/lib/postgresql/15/lib/
+
+sudo su - postgres
+cd plrust
+git pull
+cd plrust
+cargo pgx install --release -c /usr/bin/pg_config
+
+exit
+
+# Restart Postgres, plrust is in shared_preload_libraries
+sudo systemctl restart postgresql
+
+sudo chown root -R /usr/share/postgresql/15/extension/
+sudo chown root -R /usr/lib/postgresql/15/lib/
+```
+
+

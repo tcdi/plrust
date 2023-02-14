@@ -14,18 +14,14 @@ PL/Rust provides support for PostgreSQL's [SPI](https://www.postgresql.org/docs/
 
 ## Example usage
 
-> UNDER DEVELOPMENT - Example Pseudo-query, not functional
+The following function uses `SPI` to create a PostgreSQL
+[Set Returning Function](https://www.postgresql.org/docs/current/functions-srf.html) (SRF).
 
-
-
-```sql
-CREATE TYPE srf_row AS (id BIGINT);
-```
 
 
 ```sql
 CREATE FUNCTION spi_srf()
-    RETURNS SETOF srf_row
+    RETURNS SETOF BIGINT
     LANGUAGE plrust
 AS
 $$
@@ -36,17 +32,18 @@ $$
         let mut tup_table = client.select(query, None, None)?;
 
         while let Some(row) = tup_table.next() {
-            let id = row["id"].value::<i64>();
-            results.push((id,));
+            let id = row["id"].value::<i64>()?;
+            results.push(id);
         }
-        Ok(TableIterator::new(results.into_iter()))
+        Ok(Some(SetOfIterator::new(results)))
     })
 
-$$
-;
+$$;
 ```
 
-## Return table
+## Complex return types
 
-> NOTE:  PL/Rust currently [does not support `RETURNS TABLE`](https://github.com/tcdi/plrust/issues/36).  Use `RETURNS SETOF`.
+PL/Rust currently [does not support `RETURNS TABLE`](https://github.com/tcdi/plrust/issues/36) or
+[complex types with `RETURNS SETOF`](https://github.com/tcdi/plrust/issues/200#issuecomment-1426880622).
+
 
