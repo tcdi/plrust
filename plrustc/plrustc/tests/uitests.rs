@@ -10,6 +10,7 @@ fn uitests() {
 
     compiletest_rs::run_tests(&compiletest_rs::Config {
         mode: compiletest_rs::common::Mode::Ui,
+        edition: Some("2021".into()),
         rustc_path: std::path::PathBuf::from(&plrustc),
         bless,
         src_base: root.join("uitests"),

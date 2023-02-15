@@ -1,0 +1,34 @@
+#![crate_type = "lib"]
+
+const _A: &str = include_str!("fs_macros_included_file.txt");
+
+const _B: &[u8] = include_bytes!("fs_macros_included_file.txt");
+
+const _C: &str = core::include_str!("fs_macros_included_file.txt");
+const _D: &[u8] = core::include_bytes!("fs_macros_included_file.txt");
+
+macro_rules! indirect {
+    ($callme:ident) => {
+        $callme!("fs_macros_included_file.txt")
+    };
+}
+
+const _E: &str = indirect!(include_str);
+const _F: &[u8] = indirect!(include_bytes);
+
+macro_rules! in_macro {
+    () => {
+        include_str!("fs_macros_included_file.txt")
+    };
+    ($invocation:expr) => {
+        $invocation
+    };
+}
+
+const _G: &str = in_macro!();
+const _H: &str = in_macro!(include_str!("fs_macros_included_file.txt"));
+const _I: &[u8] = in_macro!(include_bytes!("fs_macros_included_file.txt"));
+
+use core::include_str as sneaky;
+
+const _J: &str = sneaky!("fs_macros_included_file.txt");
