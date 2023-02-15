@@ -282,7 +282,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     // and ultimately do a full compilation based on the current state of the Postgres database,
     // taking into account current GUC values and other parameters that may impact compilation.
     //
-    // It's also possible "code_and_deps" is exactly that, given to use via a user-written
+    // It's also possible "code_and_deps" is exactly that, given to us via a user-written
     // "CREATE OR REPLACE FUNCTION" statement.
     let code_and_deps = maybe_extract_source_from_json(code_and_deps);
 
