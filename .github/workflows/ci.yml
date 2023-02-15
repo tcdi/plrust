@@ -130,12 +130,6 @@ jobs:
       run: cargo pgx init --pg14 $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
-      run: cargo test --all --features "pg$PG_VER" --no-default-features
-
-    - name: Test PL/rust as "trusted" (inc. postgrestd)
-      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
-
-    - name: Test PL/rust as "untrusted"
       if: matrix.target == 'host'
       run: cargo test --all --features "pg$PG_VER" --no-default-features
 
