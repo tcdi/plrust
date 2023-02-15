@@ -7,6 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 //! Routines for managing the `pg_catalog.pg_proc.prosrc` entry for plrust functions
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 use std::rc::Rc;
@@ -88,6 +89,14 @@ impl TryFrom<&PgProc> for ProSrcEntry {
     }
 }
 
+impl TryFrom<&str> for ProSrcEntry {
+    type Error = serde_json::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str::<ProSrcEntry>(value)
+    }
+}
+
 impl Into<String> for ProSrcEntry {
     fn into(self) -> String {
         serde_json::to_string(&self).expect("unable to serialize ProSrcEntry to json")
@@ -108,6 +117,22 @@ impl ProSrcEntry {
             bytes: shared_library.decode()?,
             metadata: shared_library,
         })
+    }
+}
+
+/// Given an arbitrary string, suss out how to treat it as source code.  If it's JSON that matches
+/// the structure of our [`ProSrcEntry`] struct, then we return its `src` property, throwing everything
+/// else away.
+///
+/// If it's not, then we just return the input unchanged.
+pub(crate) fn maybe_extract_source_from_json(code: &str) -> Cow<str> {
+    match ProSrcEntry::try_from(code) {
+        Ok(entry) => Cow::Owned(entry.src),
+        Err(_) => {
+            // `code` didn't parse as json, so assume it's just the raw function source code
+            // likely means it's the first time this function is being CREATEd
+            Cow::Borrowed(code)
+        }
     }
 }
 
