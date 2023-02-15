@@ -23,7 +23,6 @@ jobs:
       fail-fast: false
 
     env:
-      RUSTC_WRAPPER: sccache
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
       CACHE_KEY_VERSION: v0
       SCCACHE_CACHE_SIZE: 20G
@@ -125,6 +124,12 @@ jobs:
       run: |
         . $WORK_DIR/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
+
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
+
+    - name: install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
     - name: Run cargo pgx init for PG14
       run: cargo pgx init --pg14 $(which pg_config)
@@ -276,6 +281,12 @@ jobs:
       run: |
         . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgx.sh
         install_cargo_pgx
+
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
+
+    - name: Install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
     - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
       run: cargo pgx init --pg$PG_VER $(which pg_config)

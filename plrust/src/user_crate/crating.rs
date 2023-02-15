@@ -6,15 +6,18 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use std::path::Path;
+
+use eyre::WrapErr;
+use pgx::{pg_sys, PgOid};
+use quote::quote;
+
 use crate::pgproc::PgProc;
+use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
     PlRustError,
 };
-use eyre::WrapErr;
-use pgx::{pg_sys, PgOid};
-use quote::quote;
-use std::path::Path;
 
 impl CrateState for FnCrating {}
 
@@ -101,8 +104,7 @@ impl FnCrating {
     }
 
     /// Generates the lib.rs to write
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
+    pub(crate) fn lib_rs(&self) -> eyre::Result<(syn::File, LintSet)> {
         let symbol_name = crate::plrust::symbol_name(self.db_oid, self.fn_oid);
         let symbol_ident = proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
         tracing::trace!(symbol_name = %symbol_name, "Generating `lib.rs` for validation step");
@@ -131,9 +133,9 @@ impl FnCrating {
             .wrap_err("Parsing generated user trigger")?,
         };
         let opened = unsafe_mod(user_fn.clone(), &self.variant)?;
-        let forbidden = safe_mod(user_fn)?;
+        let (forbidden, lints) = safe_mod(user_fn)?;
 
-        compose_lib_from_mods([opened, forbidden])
+        Ok((compose_lib_from_mods([opened, forbidden])?, lints))
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -207,7 +209,7 @@ impl FnCrating {
             "Could not create crate directory in configured `plrust.work_dir` location",
         )?;
 
-        let lib_rs = self.lib_rs()?;
+        let (lib_rs, lints) = self.lib_rs()?;
         let lib_rs_path = src_dir.join("lib.rs");
         std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
             .wrap_err("Writing generated `lib.rs`")?;
@@ -226,6 +228,7 @@ impl FnCrating {
             self.fn_oid,
             crate_name,
             crate_dir,
+            lints,
         ))
     }
 }
@@ -308,34 +311,31 @@ fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Resul
     .wrap_err("Could not create opened module")
 }
 
-fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<syn::ItemMod> {
+fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
     let imports = shared_imports();
-    // Hello from the futurepast!
-    // The only situation in which you should be removing this
-    // `#![forbid(unsafe_code)]` is if you are moving the forbid
-    // command somewhere else  or reconfiguring PL/Rust to also
-    // allow it to be run in a fully "Untrusted PL/Rust" mode.
-    // This enables the code checking not only for `unsafe {}`
-    // but also "unsafe attributes" which are considered unsafe
-    // but don't have the `unsafe` token.
-    syn::parse2(quote! {
+    let lints = compile_lints();
+
+    let code = syn::parse2(quote! {
+        #[deny(unknown_lints)]
         mod forbidden {
-            #![forbid(unsafe_code)]
+            #lints
             #imports
 
             #[allow(unused_lifetimes)]
             #bare_fn
         }
     })
-    .wrap_err("Could not create forbidden module")
+    .wrap_err("Could not create forbidden module")?;
+    Ok((code, lints))
 }
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
-    use super::*;
     use pgx::*;
     use syn::parse_quote;
+
+    use super::*;
 
     #[pg_test]
     fn strict_string() {
@@ -370,7 +370,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
@@ -387,8 +387,9 @@ mod tests {
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -440,7 +441,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
@@ -457,8 +458,9 @@ mod tests {
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -510,7 +512,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
@@ -527,8 +529,9 @@ mod tests {
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -571,7 +574,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(
@@ -593,8 +596,9 @@ mod tests {
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]

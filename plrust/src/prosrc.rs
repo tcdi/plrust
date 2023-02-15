@@ -23,6 +23,7 @@ use crate::error::PlRustError;
 use crate::pgproc::PgProc;
 use crate::target;
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 use crate::user_crate::{FnReady, UserCrate};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -35,6 +36,12 @@ struct SharedLibrary {
     encoding: Encoding,
     symbol: Option<String>,
     encoded: String,
+    lints: LintSet,
+}
+
+struct CompiledSharedLibrary {
+    bytes: Vec<u8>,
+    metadata: SharedLibrary,
 }
 
 impl SharedLibrary {
@@ -43,7 +50,7 @@ impl SharedLibrary {
         base64::engine::general_purpose::NO_PAD,
     );
 
-    fn new(symbol: String, so_bytes: Vec<u8>) -> eyre::Result<Self> {
+    fn new(symbol: String, so_bytes: Vec<u8>, lints: LintSet) -> eyre::Result<Self> {
         let mut gz = GzEncoder::new(&so_bytes[..], Compression::best());
         let mut compressed_bytes = Vec::new();
         gz.read_to_end(&mut compressed_bytes)?;
@@ -51,16 +58,17 @@ impl SharedLibrary {
             encoding: Encoding::GzBase64,
             symbol: Some(symbol),
             encoded: Self::CUSTOM_ENGINE.encode(compressed_bytes),
+            lints,
         })
     }
 
-    fn decode(&self) -> eyre::Result<(Option<String>, Vec<u8>)> {
+    fn decode(&self) -> eyre::Result<Vec<u8>> {
         match self.encoding {
             Encoding::GzBase64 => {
                 let mut bytes = Vec::new();
                 let b64_decoded = Self::CUSTOM_ENGINE.decode(&self.encoded)?;
                 GzDecoder::new(&b64_decoded[..]).read_to_end(&mut bytes)?;
-                Ok((self.symbol.clone(), bytes))
+                Ok(bytes)
             }
         }
     }
@@ -87,15 +95,19 @@ impl Into<String> for ProSrcEntry {
 }
 
 impl ProSrcEntry {
-    fn decode_shared_library_info(
+    fn decode_shared_library(
         &mut self,
         compilation_target: &CompilationTarget,
-    ) -> eyre::Result<(Option<String>, Vec<u8>)> {
-        Ok(self
+    ) -> eyre::Result<CompiledSharedLibrary> {
+        let shared_library = self
             .lib
             .remove(compilation_target)
-            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?
-            .decode()?)
+            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?;
+
+        Ok(CompiledSharedLibrary {
+            bytes: shared_library.decode()?,
+            metadata: shared_library,
+        })
     }
 }
 
@@ -107,6 +119,7 @@ pub(crate) fn create_or_replace_function(
     fn_oid: pg_sys::Oid,
     target_triple: CompilationTarget,
     so_bytes: Vec<u8>,
+    lints: LintSet,
 ) -> eyre::Result<()> {
     let pg_proc = PgProc::new(fn_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc).unwrap_or_else(|_| {
@@ -120,9 +133,10 @@ pub(crate) fn create_or_replace_function(
     // always replace any existing bytes for the specified target_triple.  we only trust
     // what was given to us
     let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
-    entry
-        .lib
-        .insert(target_triple, SharedLibrary::new(symbol_name, so_bytes)?);
+    entry.lib.insert(
+        target_triple,
+        SharedLibrary::new(symbol_name, so_bytes, lints)?,
+    );
 
     let mut ctid = pg_proc.ctid();
     let relation = PgProc::relation();
@@ -164,7 +178,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     let pg_proc = PgProc::new(pg_proc_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc)?;
     let this_target = target::tuple()?;
-    let (symbol, so_bytes) = entry.decode_shared_library_info(this_target)?;
+    let so = entry.decode_shared_library(this_target)?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
@@ -177,10 +191,12 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
         db_oid,
         pg_proc_oid,
         this_target.clone(),
-        symbol,
-        so_bytes,
+        so.metadata.symbol,
+        so.bytes,
+        so.metadata.lints,
     );
-    let loaded = unsafe { built.load()? };
+    let validated = unsafe { built.validate()? };
+    let loaded = unsafe { validated.load()? };
 
     // all good
     Ok(Rc::new(loaded))

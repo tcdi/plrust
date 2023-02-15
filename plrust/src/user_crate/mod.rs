@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 /*!
 How to actually build and load a PL/Rust function
-*/
+ */
 
 /*
 Consider opening the documentation like so:
@@ -16,30 +16,34 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
-mod build;
-mod crate_variant;
-mod crating;
-mod loading;
-mod ready;
-mod verify;
+use std::{path::Path, process::Output};
+
+use pgx::{pg_sys, PgBuiltInOids, PgOid};
+use proc_macro2::TokenStream;
+use quote::quote;
+use semver;
 
 pub(crate) use build::FnBuild;
 use crate_variant::CrateVariant;
 pub(crate) use crating::FnCrating;
 pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
+pub(crate) use validate::FnValidate;
 pub(crate) use verify::FnVerify;
 
-use crate::gucs::PLRUST_PATH_OVERRIDE;
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 use crate::PlRustError;
-use pgx::{pg_sys, PgBuiltInOids, PgOid};
-use proc_macro2::TokenStream;
-use quote::quote;
-use semver;
-use std::env::VarError;
-use std::process::Command;
-use std::{path::Path, process::Output};
+
+mod build;
+mod cargo;
+mod crate_variant;
+mod crating;
+pub(crate) mod lint;
+mod loading;
+mod ready;
+mod validate;
+mod verify;
 
 /**
 Finite state machine with "typestate" generic
@@ -97,9 +101,8 @@ impl UserCrate<FnCrating> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     #[allow(unused)] // used in tests
-    pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let lib_rs = self.0.lib_rs()?;
-        Ok(lib_rs)
+    pub fn lib_rs(&self) -> eyre::Result<(syn::File, LintSet)> {
+        self.0.lib_rs()
     }
     #[tracing::instrument(level = "debug", skip_all)]
     #[allow(unused)] // used in tests
@@ -163,6 +166,7 @@ impl UserCrate<FnLoad> {
         target: CompilationTarget,
         symbol: Option<String>,
         shared_object: Vec<u8>,
+        lints: LintSet,
     ) -> Self {
         UserCrate(FnLoad::new(
             generation_number,
@@ -171,16 +175,24 @@ impl UserCrate<FnLoad> {
             target,
             symbol,
             shared_object,
+            lints,
         ))
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>) {
+    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>, LintSet) {
         self.0.into_inner()
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
+    pub unsafe fn validate(self) -> eyre::Result<UserCrate<FnValidate>> {
+        unsafe { self.0.validate().map(UserCrate) }
+    }
+}
+
+impl UserCrate<FnValidate> {
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
         unsafe { self.0.load().map(UserCrate) }
     }
 }
@@ -251,41 +263,6 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 
     syn::parse2(rust_type.clone())
         .map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
-}
-
-/// Builds a `Command::new("cargo")` with necessary environment variables pre-configured
-pub(crate) fn cargo() -> eyre::Result<Command> {
-    let mut command = Command::new("cargo");
-
-    if let Some(path) = PLRUST_PATH_OVERRIDE.get() {
-        // we were configured with an explicit $PATH to use
-        command.env("PATH", path);
-    } else {
-        let is_empty = match std::env::var("PATH") {
-            Ok(s) if s.trim().is_empty() => true,
-            Ok(_) => false,
-            Err(VarError::NotPresent) => true,
-            Err(e) => return Err(eyre::eyre!(e)),
-        };
-
-        if is_empty {
-            // the environment has no $PATH, so lets try and make a good one based on where
-            // we'd expect 'cargo' to be installed
-            if let Ok(path) = home::cargo_home() {
-                let path = path.join("bin");
-                command.env(
-                    "PATH",
-                    std::env::join_paths(vec![path.as_path(), std::path::Path::new("/usr/bin")])?,
-                );
-            } else {
-                // we don't have a home directory... where could cargo be?  Ubuntu installed cargo
-                // at least puts it in /usr/bin
-                command.env("PATH", "/usr/bin");
-            }
-        }
-    }
-
-    Ok(command)
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
@@ -410,11 +387,11 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 #[pgx::pg_schema]
 mod tests {
     use pgx::*;
+    use quote::quote;
+    use syn::parse_quote;
 
     use crate::user_crate::crating::cargo_toml_template;
     use crate::user_crate::*;
-    use quote::quote;
-    use syn::parse_quote;
 
     #[pg_test]
     fn full_workflow() {
@@ -449,7 +426,7 @@ mod tests {
             let symbol_ident =
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
@@ -466,8 +443,9 @@ mod tests {
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
                     #[allow(unused_lifetimes)]
@@ -497,7 +475,8 @@ mod tests {
 
             for (built, _output) in validated.build(&target_dir)? {
                 // Without an fcinfo, we can't call this.
-                let _loaded = unsafe { built.load()? };
+                let validated = unsafe { built.validate()? };
+                let _loaded = unsafe { validated.load()? };
             }
 
             Ok(())
