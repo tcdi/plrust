@@ -121,7 +121,7 @@ jobs:
         install_cargo_pgx
 
     - name: Install llvm-tools-preview
-      run: rustup component add llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
 
     - name: install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
