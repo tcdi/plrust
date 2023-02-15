@@ -11,7 +11,7 @@ function.
 
 Dependencies are granted more freedom as the usable set can be controlled via the `plrust.allowed_dependencies` GUC.
 
-> **It is the administrator's responsibility to properly vet external dependencies for safety issues that may impact
+**It is the administrator's responsibility to properly vet external dependencies for safety issues that may impact
 the running environment.**
 
 Any `LANGUAGE plrust` code that triggers any of the below lints will fail to compile, indicating the triggered lint.
