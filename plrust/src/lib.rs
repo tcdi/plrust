@@ -57,8 +57,6 @@ pgx::pg_module_magic!();
 /// functions before we'll load and execute them.
 ///
 /// The defaults **can** be changed with the `plrust.compile_lints` and `plrust.required_lints` GUCS
-///
-/// This is
 // Hello from the futurepast!
 // The only situation in which you should be removing this
 // `#![forbid(unsafe_code)]` is if you are moving the forbid
