@@ -66,3 +66,13 @@ For example, this code pattern is blocked:
 ```rust
     trait Foo<'a> {}
 ```
+
+## `plrust_filesystem_macros`
+
+Filesystem macros such as `include_bytes!` and `include_str!` are disallowed, as they provide access to the underlying filesystem which should be unavailable to a trusted language handler.
+
+For example, this code pattern is blocked:
+
+```rust
+const SOMETHING: &str = include_str!("/etc/passwd");
+```
