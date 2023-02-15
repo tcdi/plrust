@@ -135,7 +135,7 @@ jobs:
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
