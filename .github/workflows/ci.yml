@@ -19,6 +19,7 @@ jobs:
 
     env:
       RUSTC_WRAPPER: sccache
+      SCCACHE_LOG: trace
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
       CACHE_KEY_VERSION: v0
       SCCACHE_CACHE_SIZE: 20G
