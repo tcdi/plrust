@@ -316,7 +316,7 @@ fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
     let lints = compile_lints();
 
     let code = syn::parse2(quote! {
-        #[forbid(unknown_lints)]
+        #[deny(unknown_lints)]
         mod forbidden {
             #lints
             #imports
