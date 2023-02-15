@@ -17,6 +17,11 @@ jobs:
     name: aarch64 tests (pg14, amzn2)
     runs-on: [self-hosted, linux, ARM64, plrust]
 
+    strategy:
+      matrix:
+        target: ["host", "postgrestd"]
+      fail-fast: false
+
     env:
       RUSTC_WRAPPER: sccache
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
@@ -125,9 +130,11 @@ jobs:
       run: cargo pgx init --pg14 $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
+      if: matrix.target == 'host'
       run: cargo test --all --features "pg$PG_VER" --no-default-features
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
+      if: matrix.target == 'postgrestd'
       run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
 
     - name: Print sccache stats (after build)
@@ -164,6 +171,7 @@ jobs:
         version: ["pg13", "pg14", "pg15"]
         os: ["ubuntu-20.04"]
         # it would be nice to other contributors to return "macos-11" to the above array
+        target: ["host", "postgrestd"]
       fail-fast: false
 
     steps:
@@ -273,9 +281,11 @@ jobs:
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
+      if: matrix.target == 'host'
       run: cargo test --all --features "pg$PG_VER" --no-default-features
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
+      if: matrix.target == 'postgrestd'
       run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
 
     # # Maybe this is not necessary if we switch to sccache?
