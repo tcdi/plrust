@@ -270,7 +270,8 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         crate-type = ["cdylib"]
 
         [dependencies]
-        pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
+        // pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
+        pgx =  { path="/home/zombodb/_work/plrust/trusted-pgx", package = "trusted-pgx" }
 
         /* User deps added here */
 

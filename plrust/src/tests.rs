@@ -876,6 +876,50 @@ mod tests {
         assert_eq!(Ok(Some(2)), Spi::get_one("SELECT replace_me()"));
         Ok(())
     }
+
+    #[pg_test]
+    fn test_point() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_point(p point) RETURNS point LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let p = Spi::get_one::<pg_sys::Point>("SELECT test_point('42, 99'::point);")?
+            .expect("SPI result was null");
+        assert_eq!(p.x, 42.0);
+        assert_eq!(p.y, 99.0);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_box() -> spi::Result<()> {
+        Spi::run(r#"CREATE FUNCTION test_box(b box) RETURNS box LANGUAGE plrust AS $$ Ok(b) $$"#)?;
+        let b = Spi::get_one::<pg_sys::BOX>("SELECT test_box('1,2,3,4'::box);")?
+            .expect("SPI result was null");
+        assert_eq!(b.high.x, 3.0);
+        assert_eq!(b.high.y, 4.0);
+        assert_eq!(b.low.x, 1.0);
+        assert_eq!(b.low.y, 2.0);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_uuid() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_uuid(u uuid) RETURNS uuid LANGUAGE plrust AS $$ Ok(u) $$"#,
+        )?;
+        let u = Spi::get_one::<pgx::Uuid>(
+            "SELECT test_uuid('e4176a4d-790c-4750-85b7-665d72471173'::uuid);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            u,
+            pgx::Uuid::from_bytes([
+                0xe4, 0x17, 0x6a, 0x4d, 0x79, 0x0c, 0x47, 0x50, 0x85, 0xb7, 0x66, 0x5d, 0x72, 0x47,
+                0x11, 0x73
+            ])
+        );
+
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
