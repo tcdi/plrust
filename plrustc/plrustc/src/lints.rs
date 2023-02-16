@@ -1,9 +1,10 @@
 use once_cell::sync::Lazy;
+use rustc_ast as ast;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass, LintContext, LintStore};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext, LintStore};
 use rustc_lint_defs::{declare_lint, declare_lint_pass, Lint, LintId};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnData;
+use rustc_span::{hygiene::ExpnData, Span};
 
 declare_lint!(
     pub(crate) PLRUST_EXTERN_BLOCKS,
@@ -111,8 +112,46 @@ impl<'tcx> LateLintPass<'tcx> for PlrustFnPointer {
     }
 }
 
+declare_lint!(
+    pub(crate) PLRUST_ASYNC,
+    Allow,
+    "Disallow use of async and await",
+);
+
+declare_lint_pass!(PlrustAsync => [PLRUST_ASYNC]);
+
+impl EarlyLintPass for PlrustAsync {
+    fn check_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr) {
+        if let ast::ExprKind::Async(..) | ast::ExprKind::Await(..) = &expr.kind {
+            cx.lint(
+                PLRUST_ASYNC,
+                "Use of async/await is forbidden in PL/Rust",
+                |b| b.set_span(expr.span),
+            );
+        }
+    }
+    fn check_fn(
+        &mut self,
+        cx: &EarlyContext,
+        kind: ast::visit::FnKind<'_>,
+        span: Span,
+        _: ast::NodeId,
+    ) {
+        if let Some(h) = kind.header() {
+            if h.asyncness.is_async() {
+                cx.lint(
+                    PLRUST_ASYNC,
+                    "Use of async/await is forbidden in PL/Rust",
+                    |b| b.set_span(span),
+                );
+            }
+        }
+    }
+}
+
 static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
+        PLRUST_ASYNC,
         PLRUST_EXTERN_BLOCKS,
         PLRUST_FILESYSTEM_MACROS,
         PLRUST_FN_POINTERS,
@@ -129,6 +168,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
         None,
         PLRUST_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
     );
+    store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustFilesystemMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
