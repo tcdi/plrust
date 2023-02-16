@@ -10,3 +10,11 @@ pub fn foobar<'short, T>(r: &'short T) -> &'static T {
     let foo4: fn(&'static (), &'short T) -> (&'short &'short (), &'static T) = foo3;
     foo4(&(), r).1
 }
+
+pub fn should_be_allowed() {
+    let a = &[1, 2, 3u8];
+    // This should be allowed, as it's not a function pointer.
+    a.iter().for_each(|v| {
+        println!("{v}");
+    });
+}
