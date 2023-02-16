@@ -88,10 +88,34 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
     }
 }
 
+declare_lint!(
+    pub(crate) PLRUST_FN_POINTERS,
+    Allow,
+    "Disallow use of function pointers",
+);
+
+declare_lint_pass!(PlrustFnPointer => [PLRUST_FN_POINTERS]);
+
+impl<'tcx> LateLintPass<'tcx> for PlrustFnPointer {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &hir::Ty) {
+        if let hir::TyKind::BareFn { .. } = &ty.kind {
+            // TODO: ideally this would just be cases where they accept or
+            // return nested references, however doing so is tricky, as it must
+            // pierce through `&'a SomeStruct(&'b InternalRef)`.
+            cx.lint(
+                PLRUST_FN_POINTERS,
+                "Use of function pointers is forbidden in PL/Rust",
+                |b| b.set_span(ty.span),
+            );
+        }
+    }
+}
+
 static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         PLRUST_EXTERN_BLOCKS,
         PLRUST_FILESYSTEM_MACROS,
+        PLRUST_FN_POINTERS,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
     ]
 });
@@ -105,6 +129,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
         None,
         PLRUST_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
     );
+    store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustFilesystemMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));

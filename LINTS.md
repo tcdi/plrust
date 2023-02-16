@@ -76,3 +76,17 @@ For example, this code pattern is blocked:
 ```rust
 const SOMETHING: &str = include_str!("/etc/passwd");
 ```
+
+## `plrust_fn_pointers`
+
+Currently, several soundness holes have to do wuth the interaction between function pointers, implied bounds, and nested references. As a stopgap against these, use of function pointer types are currently blocked. This lint will likely be made more precise in the future.
+
+Note that function types (such as the types resulting from closures as required by iterator functions) are still allowed, as these do not have the issues around variance.
+
+For example, the following code patternF is blocked:
+
+```rust
+fn takes_fn_arg(x: fn()) {
+    x();
+}
+```
