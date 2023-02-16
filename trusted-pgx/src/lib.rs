@@ -26,6 +26,9 @@ pub mod datum {
 
     // dynamic types
     pub use ::pgx::datum::AnyNumeric;
+
+    // others
+    pub use ::pgx::pg_sys::Oid;
 }
 
 pub mod fcinfo {
@@ -70,7 +73,7 @@ pub mod pg_sys {
     pub use ::pgx::pg_sys::FunctionCallInfo;
     pub use ::pgx::pg_sys::PgBuiltInOids;
     pub use ::pgx::pg_sys::Pg_finfo_record;
-    pub use ::pgx::pg_sys::{ItemPointerData, Oid};
+    pub use ::pgx::pg_sys::{ItemPointerData, Oid, RangeBound};
 
     pub mod panic {
         pub use super::submodules::panic::ErrorReportable;

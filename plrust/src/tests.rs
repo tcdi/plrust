@@ -920,6 +920,78 @@ mod tests {
 
         Ok(())
     }
+
+    // #[pg_test]
+    // fn test_int4range() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_int4range(p int4range) RETURNS int4range LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<Range<i32>>("SELECT test_int4range('(1, 10)'::int4range);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_int8range() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_int8range(p int8range) RETURNS int8range LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_int8range('42, 99'::int8range);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_numrange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_numrange(p numrange) RETURNS numrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_numrange('42, 99'::numrange);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_daterange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_daterange(p daterange) RETURNS daterange LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_daterange('42, 99'::daterange);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_tsrange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_tsrange(p tsrange) RETURNS tsrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_tsrange('42, 99'::tsrange);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_tstzrange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_tstzrange(p tstzrange) RETURNS tstzrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_tstzrange('42, 99'::tstzrange);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
