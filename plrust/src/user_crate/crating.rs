@@ -13,7 +13,7 @@ use pgx::{pg_sys, PgOid};
 use quote::quote;
 
 use crate::pgproc::PgProc;
-use crate::user_crate::lint::{compile_lints, LintSet};
+use crate::user_crate::lint::{compile_lints, Lint, LintSet};
 use crate::{
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
     PlRustError,
@@ -312,18 +312,34 @@ fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Resul
 fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
     let imports = shared_imports();
     let lints = compile_lints();
+    let empty_lint = Lint::from("");
+    let code;
 
-    let code = syn::parse2(quote! {
-        #[deny(unknown_lints)]
-        mod forbidden {
-            #lints
-            #imports
+    // Don't include any lints as it is disabled
+    if lints.len() == 1 && lints.get(&empty_lint).is_some() {
+        code = syn::parse2(quote! {
+            #[deny(unknown_lints)]
+            mod forbidden {
+                #imports
 
-            #[allow(unused_lifetimes)]
-            #bare_fn
-        }
-    })
-    .wrap_err("Could not create forbidden module")?;
+                #[allow(unused_lifetimes)]
+                #bare_fn
+            }
+        })
+        .wrap_err("Could not create forbidden module")?;
+    } else {
+        code = syn::parse2(quote! {
+            #[deny(unknown_lints)]
+            mod forbidden {
+                #lints
+                #imports
+
+                #[allow(unused_lifetimes)]
+                #bare_fn
+            }
+        })
+        .wrap_err("Could not create forbidden module")?;
+    }
     Ok((code, lints))
 }
 
