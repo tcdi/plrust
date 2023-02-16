@@ -31,6 +31,7 @@ pub(crate) use ready::FnReady;
 pub(crate) use validate::FnValidate;
 pub(crate) use verify::FnVerify;
 
+use crate::prosrc::maybe_extract_source_from_json;
 use crate::target::CompilationTarget;
 use crate::user_crate::lint::LintSet;
 use crate::PlRustError;
@@ -271,6 +272,20 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         Code,
         Deps,
     }
+
+    // it's possible, especially via a `pg_restore` operation, that "code_and_deps" is actually
+    // our JSON structure stored in `pg_proc.prosrc`.  We'll pass it to [`maybe_extract_source_from_json`]
+    // and let it figure out what to do.
+    //
+    // If it **is** our JSON structure, we only care about the `"src"` property.  That's all
+    // [`maybe_extract_source_from_json`] returns anyways.  We ignore everything else that was there
+    // and ultimately do a full compilation based on the current state of the Postgres database,
+    // taking into account current GUC values and other parameters that may impact compilation.
+    //
+    // It's also possible "code_and_deps" is exactly that, given to us via a user-written
+    // "CREATE OR REPLACE FUNCTION" statement.
+    let code_and_deps = maybe_extract_source_from_json(code_and_deps);
+
     let mut deps_block = String::new();
     let mut code_block = String::from("{ ");
     let mut parse = Parse::Code;
