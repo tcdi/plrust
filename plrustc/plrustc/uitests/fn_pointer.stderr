@@ -1,0 +1,28 @@
+error: Use of function pointers is forbidden in PL/Rust
+  --> $DIR/fn_pointer.rs:7:15
+   |
+LL |     let foo1: for<'out, 'input> fn(&'out (), &'input T) -> (&'out &'input (), &'out T) = foo;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-F plrust-fn-pointers` implied by `-F plrust-lints`
+
+error: Use of function pointers is forbidden in PL/Rust
+  --> $DIR/fn_pointer.rs:8:15
+   |
+LL |     let foo2: for<'input> fn(&'static (), &'input T) -> (&'static &'input (), &'static T) = foo1;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Use of function pointers is forbidden in PL/Rust
+  --> $DIR/fn_pointer.rs:9:15
+   |
+LL |     let foo3: for<'input> fn(&'static (), &'input T) -> (&'input &'input (), &'static T) = foo2;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Use of function pointers is forbidden in PL/Rust
+  --> $DIR/fn_pointer.rs:10:15
+   |
+LL |     let foo4: fn(&'static (), &'short T) -> (&'short &'short (), &'static T) = foo3;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
