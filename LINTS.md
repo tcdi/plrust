@@ -83,7 +83,7 @@ Currently, several soundness holes have to do wuth the interaction between funct
 
 Note that function types (such as the types resulting from closures as required by iterator functions) are still allowed, as these do not have the issues around variance.
 
-For example, the following code patternF is blocked:
+For example, the following code pattern is blocked:
 
 ```rust
 fn takes_fn_arg(x: fn()) {
