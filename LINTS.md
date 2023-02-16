@@ -93,7 +93,7 @@ fn takes_fn_arg(x: fn()) {
 
 ## `plrust_async`
 
-Currently async/await are forbidden PL/Rust due to unclear interactions around lifetime and soundness constraints. This may be out of an overabundance of caution. Specifically, code like the following will fail to compile:
+Currently async/await are forbidden by PL/Rust due to unclear interactions around lifetime and soundness constraints. This may be out of an overabundance of caution. Specifically, code like the following will fail to compile:
 
 ```rust
 async fn an_async_fn() {
