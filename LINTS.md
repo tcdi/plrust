@@ -90,3 +90,20 @@ fn takes_fn_arg(x: fn()) {
     x();
 }
 ```
+
+## `plrust_async`
+
+Currently async/await are forbidden by PL/Rust due to unclear interactions around lifetime and soundness constraints. This may be out of an overabundance of caution. Specifically, code like the following will fail to compile:
+
+```rust
+async fn an_async_fn() {
+    // ...
+}
+
+fn normal_function() {
+    let async_block = async {
+        // ...
+    };
+    // ...
+}
+```

@@ -1,0 +1,36 @@
+error: Use of async/await is forbidden in PL/Rust
+  --> $DIR/async_await.rs:3:1
+   |
+LL | async fn foo() {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-F plrust-async` implied by `-F plrust-lints`
+
+error: Use of async/await is forbidden in PL/Rust
+  --> $DIR/async_await.rs:6:13
+   |
+LL |     let _ = async { 1 };
+   |             ^^^^^^^^^^^
+
+error: Use of async/await is forbidden in PL/Rust
+  --> $DIR/async_await.rs:9:1
+   |
+LL | / async fn baz() -> i32 {
+LL | |     async { 1 }.await
+LL | | }
+   | |_^
+
+error: Use of async/await is forbidden in PL/Rust
+  --> $DIR/async_await.rs:10:5
+   |
+LL |     async { 1 }.await
+   |     ^^^^^^^^^^^^^^^^^
+
+error: Use of async/await is forbidden in PL/Rust
+  --> $DIR/async_await.rs:10:5
+   |
+LL |     async { 1 }.await
+   |     ^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
