@@ -60,26 +60,41 @@ declare_lint!(
 
 declare_lint_pass!(PlrustFilesystemMacros => [PLRUST_FILESYSTEM_MACROS]);
 
-impl<'tcx> LateLintPass<'tcx> for PlrustFilesystemMacros {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
-        let expr_expn_data = expr.span.ctxt().outer_expn_data();
-        let outermost_expn_data = outermost_expn_data(expr_expn_data);
-        let Some(macro_def_id) = outermost_expn_data.macro_def_id else {
-            return;
-        };
-        let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
-            return;
-        };
-        let diagnostic_items = ["include_str_macro", "include_bytes_macro"];
-        if !diagnostic_items.contains(&name.as_str()) {
-            return;
+impl PlrustFilesystemMacros {
+    fn check_span(&mut self, cx: &LateContext<'_>, span: Span) {
+        if is_macro_with_diagnostic_item(
+            cx,
+            span,
+            &["include_str_macro", "include_bytes_macro", "include_macro"],
+        ) {
+            cx.lint(
+                PLRUST_FILESYSTEM_MACROS,
+                "the `include_str`, `include_bytes`, and `include` macros are forbidden",
+                |b| b.set_span(span),
+            );
         }
-        cx.lint(
-            PLRUST_FILESYSTEM_MACROS,
-            &format!("the `include_str` and `include_bytes` macros are forbidden"),
-            |b| b.set_span(expr.span),
-        );
     }
+}
+
+impl<'tcx> LateLintPass<'tcx> for PlrustFilesystemMacros {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item) {
+        self.check_span(cx, item.span)
+    }
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
+        self.check_span(cx, expr.span)
+    }
+}
+
+fn is_macro_with_diagnostic_item(cx: &LateContext<'_>, span: Span, diag_items: &[&str]) -> bool {
+    let expr_expn_data = span.ctxt().outer_expn_data();
+    let outermost_expn_data = outermost_expn_data(expr_expn_data);
+    let Some(macro_def_id) = outermost_expn_data.macro_def_id else {
+        return false;
+    };
+    let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
+        return false;
+    };
+    diag_items.contains(&name.as_str())
 }
 
 fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
