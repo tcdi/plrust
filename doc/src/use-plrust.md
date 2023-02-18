@@ -31,13 +31,21 @@ backslashes (\) used in the body of the function (see
 
 ## Basic PL/Rust Example
 
+Create a schema for `plrust` objects.  This is not required, though is
+used throughout the PL/Rust documentation.
+
+```sql
+CREATE SCHEMA IF NOT EXISTS plrust;
+```
+
+
 The following example creates a basic `plrust`
 function named `one()` to simply returns the
 integer `1`.
 
 
 ```sql
-CREATE FUNCTION one()
+CREATE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
@@ -55,7 +63,7 @@ named `val`. The function returns a `BIGINT` representing the character
 count of the text in `val`.
 
 ```sql
-CREATE FUNCTION strlen(val TEXT)
+CREATE FUNCTION plrust.strlen(val TEXT)
     RETURNS BIGINT
     LANGUAGE plrust
 AS $$
@@ -69,7 +77,7 @@ Changing the function definition to include `STRICT` avoids the need to use
 
 
 ```sql
-CREATE FUNCTION strlen(val TEXT)
+CREATE FUNCTION plrust.strlen(val TEXT)
     RETURNS BIGINT
     LANGUAGE plrust STRICT
 AS $$
@@ -81,7 +89,7 @@ $$;
 Using the `strlen()` function works as expected.
 
 ```sql
-SELECT strlen('Hello, PL/Rust');
+SELECT plrust.strlen('Hello, PL/Rust');
 ```
 
 ```
@@ -105,7 +113,7 @@ Of course, `plrust` functions can performance calculations such as converting
 distance values from feet to miles.
 
 ```sql
-CREATE FUNCTION distance_feet_to_miles(feet FLOAT)
+CREATE FUNCTION plrust.distance_feet_to_miles(feet FLOAT)
     RETURNS FLOAT
     LANGUAGE plrust STRICT
 AS $$
@@ -116,7 +124,7 @@ $$;
 Using the function.
 
 ```sql
-SELECT distance_feet_to_miles(10000);
+SELECT plrust.distance_feet_to_miles(10000);
 ```
 
 ```
@@ -140,7 +148,7 @@ The `random_first_name()` function returns a random first name using the
  
 
 ```sql
-CREATE FUNCTION random_slogan() RETURNS TEXT
+CREATE FUNCTION plrust.random_slogan() RETURNS TEXT
 LANGUAGE plrust AS $$
 [dependencies]
     faker_rand = "0.1"
@@ -153,7 +161,7 @@ $$;
 
 
 ```sql
-SELECT random_slogan();
+SELECT plrust.random_slogan();
 ```
 
 ```
@@ -166,7 +174,7 @@ SELECT random_slogan();
 
 
 ```sql
-CREATE FUNCTION random_company_name(locale TEXT)
+CREATE FUNCTION plrust.random_company_name(locale TEXT)
     RETURNS TEXT
     LANGUAGE plrust STRICT
 AS $$
@@ -190,8 +198,8 @@ $$;
 
 
 ```sql
-SELECT random_company_name('en_us') AS en_us,
-    random_company_name('fr_fr') AS fr_fr;
+SELECT plrust.random_company_name('en_us') AS en_us,
+    plrust.random_company_name('fr_fr') AS fr_fr;
 ```
 
 

@@ -47,24 +47,3 @@ A plain PostgreSQL `DATE` type without a time component.
 
 
 
-## fcinfo functions
-
-`pg_getarg`
-
-`pg_return_null`
-
-`pg_return_void`
-
-`srf_first_call_init`
-
-`srf_is_first_call`
-
-`srf_per_call_setup`
-
-`srf_return_done`
-
-`srf_return_next`
-
-
-
-

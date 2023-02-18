@@ -106,7 +106,9 @@ Install the `plrust` extension in untrusted mode.
 cargo pgx install --release -c /usr/bin/pg_config
 ```
 
-> Note: To use **trusted** mode add `--features "trusted"`.  You must have installed `postgrestd` and the cross-compile toolchain for this feature.
+## Final setup
+
+> Note: To use **trusted** mode add `--features "trusted"`.  You must have installed `postgrestd` and the cross-compile toolchain for this feature.  See [Install PL/Rust for Production](./install-plrust-prod.md).
 
 Update `postgresql.conf` -- add `plrust` to `shared_preload_libraries`
 
@@ -155,13 +157,19 @@ You'll see the warning that the extension is untrusted.
 WARNING:  plrust is **NOT** compiled to be a trusted procedural language
 ```
 
+Create a schema for `plrust` objects.  This is not required, though is
+used throughout the PL/Rust documentation.
+
+```sql
+CREATE SCHEMA plrust;
+```
 
 Create a test extension using `plrust`.
 
 
 
 ```sql
-CREATE FUNCTION one()
+CREATE FUNCTION plrust.one()
     RETURNS INT LANGUAGE plrust
 AS
 $$
