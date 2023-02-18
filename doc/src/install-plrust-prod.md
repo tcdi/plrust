@@ -26,6 +26,16 @@ rustup component add llvm-tools-preview rustc-dev
 cd ~/plrust/plrustc
 ./build.sh
 mv ~/plrust/build/bin/plrustc ~/.cargo/bin/
+
+cd ~/plrust/plrust
+rustup target install aarch64-unknown-linux-gnu
+rustup target install x86_64-unknown-linux-gnu
+
+
+PG_VER=15 \
+    STD_TARGETS="x86_64-postgres-linux-gnu " \
+    ./build
+
 cargo pgx install --release --features trusted -c /usr/bin/pg_config
 ```
 
@@ -35,3 +45,6 @@ cargo pgx install --release --features trusted -c /usr/bin/pg_config
 
 Cross compilation details coming soon.
 
+```bash
+sudo apt install crossbuild-essential-arm64 crossbuild-essential-amd64
+```
