@@ -21,6 +21,9 @@ is when the additional steps for trusted install happen.
 
 
 ```bash
+# This is important!   Was missing step
+rustup default 1.67.1
+
 rustup component add llvm-tools-preview rustc-dev
 
 cd ~/plrust/plrustc
