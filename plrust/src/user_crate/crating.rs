@@ -6,15 +6,18 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use std::path::Path;
+
+use eyre::WrapErr;
+use pgx::{pg_sys, PgOid};
+use quote::quote;
+
 use crate::pgproc::PgProc;
+use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
     PlRustError,
 };
-use eyre::WrapErr;
-use pgx::{pg_sys, PgOid};
-use quote::quote;
-use std::path::Path;
 
 impl CrateState for FnCrating {}
 
@@ -24,7 +27,7 @@ impl CrateState for FnCrating {}
 /// - Produces: a provisioned Cargo crate directory
 #[must_use]
 pub(crate) struct FnCrating {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     user_dependencies: toml::value::Table,
@@ -35,7 +38,7 @@ pub(crate) struct FnCrating {
 impl FnCrating {
     #[cfg(any(test, feature = "pg_test"))]
     pub(crate) fn for_tests(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -43,7 +46,7 @@ impl FnCrating {
         variant: CrateVariant,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             user_dependencies: user_deps.into(),
@@ -58,7 +61,7 @@ impl FnCrating {
         fn_oid: pg_sys::Oid,
     ) -> eyre::Result<Self> {
         let meta = PgProc::new(fn_oid)?;
-        let pg_proc_xmin = meta.xmin();
+        let generation_number = meta.generation_number();
         let (user_code, user_dependencies) = parse_source_and_deps(&meta.prosrc())?;
 
         let variant = match meta.prorettype() == pg_sys::TRIGGEROID {
@@ -88,7 +91,7 @@ impl FnCrating {
         };
 
         Ok(Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             user_code,
@@ -97,24 +100,14 @@ impl FnCrating {
         })
     }
     pub(crate) fn crate_name(&self) -> String {
-        let mut _crate_name = crate::plrust::crate_name(self.db_oid, self.fn_oid);
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        {
-            let next = crate::generation::next_generation(&_crate_name, true).unwrap_or_default();
-            _crate_name.push_str(&format!("_{}", next));
-        }
-        _crate_name
+        crate::plrust::crate_name(self.db_oid, self.fn_oid, self.generation_number)
     }
 
     /// Generates the lib.rs to write
-    #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
-    pub(crate) fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let crate_name = self.crate_name();
-        let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-        tracing::trace!(symbol_name = %crate_name, "Generating `lib.rs` for validation step");
+    pub(crate) fn lib_rs(&self) -> eyre::Result<(syn::File, LintSet)> {
+        let symbol_name = crate::plrust::symbol_name(self.db_oid, self.fn_oid);
+        let symbol_ident = proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
+        tracing::trace!(symbol_name = %symbol_name, "Generating `lib.rs` for validation step");
 
         let user_code = &self.user_code;
         let user_fn: syn::ItemFn = match &self.variant {
@@ -123,7 +116,7 @@ impl FnCrating {
                 ref return_type,
                 ..
             } => syn::parse2(quote! {
-                fn #symbol_ident(
+                fn #symbol_ident<'a>(
                     #( #arguments ),*
                 ) -> #return_type
                 #user_code
@@ -140,9 +133,9 @@ impl FnCrating {
             .wrap_err("Parsing generated user trigger")?,
         };
         let opened = unsafe_mod(user_fn.clone(), &self.variant)?;
-        let forbidden = safe_mod(user_fn)?;
+        let (forbidden, lints) = safe_mod(user_fn)?;
 
-        compose_lib_from_mods([opened, forbidden])
+        Ok((compose_lib_from_mods([opened, forbidden])?, lints))
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
@@ -157,64 +150,55 @@ impl FnCrating {
             "Generating `Cargo.toml`"
         );
 
-        let cargo_toml = cargo_toml_template(&crate_name, &version_feature);
-        match cargo_toml {
-            toml::Value::Table(mut cargo_manifest) => {
-                // We have to add the user deps now before we return it.
-                match cargo_manifest.entry("dependencies") {
-                    toml::value::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
-                        toml::Value::Table(dependencies) => {
-                            for (user_dep_name, user_dep_version) in &self.user_dependencies {
-                                dependencies
-                                    .insert(user_dep_name.clone(), user_dep_version.clone());
-                            }
-                        }
-                        _ => {
-                            return Err(PlRustError::GeneratingCargoToml)
-                                .wrap_err("Getting `[dependencies]` as table")?
-                        }
-                    },
-                    _ => {
-                        return Err(PlRustError::GeneratingCargoToml)
-                            .wrap_err("Getting `[dependencies]`")?
+        let mut cargo_manifest = cargo_toml_template(&crate_name, &version_feature);
+        // We have to add the user deps now before we return it.
+        match cargo_manifest.entry("dependencies") {
+            toml::map::Entry::Occupied(ref mut occupied) => match occupied.get_mut() {
+                toml::Value::Table(dependencies) => {
+                    for (user_dep_name, user_dep_version) in &self.user_dependencies {
+                        dependencies.insert(user_dep_name.clone(), user_dep_version.clone());
                     }
-                };
-
-                match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
-                    Err(_) => (),
-                    Ok(path) => {
-                        match cargo_manifest
-                            .entry("patch")
-                            .or_insert(toml::Value::Table(Default::default()))
-                            .as_table_mut()
-                            .unwrap() // infallible
-                            .entry("crates-io")
-                        {
-                            entry @ toml::value::Entry::Vacant(_) => {
-                                let mut pgx_table = toml::value::Table::new();
-                                pgx_table
-                                    .insert("path".into(), toml::Value::String(path.to_string()));
-                                let mut crates_io_table = toml::value::Table::new();
-                                crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
-                                entry.or_insert(toml::Value::Table(crates_io_table));
-                            }
-                            _ => {
-                                return Err(PlRustError::GeneratingCargoToml).wrap_err(
-                                    "Setting `[patch]`, already existed (and wasn't expected to)",
-                                )?
-                            }
-                        }
-                    }
-                };
-
-                Ok(cargo_manifest)
-            }
+                }
+                _ => {
+                    return Err(PlRustError::GeneratingCargoToml)
+                        .wrap_err("Getting `[dependencies]` as table")?
+                }
+            },
             _ => {
                 return Err(PlRustError::GeneratingCargoToml)
-                    .wrap_err("Getting `Cargo.toml` as table")?
+                    .wrap_err("Getting `[dependencies]`")?
             }
-        }
+        };
+
+        match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
+            Err(_) => (),
+            Ok(path) => {
+                match cargo_manifest
+                    .entry("patch")
+                    .or_insert(toml::Value::Table(Default::default()))
+                    .as_table_mut()
+                    .unwrap() // infallible
+                    .entry("crates-io")
+                {
+                    entry @ toml::map::Entry::Vacant(_) => {
+                        let mut pgx_table = toml::value::Table::new();
+                        pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
+                        let mut crates_io_table = toml::value::Table::new();
+                        crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
+                        entry.or_insert(toml::Value::Table(crates_io_table));
+                    }
+                    _ => {
+                        return Err(PlRustError::GeneratingCargoToml).wrap_err(
+                            "Setting `[patch]`, already existed (and wasn't expected to)",
+                        )?
+                    }
+                }
+            }
+        };
+
+        Ok(cargo_manifest)
     }
+
     /// Provision into a given folder and return the crate directory.
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid, parent_dir = %parent_dir.display()))]
     pub(crate) fn provision(&self, parent_dir: &Path) -> eyre::Result<FnVerify> {
@@ -225,7 +209,7 @@ impl FnCrating {
             "Could not create crate directory in configured `plrust.work_dir` location",
         )?;
 
-        let lib_rs = self.lib_rs()?;
+        let (lib_rs, lints) = self.lib_rs()?;
         let lib_rs_path = src_dir.join("lib.rs");
         std::fs::write(&lib_rs_path, &prettyplease::unparse(&lib_rs))
             .wrap_err("Writing generated `lib.rs`")?;
@@ -239,11 +223,12 @@ impl FnCrating {
         .wrap_err("Writing generated `Cargo.toml`")?;
 
         Ok(FnVerify::new(
-            self.pg_proc_xmin,
+            self.generation_number,
             self.db_oid,
             self.fn_oid,
             crate_name,
             crate_dir,
+            lints,
         ))
     }
 }
@@ -271,7 +256,7 @@ pub(crate) fn shared_imports() -> syn::ItemUse {
     )
 }
 
-pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Value {
+pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Table {
     toml::toml! {
         [package]
         edition = "2021"
@@ -291,8 +276,6 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
 
         [profile.release]
         debug-assertions = true
-        codegen-units = 1_usize
-        lto = "fat"
         opt-level = 3_usize
         panic = "unwind"
     }
@@ -319,44 +302,43 @@ fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Resul
         pub mod opened {
             #imports
 
+            #[allow(unused_lifetimes)]
             #called_fn
         }
     })
     .wrap_err("Could not create opened module")
 }
 
-fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<syn::ItemMod> {
+fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
     let imports = shared_imports();
-    // Hello from the futurepast!
-    // The only situation in which you should be removing this
-    // `#![forbid(unsafe_code)]` is if you are moving the forbid
-    // command somewhere else  or reconfiguring PL/Rust to also
-    // allow it to be run in a fully "Untrusted PL/Rust" mode.
-    // This enables the code checking not only for `unsafe {}`
-    // but also "unsafe attributes" which are considered unsafe
-    // but don't have the `unsafe` token.
-    syn::parse2(quote! {
+    let lints = compile_lints();
+
+    let code = syn::parse2(quote! {
+        #[deny(unknown_lints)]
         mod forbidden {
-            #![forbid(unsafe_code)]
+            #lints
             #imports
 
+            #[allow(unused_lifetimes)]
             #bare_fn
         }
     })
-    .wrap_err("Could not create forbidden module")
+    .wrap_err("Could not create forbidden module")?;
+    Ok((code, lints))
 }
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
-    use super::*;
     use pgx::*;
     use syn::parse_quote;
+
+    use super::*;
 
     #[pg_test]
     fn strict_string() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -373,28 +355,23 @@ mod tests {
                 { Some(arg0.to_string()) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
                     Some(arg0.to_string())
                 }
             })?;
@@ -403,14 +380,17 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -427,7 +407,7 @@ mod tests {
     #[pg_test]
     fn non_strict_integer() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -446,28 +426,23 @@ mod tests {
                 { val.map(|v| v as i64) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
                     val.map(|v| v as i64)
                 }
             })?;
@@ -476,14 +451,17 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -500,7 +478,7 @@ mod tests {
     #[pg_test]
     fn strict_string_set() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -519,28 +497,23 @@ mod tests {
                 { Ok(Some(std::iter::repeat(val).take(5))) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(val: &str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<Option<String>>>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
@@ -549,14 +522,17 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -573,7 +549,7 @@ mod tests {
     #[pg_test]
     fn trigger() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_xmin = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
@@ -583,25 +559,20 @@ mod tests {
                 { Ok(trigger.current().unwrap().into_owned()) }
             })?;
 
-            let generated =
-                FnCrating::for_tests(pg_proc_xmin, db_oid, fn_oid, user_deps, user_code, variant);
+            let generated = FnCrating::for_tests(
+                generation_number,
+                db_oid,
+                fn_oid,
+                user_deps,
+                user_code,
+                variant,
+            );
 
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident(
@@ -618,14 +589,17 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_trigger]
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };

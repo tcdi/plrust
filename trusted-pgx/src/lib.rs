@@ -2,7 +2,7 @@ pub mod prelude {
     pub use super::*;
 }
 
-pub use ::pgx::{debug1, debug2, debug3, debug4, debug5, ereport, error, info, notice, warning};
+pub use ::pgx::{debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, notice, warning};
 
 pub use datum::*;
 pub mod datum {

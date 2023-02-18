@@ -7,6 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum PlRustError {
@@ -18,12 +19,6 @@ pub(crate) enum PlRustError {
     NullFmgrInfo,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
-    #[cfg(any(
-        all(target_os = "macos", target_arch = "x86_64"),
-        feature = "force_enable_x86_64_darwin_generations"
-    ))]
-    #[error("Generation error (Mac OS x86_64 specific): {0}")]
-    Generation(#[from] crate::generation::Error),
     #[error("`cargo build` failed")]
     CargoBuildFail,
     #[error("Generating `Cargo.toml`")]
@@ -40,4 +35,6 @@ pub(crate) enum PlRustError {
     Parse(#[from] syn::Error),
     #[error("Function was not compiled for this host (`{0}`)")]
     FunctionNotCompiledForTarget(CompilationTarget),
+    #[error("Function not compiled with required lints: {0}")]
+    MissingLints(LintSet),
 }

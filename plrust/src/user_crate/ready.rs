@@ -19,7 +19,7 @@ impl CrateState for FnReady {}
 /// - Produces: evaluation of the PL/Rust function
 #[must_use]
 pub(crate) struct FnReady {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     symbol_name: String,
     #[allow(dead_code)] // We must hold this handle for `symbol`
     library: Library,
@@ -40,9 +40,10 @@ pub(crate) struct FnReady {
 impl FnReady {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid))]
     pub(crate) unsafe fn load(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
     ) -> eyre::Result<Self> {
         #[cfg(target_os = "linux")]
@@ -58,7 +59,7 @@ impl FnReady {
 
             let mfd = memfd::MemfdOptions::default()
                 .allow_sealing(true)
-                .create(&format!("plrust-fn-{db_oid}-{fn_oid}-{pg_proc_xmin}"))?;
+                .create(&format!("plrust-fn-{db_oid}-{fn_oid}-{generation_number}"))?;
 
             // set the filesize to exactly what we know it should be
             mfd.as_file().set_len(shared_object.len() as u64)?;
@@ -101,27 +102,14 @@ impl FnReady {
             ((), library)
         };
 
-        let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-
-        #[cfg(any(
-            all(target_os = "macos", target_arch = "x86_64"),
-            feature = "force_enable_x86_64_darwin_generations"
-        ))]
-        let crate_name = {
-            let mut crate_name = crate_name;
-            let (latest, _path) =
-                crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
-
-            crate_name.push_str(&format!("_{}", latest));
-            crate_name
-        };
-        let symbol_name = crate_name + "_wrapper";
+        let symbol_name = symbol.unwrap_or_else(|| crate::plrust::symbol_name(db_oid, fn_oid));
+        let symbol_name = symbol_name + "_wrapper"; // + "_wrapper" b/c pgx' `#[pg_extern]` adds that
 
         tracing::trace!("Getting symbol `{symbol_name}`");
         let symbol = unsafe { library.get(symbol_name.as_bytes())? };
 
         Ok(Self {
-            pg_proc_xmin,
+            generation_number,
             symbol_name,
             library,
             symbol,
@@ -146,7 +134,7 @@ impl FnReady {
         ))]
     pub(crate) fn close(self) -> eyre::Result<()> {
         let Self {
-            pg_proc_xmin: _,
+            generation_number: _,
             library,
             symbol: _,
             symbol_name: _,
@@ -161,7 +149,7 @@ impl FnReady {
     }
 
     #[inline]
-    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
-        self.pg_proc_xmin
+    pub(crate) fn generation_number(&self) -> u64 {
+        self.generation_number
     }
 }

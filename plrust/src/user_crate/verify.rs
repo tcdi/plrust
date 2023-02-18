@@ -24,13 +24,17 @@ allows using the linting power of rustc on it as a validation step.
 Then the function can be rewritten with annotations from pgx-macros injected.
 */
 
-use crate::user_crate::{cargo, CrateState, FnBuild, PlRustError};
-use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
 use std::{
     path::{Path, PathBuf},
     process::Output,
 };
+
+use eyre::{eyre, WrapErr};
+use pgx::pg_sys;
+
+use crate::user_crate::cargo::cargo;
+use crate::user_crate::lint::LintSet;
+use crate::user_crate::{CrateState, FnBuild, PlRustError};
 
 /// Available and ready-to-validate PL/Rust crate
 ///
@@ -38,11 +42,12 @@ use std::{
 /// - Produces: verified Rust source code
 #[must_use]
 pub(crate) struct FnVerify {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
     crate_name: String,
     crate_dir: PathBuf,
+    lints: LintSet,
 }
 
 impl CrateState for FnVerify {}
@@ -50,18 +55,20 @@ impl CrateState for FnVerify {}
 impl FnVerify {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        lints: LintSet,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             crate_name,
             crate_dir,
+            lints,
         }
     }
 
@@ -72,14 +79,14 @@ impl FnVerify {
             db_oid = %self.db_oid,
             fn_oid = %self.fn_oid,
             crate_dir = %self.crate_dir.display(),
-            target_dir = tracing::field::display(target_dir.display()),
+            target_dir = tracing::field::display(cargo_target_dir.display()),
         ))]
-    pub(crate) fn validate(self, target_dir: &Path) -> eyre::Result<(FnBuild, Output)> {
+    pub(crate) fn validate(self, cargo_target_dir: &Path) -> eyre::Result<(FnBuild, Output)> {
         // This is the step which would be used for running validation
         // after writing the lib.rs but before actually building it.
         // As PL/Rust is not fully configured to run user commands here,
         // this version check just smoke-tests the ability to run a command
-        let mut command = cargo()?;
+        let mut command = cargo(cargo_target_dir, None)?;
         command.arg("--version");
         command.arg("--verbose");
 
@@ -88,11 +95,12 @@ impl FnVerify {
         if output.status.success() {
             Ok((
                 FnBuild::new(
-                    self.pg_proc_xmin,
+                    self.generation_number,
                     self.db_oid,
                     self.fn_oid,
                     self.crate_name,
                     self.crate_dir,
+                    self.lints,
                 ),
                 output,
             ))

@@ -7,6 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 //! Routines for managing the `pg_catalog.pg_proc.prosrc` entry for plrust functions
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 use std::rc::Rc;
@@ -23,6 +24,7 @@ use crate::error::PlRustError;
 use crate::pgproc::PgProc;
 use crate::target;
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 use crate::user_crate::{FnReady, UserCrate};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -33,7 +35,14 @@ enum Encoding {
 #[derive(Debug, Serialize, Deserialize)]
 struct SharedLibrary {
     encoding: Encoding,
+    symbol: Option<String>,
     encoded: String,
+    lints: LintSet,
+}
+
+struct CompiledSharedLibrary {
+    bytes: Vec<u8>,
+    metadata: SharedLibrary,
 }
 
 impl SharedLibrary {
@@ -42,13 +51,15 @@ impl SharedLibrary {
         base64::engine::general_purpose::NO_PAD,
     );
 
-    fn new(so_bytes: Vec<u8>) -> eyre::Result<Self> {
+    fn new(symbol: String, so_bytes: Vec<u8>, lints: LintSet) -> eyre::Result<Self> {
         let mut gz = GzEncoder::new(&so_bytes[..], Compression::best());
         let mut compressed_bytes = Vec::new();
         gz.read_to_end(&mut compressed_bytes)?;
         Ok(SharedLibrary {
             encoding: Encoding::GzBase64,
+            symbol: Some(symbol),
             encoded: Self::CUSTOM_ENGINE.encode(compressed_bytes),
+            lints,
         })
     }
 
@@ -78,6 +89,14 @@ impl TryFrom<&PgProc> for ProSrcEntry {
     }
 }
 
+impl TryFrom<&str> for ProSrcEntry {
+    type Error = serde_json::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str::<ProSrcEntry>(value)
+    }
+}
+
 impl Into<String> for ProSrcEntry {
     fn into(self) -> String {
         serde_json::to_string(&self).expect("unable to serialize ProSrcEntry to json")
@@ -85,12 +104,35 @@ impl Into<String> for ProSrcEntry {
 }
 
 impl ProSrcEntry {
-    fn take_so_bytes(&mut self, compilation_target: &CompilationTarget) -> eyre::Result<Vec<u8>> {
-        Ok(self
+    fn decode_shared_library(
+        &mut self,
+        compilation_target: &CompilationTarget,
+    ) -> eyre::Result<CompiledSharedLibrary> {
+        let shared_library = self
             .lib
             .remove(compilation_target)
-            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?
-            .decode()?)
+            .ok_or_else(|| PlRustError::FunctionNotCompiledForTarget(compilation_target.clone()))?;
+
+        Ok(CompiledSharedLibrary {
+            bytes: shared_library.decode()?,
+            metadata: shared_library,
+        })
+    }
+}
+
+/// Given an arbitrary string, suss out how to treat it as source code.  If it's JSON that matches
+/// the structure of our [`ProSrcEntry`] struct, then we return its `src` property, throwing everything
+/// else away.
+///
+/// If it's not, then we just return the input unchanged.
+pub(crate) fn maybe_extract_source_from_json(code: &str) -> Cow<str> {
+    match ProSrcEntry::try_from(code) {
+        Ok(entry) => Cow::Owned(entry.src),
+        Err(_) => {
+            // `code` didn't parse as json, so assume it's just the raw function source code
+            // likely means it's the first time this function is being CREATEd
+            Cow::Borrowed(code)
+        }
     }
 }
 
@@ -98,11 +140,13 @@ impl ProSrcEntry {
 /// `so_bytes` mapped to the specified `target_triple`
 #[tracing::instrument(level = "debug")]
 pub(crate) fn create_or_replace_function(
-    pg_proc_oid: pg_sys::Oid,
+    db_oid: pg_sys::Oid,
+    fn_oid: pg_sys::Oid,
     target_triple: CompilationTarget,
     so_bytes: Vec<u8>,
+    lints: LintSet,
 ) -> eyre::Result<()> {
-    let pg_proc = PgProc::new(pg_proc_oid)?;
+    let pg_proc = PgProc::new(fn_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc).unwrap_or_else(|_| {
         // the pg_proc.prosrc didn't parse as json, so assume it's just the raw function source code
         // likely means it's the first time this function is being CREATEd
@@ -113,9 +157,11 @@ pub(crate) fn create_or_replace_function(
 
     // always replace any existing bytes for the specified target_triple.  we only trust
     // what was given to us
-    entry
-        .lib
-        .insert(target_triple, SharedLibrary::new(so_bytes)?);
+    let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+    entry.lib.insert(
+        target_triple,
+        SharedLibrary::new(symbol_name, so_bytes, lints)?,
+    );
 
     let mut ctid = pg_proc.ctid();
     let relation = PgProc::relation();
@@ -157,7 +203,7 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     let pg_proc = PgProc::new(pg_proc_oid)?;
     let mut entry = ProSrcEntry::try_from(&pg_proc)?;
     let this_target = target::tuple()?;
-    let so_bytes = entry.take_so_bytes(this_target)?;
+    let so = entry.decode_shared_library(this_target)?;
 
     // SAFETY: Postgres globally sets this to `const InvalidOid`, so is always read-safe,
     // then writes it only during initialization, so we should not be racing anyone.
@@ -166,13 +212,16 @@ pub(crate) fn load(pg_proc_oid: pg_sys::Oid) -> eyre::Result<Rc<UserCrate<FnRead
     // fabricate a FnLoad version of the UserCrate so that we can "load()" it -- tho we're
     // long since past the idea of crates, but whatev, I just work here
     let built = UserCrate::built(
-        pg_proc.xmin(),
+        pg_proc.generation_number(),
         db_oid,
         pg_proc_oid,
         this_target.clone(),
-        so_bytes,
+        so.metadata.symbol,
+        so.bytes,
+        so.metadata.lints,
     );
-    let loaded = unsafe { built.load()? };
+    let validated = unsafe { built.validate()? };
+    let loaded = unsafe { validated.load()? };
 
     // all good
     Ok(Rc::new(loaded))

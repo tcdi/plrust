@@ -6,7 +6,6 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use std::ffi::CStr;
 use std::{
     path::{Path, PathBuf},
     process::Output,
@@ -14,10 +13,11 @@ use std::{
 
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
-use pgx::{pg_sys, PgMemoryContexts};
+use pgx::pg_sys;
 
 use crate::target::{CompilationTarget, CrossCompilationTarget};
-use crate::user_crate::cargo;
+use crate::user_crate::cargo::cargo;
+use crate::user_crate::lint::LintSet;
 use crate::{
     gucs,
     user_crate::{CrateState, FnLoad},
@@ -30,11 +30,11 @@ use crate::{
 /// - Produces: a dlopenable artifact
 #[must_use]
 pub(crate) struct FnBuild {
-    pg_proc_xmin: pg_sys::TransactionId,
+    generation_number: u64,
     db_oid: pg_sys::Oid,
     fn_oid: pg_sys::Oid,
-    crate_name: String,
     crate_dir: PathBuf,
+    lints: LintSet,
 }
 
 impl CrateState for FnBuild {}
@@ -42,18 +42,19 @@ impl CrateState for FnBuild {}
 impl FnBuild {
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %db_oid, fn_oid = %fn_oid, crate_name = %crate_name, crate_dir = %crate_dir.display()))]
     pub(crate) fn new(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         crate_name: String,
         crate_dir: PathBuf,
+        lints: LintSet,
     ) -> Self {
         Self {
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
-            crate_name,
             crate_dir,
+            lints,
         }
     }
 
@@ -97,66 +98,20 @@ impl FnBuild {
         target_triple: CompilationTarget,
         cross_compilation_target: Option<CrossCompilationTarget>,
     ) -> eyre::Result<(FnLoad, Output)> {
-        let mut command = cargo()?;
+        let mut command = cargo(cargo_target_dir, cross_compilation_target)?;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
         command.arg("--release");
         command.arg("--target");
         command.arg(&target_triple);
-        command.env("CARGO_TARGET_DIR", &cargo_target_dir);
-        command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
-
-        // There was a time in the past where plrust had a `plrust.pg_config` GUC whose value was
-        // passed down to the "pgx-pg-sys" transient dependency via an environment variable.
-        //
-        // This turned out to be an unwanted bit of user, system, and operational complexity.
-        //
-        // Instead, we tell the environment that "pg_config" is described as environment
-        // variables, and set every property Postgres can tell us (which is essentially how
-        // `pg_config` itself works) as individual environment variables, each prefixed with
-        // "PGX_PG_CONFIG_".
-        //
-        // "pgx-pg-sys"'s build.rs knows how to interpret these environment variables to get what
-        // it needs to properly generate bindings.
-        command.env("PGX_PG_CONFIG_AS_ENV", "true");
-        for (k, v) in pg_config_values() {
-            let k = format!("PGX_PG_CONFIG_{k}");
-            command.env(k, v);
-        }
-
-        // set environment variables we need in order for a cross compile
-        if let Some(target_triple) = cross_compilation_target {
-            // the CARGO_TARGET_xx_LINKER variable
-            let (k, v) = target_triple.linker_envar();
-            command.env(k, v);
-
-            // pgx-specified variable for where the bindings are
-            if let Some((k, v)) = target_triple.bindings_envar() {
-                command.env(k, v);
-            }
-        }
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
         if output.status.success() {
-            let crate_name = &self.crate_name;
-
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name.clone();
-                let next = crate::generation::next_generation(&crate_name, true)
-                    .map(|gen_num| gen_num)
-                    .unwrap_or_default();
-
-                crate_name.push_str(&format!("_{}", next));
-                crate_name
-            };
-
             let so_bytes = {
+                let crate_name =
+                    crate::plrust::crate_name(self.db_oid, self.fn_oid, self.generation_number);
                 use std::env::consts::DLL_SUFFIX;
                 let so_filename = &format!("lib{crate_name}{DLL_SUFFIX}");
                 let so_path = cargo_target_dir
@@ -169,11 +124,13 @@ impl FnBuild {
 
             Ok((
                 FnLoad::new(
-                    self.pg_proc_xmin,
+                    self.generation_number,
                     self.db_oid,
                     self.fn_oid,
                     target_triple,
+                    Some(crate::plrust::symbol_name(self.db_oid, self.fn_oid)),
                     so_bytes,
+                    self.lints.clone(),
                 ),
                 output,
             ))
@@ -213,41 +170,5 @@ impl FnBuild {
     // for #[tracing] purposes
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
-    }
-}
-
-/// Asks Postgres, via FFI, for all of its compile-time configuration data.  This is the full
-/// set of things that Postgres' `pg_config` configuration tool can report.
-///
-/// The returned tuple is a `(key, value)` pair of the configuration name and its value.
-fn pg_config_values() -> impl Iterator<Item = (String, String)> {
-    unsafe {
-        // SAFETY:  we know the memory context we're switching to is valid because we're also making
-        // it right here.  We're also responsible for pfreeing the result of `get_configdata()` and
-        // the easiest way to do that is to simply free an entire memory context at once
-        PgMemoryContexts::new("configdata").switch_to(|_| {
-            let mut nprops = 0;
-            // SAFETY:  `get_configdata` needs to know where the "postmaster" executable is located
-            // and `pg_sys::my_exec_path` is that global, which Postgres assigns once early in its
-            // startup process
-            let configdata = pg_sys::get_configdata(pg_sys::my_exec_path.as_ptr(), &mut nprops);
-
-            // SAFETY:  `get_configdata` will never return the NULL pointer
-            let slice = std::slice::from_raw_parts(configdata, nprops);
-
-            let mut values = Vec::with_capacity(nprops);
-            for e in slice {
-                // SAFETY:  the members (we use) in `ConfigData` are properly allocated char pointers,
-                // done so by the `get_configdata()` call above
-                let name = CStr::from_ptr(e.name);
-                let setting = CStr::from_ptr(e.setting);
-                values.push((
-                    name.to_string_lossy().to_string(),
-                    setting.to_string_lossy().to_string(),
-                ))
-            }
-
-            values.into_iter()
-        })
     }
 }

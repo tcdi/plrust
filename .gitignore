@@ -9,4 +9,9 @@ scratch
 postgrestd/
 .vscode/
 doc/book
+/build
+config.toml
+builder/target
+builder/sysroot/target
+builder/Cargo.lock
 

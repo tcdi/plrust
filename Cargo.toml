@@ -4,6 +4,7 @@ members = [
     "plrust",
     "trusted-pgx",
 ]
+exclude = ["plrustc"]#, "builder"]
 
 [profile.dev.build-override]
 opt-level = 3

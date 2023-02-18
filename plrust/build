@@ -29,7 +29,7 @@ cargo update -p pgx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgx \
-     --version "0.7.0" \
+     --version "0.7.1" \
      --locked # use the Cargo.lock in the pgx repo
 fi
 
@@ -42,7 +42,7 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --branch "1.65" --recurse-submodules
+        git clone https://github.com/tcdi/postgrestd.git --branch "1.67.1" --recurse-submodules
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml

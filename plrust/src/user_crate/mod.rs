@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 /*!
 How to actually build and load a PL/Rust function
-*/
+ */
 
 /*
 Consider opening the documentation like so:
@@ -16,30 +16,35 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
-mod build;
-mod crate_variant;
-mod crating;
-mod loading;
-mod ready;
-mod verify;
+use std::{path::Path, process::Output};
+
+use pgx::{pg_sys, PgBuiltInOids, PgOid};
+use proc_macro2::TokenStream;
+use quote::quote;
+use semver;
 
 pub(crate) use build::FnBuild;
 use crate_variant::CrateVariant;
 pub(crate) use crating::FnCrating;
 pub(crate) use loading::FnLoad;
 pub(crate) use ready::FnReady;
+pub(crate) use validate::FnValidate;
 pub(crate) use verify::FnVerify;
 
-use crate::gucs::PLRUST_PATH_OVERRIDE;
+use crate::prosrc::maybe_extract_source_from_json;
 use crate::target::CompilationTarget;
+use crate::user_crate::lint::LintSet;
 use crate::PlRustError;
-use pgx::{pg_sys, PgBuiltInOids, PgOid};
-use proc_macro2::TokenStream;
-use quote::quote;
-use semver;
-use std::env::VarError;
-use std::process::Command;
-use std::{path::Path, process::Output};
+
+mod build;
+mod cargo;
+mod crate_variant;
+mod crating;
+pub(crate) mod lint;
+mod loading;
+mod ready;
+mod validate;
+mod verify;
 
 /**
 Finite state machine with "typestate" generic
@@ -75,7 +80,7 @@ impl UserCrate<FnCrating> {
     #[cfg(any(test, feature = "pg_test"))]
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn generated_for_tests(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         user_deps: toml::value::Table,
@@ -83,7 +88,7 @@ impl UserCrate<FnCrating> {
         variant: CrateVariant,
     ) -> Self {
         Self(FnCrating::for_tests(
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             user_deps.into(),
@@ -97,9 +102,8 @@ impl UserCrate<FnCrating> {
     }
     #[tracing::instrument(level = "debug", skip_all)]
     #[allow(unused)] // used in tests
-    pub fn lib_rs(&self) -> eyre::Result<syn::File> {
-        let lib_rs = self.0.lib_rs()?;
-        Ok(lib_rs)
+    pub fn lib_rs(&self) -> eyre::Result<(syn::File, LintSet)> {
+        self.0.lib_rs()
     }
     #[tracing::instrument(level = "debug", skip_all)]
     #[allow(unused)] // used in tests
@@ -157,28 +161,39 @@ impl UserCrate<FnBuild> {
 impl UserCrate<FnLoad> {
     #[tracing::instrument(level = "debug")]
     pub(crate) fn built(
-        pg_proc_xmin: pg_sys::TransactionId,
+        generation_number: u64,
         db_oid: pg_sys::Oid,
         fn_oid: pg_sys::Oid,
         target: CompilationTarget,
+        symbol: Option<String>,
         shared_object: Vec<u8>,
+        lints: LintSet,
     ) -> Self {
         UserCrate(FnLoad::new(
-            pg_proc_xmin,
+            generation_number,
             db_oid,
             fn_oid,
             target,
+            symbol,
             shared_object,
+            lints,
         ))
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>) {
+    pub fn into_inner(self) -> (CompilationTarget, Vec<u8>, LintSet) {
         self.0.into_inner()
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
+    pub unsafe fn validate(self) -> eyre::Result<UserCrate<FnValidate>> {
+        unsafe { self.0.validate().map(UserCrate) }
+    }
+}
+
+impl UserCrate<FnValidate> {
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub(crate) unsafe fn load(self) -> eyre::Result<UserCrate<FnReady>> {
         unsafe { self.0.load().map(UserCrate) }
     }
 }
@@ -198,8 +213,8 @@ impl UserCrate<FnReady> {
     }
 
     #[inline]
-    pub(crate) fn xmin(&self) -> pg_sys::TransactionId {
-        self.0.xmin()
+    pub(crate) fn generation_number(&self) -> u64 {
+        self.0.generation_number()
     }
 }
 
@@ -218,7 +233,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
             PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
-            PgBuiltInOids::BYTEAOID if !owned => quote! { &[u8] },
+            PgBuiltInOids::BYTEAOID if !owned => quote! { &'a [u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
@@ -232,7 +247,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::NUMERICOID => quote! { AnyNumeric },
             PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
-            PgBuiltInOids::TEXTOID if !owned => quote! { &str },
+            PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
@@ -251,47 +266,26 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
         .map_err(|e| PlRustError::ParsingRustMapping(type_oid.value(), rust_type.to_string(), e))
 }
 
-/// Builds a `Command::new("cargo")` with necessary environment variables pre-configured
-pub(crate) fn cargo() -> eyre::Result<Command> {
-    let mut command = Command::new("cargo");
-
-    if let Some(path) = PLRUST_PATH_OVERRIDE.get() {
-        // we were configured with an explicit $PATH to use
-        command.env("PATH", path);
-    } else {
-        let is_empty = match std::env::var("PATH") {
-            Ok(s) if s.trim().is_empty() => true,
-            Ok(_) => false,
-            Err(VarError::NotPresent) => true,
-            Err(e) => return Err(eyre::eyre!(e)),
-        };
-
-        if is_empty {
-            // the environment has no $PATH, so lets try and make a good one based on where
-            // we'd expect 'cargo' to be installed
-            if let Ok(path) = home::cargo_home() {
-                let path = path.join("bin");
-                command.env(
-                    "PATH",
-                    std::env::join_paths(vec![path.as_path(), std::path::Path::new("/usr/bin")])?,
-                );
-            } else {
-                // we don't have a home directory... where could cargo be?  Ubuntu installed cargo
-                // at least puts it in /usr/bin
-                command.env("PATH", "/usr/bin");
-            }
-        }
-    }
-
-    Ok(command)
-}
-
 #[tracing::instrument(level = "debug", skip_all)]
 fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml::value::Table)> {
     enum Parse {
         Code,
         Deps,
     }
+
+    // it's possible, especially via a `pg_restore` operation, that "code_and_deps" is actually
+    // our JSON structure stored in `pg_proc.prosrc`.  We'll pass it to [`maybe_extract_source_from_json`]
+    // and let it figure out what to do.
+    //
+    // If it **is** our JSON structure, we only care about the `"src"` property.  That's all
+    // [`maybe_extract_source_from_json`] returns anyways.  We ignore everything else that was there
+    // and ultimately do a full compilation based on the current state of the Postgres database,
+    // taking into account current GUC values and other parameters that may impact compilation.
+    //
+    // It's also possible "code_and_deps" is exactly that, given to us via a user-written
+    // "CREATE OR REPLACE FUNCTION" statement.
+    let code_and_deps = maybe_extract_source_from_json(code_and_deps);
+
     let mut deps_block = String::new();
     let mut code_block = String::from("{ ");
     let mut parse = Parse::Code;
@@ -408,16 +402,16 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 #[pgx::pg_schema]
 mod tests {
     use pgx::*;
+    use quote::quote;
+    use syn::parse_quote;
 
     use crate::user_crate::crating::cargo_toml_template;
     use crate::user_crate::*;
-    use quote::quote;
-    use syn::parse_quote;
 
     #[pg_test]
     fn full_workflow() {
         fn wrapped() -> eyre::Result<()> {
-            let pg_proc_oid = 0 as pg_sys::TransactionId;
+            let generation_number = 0;
             let fn_oid = pg_sys::Oid::INVALID;
             let db_oid = unsafe { pg_sys::MyDatabaseId };
             let target_dir = crate::gucs::work_dir();
@@ -436,32 +430,21 @@ mod tests {
             })?;
 
             let generated = UserCrate::generated_for_tests(
-                pg_proc_oid,
+                generation_number,
                 db_oid,
                 fn_oid,
                 user_deps,
                 user_code,
                 variant,
             );
-            let crate_name = crate::plrust::crate_name(db_oid, fn_oid);
-            #[cfg(any(
-                all(target_os = "macos", target_arch = "x86_64"),
-                feature = "force_enable_x86_64_darwin_generations"
-            ))]
-            let crate_name = {
-                let mut crate_name = crate_name;
-                let (latest, _path) =
-                    crate::generation::latest_generation(&crate_name, true).unwrap_or_default();
+            let symbol_name = crate::plrust::symbol_name(db_oid, fn_oid);
+            let symbol_ident =
+                proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
-                crate_name.push_str(&format!("_{}", latest));
-                crate_name
-            };
-            let symbol_ident = proc_macro2::Ident::new(&crate_name, proc_macro2::Span::call_site());
-
-            let generated_lib_rs = generated.lib_rs()?;
+            let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(arg0: &str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
                     Ok(Some(arg0.to_string()))
                 }
             })?;
@@ -470,14 +453,17 @@ mod tests {
                 pub mod opened {
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #[pg_extern]
                     #bare_fn
                 }
 
+                #[deny(unknown_lints)]
                 mod forbidden {
-                    #![forbid(unsafe_code)]
+                    #lints
                     #imports
 
+                    #[allow(unused_lifetimes)]
                     #bare_fn
                 }
             };
@@ -489,6 +475,7 @@ mod tests {
 
             let generated_cargo_toml = generated.cargo_toml()?;
             let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
+            let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let fixture_cargo_toml = cargo_toml_template(&crate_name, &version_feature);
 
             assert_eq!(
@@ -503,7 +490,8 @@ mod tests {
 
             for (built, _output) in validated.build(&target_dir)? {
                 // Without an fcinfo, we can't call this.
-                let _loaded = unsafe { built.load()? };
+                let validated = unsafe { built.validate()? };
+                let _loaded = unsafe { validated.load()? };
             }
 
             Ok(())
