@@ -45,5 +45,6 @@ A plain PostgreSQL `DATE` type without a time component.
 `Time` / `TimeWithTimeZone` / `Timestamp` / `TimestampWithTimeZone`
 
 
+Range Support In progress
 
 

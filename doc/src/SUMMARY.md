@@ -15,6 +15,10 @@
     - [SPI](./spi.md)
     - [Triggers](./triggers.md)
     - [Logging to PostgreSQL from PL/Rust](./logging.md)
+- [Configuration](./config.md)
+    - [PostgreSQL configuration](./config-pg.md)
+    - [Lints](./config-lints.md)
+    - [Environment variables](./config-env-var.md)
 - [Trusted and Untrusted PL/Rust](./trusted-untrusted.md)
 
 # PL/Rust Under the Hood
