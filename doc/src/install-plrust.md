@@ -271,14 +271,6 @@ in this step.
 WARNING:  plrust is **NOT** compiled to be a trusted procedural language
 ```
 
-Create a schema for `plrust` objects.  This is not required, though is
-used throughout this PL/Rust user guide.
-
-
-```sql
-CREATE SCHEMA plrust;
-```
-
 Create a test extension using `plrust`.
 
 
@@ -290,3 +282,21 @@ $$
     Ok(Some(1))
 $$;
 ```
+
+Using a function created with PL/Rust is the same as any other
+PostgreSQL function.
+
+
+```sql
+SELECT plrust.one();
+```
+
+
+```
+┌─────┐
+│ one │
+╞═════╡
+│   1 │
+└─────┘
+```
+
