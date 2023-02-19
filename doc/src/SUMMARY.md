@@ -4,8 +4,9 @@
 
 # Installation
 
-- [Install PL/Rust for Development](./install-plrust-dev.md)
-- [Install PL/Rust for Production](./install-plrust-prod.md)
+- [Install PL/Rust](./install-plrust.md)
+- [Update PL/Rust](./update-plrust.md)
+- [Cross compilation](./install-cross-compile.md)
 
 # User Guide
 
