@@ -22,7 +22,7 @@ pub mod datum {
     pub use ::pgx::datum::Uuid;
 
     // range types
-    pub use ::pgx::datum::{Range, RangeConversionError, RangeData, RangeSubType};
+    pub use ::pgx::datum::{Range, RangeBound, RangeSubType};
 
     // dynamic types
     pub use ::pgx::datum::AnyNumeric;

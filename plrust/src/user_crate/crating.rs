@@ -374,7 +374,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Some(arg0.to_string())
                 }
             })?;
@@ -445,7 +445,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     val.map(|v| v as i64)
                 }
             })?;
@@ -516,7 +516,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;

@@ -1204,7 +1204,7 @@ dependencies = [
  "libloading",
  "memfd",
  "once_cell",
- "pgx 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pgx 0.7.1",
  "pgx-tests",
  "prettyplease",
  "proc-macro2",
