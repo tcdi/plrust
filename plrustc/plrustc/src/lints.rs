@@ -169,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustLeaky {
         for &path in paths {
             if is_expr_path_def_path(cx, expr, path) {
                 cx.lint(
-                    PLRUST_ASYNC,
+                    PLRUST_LEAKY,
                     "Leaky functions are forbidden in PL/Rust",
                     |b| b.set_span(expr.span),
                 );
@@ -181,6 +181,10 @@ impl<'tcx> LateLintPass<'tcx> for PlrustLeaky {
 fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     path_res(cx, expr)
         .opt_def_id()
+        .or_else(|| match &expr.kind {
+            hir::ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+            _ => None,
+        })
         .map_or(false, |id| match_def_path(cx, id, segments))
 }
 

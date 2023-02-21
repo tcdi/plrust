@@ -7,5 +7,8 @@ fn _f() {
     let c = vec![1u8, 2, 3];
     let _d = c.leak();
 
-    let _e = std::mem::forget(vec![1u32]);
+    let e = vec![1u8, 2, 3];
+    let _f = Vec::leak(e);
+
+    let _g = std::mem::forget(vec![1u32]);
 }
