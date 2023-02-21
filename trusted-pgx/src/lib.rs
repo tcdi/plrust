@@ -9,8 +9,8 @@ pub mod datum {
     // traits
     pub use ::pgx::datum::{FromDatum, IntoDatum};
 
-    // dates & times
-    pub use ::pgx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+    // // dates & times
+    // pub use ::pgx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
     // json
     pub use ::pgx::datum::{Json, JsonB};
