@@ -107,3 +107,15 @@ fn normal_function() {
     // ...
 }
 ```
+
+## `plrust_leaky`
+
+This lint forbids use of "leaky" functions such as [`mem::forget`](https://doc.rust-lang.org/stable/std/mem/fn.forget.html) and [`Box::leak`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.leak). While leaking memory is considered safe, it has undesirable effects and thus is blocked by default. For example, the lint will trigger on (at least) the following code:
+
+```rust
+core::mem::forget(something);
+let foo = Box::leak(Box::new(1u32));
+let bar = vec![1, 2, 3].leak();
+```
+
+Note that this will not prevent all leaks, as PL/Rust code could still create a leak by constructing a reference cycle using Rc/Arc, for example.
