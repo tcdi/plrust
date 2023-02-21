@@ -1,10 +1,11 @@
+use hir::{def::Res, def_id::DefId, Expr};
 use once_cell::sync::Lazy;
 use rustc_ast as ast;
 use rustc_hir as hir;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext, LintStore};
 use rustc_lint_defs::{declare_lint, declare_lint_pass, Lint, LintId};
 use rustc_session::Session;
-use rustc_span::{hygiene::ExpnData, Span};
+use rustc_span::{hygiene::ExpnData, Span, Symbol};
 
 declare_lint!(
     pub(crate) PLRUST_EXTERN_BLOCKS,
@@ -149,12 +150,62 @@ impl EarlyLintPass for PlrustAsync {
     }
 }
 
+declare_lint!(
+    pub(crate) PLRUST_LEAKY,
+    Allow,
+    "Disallow use of `{Box,Vec,String}::leak`, `mem::forget`, and similar functions",
+);
+
+declare_lint_pass!(PlrustLeaky => [PLRUST_LEAKY]);
+
+impl<'tcx> LateLintPass<'tcx> for PlrustLeaky {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
+        let paths: &[&[&str]] = &[
+            &["alloc", "boxed", "Box", "leak"],
+            &["alloc", "vec", "Vec", "leak"],
+            &["alloc", "string", "String", "leak"],
+            &["core", "mem", "forget"],
+        ];
+        for &path in paths {
+            if is_expr_path_def_path(cx, expr, path) {
+                cx.lint(
+                    PLRUST_ASYNC,
+                    "Leaky functions are forbidden in PL/Rust",
+                    |b| b.set_span(expr.span),
+                );
+            }
+        }
+    }
+}
+
+fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
+    path_res(cx, expr)
+        .opt_def_id()
+        .map_or(false, |id| match_def_path(cx, id, segments))
+}
+
+fn path_res(cx: &LateContext<'_>, ex: &Expr<'_>) -> Res {
+    if let hir::ExprKind::Path(qpath) = &ex.kind {
+        cx.qpath_res(qpath, ex.hir_id)
+    } else {
+        Res::Err
+    }
+}
+
+fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
+    let path = cx.get_def_path(did);
+    syms.iter()
+        .map(|x| Symbol::intern(x))
+        .eq(path.iter().copied())
+}
+
 static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         PLRUST_ASYNC,
         PLRUST_EXTERN_BLOCKS,
         PLRUST_FILESYSTEM_MACROS,
         PLRUST_FN_POINTERS,
+        PLRUST_LEAKY,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
     ]
 });
@@ -170,6 +221,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     );
     store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
+    store.register_late_pass(move |_| Box::new(PlrustLeaky));
     store.register_late_pass(move |_| Box::new(PlrustFilesystemMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
