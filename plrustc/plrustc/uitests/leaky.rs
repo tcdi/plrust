@@ -11,4 +11,7 @@ fn _f() {
     let _f = Vec::leak(e);
 
     let _g = std::mem::forget(vec![1u32]);
+
+    let vec_leak = Vec::<u8>::leak;
+    let _ = vec_leak(vec![1, 2, 3u8]);
 }

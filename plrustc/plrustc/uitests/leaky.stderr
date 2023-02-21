@@ -24,5 +24,11 @@ error: Leaky functions are forbidden in PL/Rust
 LL |     let _g = std::mem::forget(vec![1u32]);
    |              ^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: Leaky functions are forbidden in PL/Rust
+  --> $DIR/leaky.rs:15:20
+   |
+LL |     let vec_leak = Vec::<u8>::leak;
+   |                    ^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
