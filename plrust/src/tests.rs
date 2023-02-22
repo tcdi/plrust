@@ -889,15 +889,12 @@ mod tests {
         $$
         [code]
         use std::net::TcpStream;
-        Ok(Some(if let Ok(conres) = TcpStream::connect("127.0.0.1:22") {
-            String::from("Connected!")
-        } else {
-            String::from("Not Connected!")
-        }))
+
+        Ok(TcpStream::connect("127.0.0.1:22").err().map(|e| e.to_string()))
         $$"#;
         Spi::run(sql)?;
         let string = Spi::get_one::<String>("SELECT pt106()")?.expect("Unconditional return");
-        assert_eq!("Not Connected!", &string);
+        assert_eq!("operation not supported on this platform", &string);
         Ok(())
     }
 }
