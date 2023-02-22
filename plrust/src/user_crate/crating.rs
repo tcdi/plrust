@@ -12,7 +12,7 @@ use eyre::WrapErr;
 use pgx::{pg_sys, PgOid};
 use quote::quote;
 
-use crate::pgproc::PgProc;
+use crate::pgproc::{PgProc, ProArgMode};
 use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
@@ -68,21 +68,13 @@ impl FnCrating {
             true => CrateVariant::trigger(),
             false => {
                 let argnames = meta.proargnames();
-                let argtypes = meta.proargtypes();
-
-                // we must have the same number of argument names and argument types.  It's seemingly
-                // impossible that we never would, but lets make sure as it's an invariant from this
-                // point forward
-                assert_eq!(argnames.len(), argtypes.len());
-
-                let argument_oids_and_names = argtypes
-                    .into_iter()
-                    .map(|oid| PgOid::from(oid))
-                    .zip(argnames.into_iter())
-                    .collect();
+                let argtypes = meta.proallargtypes();
+                let argmodes = meta.proargmodes();
 
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     PgOid::from(meta.prorettype()),
                     meta.proretset(),
                     meta.proisstrict(),
@@ -343,12 +335,15 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names =
-                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
+                let argnames = vec![None];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argnames, argtypes, argmodes, return_oid, return_set, is_strict,
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
@@ -412,14 +407,15 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::INT4OID.value()),
-                    Some("val".into()),
-                )];
+                let argnames = vec![Some(String::from("val"))];
+                let argtypes = vec![pg_sys::INT4OID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
                 let is_strict = false;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argnames, argtypes, argmodes, return_oid, return_set, is_strict,
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
@@ -483,14 +479,15 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    Some("val".into()),
-                )];
+                let argnames = vec![Some(String::from("val"))];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = true;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argnames, argtypes, argmodes, return_oid, return_set, is_strict,
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {

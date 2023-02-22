@@ -15,6 +15,30 @@ pub(crate) struct PgProc {
     inner: NonNull<pg_sys::HeapTupleData>,
 }
 
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub(crate) enum ProArgMode {
+    In,
+    Out,
+    InOut,
+    Variadic,
+    Table,
+}
+
+impl From<i8> for ProArgMode {
+    fn from(value: i8) -> Self {
+        match value as u8 {
+            b'i' => ProArgMode::In,
+            b'o' => ProArgMode::Out,
+            b'b' => ProArgMode::InOut,
+            b'v' => ProArgMode::Variadic,
+            b't' => ProArgMode::Table,
+
+            // there's just no ability to move forward if given a value that we don't know about
+            _ => panic!("unrecognized `ProArgMode`: `{}`", value),
+        }
+    }
+}
+
 impl Drop for PgProc {
     fn drop(&mut self) {
         // SAFETY: We have a valid pointer and this just decrements the reference count.
@@ -116,6 +140,24 @@ impl PgProc {
         self.get_attr(pg_sys::Anum_pg_proc_prosrc).unwrap()
     }
 
+    /// ```
+    /// proargmodes char[]
+    /// An array of the modes of the function arguments, encoded as i for IN arguments, o for OUT arguments,
+    /// b for INOUT arguments, v for VARIADIC arguments, t for TABLE arguments. If all the arguments
+    /// are IN arguments, this field will be null. Note that subscripts correspond to positions of
+    /// proallargtypes not proargtypes.
+    /// ```
+    ///
+    /// In our case, if all the arguments are `IN` arguments, the returned Vec will have the
+    /// corresponding `ProArgModes::In` value in each element.
+    pub(crate) fn proargmodes(&self) -> Vec<ProArgMode> {
+        self.get_attr::<Vec<i8>>(pg_sys::Anum_pg_proc_proargmodes)
+            .unwrap_or_else(|| vec!['i' as i8; self.proargnames().len()])
+            .into_iter()
+            .map(|mode| ProArgMode::from(mode))
+            .collect::<Vec<_>>()
+    }
+
     pub(crate) fn proargnames(&self) -> Vec<Option<String>> {
         self.get_attr(pg_sys::Anum_pg_proc_proargnames)
             .unwrap_or_default()
@@ -124,6 +166,11 @@ impl PgProc {
     pub(crate) fn proargtypes(&self) -> Vec<pg_sys::Oid> {
         self.get_attr(pg_sys::Anum_pg_proc_proargtypes)
             .unwrap_or_default()
+    }
+
+    pub(crate) fn proallargtypes(&self) -> Vec<pg_sys::Oid> {
+        self.get_attr(pg_sys::Anum_pg_proc_proallargtypes)
+            .unwrap_or_else(|| self.proargtypes())
     }
 
     pub(crate) fn prorettype(&self) -> pg_sys::Oid {

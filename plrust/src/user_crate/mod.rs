@@ -401,6 +401,7 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
+    use crate::pgproc::ProArgMode;
     use pgx::*;
     use quote::quote;
     use syn::parse_quote;
@@ -417,12 +418,15 @@ mod tests {
             let target_dir = crate::gucs::work_dir();
 
             let variant = {
-                let argument_oids_and_names =
-                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
+                let argnames = vec![None];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argnames, argtypes, argmodes, return_oid, return_set, is_strict,
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
