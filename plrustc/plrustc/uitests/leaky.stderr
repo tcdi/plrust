@@ -1,0 +1,34 @@
+error: Leaky functions are forbidden in PL/Rust
+  --> $DIR/leaky.rs:5:14
+   |
+LL |     let _b = Box::leak(a);
+   |              ^^^^^^^^^
+   |
+   = note: `-F plrust-leaky` implied by `-F plrust-lints`
+
+error: Leaky functions are forbidden in PL/Rust
+  --> $DIR/leaky.rs:8:14
+   |
+LL |     let _d = c.leak();
+   |              ^^^^^^^^
+
+error: Leaky functions are forbidden in PL/Rust
+  --> $DIR/leaky.rs:11:14
+   |
+LL |     let _f = Vec::leak(e);
+   |              ^^^^^^^^^
+
+error: Leaky functions are forbidden in PL/Rust
+  --> $DIR/leaky.rs:13:14
+   |
+LL |     let _g = std::mem::forget(vec![1u32]);
+   |              ^^^^^^^^^^^^^^^^
+
+error: Leaky functions are forbidden in PL/Rust
+  --> $DIR/leaky.rs:15:20
+   |
+LL |     let vec_leak = Vec::<u8>::leak;
+   |                    ^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
