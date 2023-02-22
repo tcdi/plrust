@@ -877,6 +877,29 @@ mod tests {
         assert_eq!(Ok(Some(2)), Spi::get_one("SELECT replace_me()"));
         Ok(())
     }
+
+    #[cfg(feature = "trusted")]
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn postgrestd_net_is_unsupported() -> spi::Result<()> {
+        let sql = r#"
+        create or replace function pt106() returns text
+        IMMUTABLE STRICT
+        LANGUAGE PLRUST AS
+        $$
+        [code]
+        use std::net::TcpStream;
+        Ok(Some(if let Ok(conres) = TcpStream::connect("127.0.0.1:22") {
+            String::from("Connected!")
+        } else {
+            String::from("Not Connected!")
+        }))
+        $$"#;
+        Spi::run(sql)?;
+        let string = Spi::get_one::<String>("SELECT pt106()")?.expect("Unconditional return");
+        assert_eq!("Not Connected!", &string);
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
