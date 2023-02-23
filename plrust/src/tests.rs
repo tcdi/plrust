@@ -452,7 +452,7 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "error: the `include_str` and `include_bytes` macros are forbidden"]
+    #[should_panic = "error: the `include_str`, `include_bytes`, and `include` macros are forbidden"]
     fn postgrestd_no_include_str() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION include_str()
@@ -509,6 +509,36 @@ mod tests {
                 ptr.write(0x00_1BADC0DE_00);
                 let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
                 Ok(str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned()))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    #[cfg(feature = "trusted")]
+    fn plrust_block_env() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION get_path() RETURNS text AS $$
+                let path = env!("PATH");
+                Ok(Some(path.to_string()))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    #[cfg(feature = "trusted")]
+    fn plrust_block_option_env() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION try_get_path() RETURNS text AS $$
+                match option_env!("PATH") {
+                    None => Ok(None),
+                    Some(s) => Ok(Some(s.to_string()))
+                }
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)

@@ -58,28 +58,56 @@ declare_lint!(
     "Disallow `include_str!`, and `include_bytes!`",
 );
 
-declare_lint_pass!(PlrustFilesystemMacros => [PLRUST_FILESYSTEM_MACROS]);
+declare_lint!(
+    pub(crate) PLRUST_ENV_MACROS,
+    Allow,
+    "Disallow `env!`, and `option_env!`",
+);
 
-impl<'tcx> LateLintPass<'tcx> for PlrustFilesystemMacros {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
-        let expr_expn_data = expr.span.ctxt().outer_expn_data();
-        let outermost_expn_data = outermost_expn_data(expr_expn_data);
-        let Some(macro_def_id) = outermost_expn_data.macro_def_id else {
-            return;
-        };
-        let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
-            return;
-        };
-        let diagnostic_items = ["include_str_macro", "include_bytes_macro"];
-        if !diagnostic_items.contains(&name.as_str()) {
-            return;
+declare_lint_pass!(PlrustBuiltinMacros => [PLRUST_FILESYSTEM_MACROS]);
+
+impl PlrustBuiltinMacros {
+    fn check_span(&mut self, cx: &LateContext<'_>, span: Span) {
+        if is_macro_with_diagnostic_item(
+            cx,
+            span,
+            &["include_str_macro", "include_bytes_macro", "include_macro"],
+        ) {
+            cx.lint(
+                PLRUST_FILESYSTEM_MACROS,
+                "the `include_str`, `include_bytes`, and `include` macros are forbidden",
+                |b| b.set_span(span),
+            );
         }
-        cx.lint(
-            PLRUST_FILESYSTEM_MACROS,
-            &format!("the `include_str` and `include_bytes` macros are forbidden"),
-            |b| b.set_span(expr.span),
-        );
+        if is_macro_with_diagnostic_item(cx, span, &["env_macro", "option_env_macro"]) {
+            cx.lint(
+                PLRUST_ENV_MACROS,
+                "the `env`, `option_env` macros are forbidden",
+                |b| b.set_span(span),
+            );
+        }
     }
+}
+
+impl<'tcx> LateLintPass<'tcx> for PlrustBuiltinMacros {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item) {
+        self.check_span(cx, item.span)
+    }
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
+        self.check_span(cx, expr.span)
+    }
+}
+
+fn is_macro_with_diagnostic_item(cx: &LateContext<'_>, span: Span, diag_items: &[&str]) -> bool {
+    let expr_expn_data = span.ctxt().outer_expn_data();
+    let outermost_expn_data = outermost_expn_data(expr_expn_data);
+    let Some(macro_def_id) = outermost_expn_data.macro_def_id else {
+        return false;
+    };
+    let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
+        return false;
+    };
+    diag_items.contains(&name.as_str())
 }
 
 fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
@@ -174,6 +202,30 @@ impl EarlyLintPass for PlrustAsync {
 }
 
 declare_lint!(
+    pub(crate) PLRUST_EXTERNAL_MOD,
+    Allow,
+    "Disallow use of `mod blah;`",
+);
+
+declare_lint_pass!(PlrustExternalMod => [PLRUST_EXTERNAL_MOD]);
+
+impl EarlyLintPass for PlrustExternalMod {
+    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+        match &item.kind {
+            ast::ItemKind::Mod(_, ast::ModKind::Unloaded)
+            | ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::No, _)) => {
+                cx.lint(
+                    PLRUST_EXTERNAL_MOD,
+                    "Use of external modules is forbidden in PL/Rust",
+                    |b| b.set_span(item.span),
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
+declare_lint!(
     pub(crate) PLRUST_LEAKY,
     Allow,
     "Disallow use of `{Box,Vec,String}::leak`, `mem::forget`, and similar functions",
@@ -230,7 +282,9 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         PLRUST_ASYNC,
         PLRUST_EXTERN_BLOCKS,
+        PLRUST_EXTERNAL_MOD,
         PLRUST_FILESYSTEM_MACROS,
+        PLRUST_ENV_MACROS,
         PLRUST_FN_POINTERS,
         PLRUST_LEAKY,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
@@ -247,9 +301,10 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
         PLRUST_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
     );
     store.register_early_pass(move || Box::new(PlrustAsync));
+    store.register_early_pass(move || Box::new(PlrustExternalMod));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustLeaky));
-    store.register_late_pass(move |_| Box::new(PlrustFilesystemMacros));
+    store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
 }
