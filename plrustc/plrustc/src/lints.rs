@@ -213,7 +213,7 @@ impl EarlyLintPass for PlrustExternalMod {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
         match &item.kind {
             ast::ItemKind::Mod(_, ast::ModKind::Unloaded)
-            | ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _)) => {
+            | ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::No, _)) => {
                 cx.lint(
                     PLRUST_EXTERNAL_MOD,
                     "Use of external modules is forbidden in PL/Rust",
