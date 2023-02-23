@@ -19,4 +19,4 @@ pg15 = ["pgx/pg15"]
 
 [dependencies]
 #pgx = { version = "0.7.1", features = [ "no-schema-generation", "plrust" ], default-features = false }
-pgx = { path = "/home/zombodb/_work/pgx/pgx", features = [ "no-schema-generation", "plrust" ], default-features = false }
+pgx = { path = "/home/zombodb/_work/pgx/pgx", features = [ "no-schema-generation" ], default-features = false }

@@ -66,3 +66,56 @@ For example, this code pattern is blocked:
 ```rust
     trait Foo<'a> {}
 ```
+
+## `plrust_filesystem_macros`
+
+Filesystem macros such as `include_bytes!` and `include_str!` are disallowed, as they provide access to the underlying filesystem which should be unavailable to a trusted language handler.
+
+For example, this code pattern is blocked:
+
+```rust
+const SOMETHING: &str = include_str!("/etc/passwd");
+```
+
+## `plrust_fn_pointers`
+
+Currently, several soundness holes have to do with the interaction between function pointers, implied bounds, and nested references. As a stopgap against these, use of function pointer types and function trait objects are currently blocked. This lint will likely be made more precise in the future.
+
+Note that function types (such as the types resulting from closures as required by iterator functions) are still allowed, as these do not have the issues around variance.
+
+For example, the following code pattern is blocked:
+
+```rust
+fn takes_fn_arg(x: fn()) {
+    x();
+}
+```
+
+## `plrust_async`
+
+Currently async/await are forbidden by PL/Rust due to unclear interactions around lifetime and soundness constraints. This may be out of an overabundance of caution. Specifically, code like the following will fail to compile:
+
+```rust
+async fn an_async_fn() {
+    // ...
+}
+
+fn normal_function() {
+    let async_block = async {
+        // ...
+    };
+    // ...
+}
+```
+
+## `plrust_leaky`
+
+This lint forbids use of "leaky" functions such as [`mem::forget`](https://doc.rust-lang.org/stable/std/mem/fn.forget.html) and [`Box::leak`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.leak). While leaking memory is considered safe, it has undesirable effects and thus is blocked by default. For example, the lint will trigger on (at least) the following code:
+
+```rust
+core::mem::forget(something);
+let foo = Box::leak(Box::new(1u32));
+let bar = vec![1, 2, 3].leak();
+```
+
+Note that this will not prevent all leaks, as PL/Rust code could still create a leak by constructing a reference cycle using Rc/Arc, for example.

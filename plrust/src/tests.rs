@@ -453,6 +453,7 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
+    #[should_panic = "error: the `include_str` and `include_bytes` macros are forbidden"]
     fn postgrestd_no_include_str() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION include_str()
@@ -996,6 +997,26 @@ mod tests {
     //     assert_eq!(p.y, 99.0);
     //     Ok(())
     // }
+
+    #[cfg(feature = "trusted")]
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn postgrestd_net_is_unsupported() -> spi::Result<()> {
+        let sql = r#"
+        create or replace function pt106() returns text
+        IMMUTABLE STRICT
+        LANGUAGE PLRUST AS
+        $$
+        [code]
+        use std::net::TcpStream;
+
+        Ok(TcpStream::connect("127.0.0.1:22").err().map(|e| e.to_string()))
+        $$"#;
+        Spi::run(sql)?;
+        let string = Spi::get_one::<String>("SELECT pt106()")?.expect("Unconditional return");
+        assert_eq!("operation not supported on this platform", &string);
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]

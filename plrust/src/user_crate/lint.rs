@@ -94,6 +94,7 @@ pub(crate) fn compile_lints() -> LintSet {
         .get()
         .unwrap_or_default()
         .split(',')
+        .filter(|x| !x.is_empty())
         .map(|s| s.trim().into())
         .collect()
 }

@@ -1,0 +1,28 @@
+error: Use of function trait objects is forbidden in PL/Rust
+  --> $DIR/fn_traits.rs:4:14
+   |
+LL |     let _a: &dyn Fn() = &|| {};
+   |              ^^^^^^^^
+   |
+   = note: `-F plrust-fn-pointers` implied by `-F plrust-lints`
+
+error: Use of function trait objects is forbidden in PL/Rust
+  --> $DIR/fn_traits.rs:5:17
+   |
+LL |     let _b: Box<dyn Fn()> = Box::new(|| println!("hello"));
+   |                 ^^^^^^^^
+
+error: Use of function trait objects is forbidden in PL/Rust
+  --> $DIR/fn_traits.rs:6:17
+   |
+LL |     let _c: Box<dyn FnMut()> = Box::new(|| println!("goodbye"));
+   |                 ^^^^^^^^^^^
+
+error: Use of function trait objects is forbidden in PL/Rust
+  --> $DIR/fn_traits.rs:7:17
+   |
+LL |     let _d: Box<dyn FnOnce()> = Box::new(|| println!("..."));
+   |                 ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
