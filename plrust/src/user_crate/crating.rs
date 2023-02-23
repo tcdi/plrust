@@ -123,10 +123,10 @@ impl FnCrating {
             })
             .wrap_err("Parsing generated user function")?,
             CrateVariant::Trigger => syn::parse2(quote! {
-                fn #symbol_ident(
-                    trigger: &::pgx::PgTrigger,
+                fn #symbol_ident<'a>(
+                    trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > #user_code
             })
@@ -371,7 +371,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Some(arg0.to_string())
                 }
             })?;
@@ -442,7 +442,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     val.map(|v| v as i64)
                 }
             })?;
@@ -513,7 +513,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
@@ -575,10 +575,10 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(
-                    trigger: &::pgx::PgTrigger,
+                fn #symbol_ident<'a>(
+                    trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())

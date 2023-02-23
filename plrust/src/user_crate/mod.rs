@@ -230,25 +230,39 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 
     let base_rust_type: TokenStream = match base_oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::ANYELEMENTOID => quote! { AnyElement },
+            PgBuiltInOids::ANYELEMENTOID => quote! { pgx::AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
+            PgBuiltInOids::BOXOID => quote! {pgx::BOX },
             PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
             PgBuiltInOids::BYTEAOID if !owned => quote! { &'a [u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
+            // PgBuiltInOids::DATEOID => quote! { pgx::Date },
+            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgx::Date> },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
             PgBuiltInOids::FLOAT8OID => quote! { f64 },
-            PgBuiltInOids::INETOID => quote! { Inet },
+            // PgBuiltInOids::INETOID => quote! { Inet },
             PgBuiltInOids::INT2OID => quote! { i16 },
             PgBuiltInOids::INT4OID => quote! { i32 },
+            PgBuiltInOids::INT4RANGEOID => quote! { Range<i32> },
             PgBuiltInOids::INT8OID => quote! { i64 },
-            PgBuiltInOids::JSONBOID => quote! { JsonB },
-            PgBuiltInOids::JSONOID => quote! { Json },
-            PgBuiltInOids::NUMERICOID => quote! { AnyNumeric },
-            PgBuiltInOids::OIDOID => quote! { pg_sys::Oid },
+            PgBuiltInOids::INT8RANGEOID => quote! { Range<i64> },
+            PgBuiltInOids::JSONBOID => quote! { pgx::JsonB },
+            PgBuiltInOids::JSONOID => quote! { pgx::Json },
+            PgBuiltInOids::POINTOID => quote! { pgx::Point },
+            PgBuiltInOids::NUMERICOID => quote! { pgx::AnyNumeric },
+            PgBuiltInOids::NUMRANGEOID => quote! { Range<pgx::AnyNumeric> },
+            PgBuiltInOids::OIDOID => quote! { pgx::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
+            // PgBuiltInOids::TIMEOID => quote! { pgx::Time },
+            // PgBuiltInOids::TIMETZOID => quote! { pgx::TimeWithTimeZone },
+            // PgBuiltInOids::TIMESTAMPOID => quote! { pgx::Timestamp },
+            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgx::TimestampWithTimeZone },
+            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgx::Timestamp> },
+            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgx::TimestampWithTimeZone> },
+            PgBuiltInOids::UUIDOID => quote! { pgx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
@@ -444,7 +458,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Ok(Some(arg0.to_string()))
                 }
             })?;

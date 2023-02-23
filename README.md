@@ -146,7 +146,7 @@ that isn't yours.
 PL/Rust is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension and requires it be installed.
 
 ```bash
-$ cargo install cargo-pgx --version 0.7.1 --locked
+$ cargo install cargo-pgx --version 0.7.2 --locked
 $ cargo pgx init
 ```
 

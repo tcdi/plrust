@@ -340,17 +340,16 @@ mod tests {
             );
 
             CREATE FUNCTION pet_trigger() RETURNS trigger AS $$
-                let current = trigger.current().unwrap();
-                let mut current = current.into_owned();
+                let mut new = trigger.new().unwrap().into_owned();
 
                 let field = "scritches";
 
-                match current.get_by_name::<i32>(field).unwrap() {
-                    Some(val) => current.set_by_name(field, val + 1).unwrap(),
+                match new.get_by_name::<i32>(field)? {
+                    Some(val) => new.set_by_name(field, val + 1)?,
                     None => (),
                 }
 
-                Ok(current)
+                Ok(Some(new))
             $$ LANGUAGE plrust;
 
             CREATE TRIGGER pet_trigger BEFORE INSERT OR UPDATE ON dogs
@@ -877,6 +876,126 @@ mod tests {
         assert_eq!(Ok(Some(2)), Spi::get_one("SELECT replace_me()"));
         Ok(())
     }
+
+    #[pg_test]
+    fn test_point() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_point(p point) RETURNS point LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let p = Spi::get_one::<pg_sys::Point>("SELECT test_point('42, 99'::point);")?
+            .expect("SPI result was null");
+        assert_eq!(p.x, 42.0);
+        assert_eq!(p.y, 99.0);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_box() -> spi::Result<()> {
+        Spi::run(r#"CREATE FUNCTION test_box(b box) RETURNS box LANGUAGE plrust AS $$ Ok(b) $$"#)?;
+        let b = Spi::get_one::<pg_sys::BOX>("SELECT test_box('1,2,3,4'::box);")?
+            .expect("SPI result was null");
+        assert_eq!(b.high.x, 3.0);
+        assert_eq!(b.high.y, 4.0);
+        assert_eq!(b.low.x, 1.0);
+        assert_eq!(b.low.y, 2.0);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_uuid() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_uuid(u uuid) RETURNS uuid LANGUAGE plrust AS $$ Ok(u) $$"#,
+        )?;
+        let u = Spi::get_one::<pgx::Uuid>(
+            "SELECT test_uuid('e4176a4d-790c-4750-85b7-665d72471173'::uuid);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            u,
+            pgx::Uuid::from_bytes([
+                0xe4, 0x17, 0x6a, 0x4d, 0x79, 0x0c, 0x47, 0x50, 0x85, 0xb7, 0x66, 0x5d, 0x72, 0x47,
+                0x11, 0x73
+            ])
+        );
+
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_int4range() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_int4range(r int4range) RETURNS int4range LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<i32>>("SELECT test_int4range('[1, 10)'::int4range);")?
+            .expect("SPI result was null");
+        assert_eq!(r, (1..10).into());
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_int8range() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_int8range(r int8range) RETURNS int8range LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<i64>>("SELECT test_int8range('[1, 10)'::int8range);")?
+            .expect("SPI result was null");
+        assert_eq!(r, (1..10).into());
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_numrange() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_numrange(r numrange) RETURNS numrange LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<AnyNumeric>>("SELECT test_numrange('[1, 10]'::numrange);")?
+            .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                AnyNumeric::try_from(1.0f32).unwrap(),
+                AnyNumeric::try_from(10.0f32).unwrap()
+            )
+        );
+        Ok(())
+    }
+
+    // #[pg_test]
+    // fn test_daterange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_daterange(r daterange) RETURNS daterange LANGUAGE plrust AS $$ Ok(r) $$"#,
+    //     )?;
+    //     let r = Spi::get_one::<Range<Date>>(
+    //         "SELECT test_daterange('[1977-03-20, 1980-01-01)'::daterange);",
+    //     )?
+    //     .expect("SPI result was null");
+    //     assert_eq!(r, Range::new(Date::new(), Date::new()));
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_tsrange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_tsrange(p tsrange) RETURNS tsrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_tsrange('42, 99'::tsrange);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
+    //
+    // #[pg_test]
+    // fn test_tstzrange() -> spi::Result<()> {
+    //     Spi::run(
+    //         r#"CREATE FUNCTION test_tstzrange(p tstzrange) RETURNS tstzrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+    //     )?;
+    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_tstzrange('42, 99'::tstzrange);")?
+    //         .expect("SPI result was null");
+    //     assert_eq!(p.x, 42.0);
+    //     assert_eq!(p.y, 99.0);
+    //     Ok(())
+    // }
 
     #[cfg(feature = "trusted")]
     #[pg_test]

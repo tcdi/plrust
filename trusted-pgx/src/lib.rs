@@ -2,14 +2,35 @@ pub mod prelude {
     pub use super::*;
 }
 
-pub use ::pgx::{debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, notice, warning};
+pub use ::pgx::{
+    debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, notice, warning,
+};
 
 pub use datum::*;
 pub mod datum {
-    pub use ::pgx::datum::{
-        AnyNumeric, Date, FromDatum, IntoDatum, Json, JsonB, Time, TimeWithTimeZone, Timestamp,
-        TimestampWithTimeZone,
-    };
+    // traits
+    pub use ::pgx::datum::{FromDatum, IntoDatum};
+
+    // // dates & times
+    // pub use ::pgx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+
+    // json
+    pub use ::pgx::datum::{Json, JsonB};
+
+    // geometric types
+    pub use ::pgx::pg_sys::{Point, BOX};
+
+    // uuid types
+    pub use ::pgx::datum::Uuid;
+
+    // range types
+    pub use ::pgx::datum::{Range, RangeBound, RangeSubType};
+
+    // dynamic types
+    pub use ::pgx::datum::AnyNumeric;
+
+    // others
+    pub use ::pgx::pg_sys::Oid;
 }
 
 pub mod fcinfo {
@@ -54,7 +75,7 @@ pub mod pg_sys {
     pub use ::pgx::pg_sys::FunctionCallInfo;
     pub use ::pgx::pg_sys::PgBuiltInOids;
     pub use ::pgx::pg_sys::Pg_finfo_record;
-    pub use ::pgx::pg_sys::{ItemPointerData, Oid};
+    pub use ::pgx::pg_sys::{ItemPointerData, Oid, RangeBound};
 
     pub mod panic {
         pub use super::submodules::panic::ErrorReportable;
@@ -84,7 +105,8 @@ pub mod spi {
 pub use trigger_support::*;
 pub mod trigger_support {
     pub use ::pgx::trigger_support::{
-        PgTrigger, PgTriggerError, PgTriggerLevel, PgTriggerOperation, PgTriggerWhen,
+        PgTrigger, PgTriggerError, PgTriggerLevel, PgTriggerOperation, PgTriggerWhen, TriggerEvent,
+        TriggerTuple,
     };
 }
 
