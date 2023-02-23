@@ -340,17 +340,16 @@ mod tests {
             );
 
             CREATE FUNCTION pet_trigger() RETURNS trigger AS $$
-                let current = trigger.current().unwrap();
-                let mut current = current.into_owned();
+                let mut new = trigger.new().unwrap().into_owned();
 
                 let field = "scritches";
 
-                match current.get_by_name::<i32>(field).unwrap() {
-                    Some(val) => current.set_by_name(field, val + 1).unwrap(),
+                match new.get_by_name::<i32>(field)? {
+                    Some(val) => new.set_by_name(field, val + 1)?,
                     None => (),
                 }
 
-                Ok(current)
+                Ok(Some(new))
             $$ LANGUAGE plrust;
 
             CREATE TRIGGER pet_trigger BEFORE INSERT OR UPDATE ON dogs

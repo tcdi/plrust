@@ -123,10 +123,10 @@ impl FnCrating {
             })
             .wrap_err("Parsing generated user function")?,
             CrateVariant::Trigger => syn::parse2(quote! {
-                fn #symbol_ident(
-                    trigger: &::pgx::PgTrigger,
+                fn #symbol_ident<'a>(
+                    trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > #user_code
             })
@@ -270,8 +270,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         crate-type = ["cdylib"]
 
         [dependencies]
-        // pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
-        pgx =  { path="/home/zombodb/_work/plrust/trusted-pgx", package = "trusted-pgx" }
+        pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
 
         /* User deps added here */
 
@@ -576,10 +575,10 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(
-                    trigger: &::pgx::PgTrigger,
+                fn #symbol_ident<'a>(
+                    trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())
