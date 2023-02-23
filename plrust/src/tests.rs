@@ -517,6 +517,36 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
+    #[cfg(feature = "trusted")]
+    fn plrust_block_env() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION get_path() RETURNS text AS $$
+                let path = env!("PATH");
+                Ok(Some(path.to_string()))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    #[cfg(feature = "trusted")]
+    fn plrust_block_option_env() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION try_get_path() RETURNS text AS $$
+                match option_env!("PATH") {
+                    None => Ok(None),
+                    Some(s) => Ok(Some(s.to_string()))
+                }
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
     fn plrust_block_unsafe_plutonium() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION super_safe()

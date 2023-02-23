@@ -119,3 +119,13 @@ let bar = vec![1, 2, 3].leak();
 ```
 
 Note that this will not prevent all leaks, as PL/Rust code could still create a leak by constructing a reference cycle using Rc/Arc, for example.
+
+## `plrust_env_macros`
+
+This lint forbids use of environment macros such as [`env!`](https://doc.rust-lang.org/nightly/std/macro.env.html) and [`option_env!`](https://doc.rust-lang.org/nightly/std/macro.option_env.html), as it allows access to data that should not be available to a trusted language handler.
+
+```rust
+let path = env!("PATH");
+let rustup_toolchain_dir = option_env!("RUSTUP_TOOLCHAIN");
+// ...
+```

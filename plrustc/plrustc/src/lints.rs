@@ -58,9 +58,15 @@ declare_lint!(
     "Disallow `include_str!`, and `include_bytes!`",
 );
 
-declare_lint_pass!(PlrustFilesystemMacros => [PLRUST_FILESYSTEM_MACROS]);
+declare_lint!(
+    pub(crate) PLRUST_ENV_MACROS,
+    Allow,
+    "Disallow `env!`, and `option_env!`",
+);
 
-impl PlrustFilesystemMacros {
+declare_lint_pass!(PlrustBuiltinMacros => [PLRUST_FILESYSTEM_MACROS]);
+
+impl PlrustBuiltinMacros {
     fn check_span(&mut self, cx: &LateContext<'_>, span: Span) {
         if is_macro_with_diagnostic_item(
             cx,
@@ -73,10 +79,17 @@ impl PlrustFilesystemMacros {
                 |b| b.set_span(span),
             );
         }
+        if is_macro_with_diagnostic_item(cx, span, &["env_macro", "option_env_macro"]) {
+            cx.lint(
+                PLRUST_ENV_MACROS,
+                "the `env`, `option_env` macros are forbidden",
+                |b| b.set_span(span),
+            );
+        }
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for PlrustFilesystemMacros {
+impl<'tcx> LateLintPass<'tcx> for PlrustBuiltinMacros {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item) {
         self.check_span(cx, item.span)
     }
@@ -246,6 +259,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         PLRUST_ASYNC,
         PLRUST_EXTERN_BLOCKS,
         PLRUST_FILESYSTEM_MACROS,
+        PLRUST_ENV_MACROS,
         PLRUST_FN_POINTERS,
         PLRUST_LEAKY,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
@@ -264,7 +278,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustLeaky));
-    store.register_late_pass(move |_| Box::new(PlrustFilesystemMacros));
+    store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
 }
