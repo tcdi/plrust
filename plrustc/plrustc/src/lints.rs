@@ -202,6 +202,30 @@ impl EarlyLintPass for PlrustAsync {
 }
 
 declare_lint!(
+    pub(crate) PLRUST_EXTERNAL_MOD,
+    Allow,
+    "Disallow use of `mod blah;`",
+);
+
+declare_lint_pass!(PlrustExternalMod => [PLRUST_EXTERNAL_MOD]);
+
+impl EarlyLintPass for PlrustExternalMod {
+    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+        match &item.kind {
+            ast::ItemKind::Mod(_, ast::ModKind::Unloaded)
+            | ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _)) => {
+                cx.lint(
+                    PLRUST_EXTERNAL_MOD,
+                    "Use of external modules is forbidden in PL/Rust",
+                    |b| b.set_span(item.span),
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
+declare_lint!(
     pub(crate) PLRUST_LEAKY,
     Allow,
     "Disallow use of `{Box,Vec,String}::leak`, `mem::forget`, and similar functions",
@@ -258,6 +282,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         PLRUST_ASYNC,
         PLRUST_EXTERN_BLOCKS,
+        PLRUST_EXTERNAL_MOD,
         PLRUST_FILESYSTEM_MACROS,
         PLRUST_ENV_MACROS,
         PLRUST_FN_POINTERS,
@@ -276,6 +301,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
         PLRUST_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
     );
     store.register_early_pass(move || Box::new(PlrustAsync));
+    store.register_early_pass(move || Box::new(PlrustExternalMod));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustLeaky));
     store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));

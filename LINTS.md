@@ -129,3 +129,20 @@ let path = env!("PATH");
 let rustup_toolchain_dir = option_env!("RUSTUP_TOOLCHAIN");
 // ...
 ```
+
+## `plrust_external_mod`
+
+This lint forbids use of non-inline `mod blah`, as it can be used to access files a trusted language handler should not give access to.
+
+```rust
+// This is allowed
+mod foo {
+    // some functions or whatever here...
+}
+
+// This is disallowed.
+mod bar;
+// More importantly, this is disallowed as well.
+#[path = "/sneaky/path/to/something"]
+mod baz;
+```
