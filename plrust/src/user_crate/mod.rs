@@ -315,7 +315,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
         }
     }
 
-    code_block.push_str(" }");
+    code_block.push_str("\n}");
 
     let user_dependencies = check_user_dependencies(deps_block)?;
 
