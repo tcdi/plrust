@@ -42,8 +42,7 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        # DONOTLAND: needed to test this.
-        git clone https://github.com/tcdi/postgrestd.git --branch "thomcc/include_macro" --recurse-submodules
+        git clone https://github.com/tcdi/postgrestd.git --branch "1.67.1" --recurse-submodules
         cd ./postgrestd
     fi
     rm --force rust-toolchain.toml
