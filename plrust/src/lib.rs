@@ -65,7 +65,19 @@ pgx::pg_module_magic!();
 // This enables the code checking not only for `unsafe {}`
 // but also "unsafe attributes" which are considered unsafe
 // but don't have the `unsafe` token.
-const DEFAULT_LINTS: &'static str = "plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, plrust_fn_pointers, plrust_filesystem_macros, plrust_env_macros, plrust_async, plrust_leaky, plrust_external_mod, unsafe_code";
+const DEFAULT_LINTS: &'static str = "\
+    plrust_extern_blocks, \
+    plrust_lifetime_parameterized_traits, \
+    implied_bounds_entailment, \
+    plrust_fn_pointers, \
+    plrust_filesystem_macros, \
+    plrust_env_macros, \
+    plrust_async, \
+    plrust_leaky, \
+    plrust_external_mod, \
+    plrust_print_macros, \
+    unsafe_code\
+";
 
 #[pg_guard]
 fn _PG_init() {
