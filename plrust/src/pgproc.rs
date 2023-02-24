@@ -126,6 +126,11 @@ impl PgProc {
             .unwrap_or_default()
     }
 
+    pub(crate) fn proargmodes(&self) -> Vec<i8> {
+        self.get_attr(pg_sys::Anum_pg_proc_proargmodes)
+            .unwrap_or_default()
+    }
+
     pub(crate) fn prorettype(&self) -> pg_sys::Oid {
         // SAFETY:  `prorettype` has a NOT NULL constraint
         self.get_attr(pg_sys::Anum_pg_proc_prorettype).unwrap()

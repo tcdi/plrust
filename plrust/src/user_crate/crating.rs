@@ -71,6 +71,16 @@ impl FnCrating {
                 let argnames = meta.proargnames();
                 let argtypes = meta.proargtypes();
 
+                // quick fix for issue #197 (and likely related problems) -- we don't yet support these things
+                let argmodes = meta.proargmodes();
+                if argmodes.contains(&('t' as i8)) {
+                    todo!("RETURNS TABLE functions")
+                } else if argmodes.contains(&('o' as i8)) {
+                    todo!("OUT arguments")
+                } else if argmodes.contains(&('b' as i8)) {
+                    todo!("INOUT arguments")
+                }
+
                 // we must have the same number of argument names and argument types.  It's seemingly
                 // impossible that we never would, but lets make sure as it's an invariant from this
                 // point forward
