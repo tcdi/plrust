@@ -1,4 +1,4 @@
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:3:18
    |
 LL | const _A: &str = include_str!("fs_macros_included_file.txt");
@@ -7,7 +7,7 @@ LL | const _A: &str = include_str!("fs_macros_included_file.txt");
    = note: `-F plrust-filesystem-macros` implied by `-F plrust-lints`
    = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:5:19
    |
 LL | const _B: &[u8] = include_bytes!("fs_macros_included_file.txt");
@@ -15,7 +15,7 @@ LL | const _B: &[u8] = include_bytes!("fs_macros_included_file.txt");
    |
    = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:7:18
    |
 LL | const _C: &str = core::include_str!("fs_macros_included_file.txt");
@@ -23,7 +23,7 @@ LL | const _C: &str = core::include_str!("fs_macros_included_file.txt");
    |
    = note: this error originates in the macro `core::include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:8:19
    |
 LL | const _D: &[u8] = core::include_bytes!("fs_macros_included_file.txt");
@@ -31,7 +31,7 @@ LL | const _D: &[u8] = core::include_bytes!("fs_macros_included_file.txt");
    |
    = note: this error originates in the macro `core::include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:29:28
    |
 LL | const _H: &str = in_macro!(include_str!("fs_macros_included_file.txt"));
@@ -39,7 +39,7 @@ LL | const _H: &str = in_macro!(include_str!("fs_macros_included_file.txt"));
    |
    = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:30:29
    |
 LL | const _I: &[u8] = in_macro!(include_bytes!("fs_macros_included_file.txt"));
@@ -47,7 +47,7 @@ LL | const _I: &[u8] = in_macro!(include_bytes!("fs_macros_included_file.txt"));
    |
    = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `include_str` and `include_bytes` macros are forbidden
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden
   --> $DIR/fs_macros.rs:34:18
    |
 LL | const _J: &str = sneaky!("fs_macros_included_file.txt");
