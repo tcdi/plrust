@@ -1,3 +1,9 @@
+//! `trusted-pgx` is a re-export crate based on [pgx](https://crates.io/crates/pgx) which exposes
+//! the minimal set of `pgx` internals necessary for `plrust` function compilation.  `trusted-pgx`
+//! also includes a number of Rust types for interoperating with Postgres types, access to Postgres'
+//! "SPI", logging, and trigger support.
+
+/// Use all the things.  All `plrust` functions contain a `use trusted_pgx::prelude::*;` statement.
 pub mod prelude {
     pub use super::*;
 }
@@ -7,6 +13,8 @@ pub use ::pgx::{
 };
 
 pub use datum::*;
+
+/// Safe Rust wrappers for various Postgres types.
 pub mod datum {
     // traits
     pub use ::pgx::datum::{FromDatum, IntoDatum};
@@ -46,11 +54,15 @@ pub mod fcinfo {
 }
 
 pub use heap_tuple::*;
+
+/// Support for arbitrary composite types as a "heap tuple".
 pub mod heap_tuple {
     pub use ::pgx::heap_tuple::PgHeapTuple;
 }
 
 pub use iter::*;
+
+/// Return iterators from plrust functions
 pub mod iter {
     pub use ::pgx::iter::{SetOfIterator, TableIterator};
 }
@@ -71,6 +83,8 @@ pub mod pgbox {
 
 pub use pg_sys::panic::ErrorReportable;
 pub use pg_sys::*;
+
+/// Lower-level Postgres internals, which are safe to use.
 pub mod pg_sys {
     pub use ::pgx::pg_sys::elog::PgLogLevel;
     pub use ::pgx::pg_sys::errcodes::PgSqlErrorCode;
@@ -110,6 +124,8 @@ pub mod pg_sys {
 }
 
 pub use spi::Spi;
+
+/// Use Postgres' Server Programming Interface to execute arbitrary SQL.
 pub mod spi {
     pub use ::pgx::spi::{
         self, Error, Result, Spi, SpiClient, SpiCursor, SpiErrorCodes, SpiHeapTupleData,
@@ -118,6 +134,8 @@ pub mod spi {
 }
 
 pub use trigger_support::*;
+
+/// Various types for use when a `plrust` function is a trigger function.
 pub mod trigger_support {
     pub use ::pgx::trigger_support::{
         PgTrigger, PgTriggerError, PgTriggerLevel, PgTriggerOperation, PgTriggerWhen, TriggerEvent,
