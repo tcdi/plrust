@@ -21,6 +21,7 @@ use pgx::prelude::PgHeapTuple;
 use serde::{Deserialize, Serialize};
 
 use crate::error::PlRustError;
+use crate::gucs::get_trusted_pgx_version;
 use crate::pgproc::PgProc;
 use crate::target;
 use crate::target::CompilationTarget;
@@ -75,9 +76,15 @@ impl SharedLibrary {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct ProSrcEntry {
+    /// the user-provided `LANGUAGE plrust` source code
     src: String,
+
+    /// the `plrust-trusted-pgx` crate used to compile this function
+    trusted_pgx_version: String,
+
+    /// A map of compiled artifacts per compilation target (ie, x86_64, aarch64)
     lib: BTreeMap<CompilationTarget, SharedLibrary>,
 }
 
@@ -150,9 +157,11 @@ pub(crate) fn create_or_replace_function(
     let mut entry = ProSrcEntry::try_from(&pg_proc).unwrap_or_else(|_| {
         // the pg_proc.prosrc didn't parse as json, so assume it's just the raw function source code
         // likely means it's the first time this function is being CREATEd
-        let mut entry = ProSrcEntry::default();
-        entry.src = pg_proc.prosrc();
-        entry
+        ProSrcEntry {
+            src: pg_proc.prosrc(),
+            lib: Default::default(),
+            trusted_pgx_version: get_trusted_pgx_version(),
+        }
     });
 
     // always replace any existing bytes for the specified target_triple.  we only trust

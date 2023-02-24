@@ -1,9 +1,12 @@
-//! `trusted-pgx` is a re-export crate based on [pgx](https://crates.io/crates/pgx) which exposes
-//! the minimal set of `pgx` internals necessary for `plrust` function compilation.  `trusted-pgx`
+//! `plrust-trusted-pgx` is a re-export crate based on [pgx](https://crates.io/crates/pgx) which exposes
+//! the minimal set of `pgx` internals necessary for `plrust` function compilation.  `plrust-trusted-pgx`
 //! also includes a number of Rust types for interoperating with Postgres types, access to Postgres'
 //! "SPI", logging, and trigger support.
 
-/// Use all the things.  All `plrust` functions contain a `use trusted_pgx::prelude::*;` statement.
+/// Use all the things.  
+///
+/// `plrust` user crates use the `plrust-trusted-pgx` crate as if it were named `pgx`, and all user
+/// functions contain a `use pgx::prelude::*;` statement.
 pub mod prelude {
     pub use super::*;
 }

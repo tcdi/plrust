@@ -12,6 +12,7 @@ use eyre::WrapErr;
 use pgx::{pg_sys, PgOid};
 use quote::quote;
 
+use crate::gucs::get_trusted_pgx_version;
 use crate::pgproc::PgProc;
 use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
@@ -257,6 +258,7 @@ pub(crate) fn shared_imports() -> syn::ItemUse {
 }
 
 pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Table {
+    let trusted_pgx_version = get_trusted_pgx_version();
     toml::toml! {
         [package]
         edition = "2021"
@@ -270,7 +272,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         crate-type = ["cdylib"]
 
         [dependencies]
-        pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
+        pgx = { version = trusted_pgx_version, package = "plrust-trusted-pgx" }
 
         /* User deps added here */
 
