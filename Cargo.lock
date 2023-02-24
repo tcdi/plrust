@@ -1097,7 +1097,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "plrust"
-version = "1.0.0-beta.1"
+version = "1.0.0-rc.0"
 dependencies = [
  "base64 0.21.0",
  "cfg-if",
@@ -1128,7 +1128,7 @@ dependencies = [
 
 [[package]]
 name = "plrust-trusted-pgx"
-version = "0.0.0-do-not-use"
+version = "1.0.0-rc.0"
 dependencies = [
  "pgx",
 ]
@@ -2099,9 +2099,9 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "winnow"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e03edcaf98895c6e811156c6a3d8532deb3fc546964ef11c5c5182d1ca5e47dd"
+checksum = "44c06e7dbfe731192c512aa707249279d720876a868eb08f21ea93eb9de1eca9"
 dependencies = [
  "memchr",
 ]
