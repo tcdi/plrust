@@ -146,3 +146,18 @@ mod bar;
 #[path = "/sneaky/path/to/something"]
 mod baz;
 ```
+
+
+## `plrust_print_macros`
+
+This lint forbids use of the `println!`/`eprintln!` family of macros (including `dbg!` and the non-`ln` variants), as these allow bypassing the norm. Users should use `pgx::log!` or `pgx::debug!` instead.
+
+```rust
+println!("hello");
+print!("plrust");
+
+eprintln!("this is also blocked");
+eprint!("even without the newline");
+
+dbg!("same here");
+```
