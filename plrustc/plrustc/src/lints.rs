@@ -119,6 +119,58 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
 }
 
 declare_lint!(
+    pub(crate) PLRUST_PRINT_MACROS,
+    Allow,
+    "Disallow `print!`, `println!`, `eprint!` and `eprintln!`",
+);
+
+declare_lint_pass!(PlrustPrintMacros => [PLRUST_PRINT_MACROS]);
+
+impl<'tcx> LateLintPass<'tcx> for PlrustPrintMacros {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
+        for expn_data in all_expn_data(&expr) {
+            let Some(macro_def_id) = expn_data.macro_def_id else {
+                continue;
+            };
+            let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
+                continue;
+            };
+            let diagnostic_items = [
+                "print_macro",
+                "eprint_macro",
+                "println_macro",
+                "eprintln_macro",
+                "dbg_macro",
+            ];
+            if !diagnostic_items.contains(&name.as_str()) {
+                continue;
+            }
+            cx.lint(
+                PLRUST_PRINT_MACROS,
+                "the printing macros are forbidden, consider using `log!()` instead",
+                |b| b.set_span(expr.span),
+            );
+            break;
+        }
+    }
+}
+
+// TODO: would be a lot better to do as an iterator, but that's also a lot more
+// code... 🤷‍♂️
+fn all_expn_data(expr: &hir::Expr) -> Vec<ExpnData> {
+    let mut expn_data = expr.span.ctxt().outer_expn_data();
+    let mut v = vec![];
+    loop {
+        v.push(expn_data.clone());
+        if expn_data.call_site.from_expansion() {
+            expn_data = expn_data.call_site.ctxt().outer_expn_data();
+        } else {
+            return v;
+        }
+    }
+}
+
+declare_lint!(
     pub(crate) PLRUST_FN_POINTERS,
     Allow,
     "Disallow use of function pointers",
@@ -288,6 +340,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         PLRUST_FN_POINTERS,
         PLRUST_LEAKY,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
+        PLRUST_PRINT_MACROS,
     ]
 });
 
@@ -303,8 +356,8 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_early_pass(move || Box::new(PlrustExternalMod));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
-    store.register_late_pass(move |_| Box::new(PlrustLeaky));
     store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));
+    store.register_late_pass(move |_| Box::new(PlrustPrintMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
 }
