@@ -149,9 +149,9 @@ impl FnBuild {
                 }));
 
             // Clean up on error but don't let this error replace our user's error!
-            if let Err(e) = std::fs::remove_dir_all(&self.crate_dir) {
-                pgx::log!("Problem during removing crate directory: {e}")
-            };
+            // if let Err(e) = std::fs::remove_dir_all(&self.crate_dir) {
+            //     pgx::log!("Problem during removing crate directory: {e}")
+            // };
 
             err?
         }

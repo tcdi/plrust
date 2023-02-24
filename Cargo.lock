@@ -1127,6 +1127,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "plrust-trusted-pgx"
+version = "0.0.0-do-not-use"
+dependencies = [
+ "pgx",
+]
+
+[[package]]
 name = "postgres"
 version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1615,9 +1622,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.108"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56e159d99e6c2b93995d171050271edb50ecc5288fbc7cc17de8fdce4e58c14"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1911,13 +1918,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trusted-pgx"
-version = "0.7.2"
-dependencies = [
- "pgx",
-]
-
-[[package]]
 name = "typenum"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2099,9 +2099,9 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "winnow"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efdd927d1a3d5d98abcfc4cf8627371862ee6abfe52a988050621c50c66b4493"
+checksum = "e03edcaf98895c6e811156c6a3d8532deb3fc546964ef11c5c5182d1ca5e47dd"
 dependencies = [
  "memchr",
 ]

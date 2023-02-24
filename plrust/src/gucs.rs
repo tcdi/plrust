@@ -29,6 +29,11 @@ pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
 pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
+pub(crate) static PLRUST_TRUSTED_PGX_VERSION: GucSetting<Option<&'static str>> =
+    GucSetting::new(Some(env!(
+        "PLRUST_TRUSTED_PGX_VERSION",
+        "unknown `plrust-trusted-pgx` version.  `build.rs` must not have run successfully"
+    )));
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
@@ -98,6 +103,14 @@ pub(crate) fn init() {
         "A comma-separated list of Rust code lints that are required to have been applied to a PL/Rust user function before PL/Rust will execute it",
         "If unspecified, PL/Rust will use a set of defaults",
         &PLRUST_REQUIRED_LINTS,
+        GucContext::Sighup,
+    );
+
+    GucRegistry::define_string_guc(
+        "plrust.trusted_pgx_version",
+        "The `plrust-trusted-pgx` crate version to use when compiling user functions",
+        "If unspecified, the default is the version found when compiling plrust itself",
+        &PLRUST_TRUSTED_PGX_VERSION,
         GucContext::Sighup,
     );
 }
@@ -171,4 +184,13 @@ pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Op
             Some(value_cstr.to_string_lossy().to_string())
         }
     }
+}
+
+pub(crate) fn get_trusted_pgx_version() -> String {
+    let version = PLRUST_TRUSTED_PGX_VERSION
+        .get()
+        .expect("unable to determine `plrust-trusted-pgx` version"); // shouldn't happen since we set a known default
+
+    // we always want this specific version
+    format!("={}", version)
 }
