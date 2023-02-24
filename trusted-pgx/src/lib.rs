@@ -33,6 +33,7 @@ pub mod datum {
     pub use ::pgx::pg_sys::Oid;
 }
 
+#[doc(hidden)]
 pub mod fcinfo {
     pub use ::pgx::fcinfo::pg_getarg;
     pub use ::pgx::fcinfo::pg_return_null;
@@ -54,12 +55,16 @@ pub mod iter {
     pub use ::pgx::iter::{SetOfIterator, TableIterator};
 }
 
+#[doc(hidden)]
 pub use memcxt::*;
+#[doc(hidden)]
 pub mod memcxt {
     pub use ::pgx::memcxt::PgMemoryContexts;
 }
 
+#[doc(hidden)]
 pub use pgbox::*;
+#[doc(hidden)]
 pub mod pgbox {
     pub use ::pgx::pgbox::{PgBox, WhoAllocated};
 }
@@ -73,12 +78,17 @@ pub mod pg_sys {
     pub use ::pgx::pg_sys::Datum;
     pub use ::pgx::pg_sys::FuncCallContext;
     pub use ::pgx::pg_sys::FunctionCallInfo;
-    pub use ::pgx::pg_sys::PgBuiltInOids;
+    #[doc(hidden)]
     pub use ::pgx::pg_sys::Pg_finfo_record;
-    pub use ::pgx::pg_sys::{ItemPointerData, Oid, RangeBound};
+    pub use ::pgx::pg_sys::{BuiltinOid, PgBuiltInOids};
+    pub use ::pgx::pg_sys::{ItemPointerData, Oid};
 
     pub mod panic {
         pub use super::submodules::panic::ErrorReportable;
+    }
+
+    pub mod oids {
+        pub use ::pgx::pg_sys::oids::{NotBuiltinOid, PgBuiltInOids, PgOid};
     }
 
     pub mod submodules {
@@ -99,7 +109,10 @@ pub mod pg_sys {
 
 pub use spi::Spi;
 pub mod spi {
-    pub use ::pgx::spi::{self, Error, Result, Spi};
+    pub use ::pgx::spi::{
+        self, Error, Result, Spi, SpiClient, SpiCursor, SpiErrorCodes, SpiHeapTupleData,
+        SpiHeapTupleDataEntry, SpiOkCodes, SpiTupleTable, UnknownVariant,
+    };
 }
 
 pub use trigger_support::*;
@@ -110,7 +123,9 @@ pub mod trigger_support {
     };
 }
 
+#[doc(hidden)]
 pub use pgx_macros::*;
+#[doc(hidden)]
 pub mod pgx_macros {
     pub use ::pgx::pgx_macros::pg_extern;
     pub use ::pgx::pgx_macros::pg_guard;
