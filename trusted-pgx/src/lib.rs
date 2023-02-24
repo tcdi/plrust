@@ -76,7 +76,9 @@ pub mod pg_sys {
     pub use ::pgx::pg_sys::errcodes::PgSqlErrorCode;
     pub use ::pgx::pg_sys::pg_try::PgTryBuilder;
     pub use ::pgx::pg_sys::Datum;
+    #[doc(hidden)]
     pub use ::pgx::pg_sys::FuncCallContext;
+    #[doc(hidden)]
     pub use ::pgx::pg_sys::FunctionCallInfo;
     #[doc(hidden)]
     pub use ::pgx::pg_sys::Pg_finfo_record;
