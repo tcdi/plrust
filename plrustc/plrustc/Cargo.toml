@@ -9,7 +9,7 @@ homepage = "https://github.com/tcdi/plrust/"
 repository = "https://github.com/tcdi/plrust/"
 
 [dependencies]
-once_cell = "1.17.0"
+once_cell = "1.17.1"
 
 [dev-dependencies]
 compiletest_rs = "0.9"
