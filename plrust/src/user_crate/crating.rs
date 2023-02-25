@@ -12,6 +12,7 @@ use eyre::WrapErr;
 use pgx::{pg_sys, PgOid};
 use quote::quote;
 
+use crate::gucs::get_trusted_pgx_version;
 use crate::pgproc::PgProc;
 use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
@@ -70,6 +71,16 @@ impl FnCrating {
                 let argnames = meta.proargnames();
                 let argtypes = meta.proargtypes();
 
+                // quick fix for issue #197 (and likely related problems) -- we don't yet support these things
+                let argmodes = meta.proargmodes();
+                if argmodes.contains(&('t' as i8)) {
+                    todo!("RETURNS TABLE functions")
+                } else if argmodes.contains(&('o' as i8)) {
+                    todo!("OUT arguments")
+                } else if argmodes.contains(&('b' as i8)) {
+                    todo!("INOUT arguments")
+                }
+
                 // we must have the same number of argument names and argument types.  It's seemingly
                 // impossible that we never would, but lets make sure as it's an invariant from this
                 // point forward
@@ -123,10 +134,10 @@ impl FnCrating {
             })
             .wrap_err("Parsing generated user function")?,
             CrateVariant::Trigger => syn::parse2(quote! {
-                fn #symbol_ident(
-                    trigger: &::pgx::PgTrigger,
+                fn #symbol_ident<'a>(
+                    trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > #user_code
             })
@@ -257,6 +268,7 @@ pub(crate) fn shared_imports() -> syn::ItemUse {
 }
 
 pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Table {
+    let trusted_pgx_version = get_trusted_pgx_version();
     toml::toml! {
         [package]
         edition = "2021"
@@ -270,7 +282,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         crate-type = ["cdylib"]
 
         [dependencies]
-        pgx =  { git = "https://github.com/tcdi/plrust", branch = "main", package = "trusted-pgx" }
+        pgx = { version = trusted_pgx_version, package = "plrust-trusted-pgx" }
 
         /* User deps added here */
 
@@ -371,7 +383,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Some(arg0.to_string())
                 }
             })?;
@@ -442,7 +454,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     val.map(|v| v as i64)
                 }
             })?;
@@ -513,7 +525,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn ::std::error::Error>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
@@ -575,10 +587,10 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident(
-                    trigger: &::pgx::PgTrigger,
+                fn #symbol_ident<'a>(
+                    trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    ::pgx::heap_tuple::PgHeapTuple<'_, impl ::pgx::WhoAllocated>,
+                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())

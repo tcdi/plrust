@@ -1,0 +1,10 @@
+error: Use of external modules is forbidden in PL/Rust
+  --> $DIR/external_mod.rs:8:1
+   |
+LL | pub mod foo;
+   | ^^^^^^^^^^^^
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
+error: aborting due to previous error
+

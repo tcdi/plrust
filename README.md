@@ -64,13 +64,19 @@ This is accomplished using Rust's built-in `#![forbid(unsafe_code)]` lint.
 If `pgx` is a "generalized framework for developing Postgres extensions with Rust", and if PL/Rust user functions
 are themselves "mini-pgx extensions", what prevents a `LANGUAGE plrust` function from using any part of `pgx`?
 
-The [`trusted-pgx`](https://github.com/tcdi/plrust/tree/main/trusted-pgx) crate does!
+The [`plrust-trusted-pgx`](https://github.com/tcdi/plrust/tree/main/plrust-trusted-pgx) crate does!
 
-`trusted-pgx` is a tightly-controlled "re-export crate" on top of `pgx` that exposes the bare minimum necessary for
+`plrust-trusted-pgx` is a tightly-controlled "re-export crate" on top of `pgx` that exposes the bare minimum necessary for
 PL/Rust user functions to compile along with the bare minimum, **safe** features of `pgx`.
 
-There are a few "unsafe" parts of `pgx` exposed through `trusted-pgx`, but PL/Rust's ability to block `unsafe`
-renders them useless by PL/Rust user functions.
+The crate is versioned independently to both `pgx` and `plrust` and is published on [crates.io](https://crates.io/crates/plrust-trusted-pgx).
+By default, the version a plrust user function will use is that of the one set in the project repository when plrust itself
+is compiled.  However, the `plrust.trusted_pgx_version` GUC can be set to specify a specific version.
+
+The intent is that `plrust-trusted-pgx` can evolve independently of both `pgx` and `plrust`.
+
+There are a few "unsafe" parts of `pgx` exposed through `plrust-trusted-pgx`, but PL/Rust's ability to block `unsafe`
+renders them useless by PL/Rust user functions.  `plrust-trusted-pgx`'s docs are available on [docs.rs](https://docs.rs/plrust-trusted-pgx).
 
 ## Trusted with `postgrestd` on Linux x86_64/aarch64
 
@@ -111,7 +117,7 @@ considered fully trusted on those platforms.
 
 If the `trusted` feature flag is not used when comiling PL/Rust, which is the default, then `postgrestd` is **not**
 used when compiling user functions, and while they'll still benefit from Rust's general compile-time safety
-checked, forced usage of the `trusted-pgx` crate, and PL/Rust's `unsafe` blocking, they will be able to access the
+checked, forced usage of the `plrust-trusted-pgx` crate, and PL/Rust's `unsafe` blocking, they will be able to access the
 filesystem and communicate with the host operating system, as the user running the connected Postgres backend
 (typically, this is a user named `postgres`).
 
@@ -146,7 +152,7 @@ that isn't yours.
 PL/Rust is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension and requires it be installed.
 
 ```bash
-$ cargo install cargo-pgx --version 0.7.1 --locked
+$ cargo install cargo-pgx --version 0.7.2 --locked
 $ cargo pgx init
 ```
 
@@ -203,7 +209,98 @@ you can omit the `--features "trusted"` arguments.
 
 # Configuration
 
+PL/Rust has a few required configuration options, but first and foremost it **must** be configured as a
+`shared_preload_libraries` entry in `postgresql.conf`. For example:
+
+```
+shared_preload_libraries = 'plrust'
+```
+
+Failure to do so will cause the plrust extension to raise an ERROR whenever Postgres tries to first load it.
+
+The PL/Rust-specific configuration options, some of which are **required**, are:
+
+| Option                             | Type   | Description                                                                                                                                                   | Required | Default                                                                                                              |
+|------------------------------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------|
+| `plrust.work_dir`                  | string | The directory where pl/rust will build functions with cargo.                                                                                                  | yes      | <none>                                                                                                               |
+| `plrust.PATH_override`             | string | If `cargo` and `cc` aren't in the `postmaster`'s `$PATH`, set this.                                                                                           | no       | environment or `~/.cargo/bin:/usr/bin` if `$PATH` is unset                                                           |
+| `plrust.tracing_level`             | string | A [tracing directive][docs-rs-tracing-directive].                                                                                                             | no       | `'info'`                                                                                                             |
+| `plrust.compilation_targets`       | string | Comma separated list of CPU targets (x86_64, aarch64).                                                                                                        | no       | <none>                                                                                                               |
+| `plrust.x86_64_linker`             | string | Name of the linker `rustc` should use on fo cross-compile.                                                                                                    | no       | `'x86_64_linux_gnu_gcc'`                                                                                             |
+| `plrust.aarch64_linker`            | string | Name of the linker `rustc` should use on for cross-compile.                                                                                                   | no       | `'aarch64_linux_gnu_gcc'`                                                                                            |
+| `plrust.x86_64_pgx_bindings_path`  | string | Path to output from `cargo pgx cross pgx-target` on x86_64.                                                                                                   | no-ish   | <none>                                                                                                               |
+| `plrust.aarch64_pgx_bindings_path` | string | Path to output form `cargo pgx cross pgx-target` on aarch64.                                                                                                  | no-ish   | <none>                                                                                                               |
+| `plrust.compile_lints`             | string | A comma-separated list of Rust lints to apply to every user function.                                                                                         | no       | `'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, unknown_lints'` |
+| `plrust.required_lints`            | string | A comma-separated list of Rust lints that are required to have been applied to a user function before PL/Rust will load the library and execute the function. | no       | defaults to whatever `plrust.compile_lints` happens to be                                                            |            
+| `plrust.trusted_pgx_version`       | string | The version of the [`plrust-trusted-pgx`](https://crates.io/crates/plrust-trusted-pgx) crate from crates.io to use when compiling user functions              |
+
+For PL/Rust to cross compile user functions it needs to know which CPU architectures via
+`plrust.compilation_targets`. This is a comma-separated list of values, of which only `x86_64` and `aarch64` are
+currently supported.
+
+The architecture linker names have sane defaults and shouldn't need to be be changed (unless the host is some
+esoteric Linux distro we haven't encountered yet).
+
+The `plrust.{arch}_pgx_bindings_path` settings are actually required but PL/Rust will happily cross compile without them. If unspecified,
+PL/Rust will use the pgx bindings of the host architecture for the cross compilation target architecture too. In other words, if the host 
+is `x86_64` and PL/Rust is configured to cross compile to `aarch64` and the `plrust.aarch64_pgx_bindings_path` is *not* configured, it'll
+blindly use the bindings it already has for `x86_64`.  This may or may not actually work.
+
+To get the bindings, install `cargo-pgx` on the other system and run `cargo pgx cross pgx-target`. That'll generate a tarball. Copy that back 
+to the primary host machine and untar it somewhere (plrust doesn't care where), and use that path as the configuration setting.
+
+Note that it is perfectly fine (and really, expected) to set all of these configuration settings on both architectures.
+plrust will silently ignore the one for the current host.  In other words, plrust only uses them when cross compiling for 
+the other architecture.
+
+### Lints
+
+As discussed above, PL/Rust has its own "rustc driver" named `plrustc`.  This must be installed using the 
+[`plrustc/build.sh`](plrustc/build.sh) script and the resulting executable must be on the `PATH`, or it should reside
+somewhere that is included in the `plrust.PATH_override` GUC.
+
+The `plrust.required_lints` GUC defines which lints must have been applied to a function before PL/Rust will load the
+library and execute the function.  Using the `PLRUST_REQUIRED_LINTS` environment variable, it is possible to enforce
+that certain lints are always required of compiled functions, regardless of the `plrust.required_lints` GUC value.
+`PLRUST_REQUIRED_LINTS`'s format is a comma-separated list of lint named.  It must be set in the environment in which 
+Postgres is started.  The intention here is that the system administrator can force certain lints for execution if for 
+some reason `postgresql.conf` or the users able to modify it are not trusted.
+
 ## Environment Variables
+
+As part of PL/Rust's function compilation machinery, and in conjunction with `pgx` which does the hard work, a number
+of environment variables are set when PL/Rust executes `cargo`.
+
+These are not environment variables that need to set manually.  Generally, these are auto-detected and cannot be 
+overridden through configuration.
+
+| Name                                        | Value                                                                         | How it's Used                                                                                                                                                                                                         |
+|---------------------------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| PATH                                        | `~/cargo/bin:/usr/bin` or `/usr/bin` if "postgres" user has no home directory | The `PATH` environment variable is **only** set by PL/Rust if it detects that one isn't already set.  <br/>As mentioned above, this one *can* be overridden via the `plrust.PATH_override` GUC in `postgresql.conf`.  |
+| RUSTC                                       | `plrustc`                                                                     | This is set to plrust's "rust driver" executable, named `plrustc`.  It must be on the system PATH.                                                                                                                    | 
+| RUSTFLAGS                                   | `"-Clink-args=-Wl,-undefined,dynamic_lookup"`                                 | Used by `rustc` to indicate that Postgres internal symbols are only available at run-time, not compile-time.                                                                                                          |
+| CARGO_TARGET_DIR                            | value of GUC `plrust.work_dir`/`target`                                       | This is the filesystem path `cargo` will store its intermediate compilation artifacts.                                                                                                                                |
+ | CARGO_TARGET_X86_64_LINKER                  | `x86_64-linux-gnu-gcc`                                                        | Used only when cross-compiling *to* x86_64, this tells `rustc` which linker to use.  The `plrust.x86_64_linker` GUC can override the default.                                                                         |
+| CARGO_TARGET_AARCH64_LINKER                 | `aarch64-linux-gnu-gcc`                                                       | Used only when cross-compiling *to* aarch64, this tells `rustc` which linker to use.  The `plrust.aarch64_linker` GUC can override the default.                                                                       |
+ | PGX_TARGET_INFO_PATH_PG${MAJOR_VERSION_NUM} | unset unless `plrust.{x86_64/aarch64}_pgx_bindings_path` GUC is set           | Used only when cross-compiling *to* the specified target.  This tells `pgx` where to find the generated Postgres bindings for that platform.                                                                          | 
+| PGX_PG_CONFIG_AS_EN_VAR                     | `true`                                                                        | Indicates to the `plrust-trusted-pgx` dependency, and ultimately `pgx` itself that instead of getting the values it needs for compilation from the Postgres `pg_config` tool, it should get them from environment variables. |
+| PGX_PG_CONFIG_VERSION                       | Provided by the running Postgres instance                                     | Used by `pgx` to build the PL/Rust user function.                                                                                                                                                                     |
+| PGX_PG_CONFIG_CPPFLAGS                      | Provided by the running Postgres instance                                     | Used by `pgx` to build the PL/Rust user function (technically unused by PL/Rust's build process as PL/Rust does not include the pgx "cshim" for which this is normally used).                                         |
+| PGX_PG_CONFIG_INCLUDEDIR-SERVER             | Provided by the running Postgres instance                                     | Used by `pgx` to build the PL/Rust user function.                                                                                                                                                                     |
+
+There are a number of other `pg_config`-related environment variables that plrust sets.  These are not currently used,
+but are reserved for future use, should they become necessary to build a user function:
+`PGX_PG_CONFIG_BINDIR, PGX_PG_CONFIG_DOCDIR, PGX_PG_CONFIG_HTMLDIR, PGX_PG_CONFIG_INCLUDEDIR, PGX_PG_CONFIG_PKGINCLUDEDIR, PGX_PG_CONFIG_INCLUDEDIR-SERVER, PGX_PG_CONFIG_LIBDIR, PGX_PG_CONFIG_PKGLIBDIR, PGX_PG_CONFIG_LOCALEDIR, PGX_PG_CONFIG_MANDIR, PGX_PG_CONFIG_SHAREDIR, PGX_PG_CONFIG_SYSCONFDIR, PGX_PG_CONFIG_PGXS, PGX_PG_CONFIG_CONFIGURE, PGX_PG_CONFIG_CC, PGX_PG_CONFIG_CPPFLAGS, PGX_PG_CONFIG_CFLAGS, PGX_PG_CONFIG_CFLAGS_SL, PGX_PG_CONFIG_LDFLAGS, PGX_PG_CONFIG_LDFLAGS_EX, PGX_PG_CONFIG_LDFLAGS_SL, PGX_PG_CONFIG_LIBS, PGX_PG_CONFIG_VERSION`
+
+Note that PL/Rust uses Rust's [`std::process::Command`](https://doc.rust-lang.org/beta/std/process/struct.Command.html) 
+to exec `cargo`.  As such, it **will** inherit **all** environment variables set under the active backend `postgres` 
+process.  We recommend Postgres' execution environment be properly sanitized to your organizations requirements.
+
+As a pre-emptive measure, PL/Rust proactively unsets a few environment variables that could negatively impact user function
+compilation:  
+ `DOCS_RS, PGX_BUILD_VERBOSE, PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE, CARGO_MANIFEST_DIR, OUT_DIR`
+(These are generally things used by the `pgx` development team and not at all necessary for PL/Rust.)
+
 
 # Quickly Getting Started
 

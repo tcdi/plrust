@@ -1,10 +1,9 @@
 [package]
-name = "trusted-pgx"
-# version set to match that of the pgx version it sits on top of, rather than matching plrust's version
-version = "0.7.1"
+name = "plrust-trusted-pgx"
+version = "1.0.0-rc.0"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
-license = "PostgreSQL Open Source License"
+license = "PostgreSQL"
 description = "Minimal set of `pgx` rexports for plrust, which the authors have deemed trusted"
 homepage = "https://github.com/tcdi/plrust/"
 repository = "https://github.com/tcdi/plrust/"
@@ -18,4 +17,5 @@ pg14 = ["pgx/pg14"]
 pg15 = ["pgx/pg15"]
 
 [dependencies]
-pgx = { version = "0.7.1", features = [ "no-schema-generation", "plrust" ], default-features = false }
+# changing the pgx version will likely require at least a minor version bump to this create
+pgx = { version = "=0.7.2", features = [ "no-schema-generation" ], default-features = false }
