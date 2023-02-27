@@ -30,7 +30,7 @@ Similar to `rustc`, `plrustc` is usually not invoked directly, but instead throu
 
 ## Details
 
-Some additional details are provided for users who intend to run PL/Rust and plrustc under restricted environments via seccomp and/or selinux. These details are subject to change, although if that occurs it will be noted in the changelog.
+Some additional details are provided for users who intend to run PL/Rust and plrustc under restricted environments via seccomp and/or SELinux. These details are subject to change, although if that occurs it will be noted in the changelog.
 
 ### Sysroot configuration
 
