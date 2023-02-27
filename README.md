@@ -301,6 +301,7 @@ compilation:
  `DOCS_RS, PGX_BUILD_VERBOSE, PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE, CARGO_MANIFEST_DIR, OUT_DIR`
 (These are generally things used by the `pgx` development team and not at all necessary for PL/Rust.)
 
+`plrustc` also performs a search for the location of the Rust sysroot which is informed by several environment variables (specifically `PLRUSTC_SYSROOT`, `SYSROOT`, `RUSTUP_TOOLCHAIN`, and `RUSTUP_HOME`). The details of how this search is performed are documented in the ([`plrustc` README](./plrustc/README.md)), but it is very similar to the search performed by `clippy`, `miri`, and other tools that use the `rustc_driver` library.
 
 # Quickly Getting Started
 
