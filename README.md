@@ -106,6 +106,12 @@ PL/Rust contains a small set of lints to block what the developers have deemed t
 Should new Rust bugs be found, and detection lints are developed for PL/Rust, the lints can be applied to new user 
 function compilations along with ensuring that future function executions had those lints applied at compile time.
 
+Note that this is done on a best-effort basis, and does *not* provide a strong level of security — it's not a sandbox,
+and as such, it's likely that a skilled hostile attacker who is sufficiently motivated could find ways around it
+(PostgreSQL itself is not a particuarly hardened codebase, after all). You should ensure such actors cannot execute SQL
+on your database, but to be clear: this is true regardless of whether or not PL/Rust is installed. Having said that, any
+issues found with our implementation will be taken seriously, and should be [reported appropriately](./SECURITY.md).
+
 ## The `trusted` Feature Flag
 
 PL/Rust has a feature flag simply named `trusted`. When compiled with the `trusted` feature flag PL/Rust will
