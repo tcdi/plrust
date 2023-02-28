@@ -356,6 +356,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_early_pass(move || Box::new(PlrustExternalMod));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
+    store.register_late_pass(move |_| Box::new(PlrustLeaky));
     store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));
     store.register_late_pass(move |_| Box::new(PlrustPrintMacros));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
