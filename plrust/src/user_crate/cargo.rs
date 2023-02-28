@@ -120,6 +120,7 @@ fn sanitize_env(command: &mut Command) {
     command.env_remove("CARGO_MANIFEST_DIR"); // we are in the manifest directory b/c of `command.current_dir()` above
     command.env_remove("OUT_DIR"); // rust's default decision for OUT_DIR is perfectly acceptable to PL/Rust
     command.env_remove("RUSTC_WRAPPER"); // plrustc doesn't like being invoked with RUSTC_WRAPPER set.
+    command.env_remove("RUSTC_WORKSPACE_WRAPPER"); // ditto.
 }
 
 /// Asks Postgres, via FFI, for all of its compile-time configuration data.  This is the full
