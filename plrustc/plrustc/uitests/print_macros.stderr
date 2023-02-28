@@ -1,4 +1,4 @@
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:4:5
    |
 LL |     print!("hello");
@@ -7,7 +7,7 @@ LL |     print!("hello");
    = note: `-F plrust-print-macros` implied by `-F plrust-lints`
    = note: this error originates in the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:4:5
    |
 LL |     print!("hello");
@@ -15,7 +15,7 @@ LL |     print!("hello");
    |
    = note: this error originates in the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:4:5
    |
 LL |     print!("hello");
@@ -23,7 +23,7 @@ LL |     print!("hello");
    |
    = note: this error originates in the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:4:5
    |
 LL |     print!("hello");
@@ -31,7 +31,7 @@ LL |     print!("hello");
    |
    = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:5:5
    |
 LL |     println!("world");
@@ -39,7 +39,7 @@ LL |     println!("world");
    |
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:5:5
    |
 LL |     println!("world");
@@ -47,7 +47,7 @@ LL |     println!("world");
    |
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:5:5
    |
 LL |     println!("world");
@@ -55,7 +55,7 @@ LL |     println!("world");
    |
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:5:5
    |
 LL |     println!("world");
@@ -63,7 +63,7 @@ LL |     println!("world");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:7:5
    |
 LL |     eprint!("test");
@@ -71,7 +71,7 @@ LL |     eprint!("test");
    |
    = note: this error originates in the macro `eprint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:7:5
    |
 LL |     eprint!("test");
@@ -79,7 +79,7 @@ LL |     eprint!("test");
    |
    = note: this error originates in the macro `eprint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:7:5
    |
 LL |     eprint!("test");
@@ -87,7 +87,7 @@ LL |     eprint!("test");
    |
    = note: this error originates in the macro `eprint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:7:5
    |
 LL |     eprint!("test");
@@ -95,7 +95,7 @@ LL |     eprint!("test");
    |
    = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `eprint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:8:5
    |
 LL |     eprintln!("123");
@@ -103,7 +103,7 @@ LL |     eprintln!("123");
    |
    = note: this error originates in the macro `eprintln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:8:5
    |
 LL |     eprintln!("123");
@@ -111,7 +111,7 @@ LL |     eprintln!("123");
    |
    = note: this error originates in the macro `eprintln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:8:5
    |
 LL |     eprintln!("123");
@@ -119,7 +119,7 @@ LL |     eprintln!("123");
    |
    = note: this error originates in the macro `eprintln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:8:5
    |
 LL |     eprintln!("123");
@@ -127,7 +127,7 @@ LL |     eprintln!("123");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `eprintln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -135,7 +135,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -143,7 +143,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -151,7 +151,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -159,7 +159,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -167,7 +167,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -175,7 +175,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -183,7 +183,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -191,7 +191,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -199,7 +199,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -207,7 +207,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -215,7 +215,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::stringify` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -223,7 +223,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -231,7 +231,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -239,7 +239,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:10:5
    |
 LL |     dbg!("baz");
@@ -247,7 +247,7 @@ LL |     dbg!("baz");
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:15:5
    |
 LL |     p!("hello");
@@ -255,7 +255,7 @@ LL |     p!("hello");
    |
    = note: this error originates in the macro `p` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:15:5
    |
 LL |     p!("hello");
@@ -263,7 +263,7 @@ LL |     p!("hello");
    |
    = note: this error originates in the macro `p` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:15:5
    |
 LL |     p!("hello");
@@ -271,7 +271,7 @@ LL |     p!("hello");
    |
    = note: this error originates in the macro `p` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:15:5
    |
 LL |     p!("hello");
@@ -279,7 +279,7 @@ LL |     p!("hello");
    |
    = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `p` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:16:5
    |
 LL |     pln!("world");
@@ -287,7 +287,7 @@ LL |     pln!("world");
    |
    = note: this error originates in the macro `pln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:16:5
    |
 LL |     pln!("world");
@@ -295,7 +295,7 @@ LL |     pln!("world");
    |
    = note: this error originates in the macro `pln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:16:5
    |
 LL |     pln!("world");
@@ -303,7 +303,7 @@ LL |     pln!("world");
    |
    = note: this error originates in the macro `pln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:16:5
    |
 LL |     pln!("world");
@@ -311,7 +311,7 @@ LL |     pln!("world");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `pln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:18:5
    |
 LL |     e!("test");
@@ -319,7 +319,7 @@ LL |     e!("test");
    |
    = note: this error originates in the macro `e` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:18:5
    |
 LL |     e!("test");
@@ -327,7 +327,7 @@ LL |     e!("test");
    |
    = note: this error originates in the macro `e` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:18:5
    |
 LL |     e!("test");
@@ -335,7 +335,7 @@ LL |     e!("test");
    |
    = note: this error originates in the macro `e` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:18:5
    |
 LL |     e!("test");
@@ -343,7 +343,7 @@ LL |     e!("test");
    |
    = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `e` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:19:5
    |
 LL |     eln!("123");
@@ -351,7 +351,7 @@ LL |     eln!("123");
    |
    = note: this error originates in the macro `eln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:19:5
    |
 LL |     eln!("123");
@@ -359,7 +359,7 @@ LL |     eln!("123");
    |
    = note: this error originates in the macro `eln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:19:5
    |
 LL |     eln!("123");
@@ -367,7 +367,7 @@ LL |     eln!("123");
    |
    = note: this error originates in the macro `eln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:19:5
    |
 LL |     eln!("123");
@@ -375,7 +375,7 @@ LL |     eln!("123");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `eln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -383,7 +383,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -391,7 +391,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -399,7 +399,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -407,7 +407,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -415,7 +415,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -423,7 +423,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -431,7 +431,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -439,7 +439,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -447,7 +447,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -455,7 +455,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -463,7 +463,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::stringify` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -471,7 +471,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -479,7 +479,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -487,7 +487,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:21:5
    |
 LL |     d!("baz");
@@ -495,7 +495,7 @@ LL |     d!("baz");
    |
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -503,7 +503,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `print` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -511,7 +511,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `print` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -519,7 +519,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `print` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -527,7 +527,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -535,7 +535,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `println` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -543,7 +543,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `println` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -551,7 +551,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `println` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -559,7 +559,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -567,7 +567,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `eprint` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -575,7 +575,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `eprint` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -583,7 +583,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `eprint` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -591,7 +591,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -599,7 +599,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `eprintln` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -607,7 +607,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `eprintln` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -615,7 +615,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `eprintln` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -623,7 +623,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -631,7 +631,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `dbg` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -639,7 +639,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `dbg` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -647,7 +647,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -655,7 +655,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -663,7 +663,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::eprintln` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -671,7 +671,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -679,7 +679,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `dbg` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -687,7 +687,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -695,7 +695,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -703,7 +703,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -711,7 +711,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::stringify` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -719,7 +719,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -727,7 +727,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `dbg` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
@@ -735,7 +735,7 @@ LL |     wrapped!();
    |
    = note: this error originates in the macro `dbg` which comes from the expansion of the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the printing macros are forbidden
+error: the printing macros are forbidden, consider using `log!()` instead
   --> $DIR/print_macros.rs:37:5
    |
 LL |     wrapped!();
