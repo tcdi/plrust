@@ -1,0 +1,6 @@
+[book]
+authors = ["Ryan Lambert"]
+language = "en"
+multilingual = false
+src = "src"
+title = "PL/Rust Guide"
