@@ -119,6 +119,33 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
 }
 
 declare_lint!(
+    pub(crate) PLRUST_PRINT_FUNCTIONS,
+    Allow,
+    "Disallow functions like `io::{stdout, stderr}`",
+);
+
+declare_lint_pass!(PlrustPrintFunctions => [PLRUST_PRINT_FUNCTIONS]);
+
+impl<'tcx> LateLintPass<'tcx> for PlrustPrintFunctions {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
+        let paths: &[&[&str]] = &[
+            &["std", "io", "stdio", "stdout"],
+            &["std", "io", "stdio", "stderr"],
+            &["std", "io", "stdio", "stdin"],
+        ];
+        for &path in paths {
+            if does_expr_call_path(cx, expr, path) {
+                cx.lint(
+                    PLRUST_PRINT_FUNCTIONS,
+                    "the standard streams are forbidden, consider using `log!()` instead",
+                    |b| b.set_span(expr.span),
+                );
+            }
+        }
+    }
+}
+
+declare_lint!(
     pub(crate) PLRUST_PRINT_MACROS,
     Allow,
     "Disallow `print!`, `println!`, `eprint!` and `eprintln!`",
@@ -341,6 +368,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         PLRUST_LEAKY,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
         PLRUST_PRINT_MACROS,
+        PLRUST_PRINT_FUNCTIONS,
     ]
 });
 
@@ -359,6 +387,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_late_pass(move |_| Box::new(PlrustLeaky));
     store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));
     store.register_late_pass(move |_| Box::new(PlrustPrintMacros));
+    store.register_late_pass(move |_| Box::new(PlrustPrintFunctions));
     store.register_late_pass(move |_| Box::new(NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(LifetimeParamTraitPass));
 }

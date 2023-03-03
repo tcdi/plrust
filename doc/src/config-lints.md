@@ -206,3 +206,13 @@ eprint!("even without the newline");
 
 dbg!("same here");
 ```
+
+## `plrust_print_functions`
+
+This lint forbids use of the functions for accessing standard streams (stdin, stdout, stderr) from PL/Rust, for the same reason as above. For example, the following code is forbidden:
+
+```rust
+std::io::stdout().write_all(b"foobar").unwrap();
+std::io::stderr().write_all(b"foobar").unwrap();
+let _stdin_is_forbidden_too = std::io::stdin();
+```
