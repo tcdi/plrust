@@ -1,3 +1,7 @@
+error: Use of `extern crate` is forbidden in PL/Rust
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
 error: Use of function trait objects is forbidden in PL/Rust
   --> $DIR/fn_traits.rs:4:14
    |
@@ -24,5 +28,5 @@ error: Use of function trait objects is forbidden in PL/Rust
 LL |     let _d: Box<dyn FnOnce()> = Box::new(|| {});
    |                 ^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

@@ -147,6 +147,15 @@ mod bar;
 mod baz;
 ```
 
+It also forbids access to `extern crate foo;`, as this can be used to access crates that are not intended to be available. For example:
+
+```rust
+// This is disallowed.
+extern crate pgx;
+
+// This is also disallowed.
+extern crate alloc;
+```
 
 ## `plrust_print_macros`
 

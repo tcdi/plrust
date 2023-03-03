@@ -1,3 +1,7 @@
+error: Use of `extern crate` is forbidden in PL/Rust
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
 error: `extern` blocks are not allowed
   --> $DIR/extern_block.rs:2:1
    |
@@ -29,5 +33,5 @@ LL | foo!();
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

@@ -256,7 +256,7 @@ impl EarlyLintPass for PlrustAsync {
 declare_lint!(
     pub(crate) PLRUST_EXTERNAL_MOD,
     Allow,
-    "Disallow use of `mod blah;`",
+    "Disallow use of `mod blah;` and `extern crate blah;`",
 );
 
 declare_lint_pass!(PlrustExternalMod => [PLRUST_EXTERNAL_MOD]);
@@ -264,6 +264,13 @@ declare_lint_pass!(PlrustExternalMod => [PLRUST_EXTERNAL_MOD]);
 impl EarlyLintPass for PlrustExternalMod {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
         match &item.kind {
+            ast::ItemKind::ExternCrate(..) => {
+                cx.lint(
+                    PLRUST_EXTERNAL_MOD,
+                    "Use of `extern crate` is forbidden in PL/Rust",
+                    |b| b.set_span(item.span),
+                );
+            }
             ast::ItemKind::Mod(_, ast::ModKind::Unloaded)
             | ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::No, _)) => {
                 cx.lint(

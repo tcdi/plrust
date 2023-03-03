@@ -1,3 +1,7 @@
+error: Use of `extern crate` is forbidden in PL/Rust
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
 error: Leaky functions are forbidden in PL/Rust
   --> $DIR/leaky.rs:5:14
    |
@@ -30,5 +34,5 @@ error: Leaky functions are forbidden in PL/Rust
 LL |     let vec_leak = Vec::<u8>::leak;
    |                    ^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 

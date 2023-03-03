@@ -1,3 +1,7 @@
+error: Use of `extern crate` is forbidden in PL/Rust
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
 error: Trait is parameterize by lifetime.
   --> $DIR/lifetime_trait.rs:3:1
    |
@@ -17,5 +21,5 @@ LL | foobar!();
    |
    = note: this error originates in the macro `foobar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

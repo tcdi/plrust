@@ -1,3 +1,7 @@
+error: Use of `extern crate` is forbidden in PL/Rust
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
 error: Use of function pointers is forbidden in PL/Rust
   --> $DIR/fn_pointer.rs:7:15
    |
@@ -24,5 +28,5 @@ error: Use of function pointers is forbidden in PL/Rust
 LL |     let foo4: fn(&'static (), &'short T) -> (&'short &'short (), &'static T) = foo3;
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

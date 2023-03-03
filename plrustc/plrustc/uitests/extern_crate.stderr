@@ -1,0 +1,18 @@
+error: Use of `extern crate` is forbidden in PL/Rust
+   |
+   = note: `-F plrust-external-mod` implied by `-F plrust-lints`
+
+error: Use of `extern crate` is forbidden in PL/Rust
+  --> $DIR/extern_crate.rs:3:1
+   |
+LL | extern crate alloc;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: Use of `extern crate` is forbidden in PL/Rust
+  --> $DIR/extern_crate.rs:4:1
+   |
+LL | extern crate std;
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
