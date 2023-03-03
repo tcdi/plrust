@@ -153,7 +153,7 @@ fn normal_function() {
 }
 ```
 
-## `plrust_leaky`
+### `plrust_leaky`
 
 This lint forbids use of "leaky" functions such as [`mem::forget`](https://doc.rust-lang.org/stable/std/mem/fn.forget.html) and [`Box::leak`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.leak). While leaking memory is considered safe, it has undesirable effects and thus is blocked by default. For example, the lint will trigger on (at least) the following code:
 
@@ -165,7 +165,7 @@ let bar = vec![1, 2, 3].leak();
 
 Note that this will not prevent all leaks, as PL/Rust code could still create a leak by constructing a reference cycle using Rc/Arc, for example.
 
-## `plrust_env_macros`
+### `plrust_env_macros`
 
 This lint forbids use of environment macros such as [`env!`](https://doc.rust-lang.org/nightly/std/macro.env.html) and [`option_env!`](https://doc.rust-lang.org/nightly/std/macro.option_env.html), as it allows access to data that should not be available to a trusted language handler.
 
@@ -175,7 +175,7 @@ let rustup_toolchain_dir = option_env!("RUSTUP_TOOLCHAIN");
 // ...
 ```
 
-## `plrust_external_mod`
+### `plrust_external_mod`
 
 This lint forbids use of non-inline `mod blah`, as it can be used to access files a trusted language handler should not give access to.
 
@@ -193,7 +193,7 @@ mod baz;
 ```
 
 
-## `plrust_print_macros`
+### `plrust_print_macros`
 
 This lint forbids use of the `println!`/`eprintln!` family of macros (including `dbg!` and the non-`ln` variants), as these allow bypassing the norm. Users should use `pgx::log!` or `pgx::debug!` instead.
 
@@ -207,7 +207,7 @@ eprint!("even without the newline");
 dbg!("same here");
 ```
 
-## `plrust_stdio`
+### `plrust_stdio`
 
 This lint forbids use of the functions for accessing standard streams (stdin, stdout, stderr) from PL/Rust, for the same reason as above. For example, the following code is forbidden:
 
