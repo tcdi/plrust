@@ -62,6 +62,30 @@ method it's implementing.
 
 If used incorrectly, this can be used to implement unsound APIs.
 
+### `deprecated`
+
+https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#deprecated
+
+The deprecated lint detects use of deprecated items. This is forbidden because certain items in the Rust standard library are incorrectly-safe APIs but were only deprecated rather than removed when a version with the appropriate safety annotation was added.
+
+### `suspicious_auto_trait_impls`
+
+https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#suspicious-auto-trait-impls
+
+This defends against some patterns that can lead to soundness issues. These cases currently can only trigger in patterns which are otherwise blocked by the `unsafe_code` lint, but for better defense-in-depth, it's explicitly forbidden in PL/Rust.
+
+### `unaligned_references`
+
+https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#unaligned-references
+
+The unaligned_references lint detects unaligned references to fields of packed structs. This forbidden because it is a soundness hole in the language.
+
+### `soft_unstable`
+
+https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#soft-unstable
+
+This prevents the use of language and library features which were accidentally stabilized. This is forbidden because there's no reason to need to use these, and forbidding them reduces the set of APIs and features we have to consider in PL/Rust.
+
 ## PL/Rust `plrustc` Lints
 
 ### `plrust_extern_blocks`
