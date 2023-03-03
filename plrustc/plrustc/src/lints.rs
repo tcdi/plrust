@@ -119,12 +119,12 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
 }
 
 declare_lint!(
-    pub(crate) PLRUST_PRINT_FUNCTIONS,
+    pub(crate) PLRUST_STDIO,
     Allow,
-    "Disallow functions like `io::{stdout, stderr}`",
+    "Disallow functions like `io::{stdout, stderr, stdin}`",
 );
 
-declare_lint_pass!(PlrustPrintFunctions => [PLRUST_PRINT_FUNCTIONS]);
+declare_lint_pass!(PlrustPrintFunctions => [PLRUST_STDIO]);
 
 impl<'tcx> LateLintPass<'tcx> for PlrustPrintFunctions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustPrintFunctions {
         for &path in paths {
             if does_expr_call_path(cx, expr, path) {
                 cx.lint(
-                    PLRUST_PRINT_FUNCTIONS,
+                    PLRUST_STDIO,
                     "the standard streams are forbidden, consider using `log!()` instead",
                     |b| b.set_span(expr.span),
                 );
@@ -368,7 +368,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         PLRUST_LEAKY,
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
         PLRUST_PRINT_MACROS,
-        PLRUST_PRINT_FUNCTIONS,
+        PLRUST_STDIO,
     ]
 });
 
