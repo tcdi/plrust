@@ -138,7 +138,7 @@ impl FnCrating {
                     trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
                     Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
-                    Box<dyn std::error::Error>,
+                    crate::PlRustFunctionError,
                 > #user_code
             })
             .wrap_err("Parsing generated user trigger")?,
@@ -246,8 +246,10 @@ impl FnCrating {
 
 /// Throw all the libs into this, we will write this once.
 fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Result<syn::File> {
+    let prelude = shared_prelude();
     let mut skeleton: syn::File = syn::parse2(quote! {
         #![deny(unsafe_op_in_unsafe_fn)]
+        #prelude
     })
     .wrap_err("Generating lib skeleton")?;
 
@@ -257,13 +259,58 @@ fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Re
     Ok(skeleton)
 }
 
+/// Applied to the top `lib.rs` of a user crate.
+///
+/// Generally, this gets the "alloc" crate imported along with an error type that all pl/rust
+/// return.  
+pub(crate) fn shared_prelude() -> syn::File {
+    syn::parse_quote! {
+        #![no_std]
+        #![allow(unused_imports)]
+
+        extern crate alloc;
+
+        #[derive(Debug)]
+        pub struct PlRustFunctionError(pub ::alloc::string::String);
+
+        impl ::core::fmt::Display for PlRustFunctionError {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        mod ext {
+            use super::PlRustFunctionError;
+
+            // we cheat here and import `std` so we can get at the "Error" type.  The user crate as
+            // a whole doesn't need to strictly be "no_std", only the code the user writes.
+            //
+            // Combined with a lint, the `#![no_std]` up above enforces the "do as I say, not as I do"
+            // rule for the user's pl/rust function code.
+            extern crate std;
+
+            // ability to wrap any Error as a `PlRustFunctionError`, which itself is **not** an Error
+            impl<T> From<T> for PlRustFunctionError where T: std::error::Error + Send + Sync + 'static {
+                fn from(t: T) -> Self {
+                    use ::alloc::string::ToString;
+                    PlRustFunctionError(t.to_string())
+                }
+            }
+        }
+    }
+}
+
 /// Used by both the unsafe and safe module.
-pub(crate) fn shared_imports() -> syn::ItemUse {
+pub(crate) fn shared_imports() -> syn::File {
     syn::parse_quote!(
         // we (plrust + pgx) fully qualify all pgx imports with `::pgx`, so if the user's function
         // doesn't use any other pgx items we don't want a compiler warning
-        #[allow(unused_imports)]
         use pgx::prelude::*;
+
+        extern crate alloc;
+        use alloc::{vec, vec::*, format, str::*, string::*, boxed::*};
+
+        use crate::PlRustFunctionError;
     )
 }
 
@@ -381,14 +428,16 @@ mod tests {
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let (generated_lib_rs, lints) = generated.lib_rs()?;
+            let prelude = shared_prelude();
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::core::result::Result<Option<::alloc::string::String>, crate::PlRustFunctionError> {
                     Some(arg0.to_string())
                 }
             })?;
             let fixture_lib_rs = parse_quote! {
                 #![deny(unsafe_op_in_unsafe_fn)]
+                #prelude
                 pub mod opened {
                     #imports
 
@@ -452,14 +501,17 @@ mod tests {
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let (generated_lib_rs, lints) = generated.lib_rs()?;
+            let prelude = shared_prelude();
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: Option<i32>) -> ::std::result::Result<Option<i64>, Box<dyn std::error::Error + Send + Sync + 'static>> {
+                fn #symbol_ident<'a>(val: Option<i32>) -> ::core::result::Result<Option<i64>, crate::PlRustFunctionError> {
                     val.map(|v| v as i64)
                 }
             })?;
             let fixture_lib_rs = parse_quote! {
                 #![deny(unsafe_op_in_unsafe_fn)]
+                #prelude
+
                 pub mod opened {
                     #imports
 
@@ -523,14 +575,17 @@ mod tests {
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let (generated_lib_rs, lints) = generated.lib_rs()?;
+            let prelude = shared_prelude();
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn std::error::Error + Send + Sync + 'static>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::core::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<::alloc::string::String>>>, crate::PlRustFunctionError> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
             let fixture_lib_rs = parse_quote! {
                 #![deny(unsafe_op_in_unsafe_fn)]
+                #prelude
+
                 pub mod opened {
                     #imports
 
@@ -585,19 +640,22 @@ mod tests {
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let (generated_lib_rs, lints) = generated.lib_rs()?;
+            let prelude = shared_prelude();
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(
                     trigger: &'a ::pgx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
                     Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
-                    Box<dyn std::error::Error>,
+                    crate::PlRustFunctionError,
                 > {
                     Ok(trigger.current().unwrap().into_owned())
                 }
             })?;
             let fixture_lib_rs = parse_quote! {
                 #![deny(unsafe_op_in_unsafe_fn)]
+                #prelude
+
                 pub mod opened {
                     #imports
 

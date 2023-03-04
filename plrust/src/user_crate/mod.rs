@@ -253,7 +253,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::NUMERICOID => quote! { pgx::AnyNumeric },
             PgBuiltInOids::NUMRANGEOID => quote! { Range<pgx::AnyNumeric> },
             PgBuiltInOids::OIDOID => quote! { pgx::Oid },
-            PgBuiltInOids::TEXTOID if owned => quote! { String },
+            PgBuiltInOids::TEXTOID if owned => quote! { ::alloc::string::String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
             // PgBuiltInOids::TIMEOID => quote! { pgx::Time },
@@ -263,7 +263,7 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             // PgBuiltInOids::TSRANGEOID => quote! { Range<pgx::Timestamp> },
             // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgx::TimestampWithTimeZone> },
             PgBuiltInOids::UUIDOID => quote! { pgx::Uuid },
-            PgBuiltInOids::VARCHAROID => quote! { String },
+            PgBuiltInOids::VARCHAROID => quote! { ::alloc::string::String },
             PgBuiltInOids::VOIDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
         },
@@ -456,14 +456,17 @@ mod tests {
                 proc_macro2::Ident::new(&symbol_name, proc_macro2::Span::call_site());
 
             let (generated_lib_rs, lints) = generated.lib_rs()?;
+            let prelude = crate::user_crate::crating::shared_prelude();
             let imports = crate::user_crate::crating::shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(arg0: &'a str) -> ::std::result::Result<Option<String>, Box<dyn std::error::Error + Send + Sync + 'static>> {
+                fn #symbol_ident<'a>(arg0: &'a str) -> ::core::result::Result<Option<::alloc::string::String>, crate::PlRustFunctionError> {
                     Ok(Some(arg0.to_string()))
                 }
             })?;
             let fixture_lib_rs = parse_quote! {
                 #![deny(unsafe_op_in_unsafe_fn)]
+                #prelude
+
                 pub mod opened {
                     #imports
 

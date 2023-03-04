@@ -1046,6 +1046,26 @@ mod tests {
         assert_eq!("operation not supported on this platform", &string);
         Ok(())
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(
+        expected = "error[E0433]: failed to resolve: use of undeclared crate or module `std`"
+    )]
+    fn running_under_no_std() -> spi::Result<()> {
+        let sql = r#"
+        create or replace function no_std() returns text
+        IMMUTABLE STRICT
+        LANGUAGE PLRUST AS
+        $$
+            std::fs::create_dir("/tmp/plrust-no_std-is-broken")?;
+            Ok(Some("failed".into()))
+        $$"#;
+        Spi::run(sql)?;
+
+        let _ = Spi::get_one::<String>("SELECT no_std()").map(|_| ())?; // this should panic with our expected message declared on the function
+        panic!("#[no_std] didn't work!")
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
