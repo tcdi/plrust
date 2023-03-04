@@ -46,6 +46,16 @@ Install `rustc` using `rustup`.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
+The `rustup` installer will prompt you for an installation choice.  The
+default installation should work for most use cases.
+
+```bash
+1) Proceed with installation (default)
+2) Customize installation
+3) Cancel installation
+```
+
+
 After installing rust, use `exit` to log out and back in to the `postgres`
 account.  This ensures your terminal is using the newy installed
 `rustc` installation.
@@ -126,7 +136,8 @@ Error loading target specification: Could not find specification for target "x86
 
 The PL/Rust extension is built and installed
 [using pgx](https://github.com/tcdi/pgx).
-Install pgx with the `--locked` option.
+Install pgx with the `--locked` option. This step takes a few
+minutes.
 
 ```bash
 cargo install cargo-pgx --locked
@@ -143,14 +154,16 @@ installed you can use the generic
 cargo pgx init --pg15 /usr/bin/pg_config
 ```
 
-The generic `pg_config` will not work
-for all installations, such as if you have PostgreSQL 14 and 15 both installed
-on one instance.  In these cases you should specify the exact `pg_config`
+The generic `pg_config` used above will not work
+for all installations, such as if you have both PostgreSQL 14 and 15
+installed on one instance.
+In these cases you should specify the exact `pg_config`
 file for your installation.
 
 ```bash
 cargo pgx init --pg14 /usr/lib/postgresql/14/bin/pg_config
 ```
+
 
 ## Install PL/Rust
 
@@ -166,6 +179,7 @@ Most users will want to install trusted PL/Rust.
 The trusted installation requires `postgrestd` and a few additional
 dependencies.  First install the additional dependencies.
 
+> To install untrusted PL/Rust skip this sub-section and go to the Untrusted install section.
 
 ```bash
 rustup component add llvm-tools-preview rustc-dev
@@ -195,8 +209,18 @@ PG_VER=15 \
     ./build
 ```
 
-The final step is to use `cargo pgx install` with `--features trusted`
-to install trusted PL/Rust.
+The above step can take quite a few minutes to
+install `postgrestd` and run the associated tests.
+It is not uncommon to see output like the following during the
+test process.
+
+```bash
+test tests::tests::pg_plrust_aggregate has been running for over 60 seconds
+```
+
+
+The final step for trusted PL/Rust installation is to use
+`cargo pgx install` with `--features trusted`.
 
 ```bash
 cargo pgx install --release --features trusted -c /usr/bin/pg_config
