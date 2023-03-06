@@ -485,10 +485,13 @@ mod tests {
                 Ok(Some(format!("{FOO}")))
             $$ LANGUAGE plrust;
         "#;
-        match Spi::run(definition) {
-            Ok(()) => panic!("Should fail!"),
-            Err(e) => panic!("failed with {e:?}"),
-        }
+        let e = Spi::run(definition).unwrap_err();
+        assert!(
+            e.to_string()
+                .to_lowercase()
+                .contains("no such file or directory (os error 2)"),
+            "expected different error, got {e:?}",
+        );
     }
 
     #[pg_test]
@@ -507,10 +510,33 @@ mod tests {
                 Ok(Some(format!("{BAR}")))
             $$ LANGUAGE plrust;
         "#;
-        match Spi::run(definition) {
-            Ok(()) => panic!("Should fail!"),
-            Err(e) => panic!("failed with {e:?}"),
-        }
+        let e = Spi::run(definition).unwrap_err();
+        assert!(
+            e.to_string()
+                .to_lowercase()
+                .contains("no such file or directory (os error 2)"),
+            "expected different error, got {e:?}",
+        );
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    fn postgrestd_no_include_totally_made_up() {
+        let definition = r#"
+            CREATE FUNCTION include_forbidden()
+            RETURNS text AS $$
+                include!("/made/up/path/lol.rs");
+                Ok(Some("yo".into()))
+            $$ LANGUAGE plrust;
+        "#;
+        let e = Spi::run(definition).unwrap_err();
+        assert!(
+            e.to_string()
+                .to_lowercase()
+                .contains("no such file or directory (os error 2)"),
+            "expected different error, got {e:?}",
+        );
     }
 
     #[pg_test]
