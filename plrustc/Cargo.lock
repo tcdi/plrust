@@ -172,6 +172,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "omnipath"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7461858c5ac9bde3fcdeedc17f58ed0469ec74f2d737b6369fc31c0b0ef576c"
+
+[[package]]
 name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -182,6 +188,8 @@ name = "plrustc"
 version = "1.0.0-rc.0"
 dependencies = [
  "compiletest_rs",
+ "libc",
+ "omnipath",
  "once_cell",
 ]
 
