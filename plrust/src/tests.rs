@@ -472,71 +472,57 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[cfg(feature = "trusted")]
-    fn postgrestd_no_include_noaccess_cionly() {
-        let cistuff_exists = std::path::Path::new("/var/ci-stuff").exists();
-        if !cistuff_exists {
-            assert!(std::env::var_os("CI").is_none());
-            return;
-        }
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_exists_no_access() {
+        // This file is created in CI and exists, but can only be accessed by
+        // root. Check that the actual access is reported as file not found (we
+        // should be ensuring that via `PLRUSTC_USER_CRATE_MAY_ACCESS`). We
+        // don't need to gate this test on CI, since the file is unlikely to
+        // exist outside of CI (so the test will pass).
         let definition = r#"
-            CREATE FUNCTION include_secret()
+            CREATE FUNCTION include_no_access()
             RETURNS text AS $$
                 include!("/var/ci-stuff/secret_rust_files/const_foo.rs");
-                Ok(Some(format!("{FOO}")))
+                Ok(Some(format!("{BAR}")))
             $$ LANGUAGE plrust;
         "#;
-        let e = Spi::run(definition).unwrap_err();
-        assert!(
-            e.to_string()
-                .to_lowercase()
-                .contains("no such file or directory (os error 2)"),
-            "expected different error, got {e:?}",
-        );
+        Spi::run(definition).unwrap()
     }
 
     #[pg_test]
     #[search_path(@extschema@)]
     #[cfg(feature = "trusted")]
-    fn postgrestd_no_include_forbidden_cionly() {
-        let cistuff_exists = std::path::Path::new("/var/ci-stuff").exists();
-        if !cistuff_exists {
-            assert!(std::env::var_os("CI").is_none());
-            return;
-        }
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_exists_external() {
+        // This file is created in CI, exists, and can be accessed by anybody,
+        // but the actual access is forbidden via
+        // `PLRUSTC_USER_CRATE_MAY_ACCESS`. We don't need to gate this test on
+        // CI, since the file is unlikely to exist outside of CI, so the test
+        // will pass anyway.
         let definition = r#"
-            CREATE FUNCTION include_forbidden()
+            CREATE FUNCTION include_exists_external()
             RETURNS text AS $$
                 include!("/var/ci-stuff/const_bar.rs");
                 Ok(Some(format!("{BAR}")))
             $$ LANGUAGE plrust;
         "#;
-        let e = Spi::run(definition).unwrap_err();
-        assert!(
-            e.to_string()
-                .to_lowercase()
-                .contains("no such file or directory (os error 2)"),
-            "expected different error, got {e:?}",
-        );
+        Spi::run(definition).unwrap();
     }
 
     #[pg_test]
     #[search_path(@extschema@)]
     #[cfg(feature = "trusted")]
-    fn postgrestd_no_include_totally_made_up() {
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_made_up() {
+        // This file does not exist, and should be reported as such.
         let definition = r#"
-            CREATE FUNCTION include_forbidden()
-            RETURNS text AS $$
+            CREATE FUNCTION include_madeup()
+            RETURNS int AS $$
                 include!("/made/up/path/lol.rs");
-                Ok(Some("yo".into()))
+                Ok(Some(1))
             $$ LANGUAGE plrust;
         "#;
-        let e = Spi::run(definition).unwrap_err();
-        assert!(
-            e.to_string()
-                .to_lowercase()
-                .contains("no such file or directory (os error 2)"),
-            "expected different error, got {e:?}",
-        );
+        Spi::run(definition).unwrap();
     }
 
     #[pg_test]
