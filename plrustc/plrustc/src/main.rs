@@ -87,7 +87,7 @@ fn main() {
             &mut PlrustcCallbacks {
                 // FIXME SOMEDAY: check caplints?
                 lints_enabled: true,
-                config: PlrustcConfig::from_env_and_args(&orig_args),
+                config: PlrustcConfig::from_env_and_args(&orig_args, &sysroot),
             },
         );
     }))
@@ -97,20 +97,21 @@ fn main() {
 struct PlrustcConfig {
     // If `--crate-name` was provided, that.
     crate_name_arg: Option<String>,
+    // The detected sysroot
+    sysroot: String,
     // PLRUSTC_USER_CRATE_NAME
     plrust_user_crate_name: Option<String>,
     // PLRUSTC_USER_CRATE_MAY_ACCESS
     plrust_user_crate_may_access: Option<String>,
-    // PLRUSTC_TARGET_DIR
-    // plrust_target_dir: Option<String>,
 }
 
 impl PlrustcConfig {
-    fn from_env_and_args(args: &[String]) -> Self {
+    fn from_env_and_args(args: &[String], sysroot: &str) -> Self {
         PlrustcConfig {
             crate_name_arg: arg_value(args, "--crate-name").map(|s| s.to_string()),
             plrust_user_crate_name: std::env::var(PLRUSTC_USER_CRATE_NAME).ok(),
             plrust_user_crate_may_access: std::env::var(PLRUSTC_USER_CRATE_MAY_ACCESS).ok(),
+            sysroot: sysroot.into(),
         }
     }
 
@@ -148,20 +149,29 @@ impl PlrustcConfig {
                 eprintln!("fatal error: if `{PLRUSTC_USER_CRATE_NAME}` is provided, then `{PLRUSTC_USER_CRATE_MAY_ACCESS}` should also be provided");
                 std::process::exit(1);
             };
-            // Used by cargo also
-            const ASCII_UNIT_SEP: char = '\u{1f}';
-            let allowed_source_dirs = allowed.split(ASCII_UNIT_SEP).filter(|s| !s.is_empty()).map(|s| {
-                let p = Path::new(s);
-                let path = p.canonicalize().unwrap_or_else(|_| p.to_owned());
+
+            // Should we add the cargo registry? hm...
+            let sysroot_path = Path::new(&self.sysroot);
+            let cleaned_sysroot = sysroot_path
+                .canonicalize()
+                .or_else(|_| {
+                    use omnipath::posix::PosixPathExt;
+                    sysroot_path.posix_absolute()
+                })
+                .unwrap_or_else(|_| sysroot_path.to_owned());
+
+            let allowed_source_dirs = std::env::split_paths(allowed).chain(std::iter::once(cleaned_sysroot)).map(|path| {
                 if !path.is_absolute() {
-                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains relative path: {path:?}");
+                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains relative path: {allowed:?}");
                     std::process::exit(1);
                 }
                 let Some(pathstr) = path.to_str() else {
-                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains non-UTF-8 path: {path:?}");
+                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains non-UTF-8 path: {allowed:?}");
                     std::process::exit(1);
                 };
-                pathstr.strip_suffix('/').unwrap_or(pathstr).to_string()
+                // Ensure it's disallowed if `/foo/bar/` is restricted when they
+                // try to access `/foo/bar`.
+                pathstr.trim_end_matches("/").to_string()
             }).collect::<Vec<String>>();
 
             Box::new(PlrustcFileLoader {
@@ -231,7 +241,7 @@ impl PlrustcFileLoader {
 
 impl FileLoader for PlrustcFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
-        self.is_allowed(path) && path.exists()
+        self.is_allowed(path) && ErrorHidingFileLoader.file_exists(path)
     }
 
     fn read_file(&self, path: &Path) -> std::io::Result<String> {

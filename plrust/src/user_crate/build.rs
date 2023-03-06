@@ -177,6 +177,7 @@ impl FnBuild {
     }
 }
 
+// Canonicalize path and ensure UTF-8
 fn path2string(p: &Path) -> eyre::Result<String> {
     let pbuf = p.canonicalize().or_else(|_| {
         use omnipath::posix::PosixPathExt;
@@ -193,24 +194,8 @@ fn set_plrustc_vars(command: &mut Command, build: &FnBuild, target_dir: &Path) -
     let crate_dir_str = path2string(&build.crate_dir)?;
     let target_dir_str = path2string(target_dir)?;
 
-    // Follow cargo's lead for this (it uses this separator in e.g.
-    // `CARGO_ENCODED_RUSTFLAGS`). OTOH, perhaps it would be better to use the
-    // standard path separator `:`?
-    const ASCII_UNIT_SEP: &str = "\u{1f}";
-    // Make sure there's no weird case where these already have the unit
-    // separator.
-    assert!(
-        !crate_dir_str.contains(ASCII_UNIT_SEP),
-        "Degenerate path: {crate_dir_str:?}",
-    );
-    assert!(
-        !target_dir_str.contains(ASCII_UNIT_SEP),
-        "Degenerate path: {target_dir_str:?}",
-    );
-
     // TODO: Allow extra dirs via a GUC? Support excluding dirs?
-    let allowed_dirs = [crate_dir_str, target_dir_str].join(ASCII_UNIT_SEP);
-
+    let allowed_dirs = std::env::join_paths([crate_dir_str, target_dir_str])?;
     command.env("PLRUSTC_USER_CRATE_MAY_ACCESS", allowed_dirs);
 
     Ok(())
