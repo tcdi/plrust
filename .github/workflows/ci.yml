@@ -52,6 +52,7 @@ jobs:
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
         echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        echo "CI=true" >> $GITHUB_ENV
         cat $GITHUB_ENV
         echo ""
 
@@ -105,6 +106,14 @@ jobs:
         . $WORK_DIR/.github/scripts/load_cache.sh
         cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
         loadcache $cargo_cache_key
+
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
 
     - name: Load sccache cache if available
       run: |
@@ -287,6 +296,14 @@ jobs:
 
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview rustc-dev
+
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
 
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc

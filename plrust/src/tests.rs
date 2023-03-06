@@ -471,6 +471,50 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    fn postgrestd_no_include_noaccess_cionly() {
+        let cistuff_exists = std::path::Path::new("/var/ci-stuff").exists();
+        if !cistuff_exists {
+            assert!(std::env::var_os("CI").is_none());
+            return;
+        }
+        let definition = r#"
+            CREATE FUNCTION include_secret()
+            RETURNS text AS $$
+                include!("/var/ci-stuff/secret_rust_files/const_foo.rs");
+                Ok(Some(format!("{FOO}")))
+            $$ LANGUAGE plrust;
+        "#;
+        match Spi::run(definition) {
+            Ok(()) => panic!("Should fail!"),
+            Err(e) => panic!("failed with {e:?}"),
+        }
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    fn postgrestd_no_include_forbidden_cionly() {
+        let cistuff_exists = std::path::Path::new("/var/ci-stuff").exists();
+        if !cistuff_exists {
+            assert!(std::env::var_os("CI").is_none());
+            return;
+        }
+        let definition = r#"
+            CREATE FUNCTION include_forbidden()
+            RETURNS text AS $$
+                include!("/var/ci-stuff/const_bar.rs");
+                Ok(Some(format!("{BAR}")))
+            $$ LANGUAGE plrust;
+        "#;
+        match Spi::run(definition) {
+            Ok(()) => panic!("Should fail!"),
+            Err(e) => panic!("failed with {e:?}"),
+        }
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     #[should_panic]
     fn plrust_block_unsafe_annotated() -> spi::Result<()> {
         // PL/Rust should block creating obvious, correctly-annotated usage of unsafe code
