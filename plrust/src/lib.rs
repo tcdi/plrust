@@ -76,7 +76,12 @@ const DEFAULT_LINTS: &'static str = "\
     plrust_leaky, \
     plrust_external_mod, \
     plrust_print_macros, \
-    unsafe_code\
+    plrust_stdio, \
+    unsafe_code, \
+    deprecated, \
+    suspicious_auto_trait_impls, \
+    unaligned_references, \
+    soft_unstable\
 ";
 
 #[pg_guard]

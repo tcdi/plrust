@@ -62,6 +62,30 @@ method it's implementing.
 
 If used incorrectly, this can be used to implement unsound APIs.
 
+### `deprecated`
+
+https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#deprecated
+
+The deprecated lint detects use of deprecated items. This is forbidden because certain items in the Rust standard library are incorrectly-safe APIs but were only deprecated rather than removed when a version with the appropriate safety annotation was added.
+
+### `suspicious_auto_trait_impls`
+
+https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#suspicious-auto-trait-impls
+
+This defends against some patterns that can lead to soundness issues. These cases currently can only trigger in patterns which are otherwise blocked by the `unsafe_code` lint, but for better defense-in-depth, it's explicitly forbidden in PL/Rust.
+
+### `unaligned_references`
+
+https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#unaligned-references
+
+The unaligned_references lint detects unaligned references to fields of packed structs. This forbidden because it is a soundness hole in the language.
+
+### `soft_unstable`
+
+https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#soft-unstable
+
+This prevents the use of language and library features which were accidentally stabilized. This is forbidden because there's no reason to need to use these, and forbidding them reduces the set of APIs and features we have to consider in PL/Rust.
+
 ## PL/Rust `plrustc` Lints
 
 ### `plrust_extern_blocks`
@@ -129,7 +153,7 @@ fn normal_function() {
 }
 ```
 
-## `plrust_leaky`
+### `plrust_leaky`
 
 This lint forbids use of "leaky" functions such as [`mem::forget`](https://doc.rust-lang.org/stable/std/mem/fn.forget.html) and [`Box::leak`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.leak). While leaking memory is considered safe, it has undesirable effects and thus is blocked by default. For example, the lint will trigger on (at least) the following code:
 
@@ -141,7 +165,7 @@ let bar = vec![1, 2, 3].leak();
 
 Note that this will not prevent all leaks, as PL/Rust code could still create a leak by constructing a reference cycle using Rc/Arc, for example.
 
-## `plrust_env_macros`
+### `plrust_env_macros`
 
 This lint forbids use of environment macros such as [`env!`](https://doc.rust-lang.org/nightly/std/macro.env.html) and [`option_env!`](https://doc.rust-lang.org/nightly/std/macro.option_env.html), as it allows access to data that should not be available to a trusted language handler.
 
@@ -151,7 +175,7 @@ let rustup_toolchain_dir = option_env!("RUSTUP_TOOLCHAIN");
 // ...
 ```
 
-## `plrust_external_mod`
+### `plrust_external_mod`
 
 This lint forbids use of non-inline `mod blah`, as it can be used to access files a trusted language handler should not give access to.
 
@@ -169,7 +193,7 @@ mod baz;
 ```
 
 
-## `plrust_print_macros`
+### `plrust_print_macros`
 
 This lint forbids use of the `println!`/`eprintln!` family of macros (including `dbg!` and the non-`ln` variants), as these allow bypassing the norm. Users should use `pgx::log!` or `pgx::debug!` instead.
 
@@ -181,4 +205,14 @@ eprintln!("this is also blocked");
 eprint!("even without the newline");
 
 dbg!("same here");
+```
+
+### `plrust_stdio`
+
+This lint forbids use of the functions for accessing standard streams (stdin, stdout, stderr) from PL/Rust, for the same reason as above. For example, the following code is forbidden:
+
+```rust
+std::io::stdout().write_all(b"foobar").unwrap();
+std::io::stderr().write_all(b"foobar").unwrap();
+let _stdin_is_forbidden_too = std::io::stdin();
 ```
