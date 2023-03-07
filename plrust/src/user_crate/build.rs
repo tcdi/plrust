@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use std::{
     path::{Path, PathBuf},
-    process::Output,
+    process::{Command, Output},
 };
 
 use color_eyre::{Section, SectionExt};
@@ -58,6 +58,10 @@ impl FnBuild {
         }
     }
 
+    fn user_crate_name(&self) -> String {
+        crate::plrust::crate_name(self.db_oid, self.fn_oid, self.generation_number)
+    }
+
     #[tracing::instrument(
         level = "debug",
         skip_all,
@@ -99,6 +103,7 @@ impl FnBuild {
         cross_compilation_target: Option<CrossCompilationTarget>,
     ) -> eyre::Result<(FnLoad, Output)> {
         let mut command = cargo(cargo_target_dir, cross_compilation_target)?;
+        set_plrustc_vars(&mut command, self, cargo_target_dir)?;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
@@ -110,8 +115,7 @@ impl FnBuild {
 
         if output.status.success() {
             let so_bytes = {
-                let crate_name =
-                    crate::plrust::crate_name(self.db_oid, self.fn_oid, self.generation_number);
+                let crate_name = self.user_crate_name();
                 use std::env::consts::DLL_SUFFIX;
                 let so_filename = &format!("lib{crate_name}{DLL_SUFFIX}");
                 let so_path = cargo_target_dir
@@ -171,4 +175,28 @@ impl FnBuild {
     pub(crate) fn crate_dir(&self) -> &Path {
         &self.crate_dir
     }
+}
+
+// Canonicalize path and ensure UTF-8
+fn path2string(p: &Path) -> eyre::Result<String> {
+    let pbuf = p.canonicalize().or_else(|_| {
+        use omnipath::posix::PosixPathExt;
+        p.posix_absolute()
+    })?;
+    let Some(pathstr) = pbuf.to_str() else {
+        eyre::bail!("non-UTF-8 paths are not supported. Got: {pbuf:?}");
+    };
+    Ok(pathstr.to_owned())
+}
+
+fn set_plrustc_vars(command: &mut Command, build: &FnBuild, target_dir: &Path) -> eyre::Result<()> {
+    command.env("PLRUSTC_USER_CRATE_NAME", build.user_crate_name());
+    let crate_dir_str = path2string(&build.crate_dir)?;
+    let target_dir_str = path2string(target_dir)?;
+
+    // TODO: Allow extra dirs via a GUC? Support excluding dirs?
+    let allowed_dirs = std::env::join_paths([crate_dir_str, target_dir_str])?;
+    command.env("PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS", allowed_dirs);
+
+    Ok(())
 }

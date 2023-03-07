@@ -471,6 +471,102 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_exists_no_access() {
+        // This file is created in CI and exists, but can only be accessed by
+        // root. Check that the actual access is reported as file not found (we
+        // should be ensuring that via
+        // `PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS`). We don't need to gate
+        // this test on CI, since the file is unlikely to exist outside of CI
+        // (so the test will pass).
+        let definition = r#"
+            CREATE FUNCTION include_no_access()
+            RETURNS text AS $$
+                include!("/var/ci-stuff/secret_rust_files/const_foo.rs");
+                Ok(Some(format!("{BAR}")))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition).unwrap()
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_exists_external() {
+        // This file is created in CI, exists, and can be accessed by anybody,
+        // but the actual access is forbidden via
+        // `PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS`. We don't need to gate this test on
+        // CI, since the file is unlikely to exist outside of CI, so the test
+        // will pass anyway.
+        let definition = r#"
+            CREATE FUNCTION include_exists_external()
+            RETURNS text AS $$
+                include!("/var/ci-stuff/const_bar.rs");
+                Ok(Some(format!("{BAR}")))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition).unwrap();
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_made_up() {
+        // This file does not exist, and should be reported as such.
+        let definition = r#"
+            CREATE FUNCTION include_madeup()
+            RETURNS int AS $$
+                include!("/made/up/path/lol.rs");
+                Ok(Some(1))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition).unwrap();
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_path_traversal() {
+        use std::path::PathBuf;
+        let workdir = crate::gucs::work_dir();
+        let wd: PathBuf = workdir
+            .canonicalize()
+            .ok()
+            .expect("Failed to canonicalize workdir");
+        // Produce a path that looks like
+        // `/allowed/path/here/../../../illegal/path/here` and check that it's
+        // rejected, in order to ensure we are not succeptable to path traversal
+        // attacks.
+        let mut evil_path = wd.clone();
+        for _ in wd.ancestors().skip(1) {
+            evil_path.push("..");
+        }
+        debug_assert_eq!(
+            evil_path
+                .canonicalize()
+                .ok()
+                .expect("Failed to produce unpath")
+                .to_str(),
+            Some("/")
+        );
+        evil_path.push("var/ci-stuff/const_bar.rs");
+        // This file does not exist, and should be reported as such.
+        let definition = format!(
+            r#"CREATE FUNCTION include_sneaky_traversal()
+            RETURNS int AS $$
+                include!({evil_path:?});
+                Ok(Some(1))
+            $$ LANGUAGE plrust;"#
+        );
+        Spi::run(&definition).unwrap();
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     #[should_panic]
     fn plrust_block_unsafe_annotated() -> spi::Result<()> {
         // PL/Rust should block creating obvious, correctly-annotated usage of unsafe code

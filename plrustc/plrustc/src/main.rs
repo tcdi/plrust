@@ -12,17 +12,28 @@ extern crate rustc_span;
 
 use rustc_driver::Callbacks;
 use rustc_interface::interface;
+use rustc_session::parse::ParseSess;
+use rustc_span::source_map::FileLoader;
+use rustc_span::Symbol;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+
+const PLRUSTC_USER_CRATE_NAME: &str = "PLRUSTC_USER_CRATE_NAME";
+const PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS: &str = "PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS";
 
 mod lints;
 
 struct PlrustcCallbacks {
     lints_enabled: bool,
+    config: PlrustcConfig,
 }
 
-impl rustc_driver::Callbacks for PlrustcCallbacks {
+impl Callbacks for PlrustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
+        let cfg = self.config.clone();
+        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+            cfg.track(parse_sess);
+        }));
         if self.lints_enabled {
             let previous = config.register_lints.take();
             config.register_lints = Some(Box::new(move |sess, lint_store| {
@@ -70,14 +81,104 @@ fn main() {
         if wrapper_mode {
             args.remove(1);
         }
+
         run_compiler(
             args,
             &mut PlrustcCallbacks {
                 // FIXME SOMEDAY: check caplints?
                 lints_enabled: true,
+                config: PlrustcConfig::from_env_and_args(&orig_args),
             },
         );
     }))
+}
+
+#[derive(Debug, Clone)]
+struct PlrustcConfig {
+    // If `--crate-name` was provided, that.
+    crate_name_arg: Option<String>,
+    // PLRUSTC_USER_CRATE_NAME
+    plrust_user_crate_name: Option<String>,
+    // PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS
+    plrust_user_crate_allowed_source_paths: Option<String>,
+}
+
+impl PlrustcConfig {
+    fn from_env_and_args(args: &[String]) -> Self {
+        PlrustcConfig {
+            crate_name_arg: arg_value(args, "--crate-name").map(|s| s.to_string()),
+            plrust_user_crate_name: std::env::var(PLRUSTC_USER_CRATE_NAME).ok(),
+            plrust_user_crate_allowed_source_paths: std::env::var(
+                PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS,
+            )
+            .ok(),
+        }
+    }
+
+    fn compiling_user_crate(&self) -> bool {
+        if let (Some(current), Some(user)) = (
+            self.crate_name_arg.as_deref(),
+            self.plrust_user_crate_name.as_deref(),
+        ) {
+            current == user
+        } else {
+            false
+        }
+    }
+
+    fn track(&self, parse_sess: &mut ParseSess) {
+        if self.compiling_user_crate() {
+            parse_sess.env_depinfo.lock().insert((
+                Symbol::intern(PLRUSTC_USER_CRATE_NAME),
+                self.plrust_user_crate_name.as_deref().map(Symbol::intern),
+            ));
+            parse_sess.env_depinfo.lock().insert((
+                Symbol::intern(PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS),
+                self.plrust_user_crate_allowed_source_paths
+                    .as_deref()
+                    .map(Symbol::intern),
+            ));
+        }
+    }
+
+    fn make_file_loader(&self) -> Box<dyn FileLoader + Send + Sync> {
+        if !self.compiling_user_crate() {
+            Box::new(ErrorHidingFileLoader)
+        } else {
+            let Some(allowed) = self.plrust_user_crate_allowed_source_paths.as_deref() else {
+                eprintln!(
+                    "fatal error: if `{PLRUSTC_USER_CRATE_NAME}` is provided, \
+                    then `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` should also be provided",
+                );
+                std::process::exit(1);
+            };
+
+            // Should we add the cargo registry? The sysroot? Hm...
+            let allowed_source_dirs = std::env::split_paths(allowed).filter_map(|path| {
+                if !path.is_absolute() {
+                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains relative path: {allowed:?}");
+                    std::process::exit(1);
+                }
+                let path = path.canonicalize().ok()?;
+                let Some(pathstr) = path.to_str() else {
+                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains non-UTF-8 path: {allowed:?}");
+                    std::process::exit(1);
+                };
+                Some(pathstr.to_owned())
+            }).collect::<Vec<String>>();
+            if allowed_source_dirs.is_empty() {
+                eprintln!(
+                    "fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` was provided but \
+                    contained no paths which exist: {allowed:?}",
+                );
+                std::process::exit(1);
+            }
+
+            Box::new(PlrustcFileLoader {
+                allowed_source_dirs,
+            })
+        }
+    }
 }
 
 fn arg_value<'a, T: AsRef<str>>(args: &'a [T], find_arg: &str) -> Option<&'a str> {
@@ -93,6 +194,68 @@ fn arg_value<'a, T: AsRef<str>>(args: &'a [T], find_arg: &str) -> Option<&'a str
         }
     }
     None
+}
+
+struct ErrorHidingFileLoader;
+
+fn replacement_error() -> std::io::Error {
+    // Unix-ism, but non-unix could use `io::Error::from(ErrorKind::NotFound)`
+    // or something like that.
+    std::io::Error::from_raw_os_error(libc::ENOENT)
+}
+
+impl FileLoader for ErrorHidingFileLoader {
+    fn file_exists(&self, path: &Path) -> bool {
+        path.exists()
+    }
+    fn read_file(&self, path: &Path) -> std::io::Result<String> {
+        std::fs::read_to_string(path).map_err(|_| {
+            // TODO: Should there be a way to preserve errors for debugging?
+            replacement_error()
+        })
+    }
+}
+
+fn is_inside_root(root: &Path, child: &Path, allow_dirs: bool) -> Result<bool, ()> {
+    let root = root.canonicalize().map_err(|_| ())?;
+    let Some(root_canon_str) = root.to_str() else {
+        return Err(());
+    };
+    let child = child.canonicalize().map_err(|_| ())?;
+    let Some(child_canon_str) = child.to_str() else {
+        return Err(());
+    };
+    if !allow_dirs && child.is_dir() {
+        return Err(());
+    }
+    // FIXME: Do we care about case-insensitive file-systems?
+    Ok(child_canon_str.starts_with(root_canon_str))
+}
+
+struct PlrustcFileLoader {
+    allowed_source_dirs: Vec<String>,
+}
+
+impl PlrustcFileLoader {
+    fn is_allowed(&self, p: &Path, allow_dir: bool) -> bool {
+        self.allowed_source_dirs
+            .iter()
+            .any(|root| is_inside_root(root.as_ref(), p, allow_dir) == Ok(true))
+    }
+}
+
+impl FileLoader for PlrustcFileLoader {
+    fn file_exists(&self, path: &Path) -> bool {
+        self.is_allowed(path, true) && ErrorHidingFileLoader.file_exists(path)
+    }
+
+    fn read_file(&self, path: &Path) -> std::io::Result<String> {
+        if self.is_allowed(path, false) {
+            ErrorHidingFileLoader.read_file(path)
+        } else {
+            Err(replacement_error())
+        }
+    }
 }
 
 /// Get the sysroot, looking from most specific to this invocation to the
@@ -162,9 +325,13 @@ fn sysroot() -> Option<PathBuf> {
         .or_else(compiletime_rustup_sysroot)
 }
 
-fn run_compiler<CB: Callbacks + Send>(mut args: Vec<String>, callbacks: &mut CB) -> ! {
+fn run_compiler(mut args: Vec<String>, callbacks: &mut PlrustcCallbacks) -> ! {
     args.splice(1..1, std::iter::once("--cfg=plrustc".to_string()));
+
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&args, callbacks).run()
+        let file_loader = callbacks.config.make_file_loader();
+        let mut driver = rustc_driver::RunCompiler::new(&args, callbacks);
+        driver.set_file_loader(Some(file_loader));
+        driver.run()
     }));
 }

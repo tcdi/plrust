@@ -182,6 +182,7 @@ name = "plrustc"
 version = "1.0.0-rc.0"
 dependencies = [
  "compiletest_rs",
+ "libc",
  "once_cell",
 ]
 
