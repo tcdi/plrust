@@ -476,9 +476,10 @@ mod tests {
     fn plrustc_include_exists_no_access() {
         // This file is created in CI and exists, but can only be accessed by
         // root. Check that the actual access is reported as file not found (we
-        // should be ensuring that via `PLRUSTC_USER_CRATE_MAY_ACCESS`). We
-        // don't need to gate this test on CI, since the file is unlikely to
-        // exist outside of CI (so the test will pass).
+        // should be ensuring that via
+        // `PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS`). We don't need to gate
+        // this test on CI, since the file is unlikely to exist outside of CI
+        // (so the test will pass).
         let definition = r#"
             CREATE FUNCTION include_no_access()
             RETURNS text AS $$
@@ -496,7 +497,7 @@ mod tests {
     fn plrustc_include_exists_external() {
         // This file is created in CI, exists, and can be accessed by anybody,
         // but the actual access is forbidden via
-        // `PLRUSTC_USER_CRATE_MAY_ACCESS`. We don't need to gate this test on
+        // `PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS`. We don't need to gate this test on
         // CI, since the file is unlikely to exist outside of CI, so the test
         // will pass anyway.
         let definition = r#"

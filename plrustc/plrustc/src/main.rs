@@ -19,7 +19,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 const PLRUSTC_USER_CRATE_NAME: &str = "PLRUSTC_USER_CRATE_NAME";
-const PLRUSTC_USER_CRATE_MAY_ACCESS: &str = "PLRUSTC_USER_CRATE_MAY_ACCESS";
+const PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS: &str = "PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS";
 
 mod lints;
 
@@ -99,8 +99,8 @@ struct PlrustcConfig {
     crate_name_arg: Option<String>,
     // PLRUSTC_USER_CRATE_NAME
     plrust_user_crate_name: Option<String>,
-    // PLRUSTC_USER_CRATE_MAY_ACCESS
-    plrust_user_crate_may_access: Option<String>,
+    // PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS
+    plrust_user_crate_allowed_source_paths: Option<String>,
 }
 
 impl PlrustcConfig {
@@ -108,7 +108,10 @@ impl PlrustcConfig {
         PlrustcConfig {
             crate_name_arg: arg_value(args, "--crate-name").map(|s| s.to_string()),
             plrust_user_crate_name: std::env::var(PLRUSTC_USER_CRATE_NAME).ok(),
-            plrust_user_crate_may_access: std::env::var(PLRUSTC_USER_CRATE_MAY_ACCESS).ok(),
+            plrust_user_crate_allowed_source_paths: std::env::var(
+                PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS,
+            )
+            .ok(),
         }
     }
 
@@ -130,8 +133,8 @@ impl PlrustcConfig {
                 self.plrust_user_crate_name.as_deref().map(Symbol::intern),
             ));
             parse_sess.env_depinfo.lock().insert((
-                Symbol::intern(PLRUSTC_USER_CRATE_MAY_ACCESS),
-                self.plrust_user_crate_may_access
+                Symbol::intern(PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS),
+                self.plrust_user_crate_allowed_source_paths
                     .as_deref()
                     .map(Symbol::intern),
             ));
@@ -142,27 +145,30 @@ impl PlrustcConfig {
         if !self.compiling_user_crate() {
             Box::new(ErrorHidingFileLoader)
         } else {
-            let Some(allowed) = self.plrust_user_crate_may_access.as_deref() else {
-                eprintln!("fatal error: if `{PLRUSTC_USER_CRATE_NAME}` is provided, then `{PLRUSTC_USER_CRATE_MAY_ACCESS}` should also be provided");
+            let Some(allowed) = self.plrust_user_crate_allowed_source_paths.as_deref() else {
+                eprintln!(
+                    "fatal error: if `{PLRUSTC_USER_CRATE_NAME}` is provided, \
+                    then `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` should also be provided",
+                );
                 std::process::exit(1);
             };
 
             // Should we add the cargo registry? The sysroot? Hm...
             let allowed_source_dirs = std::env::split_paths(allowed).filter_map(|path| {
                 if !path.is_absolute() {
-                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains relative path: {allowed:?}");
+                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains relative path: {allowed:?}");
                     std::process::exit(1);
                 }
                 let path = path.canonicalize().ok()?;
                 let Some(pathstr) = path.to_str() else {
-                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains non-UTF-8 path: {allowed:?}");
+                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains non-UTF-8 path: {allowed:?}");
                     std::process::exit(1);
                 };
                 Some(pathstr.to_owned())
             }).collect::<Vec<String>>();
             if allowed_source_dirs.is_empty() {
                 eprintln!(
-                    "fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` was provided but \
+                    "fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` was provided but \
                     contained no paths which exist: {allowed:?}",
                 );
                 std::process::exit(1);

@@ -196,7 +196,7 @@ fn set_plrustc_vars(command: &mut Command, build: &FnBuild, target_dir: &Path) -
 
     // TODO: Allow extra dirs via a GUC? Support excluding dirs?
     let allowed_dirs = std::env::join_paths([crate_dir_str, target_dir_str])?;
-    command.env("PLRUSTC_USER_CRATE_MAY_ACCESS", allowed_dirs);
+    command.env("PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS", allowed_dirs);
 
     Ok(())
 }
