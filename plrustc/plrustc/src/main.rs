@@ -87,7 +87,7 @@ fn main() {
             &mut PlrustcCallbacks {
                 // FIXME SOMEDAY: check caplints?
                 lints_enabled: true,
-                config: PlrustcConfig::from_env_and_args(&orig_args, &sysroot),
+                config: PlrustcConfig::from_env_and_args(&orig_args),
             },
         );
     }))
@@ -97,8 +97,6 @@ fn main() {
 struct PlrustcConfig {
     // If `--crate-name` was provided, that.
     crate_name_arg: Option<String>,
-    // The detected sysroot
-    sysroot: String,
     // PLRUSTC_USER_CRATE_NAME
     plrust_user_crate_name: Option<String>,
     // PLRUSTC_USER_CRATE_MAY_ACCESS
@@ -106,12 +104,11 @@ struct PlrustcConfig {
 }
 
 impl PlrustcConfig {
-    fn from_env_and_args(args: &[String], sysroot: &str) -> Self {
+    fn from_env_and_args(args: &[String]) -> Self {
         PlrustcConfig {
             crate_name_arg: arg_value(args, "--crate-name").map(|s| s.to_string()),
             plrust_user_crate_name: std::env::var(PLRUSTC_USER_CRATE_NAME).ok(),
             plrust_user_crate_may_access: std::env::var(PLRUSTC_USER_CRATE_MAY_ACCESS).ok(),
-            sysroot: sysroot.into(),
         }
     }
 
@@ -150,29 +147,26 @@ impl PlrustcConfig {
                 std::process::exit(1);
             };
 
-            // Should we add the cargo registry? hm...
-            let sysroot_path = Path::new(&self.sysroot);
-            let cleaned_sysroot = sysroot_path
-                .canonicalize()
-                .or_else(|_| {
-                    use omnipath::posix::PosixPathExt;
-                    sysroot_path.posix_absolute()
-                })
-                .unwrap_or_else(|_| sysroot_path.to_owned());
-
-            let allowed_source_dirs = std::env::split_paths(allowed).chain(std::iter::once(cleaned_sysroot)).map(|path| {
+            // Should we add the cargo registry? The sysroot? Hm...
+            let allowed_source_dirs = std::env::split_paths(allowed).filter_map(|path| {
                 if !path.is_absolute() {
                     eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains relative path: {allowed:?}");
                     std::process::exit(1);
                 }
+                let path = path.canonicalize().ok()?;
                 let Some(pathstr) = path.to_str() else {
                     eprintln!("fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` contains non-UTF-8 path: {allowed:?}");
                     std::process::exit(1);
                 };
-                // Ensure it's disallowed if `/foo/bar/` is restricted when they
-                // try to access `/foo/bar`.
-                pathstr.trim_end_matches("/").to_string()
+                Some(pathstr.to_owned())
             }).collect::<Vec<String>>();
+            if allowed_source_dirs.is_empty() {
+                eprintln!(
+                    "fatal error: `{PLRUSTC_USER_CRATE_MAY_ACCESS}` was provided but \
+                    contained no paths which exist: {allowed:?}",
+                );
+                std::process::exit(1);
+            }
 
             Box::new(PlrustcFileLoader {
                 allowed_source_dirs,
@@ -216,36 +210,41 @@ impl FileLoader for ErrorHidingFileLoader {
     }
 }
 
+fn is_inside_root(root: &Path, child: &Path, allow_dirs: bool) -> Result<bool, ()> {
+    let root = root.canonicalize().map_err(|_| ())?;
+    let Some(root_canon_str) = root.to_str() else {
+        return Err(());
+    };
+    let child = child.canonicalize().map_err(|_| ())?;
+    let Some(child_canon_str) = child.to_str() else {
+        return Err(());
+    };
+    if !allow_dirs && child.is_dir() {
+        return Err(());
+    }
+    // FIXME: Do we care about case-insensitive file-systems?
+    Ok(child_canon_str.starts_with(root_canon_str))
+}
+
 struct PlrustcFileLoader {
     allowed_source_dirs: Vec<String>,
 }
 
 impl PlrustcFileLoader {
-    fn absify_path(&self, p: &Path) -> std::io::Result<PathBuf> {
-        p.canonicalize().or_else(|_| {
-            use omnipath::posix::PosixPathExt;
-            p.posix_absolute()
-        })
-    }
-
-    fn is_allowed(&self, p: &Path) -> bool {
-        let Ok(abs) = self.absify_path(p) else {
-            return false;
-        };
-        let Some(s) = abs.to_str() else {
-            return false;
-        };
-        self.allowed_source_dirs.iter().any(|d| s.starts_with(d))
+    fn is_allowed(&self, p: &Path, allow_dir: bool) -> bool {
+        self.allowed_source_dirs
+            .iter()
+            .any(|root| is_inside_root(root.as_ref(), p, allow_dir) == Ok(true))
     }
 }
 
 impl FileLoader for PlrustcFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
-        self.is_allowed(path) && ErrorHidingFileLoader.file_exists(path)
+        self.is_allowed(path, true) && ErrorHidingFileLoader.file_exists(path)
     }
 
     fn read_file(&self, path: &Path) -> std::io::Result<String> {
-        if self.is_allowed(path) {
+        if self.is_allowed(path, false) {
             ErrorHidingFileLoader.read_file(path)
         } else {
             Err(replacement_error())
