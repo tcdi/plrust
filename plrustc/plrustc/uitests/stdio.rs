@@ -17,3 +17,8 @@ fn _baz() {
     use std::io::stdout as renamed;
     let _still_forbidden = renamed();
 }
+
+fn _quux() {
+    let as_func = std::io::stdout;
+    let _also_forbidden = as_func();
+}
