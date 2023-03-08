@@ -103,6 +103,7 @@ fn main() {
     rustc_driver::init_rustc_env_logger();
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
         let orig_args: Vec<String> = std::env::args().collect();
+        let orig_args = rustc_driver::args::arg_expand_all(&orig_args);
 
         let sysroot_arg = arg_value(&orig_args, "--sysroot");
         let have_sysroot_arg = sysroot_arg.is_some();
