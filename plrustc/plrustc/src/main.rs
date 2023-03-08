@@ -10,6 +10,7 @@ extern crate rustc_lint_defs;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use once_cell::sync::Lazy;
 use rustc_driver::Callbacks;
 use rustc_interface::interface;
 use rustc_session::parse::ParseSess;
@@ -20,6 +21,8 @@ use std::path::{Path, PathBuf};
 
 const PLRUSTC_USER_CRATE_NAME: &str = "PLRUSTC_USER_CRATE_NAME";
 const PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS: &str = "PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS";
+
+const PLRUSTC_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 mod lints;
 
@@ -46,8 +49,57 @@ impl Callbacks for PlrustcCallbacks {
     }
 }
 
+fn install_ice_hook() {
+    fn report_plrustc_ice(info: &std::panic::PanicInfo<'_>, bug_report_url: &str) {
+        // Invoke the default panic handler to print the message and (possibly) a back trace
+        (*PANIC_HOOK)(info);
+        // Separate output with an empty line
+        eprintln!();
+
+        let fallback_bundle =
+            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
+            rustc_errors::ColorConfig::Auto,
+            None,
+            None,
+            fallback_bundle,
+            false,
+            false,
+            None,
+            false,
+            false,
+        ));
+        let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
+
+        // Don't need to print anything extra for ExplicitBug
+        if !info.payload().is::<rustc_errors::ExplicitBug>() {
+            let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
+            handler.emit_diagnostic(&mut d);
+        }
+        handler.note_without_error("`plrustc` unexpectedly panicked. This is probably a bug.");
+        handler.note_without_error(&format!("Please file a bug report at <{bug_report_url}>"));
+        handler.note_without_error(&format!("plrustc version: {PLRUSTC_VERSION}"));
+
+        // If backtraces are enabled, also print the query stack
+        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+
+        let num_frames = if backtrace { None } else { Some(2) };
+
+        interface::try_print_query_stack(&handler, num_frames);
+    }
+
+    type PanicCallback = Box<dyn Fn(&std::panic::PanicInfo<'_>) + Sync + Send + 'static>;
+    static PANIC_HOOK: Lazy<PanicCallback> = Lazy::new(|| {
+        let hook = std::panic::take_hook();
+        let bug_report_url = "https://github.com/tcdi/plrust/issues/new";
+        std::panic::set_hook(Box::new(|info| report_plrustc_ice(info, bug_report_url)));
+        hook
+    });
+    Lazy::force(&PANIC_HOOK);
+}
+
 fn main() {
-    rustc_driver::install_ice_hook();
+    install_ice_hook();
     rustc_driver::init_rustc_env_logger();
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
         let orig_args: Vec<String> = std::env::args().collect();
