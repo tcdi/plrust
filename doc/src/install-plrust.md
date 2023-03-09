@@ -2,28 +2,40 @@
 
 > This documentation is under development.
 
-These instructions explain how to install `plrust` on a typical OS PostgreSQL
+These instructions explain how to install PL/Rust on a typical OS PostgreSQL
 installation installed using the OS' package manager. These instructions
-include steps for trusted and untrusted `plrust` and are tested
-using Ubuntu 22.04 and PostgreSQL 15.
+include steps for [trusted and untrusted](trusted-untrusted.md)
+`plrust` and are tested using Ubuntu 22.04 and PostgreSQL 15.
 PostgreSQL 15 for this document is installed using `apt` using
 the `pgdg` repository.
 See the [PostgreSQL apt wiki page](https://wiki.postgresql.org/wiki/Apt)
 for instructions.
 
+Steps to install PL/Rust:
+
+* Prerequisites
+* Install Rust
+* Install pgx
+* Install PL/Rust
+* Create amazing things!
 
 ## Prerequisites
 
-Install PostgreSQL and all prerequisites outlined for
-[pgx](https://github.com/tcdi/pgx#system-requirements).
-Pay special attention to PostgreSQL's build dependencies.
+PL/Rust requires PostgreSQL and all prerequisites outlined for
+[pgx](https://github.com/tcdi/pgx#system-requirements)
+are installed.
+Pay special attention to
+[PostgreSQL's build dependencies](https://wiki.postgresql.org/wiki/Compile_and_Install_from_source_code).
 
-## Permissions
 
-These instructions install `rustc`, `pgx`, and `plrust` as the
-Linux `postgres` user created during the PostgreSQL installation.
-For `pgx`` to successfully install `plrust`, the `postgres`
+### Permissions
+
+Installing PL/Rust with these instructions installs `rustc`, `pgx`,
+and `plrust` as the Linux `postgres` user.  The `postgres` user
+is created during the standard PostgreSQL installation via `apt`.
+For `pgx` to successfully install `plrust`, the `postgres`
 user needs ownership of the `extension` and `lib` directories.
+The standard Ubuntu locations are indicated below.
 
 
 ```bash
@@ -31,23 +43,32 @@ sudo chown postgres -R /usr/share/postgresql/15/extension/
 sudo chown postgres -R /usr/lib/postgresql/15/lib/
 ```
 
+These permissions are later reset back to being owned by `root`
+in the [Reset Permissions](#reset-permissions) section.
+
 ## Install `rustc`
 
-Switch to the `postgres` user and change into its home directory
-`/var/lib/postgresql/`.
+Installing PL/Rust requires that the `rustc` compiler is available
+to the user installing it.
+Switch to the `postgres` Linux user and change into its home directory.
+
 
 ```bash
 sudo su - postgres
 ```
 
-Install `rustc` using `rustup`.
+The typically installation for `rustc` uses `curl` and `rustup`.
+If you want to install `rustc` without using `rustup` see the
+[Other Rust installation methods](https://forge.rust-lang.org/infra/other-installation-methods.html)
+page.
+
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-The `rustup` installer will prompt you for an installation choice.  The
-default installation should work for most use cases.
+The `rustup` installer prompts for an installation choice.  The
+default installation (1) should work for most use cases.
 
 ```bash
 1) Proceed with installation (default)
@@ -57,7 +78,7 @@ default installation should work for most use cases.
 
 
 After installing rust, use `exit` to log out and back in to the `postgres`
-account.  This ensures your terminal is using the newy installed
+account.  This ensures your terminal is using the newly installed
 `rustc` installation.
 
 ```bash
@@ -66,11 +87,17 @@ exit
 sudo su - postgres
 ```
 
-## Clone `plrust` and check Rust version
+### Clone `plrust` and check Rust version
+
+PL/Rust is installed from source code using pgx.  This installation
+requires that pgx is compiled using a specific version of `rustc`.
+The `rustc` version required for PL/Rust is defined in the project's
+[`rust-toolchain.toml`](https://github.com/tcdi/plrust/blob/main/rust-toolchain.toml).
+The steps below ensure the proper versions are used.
 
 Clone the `plrust` repo from GitHub and change into the `plrust/plrust`
-directory. Running `rustc -V` in this location ensures the version reported
-is the version defined by PL/Rust's `rust-toolchain.toml`.
+directory. Running `rustc -V` in this location is used to verify
+the version reported is by `rustc -V` is the version defined by PL/Rust.
 
 ```bash
 git clone https://github.com/tcdi/plrust.git
@@ -84,41 +111,45 @@ The output from `rustc -V` should look similar to the following example.
 rustc 1.67.1 (d5a82bbd2 2023-02-07)
 ```
 
-Check the default version reported by `rustup default`.
-You should see the version number reported in by `rustc -V` in
+Use `rustup default` to check that the explicit version of `rustc` is
+selected.
+You need to see the version number reported in by `rustc -V` in
 your `rustup default` output.
 
 
 ```bash
 rustup default
-stable-x86_64-unknown-linux-gnu (default)
 ```
 
+The expected output is below.
 
-If the above check reports the `stable` version or a different version
-number reported compared to `rustc -V`, you need to change the default
-`rustup` version.
+```
+1.67.1-x86_64-unknown-linux-gnu (default)
+```
+
+If `rustup default` returns a different version number or `stable`,
+set the default version as shown below and check that the output
+updates accordingly.
+
 
 ```bash
 rustup default 1.67.1
 rustup default
 ```
 
-The `rustup default` check now reports 1.67.1.
-
-```
-1.67.1-x86_64-unknown-linux-gnu (default)
-```
 
 
-### Note on Rust versions
+### Be careful with Rust versions
 
-The above checks of `rustc -V` and `rustup default` are important to do
-before installing `pgx` and `plrust`.
+
+> **WARNING!** The `stable` version of `rustc` cannot be used to install Trusted PL/Rust.  This is the case even when the `stable` version is identical to the tagged version number, such as `1.67.1`.
+
+
+The above checks of `rustc -V` and `rustup default` are important to
+follow before installing pgx and PL/Rust.
 You must install `pgx` with the version of `rustc` that `plrust` expects
 in the `rust-toolchain.toml`.  Failing to do so will result in a
 mismatched version error in a subsequent step.
-
 
 A misconfigured `rustup default` results in
 errors when creating functions with trusted PL/Rust. The error can
@@ -272,7 +303,8 @@ sudo chown root -R /usr/lib/postgresql/15/lib/
 
 ## Try it out
 
-Create a `plrust` database and connect to it using `psql`.
+Create a `plrust` database and connect to the `plrust` database
+using `psql`.
 
 
 ```bash
@@ -295,7 +327,8 @@ in this step.
 WARNING:  plrust is **NOT** compiled to be a trusted procedural language
 ```
 
-Create a test extension using `plrust`.
+The following example creates a `plrust` function named `plrust.one()`
+that simply returns the integer 1.
 
 
 ```sql
@@ -307,14 +340,14 @@ $$
 $$;
 ```
 
-Using a function created with PL/Rust is the same as any other
-PostgreSQL function.
+Using a function created with PL/Rust is the same as using any other
+PostgreSQL function.  A scalar function like `plrust.one()` can
+be used simply like below.
 
 
 ```sql
 SELECT plrust.one();
 ```
-
 
 ```
 ┌─────┐
@@ -323,4 +356,6 @@ SELECT plrust.one();
 │   1 │
 └─────┘
 ```
+
+
 
