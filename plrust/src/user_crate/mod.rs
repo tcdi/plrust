@@ -431,8 +431,10 @@ mod tests {
             let target_dir = crate::gucs::work_dir();
 
             let variant = {
-                let argument_oids_and_names =
-                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
+                let argument_oids_and_names = vec![(
+                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
+                    syn::parse_str("arg0")?,
+                )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;

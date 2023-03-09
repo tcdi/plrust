@@ -9,7 +9,6 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use crate::{user_crate::oid_to_syn_type, PlRustError};
 use eyre::WrapErr;
 use pgx::PgOid;
-use proc_macro2::{Ident, Span};
 use quote::quote;
 
 /// What kind of PL/Rust function must be built
@@ -35,14 +34,13 @@ pub(crate) enum CrateVariant {
 impl CrateVariant {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn function(
-        argument_oids_and_names: Vec<(PgOid, Option<String>)>,
+        argument_oids_and_names: Vec<(PgOid, syn::Ident)>,
         return_oid: PgOid,
         return_set: bool,
         is_strict: bool,
     ) -> eyre::Result<Self> {
         let mut arguments = Vec::new();
-        for (idx, (argument_oid, maybe_arg_name)) in argument_oids_and_names.into_iter().enumerate()
-        {
+        for (argument_oid, arg_name) in argument_oids_and_names.into_iter() {
             let rust_type: syn::Type = {
                 let bare = oid_to_syn_type(&argument_oid, false)?;
                 match is_strict {
@@ -54,10 +52,6 @@ impl CrateVariant {
                 }
             };
 
-            let arg_name = match maybe_arg_name.as_deref() {
-                Some("") | None => Ident::new(&format!("arg{}", idx), Span::call_site()),
-                Some(argument_name) => Ident::new(&argument_name.clone(), Span::call_site()),
-            };
             let rust_pat_type: syn::FnArg = syn::parse2(quote! {
                 #arg_name: #rust_type
             })

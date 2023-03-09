@@ -1142,6 +1142,29 @@ mod tests {
         assert_eq!("operation not supported on this platform", &string);
         Ok(())
     }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "PL/Rust does not support unnamed arguments")]
+    fn unnamed_args() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION unnamed_arg(int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "PL/Rust does not support unnamed arguments")]
+    fn named_unnamed_args() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION named_unnamed_arg(bob text, int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(
+        expected = "is an invalid Rust identifier and cannot be used as an argument name"
+    )]
+    fn invalid_arg_identifier() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION invalid_arg_identifier(\"this isn't a valid rust identifier\" int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]

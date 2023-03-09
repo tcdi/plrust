@@ -355,8 +355,10 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names =
-                    vec![(PgOid::from(PgBuiltInOids::TEXTOID.value()), None)];
+                let argument_oids_and_names = vec![(
+                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
+                    syn::parse_str("arg0")?,
+                )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
@@ -426,7 +428,7 @@ mod tests {
             let variant = {
                 let argument_oids_and_names = vec![(
                     PgOid::from(PgBuiltInOids::INT4OID.value()),
-                    Some("val".into()),
+                    syn::parse_str("val")?,
                 )];
                 let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
                 let is_strict = false;
@@ -497,7 +499,7 @@ mod tests {
             let variant = {
                 let argument_oids_and_names = vec![(
                     PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    Some("val".into()),
+                    syn::parse_str("val")?,
                 )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
