@@ -10,6 +10,8 @@ not interpreted.
 The top advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance,
 access to Rust's large development ecosystem, and Rust's compile-time safety guarantees.
 
+PL/Rust is Open Source and [actively developed on GitHub](https://github.com/tcdi/plrust).
+
 ## Features
 
 PL/Rust provides access to Postgres' Server Programming Interface (SPI) including dynamic queries, prepared
