@@ -13,8 +13,8 @@ use std::str::FromStr;
 
 use once_cell::sync::Lazy;
 use pgx::guc::{GucContext, GucRegistry, GucSetting};
-use pgx::pg_sys;
 use pgx::pg_sys::AsPgCStr;
+use pgx::{pg_sys, GucFlags};
 
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 use crate::{target, DEFAULT_LINTS};
@@ -57,6 +57,7 @@ pub(crate) fn init() {
         "The directory where pl/rust will build functions with cargo",
         &PLRUST_WORK_DIR,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -64,7 +65,9 @@ pub(crate) fn init() {
           "The $PATH setting to use for building plrust user functions",
           "It may be necessary to override $PATH in order to find compilation dependencies such as `cargo`, `cc`, etc",
           &PLRUST_PATH_OVERRIDE,
-          GucContext::Sighup);
+          GucContext::Sighup,
+          GucFlags::default(),
+    );
 
     GucRegistry::define_string_guc(
         "plrust.tracing_level",
@@ -72,6 +75,7 @@ pub(crate) fn init() {
         "The tracing level to use while running pl/rust. Should be `error`, `warn`, `info`, `debug`, or `trace`",
         &PLRUST_TRACING_LEVEL,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -80,6 +84,7 @@ pub(crate) fn init() {
         "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions",
         &PLRUST_ALLOWED_DEPENDENCIES,
         GucContext::Postmaster,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -88,6 +93,7 @@ pub(crate) fn init() {
         "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecture",
         &PLRUST_COMPILATION_TARGETS,
         GucContext::Postmaster,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -96,6 +102,7 @@ pub(crate) fn init() {
         "If unspecified, PL/Rust will use a set of defaults",
         &PLRUST_COMPILE_LINTS,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -104,6 +111,7 @@ pub(crate) fn init() {
         "If unspecified, PL/Rust will use a set of defaults",
         &PLRUST_REQUIRED_LINTS,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -112,6 +120,7 @@ pub(crate) fn init() {
         "If unspecified, the default is the version found when compiling plrust itself",
         &PLRUST_TRUSTED_PGX_VERSION,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 }
 
