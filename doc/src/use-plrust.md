@@ -1,9 +1,13 @@
 # PL/Rust Functions and Arguments
 
-To create a function in the PL/Rust language,
-use the standard [`CREATE FUNCTION`](https://www.postgresql.org/docs/current/sql-createfunction.html)
-syntax.
+PL/Rust functions are created with the standard
+[`CREATE FUNCTION`](https://www.postgresql.org/docs/current/sql-createfunction.html)
+syntax and `LANGUAGE plrust`.
+This section provides examples how to create a variety
+of function using PL/Rust.
 
+
+The basic function structure is shown in the following example.
 
 ```sql
 CREATE FUNCTION funcname (argument-list)
@@ -14,34 +18,27 @@ AS $$
 $$ LANGUAGE plrust;
 ```
 
-The body of the function is ordinary Rust code. At
-`CREATE FUNCTION` time the Rust code is complied using the `pgx`
-framework. This compile process does take a bit of time
-so anonymous blocks (`DO` blocks) are not supported at this time.
+The body of the function is ordinary
+Rust code. When the `CREATE FUNCTION` is ran the Rust code is
+complied using the `pgx` framework.
+This compile process can take a bit of time.
+The compile time required is one reason anonymous blocks (`DO` blocks)
+are not supported at this time.
 
 The syntax of the `CREATE FUNCTION` command requires the function
 body to be written as a string constant. It is usually most convenient 
-to use dollar quoting (see [Section 4.1.2.4](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING))
+to use dollar quoting (`$$`, see [Section 4.1.2.4](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING))
 for the string constant. If you choose to use escape string syntax
 `E''`, you must double any single quote marks (') and
 backslashes (\) used in the body of the function (see
 [Section 4.1.2.1](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS)).
 
 
-
 ## Basic PL/Rust Example
 
-Create a schema for `plrust` objects.  This is not required, though is
-used throughout the PL/Rust documentation.
 
-```sql
-CREATE SCHEMA IF NOT EXISTS plrust;
-```
-
-
-The following example creates a basic `plrust`
-function named `one()` to simply returns the
-integer `1`.
+The following example creates a basic `plrust` function named
+`plrust.one()` to simply returns the integer `1`.
 
 
 ```sql
@@ -58,9 +55,10 @@ $$
 
 ## Function with parameters
 
-The next example creates a function named `strlen` that accepts a parameter
-named `val`. The function returns a `BIGINT` representing the character
-count of the text in `val`.
+The following example creates a function named `plrust.strlen`
+that accepts one parameter named `val`. The function returns a `BIGINT` representing the length of the text in `val`.  The variable names
+defined in the function definition can be used directly in the Rust
+code within the function's body.
 
 ```sql
 CREATE FUNCTION plrust.strlen(val TEXT)
@@ -70,21 +68,6 @@ AS $$
     Ok(Some(val.unwrap().len() as i64))
 $$;
 ```
-
-The above example used `unwrap()` to parse the text variable.
-Changing the function definition to include `STRICT` avoids the need to use
-`unwrap()`.  The following example works the same as above.
-
-
-```sql
-CREATE FUNCTION plrust.strlen(val TEXT)
-    RETURNS BIGINT
-    LANGUAGE plrust STRICT
-AS $$
-    Ok(Some(val.len() as i64))
-$$;
-```
-
 
 Using the `strlen()` function works as expected.
 
@@ -101,15 +84,42 @@ SELECT plrust.strlen('Hello, PL/Rust');
 ```
 
 
-Function arguments are not required to have a name.
+The `plrust.strlen` function above used `unwrap()` to parse the
+text variable. Changing the function definition to include `STRICT`
+avoids the need to use `unwrap()`.  The following version
+of `plrust.strlen` works the same as above.
+
 
 ```sql
-SELECT example FROM future WHERE coming_soon;
+    CREATE FUNCTION plrust.strlen(val TEXT)
+    RETURNS BIGINT
+    LANGUAGE plrust STRICT
+AS $$
+    Ok(Some(val.len() as i64))
+$$;
 ```
+
+
+### Functions with anonymous parameters not allowed
+
+PL/Rust functions with parameters require named parameters.
+This is different from functions written in other languages,
+such as SQL where `strlen(TEXT, INT)` allows the use of
+`$1` and `$2` within the function body.
+
+https://www.postgresql.org/docs/current/sql-createfunction.html
+
+
+The succinct reason anonymous parameters are not allowed is because
+"It does not align with Rust."  Requiring named parameters
+keeps functionality simple, direct and obvious.
+
+One of the reasons people use Rust is because of the quality of the compiler's feedback on incorrect code. Allowing anonymous parameters would ultimately require transforming the code in a way that would either result in potentially garbled error messages, or arbitrarily restricting what sets of identifiers can be used. Simply requiring identifiers skips all of that.
+
 
 ## Calculations
 
-Of course, `plrust` functions can performance calculations such as converting
+PL/Rust functions can performance calculations, such as converting
 distance values from feet to miles.
 
 ```sql
