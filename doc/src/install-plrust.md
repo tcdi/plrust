@@ -259,7 +259,8 @@ cargo pgx install --release --features trusted -c /usr/bin/pg_config
 
 ### Untrusted install
 
-To install untrusted PL/Rust use `cargo pgx install`.
+To install untrusted PL/Rust use `cargo pgx install`
+without `--features trusted`.
 
 ```bash
 cargo pgx install --release -c /usr/bin/pg_config

@@ -19,8 +19,9 @@ The creation of this function will fail as its use of a forbidden operation will
 Sometimes it is desirable to write Rust functions that are not restricted.
 To handle these cases, PL/Rust can also be installed as an "untrusted" language.
 In this case the full Rust language is available including `unsafe` code.
-See the [Development Installation](install-plrust-dev.md) for steps to installing
-untrusted PL/Rust.
+See the
+[Untrusted install section](install-plrust.md#untrusted-install)
+for steps to install untrusted PL/Rust.
 
 The writer of an untrusted PL/Rust function must take care that the function cannot be used to do anything unwanted, since it will be able to do anything that could be done by a user logged in as the database administrator. Note that the database system allows only database superusers to create functions in untrusted languages.
 
