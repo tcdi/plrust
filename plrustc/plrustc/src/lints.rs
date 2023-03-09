@@ -3,13 +3,47 @@ use once_cell::sync::Lazy;
 use rustc_ast as ast;
 use rustc_hir as hir;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext, LintStore};
-use rustc_lint_defs::{declare_lint, declare_lint_pass, Lint, LintId};
+use rustc_lint_defs::{declare_lint_pass, Lint, LintId};
 use rustc_session::Session;
-use rustc_span::{hygiene::ExpnData, Span, Symbol};
+use rustc_span::hygiene::ExpnData;
+use rustc_span::{Span, Symbol};
 
-declare_lint!(
+macro_rules! declare_plrust_lint {
+    (
+        $(#[$attr:meta])*
+        $v:vis $NAME:ident,
+        $desc:expr $(,)?
+    ) => {
+        rustc_lint_defs::declare_lint! (
+            $(#[$attr])*
+            $v $NAME,
+            Allow,
+            $desc,
+            report_in_external_macro
+        );
+    };
+}
+
+/// `sym!(foo)` is shorthand for `Symbol::intern("foo")`
+///
+/// We *technically* could use `rustc_span::sym::$id` in some cases, but
+/// rust-analyzer false-positives coupled with how often the set of symbols
+/// changes... it feels like it could be a genuine maintenance issue to do that.
+macro_rules! sym {
+    ($id:ident) => {
+        Symbol::intern(stringify!($id))
+    };
+}
+
+// `sympath!(foo::bar)` is shorthand for `[sym!(foo), sym!(bar)]`
+// macro_rules! sympath {
+//     ($($component:ident)::+) => {
+//         [$(sym!($component)),+]
+//     };
+// }
+
+declare_plrust_lint!(
     pub(crate) PLRUST_EXTERN_BLOCKS,
-    Allow,
     "Disallow extern blocks"
 );
 
@@ -28,9 +62,8 @@ impl<'tcx> LateLintPass<'tcx> for NoExternBlockPass {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
-    Allow,
     "Disallow lifetime parameterized traits"
 );
 
@@ -52,39 +85,64 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeParamTraitPass {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_FILESYSTEM_MACROS,
-    Allow,
     "Disallow `include_str!`, and `include_bytes!`",
 );
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_ENV_MACROS,
-    Allow,
     "Disallow `env!`, and `option_env!`",
 );
 
 declare_lint_pass!(PlrustBuiltinMacros => [PLRUST_FILESYSTEM_MACROS]);
-
 impl PlrustBuiltinMacros {
+    fn lint_fs(&self, cx: &LateContext<'_>, sp: Span) {
+        cx.lint(
+            PLRUST_FILESYSTEM_MACROS,
+            "the `include_str`, `include_bytes`, and `include` macros are forbidden",
+            |b| b.set_span(sp),
+        );
+    }
+    fn lint_env(&self, cx: &LateContext<'_>, sp: Span) {
+        cx.lint(
+            PLRUST_ENV_MACROS,
+            "the `env` and `option_env` macros are forbidden",
+            |b| b.set_span(sp),
+        );
+    }
     fn check_span(&mut self, cx: &LateContext<'_>, span: Span) {
-        if is_macro_with_diagnostic_item(
-            cx,
-            span,
-            &["include_str_macro", "include_bytes_macro", "include_macro"],
-        ) {
-            cx.lint(
-                PLRUST_FILESYSTEM_MACROS,
-                "the `include_str`, `include_bytes`, and `include` macros are forbidden",
-                |b| b.set_span(span),
-            );
+        let fs_diagnostic_items = [
+            sym!(include_str_macro),
+            sym!(include_bytes_macro),
+            sym!(include_macro),
+        ];
+        if let Some((s, ..)) = check_span_against_macro_diags(cx, span, &fs_diagnostic_items) {
+            self.lint_fs(cx, s);
+            return;
         }
-        if is_macro_with_diagnostic_item(cx, span, &["env_macro", "option_env_macro"]) {
-            cx.lint(
-                PLRUST_ENV_MACROS,
-                "the `env`, `option_env` macros are forbidden",
-                |b| b.set_span(span),
-            );
+        let fs_def_paths: &[&[Symbol]] = &[
+            &[sym!(core), sym!(macros), sym!(builtin), sym!(include)],
+            &[sym!(core), sym!(macros), sym!(builtin), sym!(include_bytes)],
+            &[sym!(core), sym!(macros), sym!(builtin), sym!(include_str)],
+        ];
+        if let Some((s, ..)) = check_span_against_macro_def_paths(cx, span, &fs_def_paths) {
+            self.lint_fs(cx, s);
+            return;
+        }
+
+        let env_diagnostic_items = [sym!(env_macro), sym!(option_env_macro)];
+        if let Some((s, ..)) = check_span_against_macro_diags(cx, span, &env_diagnostic_items) {
+            self.lint_env(cx, s);
+            return;
+        }
+        let env_def_paths: &[&[Symbol]] = &[
+            &[sym!(core), sym!(macros), sym!(builtin), sym!(env)],
+            &[sym!(core), sym!(macros), sym!(builtin), sym!(option_env)],
+        ];
+        if let Some((s, ..)) = check_span_against_macro_def_paths(cx, span, &env_def_paths) {
+            self.lint_env(cx, s);
+            return;
         }
     }
 }
@@ -93,23 +151,13 @@ impl<'tcx> LateLintPass<'tcx> for PlrustBuiltinMacros {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item) {
         self.check_span(cx, item.span)
     }
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &hir::Stmt) {
+        self.check_span(cx, stmt.span)
+    }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
         self.check_span(cx, expr.span)
     }
 }
-
-fn is_macro_with_diagnostic_item(cx: &LateContext<'_>, span: Span, diag_items: &[&str]) -> bool {
-    let expr_expn_data = span.ctxt().outer_expn_data();
-    let outermost_expn_data = outermost_expn_data(expr_expn_data);
-    let Some(macro_def_id) = outermost_expn_data.macro_def_id else {
-        return false;
-    };
-    let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
-        return false;
-    };
-    diag_items.contains(&name.as_str())
-}
-
 fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
     if expn_data.call_site.from_expansion() {
         outermost_expn_data(expn_data.call_site.ctxt().outer_expn_data())
@@ -118,9 +166,8 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_STDIO,
-    Allow,
     "Disallow functions like `io::{stdout, stderr, stdin}`",
 );
 
@@ -145,61 +192,117 @@ impl<'tcx> LateLintPass<'tcx> for PlrustPrintFunctions {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_PRINT_MACROS,
-    Allow,
     "Disallow `print!`, `println!`, `eprint!` and `eprintln!`",
 );
 
 declare_lint_pass!(PlrustPrintMacros => [PLRUST_PRINT_MACROS]);
 
+impl PlrustPrintMacros {
+    fn check_span(&self, cx: &LateContext<'_>, srcspan: Span) {
+        let diagnostic_items = [
+            sym!(print_macro),
+            sym!(eprint_macro),
+            sym!(println_macro),
+            sym!(eprintln_macro),
+            sym!(dbg_macro),
+        ];
+        if let Some((span, _which, _did)) =
+            check_span_against_macro_diags(cx, srcspan, &diagnostic_items)
+        {
+            self.fire(cx, span);
+        };
+    }
+    fn fire(&self, cx: &LateContext<'_>, span: Span) {
+        cx.lint(
+            PLRUST_PRINT_MACROS,
+            "the printing macros are forbidden, consider using `log!()` instead",
+            |b| b.set_span(span),
+        );
+    }
+}
 impl<'tcx> LateLintPass<'tcx> for PlrustPrintMacros {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
-        for expn_data in all_expn_data(&expr) {
-            let Some(macro_def_id) = expn_data.macro_def_id else {
-                continue;
-            };
-            let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) else {
-                continue;
-            };
-            let diagnostic_items = [
-                "print_macro",
-                "eprint_macro",
-                "println_macro",
-                "eprintln_macro",
-                "dbg_macro",
-            ];
-            if !diagnostic_items.contains(&name.as_str()) {
-                continue;
-            }
-            cx.lint(
-                PLRUST_PRINT_MACROS,
-                "the printing macros are forbidden, consider using `log!()` instead",
-                |b| b.set_span(expr.span),
-            );
-            break;
-        }
+    fn check_item(&mut self, cx: &LateContext<'tcx>, h: &hir::Item) {
+        self.check_span(cx, h.span);
+    }
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, h: &hir::Stmt) {
+        self.check_span(cx, h.span);
+    }
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, h: &hir::Expr) {
+        self.check_span(cx, h.span);
     }
 }
 
-// TODO: would be a lot better to do as an iterator, but that's also a lot more
-// code... 🤷‍♂️
-fn all_expn_data(expr: &hir::Expr) -> Vec<ExpnData> {
-    let mut expn_data = expr.span.ctxt().outer_expn_data();
-    let mut v = vec![];
+fn check_span_against_macro_def_paths(
+    cx: &LateContext<'_>,
+    srcspan: Span,
+    def_paths: &[&[Symbol]],
+) -> Option<(Span, usize, DefId)> {
+    let (which, defid) = iter_expn_data(srcspan).find_map(|expndata| {
+        let Some(did) = expndata.macro_def_id else {
+            return None;
+        };
+        let macro_def_path = cx.get_def_path(did);
+        def_paths
+            .iter()
+            .position(|&defpath| defpath == macro_def_path.as_slice())
+            .map(|pos| (pos, did))
+    })?;
+    let outermost_span = outermost_expn_data(srcspan.ctxt().outer_expn_data()).call_site;
+    Some((outermost_span, which, defid))
+}
+
+// #[cfg(any())]
+fn iter_expn_data(span: Span) -> impl Iterator<Item = ExpnData> {
+    let mut next = Some(span.ctxt().outer_expn_data());
+    std::iter::from_fn(move || {
+        let curr = next.take()?;
+        next = curr
+            .call_site
+            .from_expansion()
+            .then_some(curr.call_site.ctxt().outer_expn_data());
+        Some(curr)
+    })
+}
+/// Note: this is error-prone!
+fn outer_macro_call_matching<'tcx, F, T>(
+    cx: &LateContext<'tcx>,
+    span: Span,
+    mut matches: F,
+) -> Option<(Span, T, DefId)>
+where
+    F: FnMut(DefId, Option<Symbol>) -> Option<T>,
+{
+    let mut expn = span.ctxt().outer_expn_data();
+    let mut found = None::<(T, DefId)>;
     loop {
-        v.push(expn_data.clone());
-        if expn_data.call_site.from_expansion() {
-            expn_data = expn_data.call_site.ctxt().outer_expn_data();
-        } else {
-            return v;
-        }
+        let parent = expn.call_site.ctxt().outer_expn_data();
+        let Some(id) = parent.macro_def_id else {
+            break;
+        };
+        let Some(thing) = matches(id, cx.tcx.get_diagnostic_name(id)) else {
+            break;
+        };
+        expn = parent;
+        found = Some((thing, id));
     }
+    found.map(|(thing, defid)| (expn.call_site, thing, defid))
 }
 
-declare_lint!(
+fn check_span_against_macro_diags(
+    cx: &LateContext<'_>,
+    span: Span,
+    diag_syms: &[Symbol],
+) -> Option<(Span, usize, DefId)> {
+    outer_macro_call_matching(cx, span, |_did, diag_name| {
+        let diag_name = diag_name?;
+        diag_syms.iter().position(|&name| name == diag_name)
+    })
+}
+
+declare_plrust_lint!(
     pub(crate) PLRUST_FN_POINTERS,
-    Allow,
     "Disallow use of function pointers",
 );
 
@@ -243,9 +346,8 @@ impl<'tcx> LateLintPass<'tcx> for PlrustFnPointer {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_ASYNC,
-    Allow,
     "Disallow use of async and await",
 );
 
@@ -280,9 +382,8 @@ impl EarlyLintPass for PlrustAsync {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_EXTERNAL_MOD,
-    Allow,
     "Disallow use of `mod blah;`",
 );
 
@@ -304,9 +405,8 @@ impl EarlyLintPass for PlrustExternalMod {
     }
 }
 
-declare_lint!(
+declare_plrust_lint!(
     pub(crate) PLRUST_LEAKY,
-    Allow,
     "Disallow use of `{Box,Vec,String}::leak`, `mem::forget`, and similar functions",
 );
 
@@ -331,7 +431,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustLeaky {
         }
     }
 }
-
+// Note: returns true if the expr is the path also.
 fn does_expr_call_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     path_res(cx, expr)
         .opt_def_id()
@@ -360,9 +460,8 @@ fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bo
 // Used to force an ICE in our uitests. Only enabled if
 // `PLRUSTC_INCLUDE_TEST_ONLY_LINTS` is enabled in the environment, which we do
 // explicitly in the tests that need it.
-declare_lint! {
+declare_plrust_lint! {
     pub(crate) PLRUST_TEST_ONLY_FORCE_ICE,
-    Allow,
     "This message should not appear in the output"
 }
 
@@ -406,6 +505,22 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     }
     v
 });
+
+#[test]
+fn check_lints() {
+    for lint in &**PLRUST_LINTS {
+        assert!(
+            lint.name.starts_with("PLRUST_"),
+            "lint `{}` doesn't follow lint naming convention",
+            lint.name,
+        );
+        assert!(
+            lint.report_in_external_macro,
+            "lint `{}` should report in external macro expansion",
+            lint.name,
+        );
+    }
+}
 
 pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_lints(&**PLRUST_LINTS);
