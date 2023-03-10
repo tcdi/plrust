@@ -269,41 +269,33 @@ impl FileLoader for ErrorHidingFileLoader {
     }
 }
 
-fn is_inside_root(root: &Path, child: &Path, allow_dirs: bool) -> Result<bool, ()> {
-    let root = root.canonicalize().map_err(|_| ())?;
-    let Some(root_canon_str) = root.to_str() else {
-        return Err(());
-    };
-    let child = child.canonicalize().map_err(|_| ())?;
-    let Some(child_canon_str) = child.to_str() else {
-        return Err(());
-    };
-    if !allow_dirs && child.is_dir() {
-        return Err(());
-    }
-    // FIXME: Do we care about case-insensitive file-systems?
-    Ok(child_canon_str.starts_with(root_canon_str))
-}
-
 struct PlrustcFileLoader {
     allowed_source_dirs: Vec<String>,
 }
 
 impl PlrustcFileLoader {
-    fn is_allowed(&self, p: &Path, allow_dir: bool) -> bool {
-        self.allowed_source_dirs
-            .iter()
-            .any(|root| is_inside_root(root.as_ref(), p, allow_dir) == Ok(true))
+    fn is_inside_allowed_dir(&self, p: &Path) -> bool {
+        let Ok(child) = p.canonicalize() else {
+            // If we can't canonicalize it, we can't tell.
+            return false;
+        };
+        self.allowed_source_dirs.iter().any(|root| {
+            if let Ok(root) = Path::new(root).canonicalize() {
+                child.starts_with(&root)
+            } else {
+                false
+            }
+        })
     }
 }
 
 impl FileLoader for PlrustcFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
-        self.is_allowed(path, true) && ErrorHidingFileLoader.file_exists(path)
+        self.is_inside_allowed_dir(path) && ErrorHidingFileLoader.file_exists(path)
     }
 
     fn read_file(&self, path: &Path) -> std::io::Result<String> {
-        if self.is_allowed(path, false) {
+        if path.exists() && !path.is_dir() && self.is_inside_allowed_dir(path) {
             ErrorHidingFileLoader.read_file(path)
         } else {
             Err(replacement_error())
