@@ -24,23 +24,32 @@ sudo chown postgres -R /usr/lib/postgresql/15/lib/
 sudo su - postgres
 cd ~/plrust
 git pull
-cargo install cargo-pgx --version 0.7.2 --locked
-
-cd ~/plrust/plrust
-
-exit
+cargo install cargo-pgx --locked
 ```
-
 
 
 ## Update PL/Rust
 
 
-Follow these steps to upgrade PL/Rust from GitLab to test
-the latest release.  
+Follow these steps to upgrade PL/Rust from GitLab to use
+the latest release.
+
+
+Update `plrustc`, `postgrestd` and `plrust` installations.
 
 ```bash
-cargo pgx install --release -c /usr/bin/pg_config
+cd ~/plrust/plrustc
+./build.sh
+mv ~/plrust/build/bin/plrustc ~/.cargo/bin/
+
+cd ~/plrust/plrust
+PG_VER=15 \
+    STD_TARGETS="x86_64-postgres-linux-gnu " \
+    ./build
+
+cargo pgx install --release \
+    --features trusted \
+    -c /usr/bin/pg_config
 ```
 
 
