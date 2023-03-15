@@ -216,3 +216,17 @@ std::io::stdout().write_all(b"foobar").unwrap();
 std::io::stderr().write_all(b"foobar").unwrap();
 let _stdin_is_forbidden_too = std::io::stdin();
 ```
+
+### `plrust_autotrait_impls`
+
+This lint forbids explicit implementations of the safe auto traits, as a workaround for various soundness holes around these. It may be relaxed in the future if those are fixed.
+
+```rust
+struct Foo(std::cell::Cell<i32>, std::marker::PhantomPinned);
+// Any of the following implementations would be forbidden.
+impl std::panic::UnwindSafe for Foo {}
+impl std::panic::RefUnwindSafe for Foo {}
+impl std::marker::Unpin for Foo {}
+```
+
+As a workaround, in most cases, you should be able to use [`std::panic::AssertUnwindSafe`](https://doc.rust-lang.org/nightly/std/panic/struct.AssertUnwindSafe.html) instead of implementing one of the `UnwindSafe` traits, and Boxing your type can usually work around the need for `Unpin` (which should be rare in non-`async` code anyway).
