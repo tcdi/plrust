@@ -1,0 +1,22 @@
+error: explicit implementations of auto traits are forbidden in PL/Rust
+  --> $DIR/impl_auto_trait.rs:5:1
+   |
+LL | impl std::panic::UnwindSafe for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-F plrust-autotrait-impls` implied by `-F plrust-lints`
+
+error: explicit implementations of auto traits are forbidden in PL/Rust
+  --> $DIR/impl_auto_trait.rs:7:1
+   |
+LL | impl std::panic::RefUnwindSafe for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit implementations of auto traits are forbidden in PL/Rust
+  --> $DIR/impl_auto_trait.rs:9:1
+   |
+LL | impl std::marker::Unpin for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
