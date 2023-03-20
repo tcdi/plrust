@@ -108,6 +108,65 @@ impl<'tcx> LateLintPass<'tcx> for PlrustAutoTraitImpls {
 }
 
 declare_plrust_lint!(
+    pub(crate) PLRUST_SUSPICIOUS_TRAIT_OBJECT,
+    "Disallow suspicious generic use of trait objects",
+);
+
+declare_lint_pass!(PlrustSuspiciousTraitObject => [PLRUST_SUSPICIOUS_TRAIT_OBJECT]);
+
+impl<'tcx> LateLintPass<'tcx> for PlrustSuspiciousTraitObject {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr) {
+        let path_segments = match &expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => path.segments,
+            hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment, ..))
+            | hir::ExprKind::MethodCall(segment, ..) => std::slice::from_ref(*segment),
+            _ => return,
+        };
+        for segment in path_segments {
+            let Some(args) = segment.args else {
+                continue;
+            };
+            for arg in args.args {
+                let hir::GenericArg::Type(ty) = arg else {
+                    continue;
+                };
+                if let hir::TyKind::TraitObject(..) = &ty.kind {
+                    cx.lint(
+                        PLRUST_SUSPICIOUS_TRAIT_OBJECT,
+                        "trait objects in turbofish are forbidden",
+                        |b| b.set_span(expr.span),
+                    );
+                }
+            }
+        }
+    }
+
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        let generics = match &item.kind {
+            hir::ItemKind::TyAlias(_, generics) => *generics,
+            hir::ItemKind::Enum(_, generics) => *generics,
+            hir::ItemKind::Struct(_, generics) => *generics,
+            hir::ItemKind::Union(_, generics) => *generics,
+            hir::ItemKind::Trait(_, _, generics, ..) => *generics,
+            hir::ItemKind::Fn(_, generics, ..) => *generics,
+            _ => return,
+        };
+        for param in generics.params {
+            let hir::GenericParamKind::Type { default: Some(ty), .. } = &param.kind else {
+                continue;
+            };
+            if let hir::TyKind::TraitObject(..) = &ty.kind {
+                cx.lint(
+                    PLRUST_SUSPICIOUS_TRAIT_OBJECT,
+                    "trait objects in generic defaults are forbidden",
+                    |b| b.set_span(item.span),
+                );
+            }
+        }
+    }
+}
+
+declare_plrust_lint!(
     pub(crate) PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
     "Disallow lifetime parameterized traits"
 );
@@ -544,6 +603,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
         PLRUST_PRINT_MACROS,
         PLRUST_STDIO,
+        PLRUST_SUSPICIOUS_TRAIT_OBJECT,
     ];
     if *INCLUDE_TEST_ONLY_LINTS {
         let test_only_lints = [PLRUST_TEST_ONLY_FORCE_ICE];
@@ -579,6 +639,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     );
     store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_early_pass(move || Box::new(PlrustExternalMod));
+    store.register_late_pass(move |_| Box::new(PlrustSuspiciousTraitObject));
     store.register_late_pass(move |_| Box::new(PlrustAutoTraitImpls));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustLeaky));

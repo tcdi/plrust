@@ -230,3 +230,14 @@ impl std::marker::Unpin for Foo {}
 ```
 
 As a workaround, in most cases, you should be able to use [`std::panic::AssertUnwindSafe`](https://doc.rust-lang.org/nightly/std/panic/struct.AssertUnwindSafe.html) instead of implementing one of the `UnwindSafe` traits, and Boxing your type can usually work around the need for `Unpin` (which should be rare in non-`async` code anyway).
+
+### `plrust_suspicious_trait_object`
+
+This lint forbids trait object use in turbofish and generic defaults. This is an effort to fix [certain soundness holes](https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=764d78856996e1985ee88819b013c645) in the Rust language. More simply, the following patterns are disallowed:
+
+```rs
+// Trait object in turbofish
+foo::<dyn SomeTrait>();
+// Trait object in type default (enum, union, trait, and so on are all also forbidden)
+struct SomeStruct<T = dyn SomeTrait>(...);
+```

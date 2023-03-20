@@ -1,0 +1,54 @@
+error: trait objects in generic defaults are forbidden
+  --> $DIR/sus_trait_obj_items.rs:5:1
+   |
+LL | / pub trait Bar<T = dyn Foo>
+LL | | where
+LL | |     T: ?Sized,
+LL | | {
+LL | | }
+   | |_^
+   |
+   = note: `-F plrust-suspicious-trait-object` implied by `-F plrust-lints`
+
+error: trait objects in generic defaults are forbidden
+  --> $DIR/sus_trait_obj_items.rs:12:1
+   |
+LL | / pub fn sus_fn<T = dyn Foo>()
+LL | | where
+LL | |     T: ?Sized,
+LL | | {
+LL | | }
+   | |_^
+
+error: trait objects in generic defaults are forbidden
+  --> $DIR/sus_trait_obj_items.rs:18:1
+   |
+LL | / pub struct SusStruct<T = dyn Foo>(pub Box<T>)
+LL | | where
+LL | |     T: ?Sized;
+   | |______________^
+
+error: trait objects in generic defaults are forbidden
+  --> $DIR/sus_trait_obj_items.rs:22:1
+   |
+LL | / pub enum SusEnum<T = dyn Foo>
+LL | | where
+LL | |     T: ?Sized,
+LL | | {
+LL | |     Something(Box<T>),
+LL | | }
+   | |_^
+
+error: trait objects in generic defaults are forbidden
+  --> $DIR/sus_trait_obj_items.rs:29:1
+   |
+LL | / pub union SusUnion<T = dyn Foo>
+LL | | where
+LL | |     T: ?Sized,
+LL | | {
+LL | |     pub something: *const T,
+LL | | }
+   | |_^
+
+error: aborting due to 5 previous errors
+

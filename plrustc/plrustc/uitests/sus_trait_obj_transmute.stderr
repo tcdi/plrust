@@ -1,0 +1,10 @@
+error: trait objects in turbofish are forbidden
+  --> $DIR/sus_trait_obj_transmute.rs:16:5
+   |
+LL |     foo::<dyn Object<U, Output = T>, U>(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-F plrust-suspicious-trait-object` implied by `-F plrust-lints`
+
+error: aborting due to previous error
+
