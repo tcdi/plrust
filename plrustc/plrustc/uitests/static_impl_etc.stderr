@@ -1,70 +1,70 @@
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:8:1
+  --> $DIR/static_impl_etc.rs:8:17
    |
 LL | impl<T> Foo for &'static T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^
    |
    = note: `-F plrust-static-impls` implied by `-F plrust-lints`
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:9:1
+  --> $DIR/static_impl_etc.rs:9:17
    |
 LL | impl<T> Foo for &'static mut T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:10:1
+  --> $DIR/static_impl_etc.rs:10:17
    |
 LL | impl<T> Foo for [&'static T] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:11:1
+  --> $DIR/static_impl_etc.rs:11:17
    |
 LL | impl<T> Foo for &[&'static T] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:12:1
+  --> $DIR/static_impl_etc.rs:12:17
    |
 LL | impl<T> Foo for (i32, [&'static T]) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:13:1
+  --> $DIR/static_impl_etc.rs:13:17
    |
 LL | impl<T> Foo for (i32, [&'static T; 1]) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:14:1
+  --> $DIR/static_impl_etc.rs:14:17
    |
 LL | impl<T> Foo for *const &'static T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:15:1
+  --> $DIR/static_impl_etc.rs:15:17
    |
 LL | impl<T> Foo for Bar<i32, &'static T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:16:1
+  --> $DIR/static_impl_etc.rs:16:17
    |
 LL | impl<T> Foo for Baz<'static, T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:17:1
+  --> $DIR/static_impl_etc.rs:17:17
    |
 LL | impl<T> Foo for dyn Quux<&'static T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impl_etc.rs:18:1
+  --> $DIR/static_impl_etc.rs:18:17
    |
 LL | impl<T> Foo for &'static dyn Quux<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 11 previous errors
 

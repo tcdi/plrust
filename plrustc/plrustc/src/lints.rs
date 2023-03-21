@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustStaticImpls {
             cx.lint(
                 PLRUST_STATIC_IMPLS,
                 "`impl` blocks for types containing `'static` references are not allowed",
-                |b| b.set_span(item.span),
+                |b| b.set_span(imp.self_ty.span),
             )
         }
     }
