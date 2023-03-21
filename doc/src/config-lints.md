@@ -217,6 +217,23 @@ std::io::stderr().write_all(b"foobar").unwrap();
 let _stdin_is_forbidden_too = std::io::stdin();
 ```
 
+### `plrust_static_impls`
+
+This lint forbids certain `impl` blocks for types containing `&'static` references. The precise details are somewhat obscure, but can usually be avoided by making a custom struct to contain your static reference, which avoids the particular soundness hole we're concerned with. For example:
+
+```rust
+// This is forbidden:
+impl SomeTrait for (&'static Foo, Bar) {
+    // ...
+}
+
+// Instead, do this:
+struct MyType(&'static Foo, Bar);
+impl SomeTrait for MyType {
+    // ...
+}
+```
+
 ### `plrust_autotrait_impls`
 
 This lint forbids explicit implementations of the safe auto traits, as a workaround for various soundness holes around these. It may be relaxed in the future if those are fixed.

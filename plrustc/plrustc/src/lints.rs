@@ -74,17 +74,6 @@ impl<'tcx> LateLintPass<'tcx> for PlrustStaticImpls {
         let hir::ItemKind::Impl(imp) = &item.kind else {
             return;
         };
-        // The other stuff is all handled by `#![forbid(unsafe_code)]` or only
-        // occurs in the stdlib.
-        if (
-            hir::Unsafety::Normal,
-            hir::Defaultness::Final,
-            hir::ImplPolarity::Positive,
-            hir::Constness::NotConst,
-        ) != (imp.unsafety, imp.defaultness, imp.polarity, imp.constness)
-        {
-            return;
-        };
         if self.has_static(imp.self_ty) {
             cx.lint(
                 PLRUST_STATIC_IMPLS,
@@ -149,10 +138,14 @@ impl PlrustStaticImpls {
 
     fn segments_have_static(&self, segs: &[hir::PathSegment]) -> bool {
         segs.iter().any(|seg| {
-            seg.args()
-                .args
-                .iter()
-                .any(|arg| matches!(arg, hir::GenericArg::Type(t) if self.has_static(t)))
+            seg.args().args.iter().any(|arg| match arg {
+                hir::GenericArg::Lifetime(hir::Lifetime {
+                    res: hir::LifetimeName::Static,
+                    ..
+                }) => true,
+                hir::GenericArg::Type(t) => self.has_static(t),
+                _ => false,
+            })
         })
     }
 }
