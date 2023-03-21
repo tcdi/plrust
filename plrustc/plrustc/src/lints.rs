@@ -63,6 +63,101 @@ impl<'tcx> LateLintPass<'tcx> for NoExternBlockPass {
 }
 
 declare_plrust_lint!(
+    pub(crate) PLRUST_STATIC_IMPLS,
+    "Disallow impl blocks for types containing `'static` references"
+);
+
+declare_lint_pass!(PlrustStaticImpls => [PLRUST_STATIC_IMPLS]);
+
+impl<'tcx> LateLintPass<'tcx> for PlrustStaticImpls {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        let hir::ItemKind::Impl(imp) = &item.kind else {
+            return;
+        };
+        // The other stuff is all handled by `#![forbid(unsafe_code)]` or only
+        // occurs in the stdlib.
+        if (
+            hir::Unsafety::Normal,
+            hir::Defaultness::Final,
+            hir::ImplPolarity::Positive,
+            hir::Constness::NotConst,
+        ) != (imp.unsafety, imp.defaultness, imp.polarity, imp.constness)
+        {
+            return;
+        };
+        if self.has_static(imp.self_ty) {
+            cx.lint(
+                PLRUST_STATIC_IMPLS,
+                "`impl` blocks for types containing `'static` references are not allowed",
+                |b| b.set_span(item.span),
+            )
+        }
+    }
+}
+
+impl PlrustStaticImpls {
+    /// This is pretty naïve and designed to match the specific patterns that
+    /// trip up https://github.com/rust-lang/rust/issues/104005...
+    ///
+    /// Also, I feel like I should be able to use `hir::intravisit::walk_ty`
+    /// here instead, but it doesn't seem to let be know the lifetime of refs,
+    /// so... not sure...
+    ///
+    /// It's a method on `self` mostly to discourage use in other contexts,
+    /// since it's probably wrong for them.
+    fn has_static(&self, t: &hir::Ty) -> bool {
+        use hir::{Lifetime, LifetimeName::Static, MutTy, TyKind};
+        match &t.kind {
+            TyKind::Infer
+            | TyKind::Err
+            // Doesn't exist
+            | TyKind::Typeof(..)
+            // Not strictly correct but we forbid this elsewhere anyway.
+            | TyKind::BareFn(..)
+            // TAIT stuff, still unstable at the moment, seems very hard to
+            // prevent this for...
+            | TyKind::OpaqueDef(..)
+            | TyKind::Never => false,
+            // Found one!
+            TyKind::Rptr(Lifetime { res: Static, .. }, _) | TyKind::TraitObject(_, Lifetime { res: Static, .. }, _) => true,
+            // Need to keep looking.
+            TyKind::Rptr(_, MutTy { ty, .. })
+            | TyKind::Ptr(MutTy { ty, .. })
+            | TyKind::Array(ty, _)
+            | TyKind::Slice(ty) => self.has_static(*ty),
+
+            TyKind::Tup(types) => types.iter().any(|t| self.has_static(t)),
+
+            TyKind::TraitObject(polytrait, ..) => {
+                polytrait.iter().any(|poly| {
+                    self.segments_have_static(poly.trait_ref.path.segments)
+                })
+            }
+            // Something like `Vec<T>` or `Option<T>`. Need to look inside...
+            TyKind::Path(qpath) => {
+                let segs = match qpath {
+                    hir::QPath::Resolved(Some(maybe_ty), _) if self.has_static(maybe_ty) => return true,
+                    hir::QPath::TypeRelative(t, _) if self.has_static(*t) => return true,
+                    hir::QPath::LangItem(..) => return false,
+                    hir::QPath::Resolved(_, path) => path.segments,
+                    hir::QPath::TypeRelative(_, seg) => std::slice::from_ref(*seg),
+                };
+                self.segments_have_static(segs)
+            }
+        }
+    }
+
+    fn segments_have_static(&self, segs: &[hir::PathSegment]) -> bool {
+        segs.iter().any(|seg| {
+            seg.args()
+                .args
+                .iter()
+                .any(|arg| matches!(arg, hir::GenericArg::Type(t) if self.has_static(t)))
+        })
+    }
+}
+
+declare_plrust_lint!(
     pub(crate) PLRUST_AUTOTRAIT_IMPLS,
     "Disallow impls of auto traits",
 );
@@ -535,6 +630,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     let mut v = vec![
         PLRUST_ASYNC,
         PLRUST_AUTOTRAIT_IMPLS,
+        PLRUST_STATIC_IMPLS,
         PLRUST_EXTERN_BLOCKS,
         PLRUST_EXTERNAL_MOD,
         PLRUST_FILESYSTEM_MACROS,
@@ -580,6 +676,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_early_pass(move || Box::new(PlrustAsync));
     store.register_early_pass(move || Box::new(PlrustExternalMod));
     store.register_late_pass(move |_| Box::new(PlrustAutoTraitImpls));
+    store.register_late_pass(move |_| Box::new(PlrustStaticImpls));
     store.register_late_pass(move |_| Box::new(PlrustFnPointer));
     store.register_late_pass(move |_| Box::new(PlrustLeaky));
     store.register_late_pass(move |_| Box::new(PlrustBuiltinMacros));
