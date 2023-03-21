@@ -1,5 +1,5 @@
 error: `impl` blocks for types containing `'static` references are not allowed
-  --> $DIR/static_impls.rs:11:1
+  --> $DIR/static_impl_unsound.rs:11:1
    |
 LL | / impl<T: Display> Displayable for (T, Box<Option<&'static T>>) {
 LL | |     fn display(self) -> Box<dyn Display> {
