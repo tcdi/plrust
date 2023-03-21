@@ -55,8 +55,8 @@ SELECT strlen('Hello, PL/Rust');
 
 ## Built on pgx
 
-PL/Rust is built on the `pgx` framework.  Documentation on the pgx crate is
-[found here](https://docs.rs/pgx/latest/pgx/).
+PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore, each `LANGUAGE
+plrust` function are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgx`
+is developed by [TCDI](https://www.tcdi.com).
 
-
-
+The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.
