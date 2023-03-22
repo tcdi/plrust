@@ -86,6 +86,12 @@ https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#soft-unstable
 
 This prevents the use of language and library features which were accidentally stabilized. This is forbidden because there's no reason to need to use these, and forbidding them reduces the set of APIs and features we have to consider in PL/Rust.
 
+### `where_clauses_object_safety`
+
+https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#where-clauses-object-safety
+
+This avoids some soundness holes that are in the language which can be used to trigger various crashes, see the lint documentation for details.
+
 ## PL/Rust `plrustc` Lints
 
 ### `plrust_extern_blocks`
