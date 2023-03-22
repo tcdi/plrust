@@ -144,7 +144,9 @@ impl PlrustStaticImpls {
                     ..
                 }) => true,
                 hir::GenericArg::Type(t) => self.has_static(t),
-                _ => false,
+                hir::GenericArg::Const(_) | hir::GenericArg::Infer(_)
+                // Wasn't static
+                | hir::GenericArg::Lifetime(_) => false,
             })
         })
     }
