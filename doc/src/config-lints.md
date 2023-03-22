@@ -192,6 +192,15 @@ mod bar;
 mod baz;
 ```
 
+### `plrust_extern_crate`
+
+This lint forbids use of explicit `extern crate`, which can be used to bring in crates from the sysroot. For example the following are all forbidden:
+
+```rust
+extern crate std;
+extern crate core;
+extern crate alloc;
+```
 
 ### `plrust_print_macros`
 

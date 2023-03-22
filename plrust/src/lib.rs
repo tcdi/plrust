@@ -73,6 +73,7 @@ const DEFAULT_LINTS: &'static str = "\
     plrust_fn_pointers, \
     plrust_filesystem_macros, \
     plrust_env_macros, \
+    plrust_extern_crate, \
     plrust_async, \
     plrust_leaky, \
     plrust_external_mod, \

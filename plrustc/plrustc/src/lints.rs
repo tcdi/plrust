@@ -432,11 +432,23 @@ declare_plrust_lint!(
     "Disallow use of `mod blah;`",
 );
 
-declare_lint_pass!(PlrustExternalMod => [PLRUST_EXTERNAL_MOD]);
+declare_plrust_lint!(
+    pub(crate) PLRUST_EXTERN_CRATE,
+    "Disallow use of `extern crate std;` (and other `extern crate`s)",
+);
+
+declare_lint_pass!(PlrustExternalMod => [PLRUST_EXTERNAL_MOD, PLRUST_EXTERN_CRATE]);
 
 impl EarlyLintPass for PlrustExternalMod {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
         match &item.kind {
+            ast::ItemKind::ExternCrate(..) if !item.span.is_dummy() => {
+                cx.lint(
+                    PLRUST_EXTERN_CRATE,
+                    "Use of `extern crate` is forbidden in PL/Rust",
+                    |b| b.set_span(item.span),
+                );
+            }
             ast::ItemKind::Mod(_, ast::ModKind::Unloaded)
             | ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::No, _)) => {
                 cx.lint(
@@ -537,6 +549,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         PLRUST_AUTOTRAIT_IMPLS,
         PLRUST_EXTERN_BLOCKS,
         PLRUST_EXTERNAL_MOD,
+        PLRUST_EXTERN_CRATE,
         PLRUST_FILESYSTEM_MACROS,
         PLRUST_ENV_MACROS,
         PLRUST_FN_POINTERS,
