@@ -120,6 +120,9 @@ impl<'tcx> LateLintPass<'tcx> for PlrustSuspiciousTraitObject {
             hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => path.segments,
             hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment, ..))
             | hir::ExprKind::MethodCall(segment, ..) => std::slice::from_ref(*segment),
+            // We're looking for expressions that (directly, since `check_expr`
+            // will visit stuff that contains them through `Expr`) contain
+            // paths, and there's nothing else.
             _ => return,
         };
         for segment in path_segments {
@@ -149,6 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustSuspiciousTraitObject {
             hir::ItemKind::Union(_, generics) => *generics,
             hir::ItemKind::Trait(_, _, generics, ..) => *generics,
             hir::ItemKind::Fn(_, generics, ..) => *generics,
+            // Nothing else is stable and has `Generics`.
             _ => return,
         };
         for param in generics.params {
