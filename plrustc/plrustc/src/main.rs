@@ -13,6 +13,8 @@ extern crate rustc_span;
 use once_cell::sync::Lazy;
 use rustc_driver::Callbacks;
 use rustc_interface::interface;
+use rustc_session::config::ErrorOutputType;
+use rustc_session::early_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FileLoader;
 use rustc_span::Symbol;
@@ -199,32 +201,40 @@ impl PlrustcConfig {
             Box::new(ErrorHidingFileLoader)
         } else {
             let Some(allowed) = self.plrust_user_crate_allowed_source_paths.as_deref() else {
-                eprintln!(
-                    "fatal error: if `{PLRUSTC_USER_CRATE_NAME}` is provided, \
-                    then `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` should also be provided",
+                early_error(
+                    ErrorOutputType::default(),
+                    &format!(
+                        "if `{PLRUSTC_USER_CRATE_NAME}` is provided, \
+                        then `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` should also be provided",
+                    ),
                 );
-                std::process::exit(1);
             };
 
             // Should we add the cargo registry? The sysroot? Hm...
             let allowed_source_dirs = std::env::split_paths(allowed).filter_map(|path| {
                 if !path.is_absolute() {
-                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains relative path: {allowed:?}");
-                    std::process::exit(1);
+                    early_error(
+                        ErrorOutputType::default(),
+                        &format!("`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains relative path: {allowed:?}"),
+                    );
                 }
                 let path = path.canonicalize().ok()?;
                 let Some(pathstr) = path.to_str() else {
-                    eprintln!("fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains non-UTF-8 path: {allowed:?}");
-                    std::process::exit(1);
+                    early_error(
+                        ErrorOutputType::default(),
+                        &format!("`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains non-UTF-8 path: {allowed:?}"),
+                    );
                 };
                 Some(pathstr.to_owned())
             }).collect::<Vec<String>>();
             if allowed_source_dirs.is_empty() {
-                eprintln!(
-                    "fatal error: `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` was provided but \
-                    contained no paths which exist: {allowed:?}",
+                early_error(
+                    ErrorOutputType::default(),
+                    &format!(
+                        "`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` was provided but contained no paths \
+                        which exist: {allowed:?}",
+                    ),
                 );
-                std::process::exit(1);
             }
 
             Box::new(PlrustcFileLoader {
