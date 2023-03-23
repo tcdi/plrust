@@ -29,7 +29,13 @@ pub(crate) fn cargo(
     sanitize_env(&mut command);
 
     command.env("CARGO_TARGET_DIR", &cargo_target_dir);
-    command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+    if cfg!(target_os = "macos") {
+        command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+    } else {
+        // Don't use `env_remove` to avoid inheriting rustflags via the normal
+        // search.
+        command.env("RUSTFLAGS", "");
+    }
 
     Ok(command)
 }
