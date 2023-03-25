@@ -185,6 +185,19 @@ installed you can use the generic
 cargo pgx init --pg15 /usr/bin/pg_config
 ```
 
+Output from `cargo pgx init` looks like the following example.
+You may notice it mentions information about a new data directory under your
+user's `~/.pgx/` directory. This **does not replace** your PostgreSQL instance's
+data directory. The `~/.pgx/data-15/` directory is there in case you run
+`cargo pgx run pg15`, which would use this custom data directory, not your installation's data directory.
+
+```
+   Validating /usr/bin/pg_config
+ Initializing data directory at /var/lib/postgresql/.pgx/data-15
+```
+
+
+
 The generic `pg_config` used above will not work
 for all installations, such as if you have both PostgreSQL 14 and 15
 installed on one instance.
@@ -208,9 +221,10 @@ Most users will want to install trusted PL/Rust.
 ### Trusted install
 
 The trusted installation requires `postgrestd` and a few additional
-dependencies.  First install the additional dependencies.
+Rust dependencies.  First install the additional dependencies.
 
-> To install untrusted PL/Rust skip this sub-section and go to the Untrusted install section.
+> To install **untrusted** PL/Rust, skip this sub-section and go to the [Untrusted install](#untrusted-install) section.
+
 
 ```bash
 rustup component add llvm-tools-preview rustc-dev
@@ -231,7 +245,8 @@ mv ~/plrust/build/bin/plrustc ~/.cargo/bin/
 
 
 Change into the `plrust/plrust/` directory and run the build process to
-install `postgrestd`.
+install `postgrestd`.  This example is for installing PL/Rust on `x86_64`
+architecture, switch to `aarch64` if using that architecture instead.
 
 ```bash
 cd ~/plrust/plrust
@@ -259,8 +274,9 @@ cargo pgx install --release --features trusted -c /usr/bin/pg_config
 
 ### Untrusted install
 
-To install untrusted PL/Rust use `cargo pgx install`
-without `--features trusted`.
+To install **untrusted** PL/Rust use `cargo pgx install`
+without `--features trusted`.  See the [trusted install](#trusted-install) if you
+wish to install the trusted PL/Rust instead.
 
 ```bash
 cargo pgx install --release -c /usr/bin/pg_config

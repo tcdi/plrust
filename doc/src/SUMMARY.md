@@ -6,7 +6,7 @@
 
 - [Install PL/Rust](./install-plrust.md)
 - [Update PL/Rust](./update-plrust.md)
-- [Cross compilation](./install-cross-compile.md)
+- [PL/Rust Cross Compilation](./install-cross-compile.md)
 
 # PL/Rust Usage
 
