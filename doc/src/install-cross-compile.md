@@ -1,51 +1,22 @@
-# PL/Rust Cross Compilation
+# Configure PL/Rust Cross Compilation
 
-This section explains difference required during PL/Rust installation to support
-PL/Rust cross compilation.
+> Contents from this section will likely move into [config-pg section](config-pg.md).
 
-## Install cross compile dependencies
-
-As a Linux user with `sudo` access, install additional prerequisites.
-
-```bash
-sudo apt install crossbuild-essential-arm64 crossbuild-essential-amd64
-```
-
-Change to the `postgres` user for the next steps.
-
-```
-sudo su - postgres
-```
-
-Install the Rust targets for `aarch64` and `x86_64`.
-These are necessary to cross compile `postgrestd` and PL/Rust user functions.
+This section explains the final PL/Rust installation steps required for
+cross compilation with PL/Rust.  Installing PL/Rust for cross-compilation requires
+everything used by `trusted` PL/Rust.  The instructions on this page provide
+all of the `trusted` steps plus a few additional steps required for cross compile
+support.
 
 
-```bash
-cd plrust/plrust
-rustup component add llvm-tools-preview rustc-dev
-rustup target install aarch64-unknown-linux-gnu
-rustup target install x86_64-unknown-linux-gnu
-```
+
+-----
 
 When the above completes, run the `postgrestd` build script.
 This example assumes that the `pg_config` binary from Postgresql 15 is on your `$PATH`.
 If v15 is not your intended Postgres version, change it to the proper major version number.
 See the [Install PL/Rust](install-plrust.md) section for examples of this.
 
-
-```bash
-PG_VER=15 \
-    STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu" \
-    ./build
-```
-
-> The above environment variables are the default... you can just run `./build`.
-
-
-This will take a bit of time as it clones the `postgrestd` repository,
-builds it for two architectures, and finally runs PL/Rust's entire test suite
-in "trusted" mode.
 
 
 ## Configuration

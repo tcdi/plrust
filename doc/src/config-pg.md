@@ -1,16 +1,41 @@
 # PostgreSQL configuration
 
-PL/Rust has a two **required** configuration options and a variety of non-required options.
-PL/Rust **must** be configured as a `shared_preload_libraries` entry in `postgresql.conf`.
-PL/Rust also requires `plrust.work_dir` to save intermediate files.
+PL/Rust has two **required** configuration options and a variety of non-required options.
+These options are set in the standard `postgresql.conf` configuration file used
+by PostgreSQL.
+
+
+## Required configuration
+
+PL/Rust has two required configuration options in untrusted and trusted installations.
+Using PL/Rust with cross compilation support has a 3rd required configuration option.
+Failure to set these variables
+will cause `plrust` extension to not function.
+
+
+
+## Always required
+
+The [`shared_preload_libraries` entry](https://www.postgresql.org/docs/current/runtime-config-client.html)
+needs to include `plrust`, and the `plrust.work_dir` must be set to a writable
+location for PL/Rust to save necessary intermediate files.
+
 
 ```
 shared_preload_libraries = 'plrust'
 plrust.work_dir = '/tmp'
 ```
 
+## Required for cross compile
 
-Failure to set these required variables will cause `plrust` extension to not function.
+
+`plrust.compilation_targets`
+
+
+
+
+## All configuration options
+
 
 The PL/Rust-specific configuration options are in the following table.
 
