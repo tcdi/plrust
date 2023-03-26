@@ -6,7 +6,6 @@
 
 - [Install Prerequisites](./install-prerequisites.md)
 - [Install PL/Rust](./install-plrust.md)
-- [Config PL/Rust Cross Compilation](./install-cross-compile.md)
 - [Update PL/Rust](./update-plrust.md)
 
 
