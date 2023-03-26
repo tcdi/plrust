@@ -62,6 +62,27 @@ The value of `plrust.required_lints` defaults to `plrust.compile_lints`.
 ## Additional Configuration Options
 
 
+
+#### `plrust.allowed_dependencies` (string)
+
+Define the path to a `toml` file with an allow-list of Rust crates and versions when creating
+PL/Rust functions.
+When `plrust.allowed_dependencies` is not defined, all Rust crates are allowed
+when creating PL/Rust functions.
+
+Consider a file `/path/to/plrust_allowed.toml` with the following contents.
+
+```toml
+foo = "1.1.5"
+```
+
+The configuration to restrict crates looks like the following example.
+
+```bash
+plrust.allowed_dependencies = /path/to/plrust_allowed.toml
+```
+
+
 #### `plrust.path_override` (string)
 
 Set this if `cargo` and `cc` are not in the postmaster's `$PATH`.
@@ -90,10 +111,6 @@ A [tracing directive](https://docs.rs/tracing-subscriber/0.3.11/tracing_subscrib
 plrust.tracing_level = 'info'
 ```
 
-
-#### `plrust.allowed_dependencies` (string)
-
-Coming soon.
 
 
 ## Required for Cross Compilation
