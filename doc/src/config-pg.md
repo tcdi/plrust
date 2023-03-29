@@ -142,14 +142,16 @@ the other architecture.
 
 ## Lints
 
-The PL/Rust configuration options related to lints to should not be changed.
+There are two The PL/Rust configuration options related to lints. **These options
+should not be changed.**
 Altering these configuration options has two main negative side effects.
+Disabling any of the pre-configured lints **removes any and all expectation**
+of PL/Rust being trusted.
+Changing this option can also prevent upgrading PL/Rust.
+
 See the [Lints Configuration](config-lints.md) section for more details about the
 purpose of the Lints.
 
-Disabling any of the pre-configured lints removes any and all promise or expectation
-of PL/Rust being **trusted**.
-Changing this option can also prevent upgrading PL/Rust.
 
 #### `plrust.compile_lints` (string)
 
