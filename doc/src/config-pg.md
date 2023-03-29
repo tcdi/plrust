@@ -39,25 +39,6 @@ plrust.work_dir = '/tmp'
 ```
 
 
-## Lints
-
-#### `plrust.compile_lints` (string)
-
-A comma-separated list of Rust lints to apply to every user function.
-
-```bash
-plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, plrust_stdio, unknown_lints, deprecated, suspicious_auto_trait_impls, unaligned_references, soft_unstable, plrust_autotrait_impls'
-```
-
-
-#### `plrust.required_lints` (string)
-
-A comma-separated list of Rust lints that are required to have been applied to a user function before PL/Rust will load the library and execute the function.
-
-The value of `plrust.required_lints` defaults to `plrust.compile_lints`.
-
-
-
 
 ## Additional Configuration Options
 
@@ -157,4 +138,31 @@ to the primary host machine and `untar` it somewhere (PL/Rust doesn't care where
 Note that it is perfectly fine (and really, expected) to set all of these configuration settings on both architectures.
 PL/Rust will silently ignore the one for the current host.  In other words, plrust only uses them when cross compiling for 
 the other architecture.
+
+
+## Lints
+
+The PL/Rust configuration options related to lints to should not be changed.
+Altering these configuration options has two main negative side effects.
+See the [Lints Configuration](config-lints.md) section for more details about the
+purpose of the Lints.
+
+Disabling any of the pre-configured lints removes any and all promise or expectation
+of PL/Rust being **trusted**.
+Changing this option can also prevent upgrading PL/Rust.
+
+#### `plrust.compile_lints` (string)
+
+A comma-separated list of Rust lints to apply to every user function.
+
+```bash
+plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, plrust_stdio, unknown_lints, deprecated, suspicious_auto_trait_impls, unaligned_references, soft_unstable, plrust_autotrait_impls'
+```
+
+
+#### `plrust.required_lints` (string)
+
+A comma-separated list of Rust lints that are required to have been applied to a user function before PL/Rust will load the library and execute the function.
+
+The value of `plrust.required_lints` defaults to `plrust.compile_lints`.
 
