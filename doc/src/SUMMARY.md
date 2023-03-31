@@ -4,9 +4,10 @@
 
 # Installation
 
+- [Install Prerequisites](./install-prerequisites.md)
 - [Install PL/Rust](./install-plrust.md)
 - [Update PL/Rust](./update-plrust.md)
-- [Cross compilation](./install-cross-compile.md)
+
 
 # PL/Rust Usage
 
@@ -17,17 +18,12 @@
     - [Triggers](./triggers.md)
     - [SPI](./spi.md)
 - [Trusted and Untrusted PL/Rust](./trusted-untrusted.md)
-- [Rules and Regulations](./rules-regulations.md)
-
-# PL/Rust Configuration
-
 - [PostgreSQL configuration](./config-pg.md)
-- [Lints](./config-lints.md)
-- [Environment variables](./config-env-var.md)
-
-
+- [Rules and Regulations](./rules-regulations.md)
 
 # PL/Rust Under the Hood
 
 - [Architecture](./architecture.md)
 - [Designing for Trust](./designing-for-trust.md)
+- [Lints](./config-lints.md)
+- [Environment variables](./config-env-var.md)
