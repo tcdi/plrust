@@ -68,3 +68,9 @@ but are reserved for future use, should they become necessary to build a user fu
 * `PGX_PG_CONFIG_LDFLAGS_SL`
 * `PGX_PG_CONFIG_LIBS`
 * `PGX_PG_CONFIG_VERSION`
+
+
+## Influencing PL/Rust Compilation
+
+If set, PL/Rust will use the `PLRUST_TRUSTED_PGX_OVERRIDE` environment variable when PL/Rust itself is being compiled.
+See the [Choosing a different `plrust-trusted-pgx` dependency at compile time](install-plrust.md) section for details.

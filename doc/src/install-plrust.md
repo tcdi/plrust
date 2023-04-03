@@ -87,6 +87,26 @@ cargo pgx install --release --features trusted -c /usr/bin/pg_config
 Continue on to [configuring PostgreSQL](install-plrust.html#configure-and-restart-postgresql)
 for PL/Rust.
 
+### Choosing a different `plrust-trusted-pgx` dependency at compile time
+
+When a user creates a `LANGUAGE plrust` function, PL/Rust first generates a small Cargo crate for the function.  That
+crate has a dependency on `plrust-trusted-pgx`.  By default, `plrust-trusted-pgx` comes from crates.io, using the same 
+version as PL/Rust itself.
+
+It is possible to override this dependency when compiling PL/Rust itself so that PL/Rust will use a different 
+`plrust-trusted-pgx` crate.  To do this, set an environment variable named `PLRUST_TRUSTED_PGX_OVERRIDE` to the
+full "Cargo.toml"-compatible dependency line, like so:
+
+```shell
+PLRUST_TRUSTED_PGX_OVERRIDE="pgx = { path = '~/code/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }" \
+cargo pgx install --release --features trusted -c /usr/bin/pg_config
+```
+
+This will instead compile all user functions using this specific `plrust-trusted-pgx`, not the default on crates.io.
+Generally, changing the `plrust-trusted-pgx` dependency is only useful for PL/Rust development and CI, not for production 
+deployments, but is worth mentioning as the environment variable *will* influence how user functions are compiled.
+
+It may also be useful for providing a local patch to `plrust-trusted-pgx` if such a need were to arise.
 
 ### Trusted installation plus cross compilation
 
