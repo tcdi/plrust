@@ -80,7 +80,7 @@ compiling user functions. This typically should not need to be manually set.
 
 
 ```bash
-plrust.trusted_pgx_version = '1.0.0-rc.1'
+plrust.trusted_pgx_version = '1.0.0'
 ```
 
 
