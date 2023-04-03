@@ -11,7 +11,7 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  PLRUST_TRUSTED_PGX_OVERRIDE: "pgx xxx= { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
+  PLRUST_TRUSTED_PGX_OVERRIDE: "pgx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
       WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
       ARTIFACT_USER_AWS_PROFILE: artifact-user
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
-      PLRUST_TRUSTED_PGX_OVERRIDE: "pgx xxx= { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
+      PLRUST_TRUSTED_PGX_OVERRIDE: "pgx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
 
     steps:
     - uses: actions/checkout@v3
