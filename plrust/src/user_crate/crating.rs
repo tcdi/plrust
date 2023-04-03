@@ -269,7 +269,7 @@ pub(crate) fn shared_imports() -> syn::ItemUse {
 
 pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Table {
     let trusted_pgx_version = get_trusted_pgx_version();
-    toml::toml! {
+    let mut toml = toml::toml! {
         [package]
         edition = "2021"
         name = crate_name
@@ -290,7 +290,30 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         debug-assertions = true
         opt-level = 3_usize
         panic = "unwind"
+    };
+
+    // if the `PLRUST_TRUSTED_PGX_OVERRIDE` environment variable is set at compile time
+    // we'll use that for the `pgx = ` line in the toml file.  This is really a plrust-developer
+    // convenience to allow tweaking where "plrust-trusted-pgx" is found during CI runs
+    //
+    // This is also (purposely) undocumented.  An example of how to use this is:
+    //
+    // ```
+    // $ cd plrust
+    // $ PLRUST_TRUSTED_PGX_OVERRIDE="pgx = { path = '~/code/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }" \
+    // cargo pgx run
+    // ```
+    if let Some(trusted_pgx_override) = option_env!("PLRUST_TRUSTED_PGX_OVERRIDE") {
+        if let Some(toml::Value::Table(dependencies)) = toml.get_mut("dependencies") {
+            let new_dependencies = trusted_pgx_override
+                .parse::<toml::Table>()
+                .expect("failed to parse new dependency block using `PLRUST_TRUSTED_PGX_OVERRIDE`");
+
+            *dependencies = new_dependencies;
+        }
     }
+
+    toml
 }
 
 fn unsafe_mod(mut called_fn: syn::ItemFn, variant: &CrateVariant) -> eyre::Result<syn::ItemMod> {
