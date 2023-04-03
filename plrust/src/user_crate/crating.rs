@@ -296,7 +296,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
     // we'll use that for the `pgx = ` line in the toml file.  This is really a plrust-developer
     // convenience to allow tweaking where "plrust-trusted-pgx" is found during CI runs
     //
-    // This is also (purposely) undocumented.  An example of how to use this is:
+    // An example of how to use this is:
     //
     // ```
     // $ cd plrust
