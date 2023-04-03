@@ -11,6 +11,7 @@ on:
 
 env:
   RUST_BACKTRACE: 1
+  PLRUST_TRUSTED_PGX_OVERRIDE: "pgx xxx= { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
