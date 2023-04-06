@@ -2,6 +2,14 @@
 
 This page outlines guidelines for using PL/Rust.
 
+## Database Encoding
+
+PL/Rust only supports databases encoded as `UTF8`.  This is something that must be specified either at `initdb`-time or
+during `CREATE DATABASE`.
+
+The reason for this is Rust strictly only supports UTF8-encoding Strings, and requiring this of the database not only
+ensures there's no undefined behavior around String conversions, it allows PL/Rust to do certain `TEXT`->`&str` Datum
+conversions as zero-copy operations.
 
 ## Argument names
 

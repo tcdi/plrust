@@ -200,9 +200,11 @@ sudo chown root -R /usr/lib/postgresql/15/lib/
 Create a `plrust` database and connect to the `plrust` database
 using `psql`.
 
+PL/Rust only supports databases encoded as `UTF8`.  This is to ensure proper compatibility between Postgres/SQL `TEXT`
+(and internal strings) and Rust `String` and `&str` types.
 
 ```bash
-sudo -u postgres psql -c "CREATE DATABASE plrust;"
+sudo -u postgres psql -c "CREATE DATABASE plrust WITH ENCODING = 'utf8' TEMPLATE = 'template0';"
 sudo -u postgres psql -d plrust
 ```
 
