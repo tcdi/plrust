@@ -51,7 +51,22 @@ use pgx::{pg_getarg, prelude::*};
 
 #[cfg(any(test, feature = "pg_test"))]
 pub use tests::pg_test;
+
 pgx::pg_module_magic!();
+
+extension_sql!(
+    r#"
+DO LANGUAGE plpgsql $$
+BEGIN
+   IF pg_catalog.getdatabaseencoding() <> 'UTF8' THEN
+        RAISE EXCEPTION 'PL/Rust only supports UTF8-encoded databases.';
+   END IF;
+END;
+$$;
+"#,
+    name = "check_encoding",
+    bootstrap
+);
 
 /// This is the default set of lints we apply to PL/Rust user functions, and require of PL/Rust user
 /// functions before we'll load and execute them.

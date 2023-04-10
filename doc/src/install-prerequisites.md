@@ -21,9 +21,14 @@ Steps to install PL/Rust:
 
 PL/Rust requires PostgreSQL and all prerequisites outlined for
 [pgx](https://github.com/tcdi/pgx#system-requirements)
-are installed.
-Pay special attention to
-[PostgreSQL's build dependencies](https://wiki.postgresql.org/wiki/Compile_and_Install_from_source_code).
+are installed.  
+
+PL/Rust also requires that any databases in which it's created is `UTF8`.  Postgres' default encoding is determined
+by the locale of the environment when `initdb` is first run.  Depending on your operating system configuration, this may 
+not resolve to `UTF8`.
+
+[Building PL/Rust from source](https://wiki.postgresql.org/wiki/Compile_and_Install_from_source_code) requires 
+installing `cargo-pgx` which requires a development toolchain capable of building Postgres itself.
 
 
 ### Permissions
