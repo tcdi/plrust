@@ -147,7 +147,7 @@ jobs:
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
     - name: Run cargo pgx init for PG14
-      run: cargo pgx init --pg14 $(which pg_config)
+      run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
       if: matrix.target == 'host'
@@ -155,7 +155,7 @@ jobs:
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
