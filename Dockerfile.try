@@ -55,6 +55,20 @@ RUN cargo pgx init --pg15 $(which pg_config)
 # Build and install plrust as trusted
 RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --features trusted
 
+# Reset the permissions of files/directories that was created or touched by the postgres user
+# Switching to the root user here temporarily is easier than installing and setting up sudo
+USER root
+
+RUN chmod 0755 `$(which pg_config) --pkglibdir` && \
+    cd `$(which pg_config) --pkglibdir` && \
+    chown root:root *.so && \
+    chmod 0644 *.so && \
+    chmod 755 `$(which pg_config) --sharedir`/extension && \
+    cd `$(which pg_config) --sharedir`/extension && \
+    chown root:root *
+
+USER postgres
+
 # Create initial main database
 RUN pg_createcluster 15 main
 
