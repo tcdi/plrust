@@ -53,8 +53,7 @@ RUN cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 RUN cargo pgx init --pg15 $(which pg_config)
 
 # Build and install plrust as trusted
-# cargo pgx install --features trusted???
-RUN cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo pgx install --features trusted
+RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --features trusted
 
 # Create initial main database
 RUN pg_createcluster 15 main
