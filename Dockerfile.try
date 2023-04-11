@@ -1,0 +1,110 @@
+FROM postgres:15-bullseye
+
+SHELL ["/bin/bash", "-c"]
+
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        lsb-release \
+        wget && \
+    sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null && \
+    apt-get update -y -qq --fix-missing && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        clang-11 \
+        gcc \
+        git \
+        jq \
+        libssl-dev \
+        llvm-11 \
+        make \
+        postgresql-server-dev-15 \
+        pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set up permissions so that the postgres user can install the plrust plugin
+RUN chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+
+USER postgres
+ENV USER postgres
+
+# Install Rust
+RUN wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=1.67.1
+ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
+
+# Copy in plrust source
+COPY --chown=${USER} . src/
+WORKDIR /src
+
+# Install exact cargo-pgx that is definied in Cargo.toml
+RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && cargo install cargo-pgx --force --version "$TARGET_VERSION"
+
+# Install llvm-tools-preview
+RUN rustup component add llvm-tools-preview rustc-dev
+
+# Build and install plrustc
+RUN cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
+# Init cargo pgx against installed postgres version
+RUN cargo pgx init --pg15 $(which pg_config)
+
+# Build and install plrust as trusted
+# cargo pgx install --features trusted???
+RUN cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo pgx install --features trusted
+
+# Create initial main database
+RUN pg_createcluster 15 main
+
+# Set up plrust configuration options
+RUN cat <<EOT >> /etc/postgresql/15/main/postgresql.conf
+shared_preload_libraries='plrust'
+plrust.work_dir='/tmp'
+EOT
+
+# Set up custom prompt
+RUN cat <<EOT >> ~/.psqlrc
+\set PROMPT1 '%/(plrust)=# '
+\set PROMPT2 '%/(plrust)-# '
+EOT
+
+RUN mkdir ~/scripts
+ENV PATH="~/scripts:${PATH}"
+
+# Set up script that launches both postgresql server (background) and psql client (foreground)
+RUN cat <<EOT >> ~/scripts/all
+echo "Starting Postgresql..."
+service postgresql start
+echo ""
+echo "Installing plrust"
+psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"
+echo ""
+echo "Starting psql"
+echo ""
+psql
+EOT
+
+RUN chmod +x ~/scripts/all
+
+# Set up script that launches Postgresql in the foreground. Need to launch it as a service first so that
+# plrust can be installed.
+RUN cat <<EOT >> ~/scripts/server
+echo "Starting Postgresql service..."
+service postgresql start
+echo ""
+echo "Installing plrust"
+psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"
+echo ""
+echo "Stopping service"
+service postgresql stop
+echo "Starting Postgresql in the foreground"
+echo ""
+postgres -D /etc/postgresql/15/main/
+EOT
+
+RUN chmod +x ~/scripts/server
+
+CMD [ "all" ]
