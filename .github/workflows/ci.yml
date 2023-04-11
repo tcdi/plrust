@@ -323,7 +323,7 @@ jobs:
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
+      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
     # # Maybe this is not necessary if we switch to sccache?
     # # Attempt to make the cache payload slightly smaller.
