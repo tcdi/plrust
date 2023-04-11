@@ -53,7 +53,7 @@ RUN cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 RUN cargo pgx init --pg15 $(which pg_config)
 
 # Build and install plrust as trusted
-RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --features trusted
+RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --release --features trusted
 
 # Reset the permissions of files/directories that was created or touched by the postgres user
 # Switching to the root user here temporarily is easier than installing and setting up sudo
