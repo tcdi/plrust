@@ -40,20 +40,30 @@ ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 COPY --chown=${USER} . src/
 WORKDIR /src
 
-# Install exact cargo-pgx that is definied in Cargo.toml
-RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && cargo install cargo-pgx --force --version "$TARGET_VERSION"
+# # Install exact cargo-pgx that is definied in Cargo.toml
+# RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && cargo install cargo-pgx --force --version "$TARGET_VERSION"
 
-# Install llvm-tools-preview
-RUN rustup component add llvm-tools-preview rustc-dev
+# # Install llvm-tools-preview
+# RUN rustup component add llvm-tools-preview rustc-dev
 
-# Build and install plrustc
-RUN cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && find . -type d -name target | xargs rm -r
+# # Build and install plrustc
+# RUN cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && find . -type d -name target | xargs rm -r
 
-# Init cargo pgx against installed postgres version
-RUN cargo pgx init --pg15 $(which pg_config)
+# # Init cargo pgx against installed postgres version
+# RUN cargo pgx init --pg15 $(which pg_config)
 
-# Build and install plrust as trusted
-RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --release --features trusted &&  find . -type d -name target | xargs rm -r
+# # Build and install plrust as trusted
+# RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --release --features trusted && find . -type d -name target | xargs rm -r
+
+RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
+    cargo install cargo-pgx --force --version "$TARGET_VERSION" && \
+    rustup component add llvm-tools-preview rustc-dev && \
+    cd /src/plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && \
+    cargo pgx init --pg15 $(which pg_config) && \
+    cd /src/plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && \
+    cargo pgx install --release --features trusted && \
+    cd /src && find . -type d -name target | xargs rm -r && \
+    rustup component remove llvm-tools-preview rustc-dev
 
 # Reset the permissions of files/directories that was created or touched by the postgres user
 # Switching to the root user here temporarily is easier than installing and setting up sudo
