@@ -44,7 +44,7 @@ This code is explained further after the code block.
 
 
 ```sql
-CREATE FUNCTION plrust.dog_trigger()
+CREATE OR REPLACE FUNCTION plrust.dog_trigger()
 RETURNS trigger AS
 $$
     let tg_op = trigger.op()?;

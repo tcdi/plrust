@@ -29,7 +29,7 @@ keeps functionality simple, direct and obvious.
 One of the reasons people use Rust is because of the quality of the compiler's feedback on incorrect code. Allowing anonymous parameters would ultimately require transforming the code in a way that would either result in potentially garbled error messages, or arbitrarily restricting what sets of identifiers can be used. Simply requiring identifiers skips all of that.
 
 ```sql
-CREATE FUNCTION plrust.strlen(TEXT)
+CREATE OR REPLACE FUNCTION plrust.strlen(TEXT)
     RETURNS BIGINT
     LANGUAGE plrust STRICT
 AS $$
@@ -50,7 +50,7 @@ must be
 
 
 ```sql
-CREATE FUNCTION plrust.strlen("this name is not supported" TEXT)
+CREATE OR REPLACE FUNCTION plrust.strlen("this name is not supported" TEXT)
     RETURNS BIGINT
     LANGUAGE plrust STRICT
 AS $$

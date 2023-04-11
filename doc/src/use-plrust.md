@@ -42,7 +42,7 @@ The following example creates a basic `plrust` function named
 
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
@@ -61,7 +61,7 @@ defined in the function definition can be used directly in the Rust
 code within the function's body.
 
 ```sql
-CREATE FUNCTION plrust.strlen(val TEXT)
+CREATE OR REPLACE FUNCTION plrust.strlen(val TEXT)
     RETURNS BIGINT
     LANGUAGE plrust
 AS $$
@@ -91,7 +91,7 @@ of `plrust.strlen` works the same as above.
 
 
 ```sql
-    CREATE FUNCTION plrust.strlen(val TEXT)
+    CREATE OR REPLACE FUNCTION plrust.strlen(val TEXT)
     RETURNS BIGINT
     LANGUAGE plrust STRICT
 AS $$
@@ -123,7 +123,7 @@ PL/Rust functions can performance calculations, such as converting
 distance values from feet to miles.
 
 ```sql
-CREATE FUNCTION plrust.distance_feet_to_miles(feet FLOAT)
+CREATE OR REPLACE FUNCTION plrust.distance_feet_to_miles(feet FLOAT)
     RETURNS FLOAT
     LANGUAGE plrust STRICT
 AS $$
@@ -158,7 +158,7 @@ The `random_first_name()` function returns a random first name using the
  
 
 ```sql
-CREATE FUNCTION plrust.random_slogan() RETURNS TEXT
+CREATE OR REPLACE FUNCTION plrust.random_slogan() RETURNS TEXT
 LANGUAGE plrust AS $$
 [dependencies]
     faker_rand = "0.1"
@@ -184,7 +184,7 @@ SELECT plrust.random_slogan();
 
 
 ```sql
-CREATE FUNCTION plrust.random_company_name(locale TEXT)
+CREATE OR REPLACE FUNCTION plrust.random_company_name(locale TEXT)
     RETURNS TEXT
     LANGUAGE plrust STRICT
 AS $$

@@ -228,7 +228,7 @@ that simply returns the integer 1.
 
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT LANGUAGE plrust
 AS
 $$
