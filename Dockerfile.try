@@ -2,6 +2,8 @@ FROM postgres:15-bullseye
 
 SHELL ["/bin/bash", "-c"]
 
+# Install just enough to set up the official Postgres debian repository,
+# then install everything else we need for Rust and plrust
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -40,21 +42,7 @@ ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 COPY --chown=${USER} . src/
 WORKDIR /src
 
-# # Install exact cargo-pgx that is definied in Cargo.toml
-# RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && cargo install cargo-pgx --force --version "$TARGET_VERSION"
-
-# # Install llvm-tools-preview
-# RUN rustup component add llvm-tools-preview rustc-dev
-
-# # Build and install plrustc
-# RUN cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && find . -type d -name target | xargs rm -r
-
-# # Init cargo pgx against installed postgres version
-# RUN cargo pgx init --pg15 $(which pg_config)
-
-# # Build and install plrust as trusted
-# RUN cd plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && cargo pgx install --release --features trusted && find . -type d -name target | xargs rm -r
-
+# Build/install/remove all that is necessary in one step as to keep the resulting layer as small as possible.
 RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
     cargo install cargo-pgx --force --version "$TARGET_VERSION" && \
     rustup component add llvm-tools-preview rustc-dev && \
@@ -65,7 +53,7 @@ RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|sele
     cd /src && find . -type d -name target | xargs rm -r && \
     rustup component remove llvm-tools-preview rustc-dev
 
-# Reset the permissions of files/directories that was created or touched by the postgres user
+# Reset the permissions of files/directories that was created or touched by the postgres user.
 # Switching to the root user here temporarily is easier than installing and setting up sudo
 USER root
 
@@ -94,6 +82,7 @@ RUN cat <<EOT >> ~/.psqlrc
 \set PROMPT2 '%/(plrust)-# '
 EOT
 
+# Create startup/CMD scripts
 RUN mkdir ~/scripts
 ENV PATH="~/scripts:${PATH}"
 
@@ -130,4 +119,6 @@ EOT
 
 RUN chmod +x ~/scripts/server
 
+# By default, we will run the "all" script, which will start up the postgres server in the background,
+# and the psql cli in the foreground
 CMD [ "all" ]
