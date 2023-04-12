@@ -7,6 +7,7 @@
 - [Install Prerequisites](./install-prerequisites.md)
 - [Install PL/Rust](./install-plrust.md)
 - [Update PL/Rust](./update-plrust.md)
+- [Try PL/Rust with Docker](./try-plrust-with-docker.md)
 
 
 # PL/Rust Usage
