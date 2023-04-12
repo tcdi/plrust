@@ -43,8 +43,8 @@ COPY --chown=${USER} . src/
 WORKDIR /src
 
 # Build/install/remove all that is necessary in one step as to keep the resulting layer as small as possible.
-RUN TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
-    cargo install cargo-pgx --force --version "$TARGET_VERSION" && \
+RUN PGX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
+    cargo install cargo-pgx --force --version "$PGX_VERSION" && \
     rustup component add llvm-tools-preview rustc-dev && \
     cd /src/plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && \
     cargo pgx init --pg15 $(which pg_config) && \
@@ -71,23 +71,23 @@ USER postgres
 RUN pg_createcluster 15 main
 
 # Set up plrust configuration options
-RUN cat <<EOT >> /etc/postgresql/15/main/postgresql.conf
+RUN cat <<EOF >> /etc/postgresql/15/main/postgresql.conf
 shared_preload_libraries='plrust'
 plrust.work_dir='/tmp'
-EOT
+EOF
 
 # Set up custom prompt
-RUN cat <<EOT >> ~/.psqlrc
+RUN cat <<EOF >> ~/.psqlrc
 \set PROMPT1 '%/(plrust)=# '
 \set PROMPT2 '%/(plrust)-# '
-EOT
+EOF
 
 # Create startup/CMD scripts
 RUN mkdir ~/scripts
 ENV PATH="~/scripts:${PATH}"
 
 # Set up script that launches both postgresql server (background) and psql client (foreground)
-RUN cat <<EOT >> ~/scripts/all
+RUN cat <<EOF >> ~/scripts/all
 echo "Starting Postgresql..."
 service postgresql start
 echo ""
@@ -97,13 +97,13 @@ echo ""
 echo "Starting psql"
 echo ""
 psql
-EOT
+EOF
 
 RUN chmod +x ~/scripts/all
 
 # Set up script that launches Postgresql in the foreground. Need to launch it as a service first so that
 # plrust can be installed.
-RUN cat <<EOT >> ~/scripts/server
+RUN cat <<EOF >> ~/scripts/server
 echo "Starting Postgresql service..."
 service postgresql start
 echo ""
@@ -115,7 +115,7 @@ service postgresql stop
 echo "Starting Postgresql in the foreground"
 echo ""
 postgres -D /etc/postgresql/15/main/
-EOT
+EOF
 
 RUN chmod +x ~/scripts/server
 
