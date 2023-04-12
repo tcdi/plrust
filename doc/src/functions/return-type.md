@@ -25,7 +25,7 @@ functions have the opportunity to return NULL built into their underlying functi
 
 If a PL/Rust function would never return NULL, always return the `Some` variant.
 
-## Why `Result<..., Box<dyn std::error::Error + Send + Sync + 'static>>`
+## Why `Result<..., Box<dyn std::error::Error + Send + Sync + 'static>>`?
 
 Generally speaking, Postgres procedural language functions, and even Postgres internals, can be considered "fail fast"
 in that they tend to raise an error/exception at the exact point when it happens.  Rust tends towards propagating errors
