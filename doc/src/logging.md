@@ -19,7 +19,7 @@ PostgreSQL logs defined by your `postgresql.conf`.  Running the following
 example of `plrust.one()` creates a `LOG` record.
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
@@ -56,7 +56,7 @@ in the logged message string.
 
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
@@ -84,7 +84,7 @@ Warnings are sent to the log file as well as being returned to the client as a
 
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
@@ -133,7 +133,7 @@ to an `error`.
 
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
@@ -183,7 +183,7 @@ the query.  These options do not log the message to the PostgreSQL logs.
 
 
 ```sql
-CREATE FUNCTION plrust.one()
+CREATE OR REPLACE FUNCTION plrust.one()
     RETURNS INT
     LANGUAGE plrust
 AS
