@@ -6,7 +6,7 @@ a set of lints.
 
 It's important to understand the surrounding code environment of an individual `LANGUAGE plrust` function, and this
 environment is different depending on certain properties of the function itself.  The important differences arise around
-whether the function is declared as `STRICT`.  This is discussed in the [`STRICT` and `NULL`](../data-types.md) chapter.
+whether the function is declared as `STRICT`.  This is discussed in the [`STRICT` and `NULL`](arguments.md) chapter.
 
 Using a PL/Rust function that converts a `TEXT` datum to lowercase:
 
