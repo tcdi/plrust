@@ -25,7 +25,7 @@ functions have the opportunity to return NULL built into their underlying functi
 
 If a PL/Rust function would never return NULL, always return the `Some` variant.
 
-## Why `Result<..., Box<dyn Error + Send + Sync + 'static>>`
+## Why `Result<..., Box<dyn std::error::Error + Send + Sync + 'static>>`
 
 Generally speaking, Postgres procedural language functions, and even Postgres internals, can be considered "fail fast"
 in that they tend to raise an error/exception at the exact point when it happens.  Rust tends towards propagating errors
@@ -37,6 +37,10 @@ transaction.
 
 Returning a `Result` helps to simplify error handling, especially when a `LANGUAGE plrust` function uses [Spi](../spi.md)
 as the Rust `?` operator is usable to propagate errors during function execution.
+
+Since the  Rust "Error" type cannot be expressed as part of the `CREATE FUNCTION` statement, PL/Rust generalizes the 
+error to `Box<dyn std::error::Error + Send + Sync + 'static>` to provide as much compatability as possible with the
+wide range of concrete Error types in the Rust ecosystem.
 
 
 
