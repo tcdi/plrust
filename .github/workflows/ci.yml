@@ -146,7 +146,7 @@ jobs:
     - name: install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Run cargo pgx init for PG14
+    - name: Run cargo pgx init
       run: cargo pgx init --pg$PG_VER $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
