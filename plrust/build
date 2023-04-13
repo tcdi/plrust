@@ -49,5 +49,3 @@ fi
     STD_TARGETS="$STD_TARGETS" ./run clean
     STD_TARGETS="$STD_TARGETS" ./run install
 )
-
-cargo test --verbose --no-default-features --features "pg${PG_VER:-15} trusted"
