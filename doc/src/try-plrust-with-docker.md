@@ -34,7 +34,7 @@ $$
 $$;
 ```
 
-Creating PL/Rust functions causes Rust code compilation in the backend, so this may take some time depending on  the host's hardware specifications and internet connection speeds. Once this completes, the PL/Rust function can be executed similar to other Postgres functions:
+Creating PL/Rust functions compiles Rust code in the backend, so this may take some time depending on the host's hardware specifications and internet connection speeds. Once this completes, the PL/Rust function can be executed similar to other Postgres functions:
 
 ```SQL
 SELECT * FROM plrust.one();
