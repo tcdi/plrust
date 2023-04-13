@@ -77,51 +77,43 @@ host all all 0.0.0.0/0 trust
 EOF
 
 # Set up plrust configuration options
-RUN cat <<EOF >> /etc/postgresql/15/main/postgresql.conf
-shared_preload_libraries='plrust'
-plrust.work_dir='/tmp'
-EOF
+RUN echo "shared_preload_libraries='plrust'" >> /etc/postgresql/15/main/postgresql.conf && \
+    echo "plrust.work_dir='/tmp'" >>/etc/postgresql/15/main/postgresql.conf
 
 # Set up custom prompt
-RUN cat <<EOF >> ~/.psqlrc
-\set PROMPT1 '%/(plrust)=# '
-\set PROMPT2 '%/(plrust)-# '
-EOF
+RUN echo "\set PROMPT1 '%/(plrust)=# '" >> ~/.psqlrc && \
+    echo "\set PROMPT2 '%/(plrust)-# '" >> ~/.psqlrc
 
 # Create startup/CMD scripts
 RUN mkdir ~/scripts
 ENV PATH="~/scripts:${PATH}"
 
 # Set up script that launches both postgresql server (background) and psql client (foreground)
-RUN cat <<EOF >> ~/scripts/all
-echo "Starting Postgresql..."
-service postgresql start
-echo ""
-echo "Installing plrust"
-psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"
-echo ""
-echo "Starting psql"
-echo ""
-psql
-EOF
+RUN echo 'echo "Starting Postgresql..."' >> ~/scripts/all && \
+    echo 'service postgresql start' >> ~/scripts/all && \
+    echo 'echo ""' >> ~/scripts/all && \
+    echo 'echo "Installing plrust"' >> ~/scripts/all && \
+    echo 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"' >> ~/scripts/all && \
+    echo 'echo ""' >> ~/scripts/all && \
+    echo 'echo "Starting psql"' >> ~/scripts/all && \
+    echo 'echo ""' >> ~/scripts/all && \
+    echo 'psql' >> ~/scripts/all
 
 RUN chmod +x ~/scripts/all
 
 # Set up script that launches Postgresql in the foreground. Need to launch it as a service first so that
 # plrust can be installed.
-RUN cat <<EOF >> ~/scripts/server
-echo "Starting Postgresql service..."
-service postgresql start
-echo ""
-echo "Installing plrust"
-psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"
-echo ""
-echo "Stopping service"
-service postgresql stop
-echo "Starting Postgresql in the foreground"
-echo ""
-postgres -D /etc/postgresql/15/main/
-EOF
+RUN echo 'echo "Starting Postgresql service..."' >> ~/scripts/server && \
+    echo 'service postgresql start' >> ~/scripts/server && \
+    echo 'echo ""' >> ~/scripts/server && \
+    echo 'echo "Installing plrust"' >> ~/scripts/server && \
+    echo 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"' >> ~/scripts/server && \
+    echo 'echo ""' >> ~/scripts/server && \
+    echo 'echo "Stopping service"' >> ~/scripts/server && \
+    echo 'service postgresql stop' >> ~/scripts/server && \
+    echo 'echo "Starting Postgresql in the foreground"' >> ~/scripts/server && \
+    echo 'echo ""' >> ~/scripts/server && \
+    echo 'postgres -D /etc/postgresql/15/main/' >> ~/scripts/server
 
 RUN chmod +x ~/scripts/server
 
