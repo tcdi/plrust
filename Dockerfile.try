@@ -1,9 +1,13 @@
+# Example of how to build and run this Dockerfile:
+#   docker build -f Dockerfile.try -t tcdi/try-plrust . # Build the container
+#   docker run -it tcdi/try-plrust # Run the container
+
 FROM postgres:15-bullseye
 
 SHELL ["/bin/bash", "-c"]
 
 # Install just enough to set up the official Postgres debian repository,
-# then install everything else we need for Rust and plrust
+# then install everything else needed for Rust and plrust
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -31,6 +35,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 # Set up permissions so that the postgres user can install the plrust plugin
 RUN chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
 
+# The 'postgres' user is the default user that the official postgres:15-bullseye image sets up
 USER postgres
 ENV USER postgres
 
@@ -69,6 +74,9 @@ USER postgres
 
 # Create initial main database
 RUN pg_createcluster 15 main
+
+# NOTE: Heredocs do not work in older versions of Docker, so multiple 'echo' lines
+# will be used in various places in this Dockerfile.
 
 # Set up host based auth. *DO NOT* use this in production!
 RUN echo 'local all all trust' > /etc/postgresql/15/main/pg_hba.conf && \
@@ -115,6 +123,6 @@ RUN echo 'echo "Starting Postgresql service..."' >> ~/scripts/server && \
 
 RUN chmod +x ~/scripts/server
 
-# By default, we will run the "all" script, which will start up the postgres server in the background,
+# By default, run the "all" script, which will start up the postgres server in the background,
 # and the psql cli in the foreground
 CMD [ "all" ]
