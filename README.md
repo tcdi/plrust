@@ -4,36 +4,45 @@ PL/Rust is a loadable procedural language that enables writing PostgreSQL functi
 language. These functions are compiled to native machine code. Unlike other procedural languages, PL/Rust functions
 are not interpreted.
 
-The top advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance,
+The primary advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance,
 access to Rust's large development ecosystem, and Rust's compile-time safety guarantees.
-
-> The PL/Rust [documentation is moving](https://tcdi.github.io/plrust/) to a more user friendly format.  The mdbook format documentation is auto-generated from the main branch.
 
 PL/Rust provides access to Postgres' Server Programming Interface (SPI) including dynamic queries, prepared
 statements, and cursors. It also provides safe Rust types over most of Postgres built-in data types, including (but
-not limited to), TEXT, INT, BIGINT, NUMERIC, FLOAT, DOUBLE PRECISION, DATE, TIME, etc.
+not limited to), TEXT, INT, BIGINT, NUMERIC, FLOAT, DOUBLE PRECISION, etc.
 
-On x86_64 and aarch64 systems PL/Rust can be a "trusted" procedural language, assuming the proper compilation
+On x86_64 and aarch64 Linux systems PL/Rust can be a "trusted" procedural language, assuming the proper compilation
 requirements are met. On other systems, it is perfectly usable as an "untrusted" language but cannot provide the
 same level of safety guarantees.
+
+# Learn More
+
+PL/Rust's documentation, an ongoing project, can be found at https://tcdi.github.io/plrust.  Also see the 
+[`plrust-trusted-pgx`](https://docs.rs/plrust-trusted-pgx/latest/plrust_trusted_pgx/) Rust documentation.
+
+# Join our Community
+
+The PL/Rust team at [TCDI](https://www.tcdi.com/) manages a Discord server where we discuss PL/Rust and related technologies
+such as [`pgx`](https://github.com/tcdi/pgx), Rust, and Postgres.  Feel free to join:  https://discord.gg/mHKrj55zyh
+
+# Quick Example
 
 An example PL/Rust function:
 
 ```sql
--- return the character length of a text string
-CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
-    Ok(Some(name.unwrap().len() as i32))
+psql> CREATE FUNCTION add_two_numbers(a NUMERIC, b NUMERIC) RETURNS NUMERIC STRICT LANGUAGE plrust AS $$
+    Ok(Some(a + b))
 $$;
 
-# select strlen('Hello, PL/Rust');
-strlen 
---------
-     14
+psql> SELECT add_two_numbers(2, 2);
+add_two_numbers 
+-----------------
+               4
 ```
 
-PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore, each `LANGUAGE
-plrust` function are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgx`
-is developed by [TCDI](https://www.tcdi.com).
+PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore,  `LANGUAGE
+plrust` functions are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions 
+with Rust.  Like this project, `pgx` is developed by [TCDI](https://www.tcdi.com).
 
 The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.
 
@@ -80,34 +89,57 @@ of the documentation.
 
 # Quickly Getting Started
 
-To quickly get started using PL/Rust for evaluation purposes, install `cargo-pgx` following the steps from above, then...
+To quickly evaluate PL/Rust from this repository...
+
+First, install and initialize the required build environment tools:
+
+```bash
+$ cargo install cargo-pgx --locked
+$ cargo pgx init
+```
+
+Then clone this repository and build/run PL/Rust once to complete the `cargo-pgx` environment initialization:
 
 ```bash
 $ git clone https://github.com/tcdi/plrust.git
-$ cd plrust/plrust
-$ cargo pgx run pg14
-psql> \q
+$ cd plrust
 
-$ SCRATCH_DIR=/home/${USER}/plrust-scratch
-$ cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
-  plrust.work_dir = '${SCRATCH_DIR}'
-EOF
-$ mkdir -p scratch
-$ chmod -R 777 scratch
+# build plrustc, our custom rustc driver and copy it to ~/.cargo/bin
+$ cd plrustc && ./build.sh    
+$ cp ../build/bin/plrustc ~/.cargo/bin
+
+# build and run plrust itself
+$ cd ../plrust/plrust
+$ cargo pgx run pg14 --release
+
+# which drops you into a psql shell.  just \quit it for now
+psql> \q
 ```
 
-Then run it for real and start writing functions!
+Apply the required `postgresql.conf` configuration:
+
+```bash
+$ SCRATCH_DIR=${HOME}/plrust-scratch
+$ mkdir -p ${SCRATCH_DIR}
+$ cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
+shared_preload_libraries = 'plrust'
+plrust.work_dir = '${SCRATCH_DIR}'
+EOF
+```
+
+Finally, run it for real and start writing functions!
 
 ```bash
 $ cargo pgx run pg14
 psql> CREATE EXTENSION plrust;
-psql> CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
-    Ok(Some(name.unwrap().len() as i32))
+psql> CREATE FUNCTION add_two_numbers(a NUMERIC, b NUMERIC) RETURNS NUMERIC STRICT LANGUAGE plrust AS $$
+    Ok(Some(a + b))
 $$;
-psql> select strlen('Hello, PL/Rust');
-strlen 
---------
-     14
+
+psql> SELECT add_two_numbers(2, 2);
+add_two_numbers 
+-----------------
+               4
 ```
 
 
@@ -117,7 +149,8 @@ In the Postgres world it seems common for procedural languages to have two style
 
 PL/Rust does not do this.  The only thing that Postgres uses to determine if a language handler is considered "trusted" is if it was created using `CREATE TRUSTED LANGUAGE`.  It does not inspect the name.
 
-PL/Rust stores the compiled user function binaries as a `bytea` in an extension-specific table uniquely key'd with its compilation target.
+PL/Rust stores user functions in `pg_catalog.pg_proc`'s `prosrc` field as a complex json structure where the compiled 
+function is a compressed, base64 encoded string, with the key-value pairs mapping each target tuple to compiled object code.
 
 As such, compiling a function with an "untrusted" version of PL/Rust, then installing the "trusted" version and trying to run that function will fail -- "trusted" and "untrusted" are considered different compilation targets and are not compatible with each other, even if the underlying hardware is exactly the same.
 
