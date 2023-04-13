@@ -150,7 +150,7 @@ In the Postgres world it seems common for procedural languages to have two style
 PL/Rust does not do this.  The only thing that Postgres uses to determine if a language handler is considered "trusted" is if it was created using `CREATE TRUSTED LANGUAGE`.  It does not inspect the name.
 
 PL/Rust stores user functions in `pg_catalog.pg_proc`'s `prosrc` field as a complex json structure where the compiled 
-function is a compressed, base64 encoded string, internally key'd with its compilation target.
+function is a compressed, base64 encoded string, with the key-value pairs mapping each target tuple to compiled object code.
 
 As such, compiling a function with an "untrusted" version of PL/Rust, then installing the "trusted" version and trying to run that function will fail -- "trusted" and "untrusted" are considered different compilation targets and are not compatible with each other, even if the underlying hardware is exactly the same.
 
