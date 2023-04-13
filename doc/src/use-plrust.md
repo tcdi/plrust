@@ -1,4 +1,4 @@
-# PL/Rust Functions and Arguments
+# PL/Rust Functions
 
 PL/Rust functions are created with the standard
 [`CREATE FUNCTION`](https://www.postgresql.org/docs/current/sql-createfunction.html)
