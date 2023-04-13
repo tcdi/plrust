@@ -71,10 +71,8 @@ USER postgres
 RUN pg_createcluster 15 main
 
 # Set up host based auth. *DO NOT* use this in production!
-RUN cat <<EOF > /etc/postgresql/15/main/pg_hba.conf
-local all all trust
-host all all 0.0.0.0/0 trust
-EOF
+RUN echo 'local all all trust' > /etc/postgresql/15/main/pg_hba.conf && \
+    echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/15/main/pg_hba.conf
 
 # Set up plrust configuration options
 RUN echo "shared_preload_libraries='plrust'" >> /etc/postgresql/15/main/postgresql.conf && \
