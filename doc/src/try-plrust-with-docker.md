@@ -2,12 +2,12 @@
 
 Giving PL/Rust a try has never been easier with Docker! This document outlines what is required to get a functional Postgres + PL/Rust environment running with just a few commands.
 
-The PL/Rust repository contains a Dockerfile named `Dockerfile.try` that contains everything necessary to spin up and test PL/Rust in a target environment.
+The PL/Rust repository supplies a Dockerfile named `Dockerfile.try` that contains everything necessary to spin up and test PL/Rust in a target environment.
 
-The following instructions assume a very basic understanding of what [Docker](https://www.docker.com) is and that it is already installed in the target environment. If Docker is not yet installed yet, instructions can be found here: <https://docs.docker.com/engine/install/>
+The following instructions assume a very basic understanding of what [Docker](https://www.docker.com) is and that it is already installed in the target environment. If Docker is not yet installed, instructions can be found here: <https://docs.docker.com/engine/install/>
 
-1. Check out the PL/Rust code, and switch to that directory
-1. From a command line, run the following from the root of the checkout directory (note that `sudo` or equivalent may be required):
+1. Clone the PL/Rust code, and switch to that directory
+1. From a command line, run the following from the root of the checkout directory (`sudo` or equivalent may be required):
     ```
     docker build -f Dockerfile.try -t tcdi/try-plrust .
     ```
@@ -75,4 +75,4 @@ To exit out of server mode, press Ctrl+c in the running Docker container.
 
 * This Dockerfile and resulting image should not be used in production. It does not take many security precautions into consideration. As such, the way `Dockerfile.try` is constructed should not be considered a best practice as it relates to setting up and securing a Postgres instance with PL/Rust installed.
 
-* The Postgres data directories, logs and built PL/Rust functions are not persistent and are destroyed upon continer termination. Externally mounting Postgres' data, log and function directories is outside the scope of this example.
+* The Postgres data directories, logs and built PL/Rust functions are not persistent and are destroyed upon container termination. Externally mounting Postgres' data, log and function directories is outside the scope of this example.
