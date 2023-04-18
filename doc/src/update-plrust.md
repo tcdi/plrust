@@ -1,12 +1,12 @@
 # Update PL/Rust
 
 This section explains how to update PL/Rust installations.  This assumes
-you installed PL/Rust following our [installation guide](./install-plrust.md) and pgx and PL/Rust are installed using the `postgres` Linux user.
+you installed PL/Rust following our [installation guide](./install-plrust.md) and pgrx and PL/Rust are installed using the `postgres` Linux user.
 
-## Update pgx
+## Update pgrx
 
 A PL/Rust update is often accompanied by an update of the underlying
-`pgx` project.  Install the latest version of pgx.
+`pgrx` project.  Install the latest version of pgrx.
 Changing into the plrust folder ensures the `rustc` version used
 for installation is the same required by PL/Rust.
 
@@ -24,7 +24,7 @@ sudo chown postgres -R /usr/lib/postgresql/15/lib/
 sudo su - postgres
 cd ~/plrust
 git pull
-cargo install cargo-pgx --locked
+cargo install cargo-pgrx --locked
 ```
 
 
@@ -47,7 +47,7 @@ PG_VER=15 \
     STD_TARGETS="x86_64-postgres-linux-gnu " \
     ./build
 
-cargo pgx install --release \
+cargo pgrx install --release \
     --features trusted \
     -c /usr/bin/pg_config
 ```

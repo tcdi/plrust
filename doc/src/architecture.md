@@ -1,6 +1,6 @@
 # Architecture
 
-PL/Rust, a Rust-based extension built using [pgx](https://github.com/tcdi/pgx), provides a procedural language handler for Rust in PostgreSQL. When installed, PL/Rust allows this to work:
+PL/Rust, a Rust-based extension built using [pgrx](https://github.com/tcdi/pgrx), provides a procedural language handler for Rust in PostgreSQL. When installed, PL/Rust allows this to work:
 
 ```sql
 CREATE FUNCTION {fn_name} ({args})

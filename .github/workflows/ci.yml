@@ -13,7 +13,7 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  PLRUST_TRUSTED_PGX_OVERRIDE: "pgx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
+  PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
       WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
       ARTIFACT_USER_AWS_PROFILE: artifact-user
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
-      PLRUST_TRUSTED_PGX_OVERRIDE: "pgx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }"
+      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
 
     steps:
     - uses: actions/checkout@v3
@@ -133,11 +133,11 @@ jobs:
     - name: Print sccache stats (before build)
       run: sccache --show-stats
 
-    # See <plrust-root>/.github/scripts/install_cargo_pgx.sh for more details
-    - name: Install cargo-pgx defined in plrust/Cargo.toml
+    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+    - name: Install cargo-pgrx defined in plrust/Cargo.toml
       run: |
-        . $WORK_DIR/.github/scripts/install_cargo_pgx.sh
-        install_cargo_pgx
+        . $WORK_DIR/.github/scripts/install_cargo_pgrx.sh
+        install_cargo_pgrx
 
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview rustc-dev
@@ -148,8 +148,8 @@ jobs:
     - name: install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Run cargo pgx init for PG14
-      run: cargo pgx init --pg14 $(which pg_config)
+    - name: Run cargo pgrx init for PG14
+      run: cargo pgrx init --pg14 $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
       if: matrix.target == 'host'
@@ -293,11 +293,11 @@ jobs:
           target/
         key: v0-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/ci.yml') }}
 
-    # See <plrust-root>/.github/scripts/install_cargo_pgx.sh for more details
-    - name: Install cargo-pgx defined in plrust/Cargo.toml
+    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+    - name: Install cargo-pgrx defined in plrust/Cargo.toml
       run: |
-        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgx.sh
-        install_cargo_pgx
+        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
+        install_cargo_pgrx
 
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview rustc-dev
@@ -316,8 +316,8 @@ jobs:
     - name: Install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Run 'cargo pgx init' against system-level ${{ matrix.version }}
-      run: cargo pgx init --pg$PG_VER $(which pg_config)
+    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+      run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
       if: matrix.target == 'host'
@@ -329,7 +329,7 @@ jobs:
 
     # # Maybe this is not necessary if we switch to sccache?
     # # Attempt to make the cache payload slightly smaller.
-    # - name: Clean up built PGX files
+    # - name: Clean up built PGRX files
     #   run: |
     #     cd target/debug/deps/
     #     for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do

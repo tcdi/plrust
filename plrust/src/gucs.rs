@@ -12,9 +12,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use once_cell::sync::Lazy;
-use pgx::guc::{GucContext, GucRegistry, GucSetting};
-use pgx::pg_sys::AsPgCStr;
-use pgx::{pg_sys, GucFlags};
+use pgrx::guc::{GucContext, GucRegistry, GucSetting};
+use pgrx::pg_sys::AsPgCStr;
+use pgrx::{pg_sys, GucFlags};
 
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 use crate::{target, DEFAULT_LINTS};
@@ -29,10 +29,10 @@ pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
 pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
-pub(crate) static PLRUST_TRUSTED_PGX_VERSION: GucSetting<Option<&'static str>> =
+pub(crate) static PLRUST_TRUSTED_PGRX_VERSION: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(env!(
-        "PLRUST_TRUSTED_PGX_VERSION",
-        "unknown `plrust-trusted-pgx` version.  `build.rs` must not have run successfully"
+        "PLRUST_TRUSTED_PGRX_VERSION",
+        "unknown `plrust-trusted-pgrx` version.  `build.rs` must not have run successfully"
     )));
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
@@ -115,10 +115,10 @@ pub(crate) fn init() {
     );
 
     GucRegistry::define_string_guc(
-        "plrust.trusted_pgx_version",
-        "The `plrust-trusted-pgx` crate version to use when compiling user functions",
+        "plrust.trusted_pgrx_version",
+        "The `plrust-trusted-pgrx` crate version to use when compiling user functions",
         "If unspecified, the default is the version found when compiling plrust itself",
-        &PLRUST_TRUSTED_PGX_VERSION,
+        &PLRUST_TRUSTED_PGRX_VERSION,
         GucContext::Sighup,
         GucFlags::default(),
     );
@@ -178,9 +178,9 @@ pub(crate) fn get_linker_for_target(target: &CrossCompilationTarget) -> Option<S
     }
 }
 
-pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Option<String> {
+pub(crate) fn get_pgrx_bindings_for_target(target: &CrossCompilationTarget) -> Option<String> {
     unsafe {
-        let guc_name = format!("plrust.{target}_pgx_bindings_path");
+        let guc_name = format!("plrust.{target}_pgrx_bindings_path");
         // SAFETY:  GetConfigOption returns a possibly NULL `char *` because `missing_ok` is true
         // but that's okay as we account for that possibility.  The named GUC not being in the
         // configuration is a perfectly fine thing.
@@ -195,10 +195,10 @@ pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Op
     }
 }
 
-pub(crate) fn get_trusted_pgx_version() -> String {
-    let version = PLRUST_TRUSTED_PGX_VERSION
+pub(crate) fn get_trusted_pgrx_version() -> String {
+    let version = PLRUST_TRUSTED_PGRX_VERSION
         .get()
-        .expect("unable to determine `plrust-trusted-pgx` version"); // shouldn't happen since we set a known default
+        .expect("unable to determine `plrust-trusted-pgrx` version"); // shouldn't happen since we set a known default
 
     // we always want this specific version
     format!("={}", version)

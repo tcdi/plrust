@@ -14,7 +14,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use crate::gucs;
 use once_cell::sync::Lazy;
-use pgx::pg_sys;
+use pgrx::pg_sys;
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
@@ -157,9 +157,9 @@ impl CrossCompilationTarget {
     }
 
     pub(crate) fn bindings_envar(&self) -> Option<(String, String)> {
-        match gucs::get_pgx_bindings_for_target(self) {
+        match gucs::get_pgrx_bindings_for_target(self) {
             Some(path) => Some((
-                format!("PGX_TARGET_INFO_PATH_PG{}", pg_sys::PG_MAJORVERSION_NUM),
+                format!("PGRX_TARGET_INFO_PATH_PG{}", pg_sys::PG_MAJORVERSION_NUM),
                 path,
             )),
             None => None,

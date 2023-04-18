@@ -9,10 +9,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 use std::path::Path;
 
 use eyre::WrapErr;
-use pgx::{pg_sys, PgOid};
+use pgrx::{pg_sys, PgOid};
 use quote::quote;
 
-use crate::gucs::get_trusted_pgx_version;
+use crate::gucs::get_trusted_pgrx_version;
 use crate::pgproc::PgProc;
 use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
@@ -135,9 +135,9 @@ impl FnCrating {
             .wrap_err("Parsing generated user function")?,
             CrateVariant::Trigger => syn::parse2(quote! {
                 fn #symbol_ident<'a>(
-                    trigger: &'a ::pgx::PgTrigger<'a>,
+                    trigger: &'a ::pgrx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
+                    Option<::pgrx::heap_tuple::PgHeapTuple<'a, impl ::pgrx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > #user_code
             })
@@ -151,8 +151,8 @@ impl FnCrating {
 
     #[tracing::instrument(level = "debug", skip_all, fields(db_oid = %self.db_oid, fn_oid = %self.fn_oid))]
     pub(crate) fn cargo_toml(&self) -> eyre::Result<toml::value::Table> {
-        let major_version = pgx::pg_sys::get_pg_major_version_num();
-        let version_feature = format!("pgx/pg{major_version}");
+        let major_version = pgrx::pg_sys::get_pg_major_version_num();
+        let version_feature = format!("pgrx/pg{major_version}");
         let crate_name = self.crate_name();
 
         tracing::trace!(
@@ -192,10 +192,10 @@ impl FnCrating {
                     .entry("crates-io")
                 {
                     entry @ toml::map::Entry::Vacant(_) => {
-                        let mut pgx_table = toml::value::Table::new();
-                        pgx_table.insert("path".into(), toml::Value::String(path.to_string()));
+                        let mut pgrx_table = toml::value::Table::new();
+                        pgrx_table.insert("path".into(), toml::Value::String(path.to_string()));
                         let mut crates_io_table = toml::value::Table::new();
-                        crates_io_table.insert("pgx".into(), toml::Value::Table(pgx_table));
+                        crates_io_table.insert("pgrx".into(), toml::Value::Table(pgrx_table));
                         entry.or_insert(toml::Value::Table(crates_io_table));
                     }
                     _ => {
@@ -260,15 +260,15 @@ fn compose_lib_from_mods<const N: usize>(modules: [syn::ItemMod; N]) -> eyre::Re
 /// Used by both the unsafe and safe module.
 pub(crate) fn shared_imports() -> syn::ItemUse {
     syn::parse_quote!(
-        // we (plrust + pgx) fully qualify all pgx imports with `::pgx`, so if the user's function
-        // doesn't use any other pgx items we don't want a compiler warning
+        // we (plrust + pgrx) fully qualify all pgrx imports with `::pgrx`, so if the user's function
+        // doesn't use any other pgrx items we don't want a compiler warning
         #[allow(unused_imports)]
-        use pgx::prelude::*;
+        use pgrx::prelude::*;
     )
 }
 
 pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> toml::Table {
-    let trusted_pgx_version = get_trusted_pgx_version();
+    let trusted_pgrx_version = get_trusted_pgrx_version();
     let mut toml = toml::toml! {
         [package]
         edition = "2021"
@@ -282,7 +282,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         crate-type = ["cdylib"]
 
         [dependencies]
-        pgx = { version = trusted_pgx_version, package = "plrust-trusted-pgx" }
+        pgrx = { version = trusted_pgrx_version, package = "plrust-trusted-pgrx" }
 
         /* User deps added here */
 
@@ -292,22 +292,22 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         panic = "unwind"
     };
 
-    // if the `PLRUST_TRUSTED_PGX_OVERRIDE` environment variable is set at compile time
-    // we'll use that for the `pgx = ` line in the toml file.  This is really a plrust-developer
-    // convenience to allow tweaking where "plrust-trusted-pgx" is found during CI runs
+    // if the `PLRUST_TRUSTED_PGRX_OVERRIDE` environment variable is set at compile time
+    // we'll use that for the `pgrx = ` line in the toml file.  This is really a plrust-developer
+    // convenience to allow tweaking where "plrust-trusted-pgrx" is found during CI runs
     //
     // An example of how to use this is:
     //
     // ```
     // $ cd plrust
-    // $ PLRUST_TRUSTED_PGX_OVERRIDE="pgx = { path = '~/code/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }" \
-    // cargo pgx run
+    // $ PLRUST_TRUSTED_PGRX_OVERRIDE="pgrx = { path = '~/code/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }" \
+    // cargo pgrx run
     // ```
-    if let Some(trusted_pgx_override) = option_env!("PLRUST_TRUSTED_PGX_OVERRIDE") {
+    if let Some(trusted_pgrx_override) = option_env!("PLRUST_TRUSTED_PGRX_OVERRIDE") {
         if let Some(toml::Value::Table(dependencies)) = toml.get_mut("dependencies") {
-            let new_dependencies = trusted_pgx_override
-                .parse::<toml::Table>()
-                .expect("failed to parse new dependency block using `PLRUST_TRUSTED_PGX_OVERRIDE`");
+            let new_dependencies = trusted_pgrx_override.parse::<toml::Table>().expect(
+                "failed to parse new dependency block using `PLRUST_TRUSTED_PGRX_OVERRIDE`",
+            );
 
             *dependencies = new_dependencies;
         }
@@ -363,9 +363,9 @@ fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::*;
+    use pgrx::*;
     use syn::parse_quote;
 
     use super::*;
@@ -550,7 +550,7 @@ mod tests {
             let (generated_lib_rs, lints) = generated.lib_rs()?;
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
-                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn std::error::Error + Send + Sync + 'static>> {
+                fn #symbol_ident<'a>(val: &'a str) -> ::std::result::Result<Option<::pgrx::iter::SetOfIterator<'a, Option<String>>>, Box<dyn std::error::Error + Send + Sync + 'static>> {
                     Ok(Some(std::iter::repeat(val).take(5)))
                 }
             })?;
@@ -613,9 +613,9 @@ mod tests {
             let imports = shared_imports();
             let bare_fn: syn::ItemFn = syn::parse2(quote! {
                 fn #symbol_ident<'a>(
-                    trigger: &'a ::pgx::PgTrigger<'a>,
+                    trigger: &'a ::pgrx::PgTrigger<'a>,
                 ) -> ::core::result::Result<
-                    Option<::pgx::heap_tuple::PgHeapTuple<'a, impl ::pgx::WhoAllocated>>,
+                    Option<::pgrx::heap_tuple::PgHeapTuple<'a, impl ::pgrx::WhoAllocated>>,
                     Box<dyn std::error::Error>,
                 > {
                     Ok(trigger.current().unwrap().into_owned())

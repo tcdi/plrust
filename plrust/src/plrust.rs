@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::{cell::RefCell, collections::HashMap, process::Output};
 
 use eyre::WrapErr;
-use pgx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
+use pgrx::{pg_sys::FunctionCallInfo, pg_sys::MyDatabaseId, prelude::*};
 
 use crate::pgproc::PgProc;
 use crate::{

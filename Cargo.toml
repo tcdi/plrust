@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "plrust",
-    "plrust-trusted-pgx",
+    "plrust-trusted-pgrx",
 ]
 exclude = ["plrustc"]#, "builder"]
 

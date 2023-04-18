@@ -8,7 +8,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use crate::{user_crate::oid_to_syn_type, PlRustError};
 use eyre::WrapErr;
-use pgx::PgOid;
+use pgrx::PgOid;
 use quote::quote;
 
 /// What kind of PL/Rust function must be built
@@ -63,7 +63,7 @@ impl CrateVariant {
         let return_type: syn::Type = {
             let bare = oid_to_syn_type(&return_oid, true)?;
             match return_set {
-                true => syn::parse2(quote! { ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
+                true => syn::parse2(quote! { ::std::result::Result<Option<::pgrx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
                     .wrap_err("Wrapping return type")?,
                 false => syn::parse2(
                     quote! { ::std::result::Result<Option<#bare>, Box<dyn std::error::Error + Send + Sync + 'static>> },

@@ -20,7 +20,7 @@ $$ LANGUAGE plrust;
 
 The body of the function is ordinary
 Rust code. When the `CREATE FUNCTION` is ran the Rust code is
-complied using the `pgx` framework.
+complied using the `pgrx` framework.
 This compile process can take a bit of time.
 The compile time required is one reason anonymous blocks (`DO` blocks)
 are not supported at this time.

@@ -201,7 +201,7 @@ mod baz;
 
 ### `plrust_print_macros`
 
-This lint forbids use of the `println!`/`eprintln!` family of macros (including `dbg!` and the non-`ln` variants), as these allow bypassing the norm. Users should use `pgx::log!` or `pgx::debug!` instead.
+This lint forbids use of the `println!`/`eprintln!` family of macros (including `dbg!` and the non-`ln` variants), as these allow bypassing the norm. Users should use `pgrx::log!` or `pgrx::debug!` instead.
 
 ```rust
 println!("hello");

@@ -7,7 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use libloading::os::unix::{Library, Symbol};
-use pgx::pg_sys;
+use pgrx::pg_sys;
 
 use crate::user_crate::CrateState;
 
@@ -103,7 +103,7 @@ impl FnReady {
         };
 
         let symbol_name = symbol.unwrap_or_else(|| crate::plrust::symbol_name(db_oid, fn_oid));
-        let symbol_name = symbol_name + "_wrapper"; // + "_wrapper" b/c pgx' `#[pg_extern]` adds that
+        let symbol_name = symbol_name + "_wrapper"; // + "_wrapper" b/c pgrx' `#[pg_extern]` adds that
 
         tracing::trace!("Getting symbol `{symbol_name}`");
         let symbol = unsafe { library.get(symbol_name.as_bytes())? };

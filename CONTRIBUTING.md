@@ -27,10 +27,10 @@ cd ../plrust/
 ./build
 ```
 
-PL/Rust is a [pgx](https://github.com/tcdi/pgx) extension and will need `cargo-pgx` installed:
+PL/Rust is a [pgrx](https://github.com/tcdi/pgrx) extension and will need `cargo-pgrx` installed:
 
 ```bash
-cargo install cargo-pgx --locked
+cargo install cargo-pgrx --locked
 ```
 
 ## Pull Requests (PRs)

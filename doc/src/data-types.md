@@ -1,13 +1,13 @@
 # Data types
 
 PL/Rust has a rich mapping of database between PostgreSQL data types and
-Rust data types. These data type mappings are maintained in the `pgx` framework
-and are [documented in the pgx documentation](https://github.com/tcdi/pgx#mapping-of-postgres-types-to-rust).
+Rust data types. These data type mappings are maintained in the `pgrx` framework
+and are [documented in the pgrx documentation](https://github.com/tcdi/pgrx#mapping-of-postgres-types-to-rust).
 
 
 
-Documentation of pgx's `datum` support is on
-[docs.rs](https://docs.rs/pgx/latest/pgx/datum/index.html).
+Documentation of pgrx's `datum` support is on
+[docs.rs](https://docs.rs/pgrx/latest/pgrx/datum/index.html).
 
 
 ## Direct mappings
@@ -33,32 +33,32 @@ Postgres Type | Rust Type (as `Option<T>`)
 `NULL` | `Option::None`
 
 
-## Mappings through pgx
+## Mappings through pgrx
 
 Many of the other PostgreSQL data types supported by PL/Rust are implemented
-within the `pgx` framework.
+within the `pgrx` framework.
 
 
 Postgres Type | Rust Type (as `Option<T>`)
 --------------|-----------
-`json` | `pgx::Json(serde_json::Value)`
-`jsonb` | `pgx::JsonB(serde_json::Value)`
-`date` | `pgx::Date`
-`time` | `pgx::Time`
-`timestamp` | `pgx::Timestamp`
-`time with time zone` | `pgx::TimeWithTimeZone`
-`timestamp with time zone` | `pgx::TimestampWithTimeZone`
-`anyarray` | `pgx::AnyArray`
-`anyelement` | `pgx::AnyElement`
-`box` | `pgx::pg_sys::BOX`
-`point` | `pgx::pgx_sys::Point`
-`tid` | `pgx::pg_sys::ItemPointerData`
+`json` | `pgrx::Json(serde_json::Value)`
+`jsonb` | `pgrx::JsonB(serde_json::Value)`
+`date` | `pgrx::Date`
+`time` | `pgrx::Time`
+`timestamp` | `pgrx::Timestamp`
+`time with time zone` | `pgrx::TimeWithTimeZone`
+`timestamp with time zone` | `pgrx::TimestampWithTimeZone`
+`anyarray` | `pgrx::AnyArray`
+`anyelement` | `pgrx::AnyElement`
+`box` | `pgrx::pg_sys::BOX`
+`point` | `pgrx::pgrx_sys::Point`
+`tid` | `pgrx::pg_sys::ItemPointerData`
 `cstring` | `&core::ffi::CStr`
-`inet` | `pgx::Inet(String)` -- TODO: needs better support
-`numeric` | `pgx::AnyNumeric` or `pgx::Numeric<P, S>`
-`ARRAY[]::<type>` | `Vec<Option<T>>` or `pgx::Array<T>` (zero-copy)
-`internal` | `pgx::PgBox<T>` where `T` is any Rust/Postgres struct
-`uuid` | `pgx::Uuid([u8; 16])`
+`inet` | `pgrx::Inet(String)` -- TODO: needs better support
+`numeric` | `pgrx::AnyNumeric` or `pgrx::Numeric<P, S>`
+`ARRAY[]::<type>` | `Vec<Option<T>>` or `pgrx::Array<T>` (zero-copy)
+`internal` | `pgrx::PgBox<T>` where `T` is any Rust/Postgres struct
+`uuid` | `pgrx::Uuid([u8; 16])`
 
 
 ## Specifics
@@ -67,14 +67,14 @@ Postgres Type | Rust Type (as `Option<T>`)
 ### Numeric support
 
 The `NUMERIC` PostgreSQL data type can map to either
-[`pgx::AnyNumeric`](https://docs.rs/pgx/latest/pgx/datum/numeric/struct.AnyNumeric.html)
+[`pgrx::AnyNumeric`](https://docs.rs/pgrx/latest/pgrx/datum/numeric/struct.AnyNumeric.html)
 or
-[`pgx::Numeric<P, S>`](https://docs.rs/pgx/latest/pgx/datum/numeric/struct.Numeric.html)
+[`pgrx::Numeric<P, S>`](https://docs.rs/pgrx/latest/pgrx/datum/numeric/struct.Numeric.html)
 in PL/Rust.
 
-The `pgx::AnyNumeric` type is the PostgreSQL `NUMERIC` type with default
+The `pgrx::AnyNumeric` type is the PostgreSQL `NUMERIC` type with default
 precision and scale values.  Generally, this is the type you’ll want to use as function arguments when working with numeric data.
 
-The `pgx::Numeric<P, S>` type is a wrapper around the PostgreSQL
+The `pgrx::Numeric<P, S>` type is a wrapper around the PostgreSQL
 `NUMERIC(P, S)` type. Its Precision and Scale values are known at compile-time to assist with scale conversions and general type safety.
 

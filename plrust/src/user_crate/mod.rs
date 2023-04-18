@@ -18,7 +18,7 @@ cargo doc --no-deps --document-private-items --open
 */
 use std::{path::Path, process::Output};
 
-use pgx::{pg_sys, PgBuiltInOids, PgOid};
+use pgrx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
 use semver;
@@ -230,15 +230,15 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 
     let base_rust_type: TokenStream = match base_oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::ANYELEMENTOID => quote! { pgx::AnyElement },
+            PgBuiltInOids::ANYELEMENTOID => quote! { pgrx::AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
-            PgBuiltInOids::BOXOID => quote! {pgx::BOX },
+            PgBuiltInOids::BOXOID => quote! {pgrx::BOX },
             PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
             PgBuiltInOids::BYTEAOID if !owned => quote! { &'a [u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
-            // PgBuiltInOids::DATEOID => quote! { pgx::Date },
-            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgx::Date> },
+            // PgBuiltInOids::DATEOID => quote! { pgrx::Date },
+            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgrx::Date> },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
             PgBuiltInOids::FLOAT8OID => quote! { f64 },
             // PgBuiltInOids::INETOID => quote! { Inet },
@@ -247,22 +247,22 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::INT4RANGEOID => quote! { Range<i32> },
             PgBuiltInOids::INT8OID => quote! { i64 },
             PgBuiltInOids::INT8RANGEOID => quote! { Range<i64> },
-            PgBuiltInOids::JSONBOID => quote! { pgx::JsonB },
-            PgBuiltInOids::JSONOID => quote! { pgx::Json },
-            PgBuiltInOids::POINTOID => quote! { pgx::Point },
-            PgBuiltInOids::NUMERICOID => quote! { pgx::AnyNumeric },
-            PgBuiltInOids::NUMRANGEOID => quote! { Range<pgx::AnyNumeric> },
-            PgBuiltInOids::OIDOID => quote! { pgx::Oid },
+            PgBuiltInOids::JSONBOID => quote! { pgrx::JsonB },
+            PgBuiltInOids::JSONOID => quote! { pgrx::Json },
+            PgBuiltInOids::POINTOID => quote! { pgrx::Point },
+            PgBuiltInOids::NUMERICOID => quote! { pgrx::AnyNumeric },
+            PgBuiltInOids::NUMRANGEOID => quote! { Range<pgrx::AnyNumeric> },
+            PgBuiltInOids::OIDOID => quote! { pgrx::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
-            // PgBuiltInOids::TIMEOID => quote! { pgx::Time },
-            // PgBuiltInOids::TIMETZOID => quote! { pgx::TimeWithTimeZone },
-            // PgBuiltInOids::TIMESTAMPOID => quote! { pgx::Timestamp },
-            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgx::TimestampWithTimeZone },
-            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgx::Timestamp> },
-            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgx::TimestampWithTimeZone> },
-            PgBuiltInOids::UUIDOID => quote! { pgx::Uuid },
+            // PgBuiltInOids::TIMEOID => quote! { pgrx::Time },
+            // PgBuiltInOids::TIMETZOID => quote! { pgrx::TimeWithTimeZone },
+            // PgBuiltInOids::TIMESTAMPOID => quote! { pgrx::Timestamp },
+            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgrx::TimestampWithTimeZone },
+            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgrx::Timestamp> },
+            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgrx::TimestampWithTimeZone> },
+            PgBuiltInOids::UUIDOID => quote! { pgrx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
@@ -413,9 +413,9 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::*;
+    use pgrx::*;
     use quote::quote;
     use syn::parse_quote;
 
@@ -490,7 +490,7 @@ mod tests {
             );
 
             let generated_cargo_toml = generated.cargo_toml()?;
-            let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
+            let version_feature = format!("pgrx/pg{}", pgrx::pg_sys::get_pg_major_version_num());
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let fixture_cargo_toml = cargo_toml_template(&crate_name, &version_feature);
 

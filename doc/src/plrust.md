@@ -53,10 +53,10 @@ SELECT strlen('Hello, PL/Rust');
 ```
 
 
-## Built on pgx
+## Built on pgrx
 
-PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore, each `LANGUAGE
-plrust` function are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgx`
+PL/Rust itself is a [`pgrx`](https://github.com/tcdi/pgrx)-based Postgres extension.  Furthermore, each `LANGUAGE
+plrust` function are themselves mini-pgrx extensions. `pgrx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgrx`
 is developed by [TCDI](https://www.tcdi.com).
 
 The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.
@@ -88,23 +88,23 @@ This is accomplished using Rust's built-in `#![forbid(unsafe_code)]` lint.
 
 3rd-party crate dependencies are allowed to use `unsafe`. We'll discuss this below.
 
-## What about `pgx`?
+## What about `pgrx`?
 
-If `pgx` is a "generalized framework for developing Postgres extensions with Rust", and if PL/Rust user functions
-are themselves "mini-pgx extensions", what prevents a `LANGUAGE plrust` function from using any part of `pgx`?
+If `pgrx` is a "generalized framework for developing Postgres extensions with Rust", and if PL/Rust user functions
+are themselves "mini-pgrx extensions", what prevents a `LANGUAGE plrust` function from using any part of `pgrx`?
 
-The [`plrust-trusted-pgx`](https://github.com/tcdi/plrust/tree/main/plrust-trusted-pgx) crate does!
-The `plrust-trusted-pgx` crate is a tightly-controlled "re-export crate" on top of `pgx` that exposes the bare minimum necessary for
-PL/Rust user functions to compile along with the bare minimum, **safe** features of `pgx`.
+The [`plrust-trusted-pgrx`](https://github.com/tcdi/plrust/tree/main/plrust-trusted-pgrx) crate does!
+The `plrust-trusted-pgrx` crate is a tightly-controlled "re-export crate" on top of `pgrx` that exposes the bare minimum necessary for
+PL/Rust user functions to compile along with the bare minimum, **safe** features of `pgrx`.
 
-The crate is versioned independently to both `pgx` and `plrust` and is published on [crates.io](https://crates.io/crates/plrust-trusted-pgx).
+The crate is versioned independently to both `pgrx` and `plrust` and is published on [crates.io](https://crates.io/crates/plrust-trusted-pgrx).
 By default, the version a plrust user function will use is that of the one set in the project repository when plrust itself
-is compiled.  However, the `plrust.trusted_pgx_version` GUC can be set to specify a specific version.
+is compiled.  However, the `plrust.trusted_pgrx_version` GUC can be set to specify a specific version.
 
-The intent is that `plrust-trusted-pgx` can evolve independently of both `pgx` and `plrust`.
+The intent is that `plrust-trusted-pgrx` can evolve independently of both `pgrx` and `plrust`.
 
-There are a few "unsafe" parts of `pgx` exposed through `plrust-trusted-pgx`, but PL/Rust's ability to block `unsafe`
-renders them useless by PL/Rust user functions.  `plrust-trusted-pgx`'s docs are available on [docs.rs](https://docs.rs/plrust-trusted-pgx).
+There are a few "unsafe" parts of `pgrx` exposed through `plrust-trusted-pgrx`, but PL/Rust's ability to block `unsafe`
+renders them useless by PL/Rust user functions.  `plrust-trusted-pgrx`'s docs are available on [docs.rs](https://docs.rs/plrust-trusted-pgrx).
 
 
 ## What about Rust compiler bugs?
@@ -154,7 +154,7 @@ As such, PL/Rust cannot be considered fully trusted on those platforms.
 
 If the `trusted` feature flag is not used when compiling PL/Rust, which is the default, then `postgrestd` is **not**
 used when compiling user functions, and while they'll still benefit from Rust's general compile-time safety
-checked, forced usage of the `plrust-trusted-pgx` crate, and PL/Rust's `unsafe` blocking, they will be able to access the
+checked, forced usage of the `plrust-trusted-pgrx` crate, and PL/Rust's `unsafe` blocking, they will be able to access the
 filesystem and communicate with the host operating system, as the user running the connected Postgres backend
 (typically, this is a user named `postgres`).
 
@@ -172,7 +172,7 @@ By default, PL/Rust will not perform cross compilation. It must be installed
 and enabled through configuration.
 
 Configuring a *host* to properly cross compile is a thing that can take minimal effort to individual feats of
-heroic effort. Reading the (still in-progress) [pgx cross compile guide](https://github.com/tcdi/pgx/blob/master/CROSS_COMPILE.md) 
+heroic effort. Reading the (still in-progress) [pgrx cross compile guide](https://github.com/tcdi/pgrx/blob/master/CROSS_COMPILE.md) 
 can help. Generally speaking, it's not too awful to setup on Debian-based Linux systems, such as Ubuntu. Basically,
 you install the "cross compilation toolchain" `apt` package for the *other* platform.
 
