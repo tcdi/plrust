@@ -1,0 +1,47 @@
+name: Build release artifacts
+
+on:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_deb:
+    name: Build Debian .deb
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build and extract Debian .deb artifact via Docker
+      run: |
+        echo "-- Setting variables --"
+        export PG_VER=15
+        export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
+        export DEB_FILENAME="plrust-$PLRUST_VER-debian-pg$PG_VER-x86_64.deb"
+
+        echo "-- Building artifact via Docker --"
+        docker build \
+          --build-arg PG_VER=$PG_VER \
+          --build-arg PLRUST_VER=$PLRUST_VER\
+          --build-arg DEB_FILENAME=$DEB_FILENAME \
+          -f .github/docker/Dockerfile.debian-artifact-build \
+          -t plrust-debian \
+          .
+
+        echo "-- Creating container --"
+        container_id=$(docker create plrust-debian)
+
+        echo "-- Extracting file from container --"
+        docker cp $container_id:/out/$DEB_FILENAME /home/runner/$DEB_FILENAME
+
+        echo "-- Destroying container --"
+        docker rm -v $container_id
+
+    - name: Upload Debian .deb artifact
+      uses: softprops/action-gh-release@v1
+      with:
+        files: /home/runner/plrust*.deb
