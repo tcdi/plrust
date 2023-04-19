@@ -13,7 +13,7 @@ use std::{
 
 use color_eyre::{Section, SectionExt};
 use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
+use pgrx::pg_sys;
 
 use crate::target::{CompilationTarget, CrossCompilationTarget};
 use crate::user_crate::cargo::cargo;
@@ -154,7 +154,7 @@ impl FnBuild {
 
             // Clean up on error but don't let this error replace our user's error!
             if let Err(e) = std::fs::remove_dir_all(&self.crate_dir) {
-                pgx::log!("Problem during removing crate directory: {e}")
+                pgrx::log!("Problem during removing crate directory: {e}")
             };
 
             err?

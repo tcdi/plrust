@@ -1,13 +1,13 @@
 # Logging to PostgreSQL from PL/Rust
 
 PL/Rust provides the ability to log details using PostgreSQL's logging
-system.  This functionality is exposed from pgx via
-[plrust/plrust-trusted-pgx/src/lib.rs](https://github.com/tcdi/plrust/blob/main/plrust-trusted-pgx/src/lib.rs).
+system.  This functionality is exposed from pgrx via
+[plrust/plrust-trusted-pgrx/src/lib.rs](https://github.com/tcdi/plrust/blob/main/plrust-trusted-pgrx/src/lib.rs).
 
 The macros available for logging are defined:
 
 ```rust
-pub use ::pgx::{
+pub use ::pgrx::{
     debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, notice, warning,
 };
 ```
@@ -169,7 +169,7 @@ line prior to the `ERROR` reported by the PL/Rust function.
 
 
 ```bash
-thread '<unnamed>' panicked at 'Box<dyn Any>', /var/lib/postgresql/.cargo/registry/src/github.com-1ecc6299db9ec823/pgx-pg-sys-0.7.2/src/submodules/panic.rs:160:13
+thread '<unnamed>' panicked at 'Box<dyn Any>', /var/lib/postgresql/.cargo/registry/src/github.com-1ecc6299db9ec823/pgrx-pg-sys-0.7.2/src/submodules/panic.rs:160:13
 ERROR:  Invalid for plrust.one(). Found 2
 ```
 

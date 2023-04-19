@@ -8,9 +8,9 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use std::io::Write;
 
-pub(crate) struct PgxGuestWriter<const IS_STDERR: bool>;
+pub(crate) struct PgrxGuestWriter<const IS_STDERR: bool>;
 
-impl<const IS_STDERR: bool> Write for PgxGuestWriter<IS_STDERR> {
+impl<const IS_STDERR: bool> Write for PgrxGuestWriter<IS_STDERR> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let prefixed = if IS_STDERR {
@@ -18,7 +18,7 @@ impl<const IS_STDERR: bool> Write for PgxGuestWriter<IS_STDERR> {
         } else {
             String::from("stdout: ") + content
         };
-        pgx::log!("{}", &prefixed);
+        pgrx::log!("{}", &prefixed);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -26,13 +26,13 @@ impl<const IS_STDERR: bool> Write for PgxGuestWriter<IS_STDERR> {
     }
 }
 
-pub(crate) struct PgxLogWriter<const TRIM: bool = true>;
+pub(crate) struct PgrxLogWriter<const TRIM: bool = true>;
 
-impl<const TRIM: bool> Write for PgxLogWriter<TRIM> {
+impl<const TRIM: bool> Write for PgrxLogWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let content = if TRIM { content.trim_start() } else { content };
-        pgx::log!("{}", content);
+        pgrx::log!("{}", content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -40,13 +40,13 @@ impl<const TRIM: bool> Write for PgxLogWriter<TRIM> {
     }
 }
 
-pub(crate) struct PgxNoticeWriter<const TRIM: bool = true>;
+pub(crate) struct PgrxNoticeWriter<const TRIM: bool = true>;
 
-impl<const TRIM: bool> Write for PgxNoticeWriter<TRIM> {
+impl<const TRIM: bool> Write for PgrxNoticeWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let content = if TRIM { content.trim_start() } else { content };
-        pgx::notice!("{}", content);
+        pgrx::notice!("{}", content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -54,13 +54,13 @@ impl<const TRIM: bool> Write for PgxNoticeWriter<TRIM> {
     }
 }
 
-pub(crate) struct PgxWarningWriter<const TRIM: bool = true>;
+pub(crate) struct PgrxWarningWriter<const TRIM: bool = true>;
 
-impl<const TRIM: bool> Write for PgxWarningWriter<TRIM> {
+impl<const TRIM: bool> Write for PgrxWarningWriter<TRIM> {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, std::io::Error> {
         let content = std::str::from_utf8(data).expect("Could not interpret stdout as UTF-8");
         let content = if TRIM { content.trim_start() } else { content };
-        pgx::warning!("{}", content);
+        pgrx::warning!("{}", content);
         Ok(data.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {

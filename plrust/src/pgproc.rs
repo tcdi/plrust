@@ -7,7 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::error::PlRustError;
-use pgx::{pg_sys, FromDatum, IntoDatum, PgLogLevel, PgRelation, PgSqlErrorCode};
+use pgrx::{pg_sys, FromDatum, IntoDatum, PgLogLevel, PgRelation, PgSqlErrorCode};
 use std::ptr::NonNull;
 
 /// Provides a safe wrapper around a Postgres "SysCache" entry from `pg_catalog.pg_proc`.
@@ -132,9 +132,9 @@ impl PgProc {
                     .unwrap_or_else(|_| {
                         static DETAIL:&'static str = "PL/Rust argument names must also be valid Rust identifiers.  Rust's identifier specification can be found at https://doc.rust-lang.org/reference/identifiers.html";
                         if name.is_empty() {
-                            pgx::ereport!(PgLogLevel::ERROR, PgSqlErrorCode::ERRCODE_INVALID_NAME, "PL/Rust does not support unnamed arguments", DETAIL);
+                            pgrx::ereport!(PgLogLevel::ERROR, PgSqlErrorCode::ERRCODE_INVALID_NAME, "PL/Rust does not support unnamed arguments", DETAIL);
                         } else {
-                            pgx::ereport!(PgLogLevel::ERROR, PgSqlErrorCode::ERRCODE_INVALID_NAME, format!("`{name}` is an invalid Rust identifier and cannot be used as an argument name"), DETAIL);
+                            pgrx::ereport!(PgLogLevel::ERROR, PgSqlErrorCode::ERRCODE_INVALID_NAME, format!("`{name}` is an invalid Rust identifier and cannot be used as an argument name"), DETAIL);
                         }
                         unreachable!()
                     })

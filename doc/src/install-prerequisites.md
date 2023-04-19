@@ -13,14 +13,14 @@ Steps to install PL/Rust:
 
 * Prerequisites
 * Install Rust
-* Install pgx
+* Install pgrx
 * Install PL/Rust
 * Create amazing things!
 
 ## Prerequisites
 
 PL/Rust requires PostgreSQL and all prerequisites outlined for
-[pgx](https://github.com/tcdi/pgx#system-requirements)
+[pgrx](https://github.com/tcdi/pgrx#system-requirements)
 are installed.  
 
 PL/Rust also requires that any databases in which it's created is `UTF8`.  Postgres' default encoding is determined
@@ -28,15 +28,15 @@ by the locale of the environment when `initdb` is first run.  Depending on your 
 not resolve to `UTF8`.
 
 [Building PL/Rust from source](https://wiki.postgresql.org/wiki/Compile_and_Install_from_source_code) requires 
-installing `cargo-pgx` which requires a development toolchain capable of building Postgres itself.
+installing `cargo-pgrx` which requires a development toolchain capable of building Postgres itself.
 
 
 ### Permissions
 
-Installing PL/Rust with these instructions installs `rustc`, `pgx`,
+Installing PL/Rust with these instructions installs `rustc`, `pgrx`,
 and `plrust` as the Linux `postgres` user.  The `postgres` user
 is created during the standard PostgreSQL installation via `apt`.
-For `pgx` to successfully install `plrust`, the `postgres`
+For `pgrx` to successfully install `plrust`, the `postgres`
 user needs ownership of the `extension` and `lib` directories.
 The standard Ubuntu locations are indicated below.
 
@@ -92,8 +92,8 @@ sudo su - postgres
 
 ### Clone `plrust` and check Rust version
 
-PL/Rust is installed from source code using pgx.  This installation
-requires that pgx is compiled using a specific version of `rustc`.
+PL/Rust is installed from source code using pgrx.  This installation
+requires that pgrx is compiled using a specific version of `rustc`.
 The `rustc` version required for PL/Rust is defined in the project's
 [`rust-toolchain.toml`](https://github.com/tcdi/plrust/blob/main/rust-toolchain.toml).
 The steps below ensure the proper versions are used.
@@ -149,8 +149,8 @@ rustup default
 
 
 The above checks of `rustc -V` and `rustup default` are important to
-follow before installing pgx and PL/Rust.
-You must install `pgx` with the version of `rustc` that `plrust` expects
+follow before installing pgrx and PL/Rust.
+You must install `pgrx` with the version of `rustc` that `plrust` expects
 in the `rust-toolchain.toml`.  Failing to do so will result in a
 mismatched version error in a subsequent step.
 
@@ -166,37 +166,37 @@ Error loading target specification: Could not find specification for target "x86
 ```
 
 
-## Install pgx
+## Install pgrx
 
 The PL/Rust extension is built and installed
-[using pgx](https://github.com/tcdi/pgx).
-Install pgx with the `--locked` option. This step takes a few
+[using pgrx](https://github.com/tcdi/pgrx).
+Install pgrx with the `--locked` option. This step takes a few
 minutes.
 
 ```bash
-cargo install cargo-pgx --locked
+cargo install cargo-pgrx --locked
 ```
 
-Pgx needs to be initialized for use with the PostgreSQL installation.
-This is done using `pgx init`.  This step needs to know where your
+Pgrx needs to be initialized for use with the PostgreSQL installation.
+This is done using `pgrx init`.  This step needs to know where your
 `pg_config` file is located at.  If you have a standard Ubuntu
 `apt` installation of PostgreSQL with a single version of PostgreSQL
 installed you can use the generic
 `/usr/bin/pg_config` path.  
 
 ```bash
-cargo pgx init --pg15 /usr/bin/pg_config
+cargo pgrx init --pg15 /usr/bin/pg_config
 ```
 
-Output from `cargo pgx init` looks like the following example.
+Output from `cargo pgrx init` looks like the following example.
 You may notice it mentions information about a new data directory under your
-user's `~/.pgx/` directory. This **does not replace** your PostgreSQL instance's
-data directory. The `~/.pgx/data-15/` directory is there in case you run
-`cargo pgx run pg15`, which would use this custom data directory, not your installation's data directory.
+user's `~/.pgrx/` directory. This **does not replace** your PostgreSQL instance's
+data directory. The `~/.pgrx/data-15/` directory is there in case you run
+`cargo pgrx run pg15`, which would use this custom data directory, not your installation's data directory.
 
 ```
    Validating /usr/bin/pg_config
- Initializing data directory at /var/lib/postgresql/.pgx/data-15
+ Initializing data directory at /var/lib/postgresql/.pgrx/data-15
 ```
 
 
@@ -208,7 +208,7 @@ In these cases you should specify the exact `pg_config`
 file for your installation.
 
 ```bash
-cargo pgx init --pg14 /usr/lib/postgresql/14/bin/pg_config
+cargo pgrx init --pg14 /usr/lib/postgresql/14/bin/pg_config
 ```
 
 The instructions on this page have setup the prerequisite software required to

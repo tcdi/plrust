@@ -15,13 +15,13 @@ use std::rc::Rc;
 use base64::Engine;
 use flate2::read::{GzDecoder, GzEncoder};
 use flate2::Compression;
-use pgx::pg_sys;
-use pgx::pg_sys::MyDatabaseId;
-use pgx::prelude::PgHeapTuple;
+use pgrx::pg_sys;
+use pgrx::pg_sys::MyDatabaseId;
+use pgrx::prelude::PgHeapTuple;
 use serde::{Deserialize, Serialize};
 
 use crate::error::PlRustError;
-use crate::gucs::get_trusted_pgx_version;
+use crate::gucs::get_trusted_pgrx_version;
 use crate::pgproc::PgProc;
 use crate::target;
 use crate::target::CompilationTarget;
@@ -81,8 +81,8 @@ struct ProSrcEntry {
     /// the user-provided `LANGUAGE plrust` source code
     src: String,
 
-    /// the `plrust-trusted-pgx` crate used to compile this function
-    trusted_pgx_version: String,
+    /// the `plrust-trusted-pgrx` crate used to compile this function
+    trusted_pgrx_version: String,
 
     /// A map of compiled artifacts per compilation target (ie, x86_64, aarch64)
     lib: BTreeMap<CompilationTarget, SharedLibrary>,
@@ -160,7 +160,7 @@ pub(crate) fn create_or_replace_function(
         ProSrcEntry {
             src: pg_proc.prosrc(),
             lib: Default::default(),
-            trusted_pgx_version: get_trusted_pgx_version(),
+            trusted_pgrx_version: get_trusted_pgrx_version(),
         }
     });
 
@@ -185,7 +185,7 @@ pub(crate) fn create_or_replace_function(
     let prosrc_value: String = entry.into();
     heap_tuple.set_by_name("prosrc", prosrc_value)?;
 
-    // TODO:  [`pgx::PgHeapTuple`] really needs a `.into_pg() -> *mut pg_sys::HeapTupleData` function.
+    // TODO:  [`pgrx::PgHeapTuple`] really needs a `.into_pg() -> *mut pg_sys::HeapTupleData` function.
     //        in the meantime, `.into_trigger_datum()` essentially does what that function would do,
     //        we just need to cast it to the right pointer type
     let datum = heap_tuple.into_trigger_datum().unwrap();

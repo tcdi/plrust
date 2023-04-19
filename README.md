@@ -31,8 +31,8 @@ strlen
      14
 ```
 
-PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore, each `LANGUAGE
-plrust` function are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgx`
+PL/Rust itself is a [`pgrx`](https://github.com/tcdi/pgrx)-based Postgres extension.  Furthermore, each `LANGUAGE
+plrust` function are themselves mini-pgrx extensions. `pgrx`is a generalized framework for developing Postgres extensions with Rust.  Like this project, `pgrx`
 is developed by [TCDI](https://www.tcdi.com).
 
 The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.
@@ -80,16 +80,16 @@ of the documentation.
 
 # Quickly Getting Started
 
-To quickly get started using PL/Rust for evaluation purposes, install `cargo-pgx` following the steps from above, then...
+To quickly get started using PL/Rust for evaluation purposes, install `cargo-pgrx` following the steps from above, then...
 
 ```bash
 $ git clone https://github.com/tcdi/plrust.git
 $ cd plrust/plrust
-$ cargo pgx run pg14
+$ cargo pgrx run pg14
 psql> \q
 
 $ SCRATCH_DIR=/home/${USER}/plrust-scratch
-$ cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
+$ cat <<-EOF >> ~/.pgrx/data-14/postgresql.conf
   plrust.work_dir = '${SCRATCH_DIR}'
 EOF
 $ mkdir -p scratch
@@ -99,7 +99,7 @@ $ chmod -R 777 scratch
 Then run it for real and start writing functions!
 
 ```bash
-$ cargo pgx run pg14
+$ cargo pgrx run pg14
 psql> CREATE EXTENSION plrust;
 psql> CREATE FUNCTION strlen(name TEXT) RETURNS int LANGUAGE plrust AS $$
     Ok(Some(name.unwrap().len() as i32))
