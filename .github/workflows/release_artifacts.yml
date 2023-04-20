@@ -66,5 +66,5 @@ jobs:
         role-session-name: GithubPlrustSession
 
     - name: attemp fake launch
-      run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-fakefake
+      run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-0bad2911d6aad1b0d
 
