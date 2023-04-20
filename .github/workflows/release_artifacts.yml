@@ -65,3 +65,6 @@ jobs:
         role-to-assume: arn:aws:iam::950481341027:role/github_oidc_iam_role
         role-session-name: GithubPlrustSession
 
+    - name: attemp fake launch
+      run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-fakefake
+
