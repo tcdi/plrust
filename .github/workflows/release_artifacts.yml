@@ -139,6 +139,14 @@ jobs:
 
           sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+          # Set up docker to point to the EBS volume
+
+          sudo service docker stop
+
+          echo '{"data-root": "/workdir/.dockerdata"}' | sudo tee -a /etc/docker/daemon.json > /dev/null
+
+          sudo service docker start
+
       - name: Build and extract Debian .deb artifact via Docker
         run: |
           echo "-- Setting variables --"
