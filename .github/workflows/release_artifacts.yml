@@ -46,17 +46,53 @@ jobs:
   #     with:
   #       files: /home/runner/plrust*.deb
 
-  test_aarch64:
-    name: Build Debian .deb
+# jobs:
+#   setup:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: ./setup_server.sh
+#   build:
+#     needs: setup
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: ./build_server.sh
+#   test:
+#     needs: build
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: ./test_server.sh
+
+# ------
+# jobs.<job_id>.strategy.matrix
+#
+
+# jobs:
+#   example_matrix:
+#     strategy:
+#       matrix:
+#         version: [10, 12, 14]
+#     steps:
+#       - uses: actions/setup-node@v3
+#         with:
+#           node-version: ${{ matrix.version }}
+
+
+
+  spin_up_aarch64_instances:
+    name: Spin up aarch64 runner instances
+
+    strategy:
+      matrix:
+        pg_version: [13,14,15]
 
     permissions:
-      id-token: write # This is required for requesting the JWT
+      id-token: write # Required for requesting OCDI JWTs
       contents: read  # This is required for actions/checkout
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    # - uses: actions/checkout@v3
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v2
@@ -65,6 +101,40 @@ jobs:
         role-to-assume: arn:aws:iam::950481341027:role/github_oidc_iam_role
         role-session-name: GithubPlrustSession
 
-    - name: attemp fake launch
+    - name: Launch runner instance
       run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-0bad2911d6aad1b0d
 
+  build_deb_artifacts:
+    name: Build aarch64 debian artifacts
+    needs: spin_up_aarch64_instances
+    runs-on: [self-hosted, linux, ARM64, plrust_artifacts]
+
+    strategy:
+      matrix:
+        pg_version: [13,14,15]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install \
+              ca-certificates \
+              curl \
+              gnupg
+
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+          echo \
+            "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+            "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+            sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+          sudo apt-get update
+
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+          sudo docker run hello-world
