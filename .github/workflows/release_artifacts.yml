@@ -140,7 +140,7 @@ jobs:
       #     sudo docker run hello-world
 
       - name: Create file for test upload
-        run: echo "This is a test file for ${{matrix.pg_version}} >> /home/ubuntu/${{matrix.pg_version}}.testupload
+        run: echo "This is a test file for ${{matrix.pg_version}}" >> /home/ubuntu/${{matrix.pg_version}}.testupload
 
       - name: Upload Debian .deb artifact
         uses: softprops/action-gh-release@v1
