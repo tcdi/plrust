@@ -103,13 +103,20 @@ impl FnBuild {
         cross_compilation_target: Option<CrossCompilationTarget>,
     ) -> eyre::Result<(FnLoad, Output)> {
         let mut command = cargo(cargo_target_dir, cross_compilation_target)?;
-        set_plrustc_vars(&mut command, self, cargo_target_dir)?;
+        let user_crate_name = self.user_crate_name();
+        set_plrustc_vars(
+            &mut command,
+            &user_crate_name,
+            &self.crate_dir,
+            cargo_target_dir,
+        )?;
 
         command.current_dir(&self.crate_dir);
         command.arg("rustc");
-        command.arg("--release");
         command.arg("--target");
         command.arg(&target_triple);
+        command.arg("--features");
+        command.arg("build_opened");
 
         let output = command.output().wrap_err("`cargo` execution failure")?;
 
@@ -189,9 +196,14 @@ fn path2string(p: &Path) -> eyre::Result<String> {
     Ok(pathstr.to_owned())
 }
 
-fn set_plrustc_vars(command: &mut Command, build: &FnBuild, target_dir: &Path) -> eyre::Result<()> {
-    command.env("PLRUSTC_USER_CRATE_NAME", build.user_crate_name());
-    let crate_dir_str = path2string(&build.crate_dir)?;
+pub(super) fn set_plrustc_vars(
+    command: &mut Command,
+    user_crate_name: &str,
+    crate_dir: &Path,
+    target_dir: &Path,
+) -> eyre::Result<()> {
+    command.env("PLRUSTC_USER_CRATE_NAME", user_crate_name);
+    let crate_dir_str = path2string(crate_dir)?;
     let target_dir_str = path2string(target_dir)?;
 
     // TODO: Allow extra dirs via a GUC? Support excluding dirs?

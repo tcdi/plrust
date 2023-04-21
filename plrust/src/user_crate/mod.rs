@@ -127,7 +127,7 @@ impl UserCrate<FnVerify> {
             crate_dir = %self.0.crate_dir().display(),
             target_dir = tracing::field::display(target_dir.display()),
         ))]
-    pub fn validate(self, target_dir: &Path) -> eyre::Result<(UserCrate<FnBuild>, Output)> {
+    pub fn validate(self, target_dir: &Path) -> eyre::Result<(UserCrate<FnBuild>, Vec<Output>)> {
         self.0
             .validate(target_dir)
             .map(|(state, output)| (UserCrate(state), output))
