@@ -303,7 +303,7 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
 
         [features]
         default = [version_feature]
-        check_forbedden = []
+        check_forbidden = []
         build_opened = []
 
         [lib]
