@@ -9,3 +9,6 @@ cargo update
 cargo upgrade --pinned
 cargo generate-lockfile
 
+cd plrustc
+cargo upgrade
+cargo generate-lockfile

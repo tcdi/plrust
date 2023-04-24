@@ -35,11 +35,11 @@ home = "0.5.4" # where can we find cargo?
 # working with our entry in pg_catalog.pg_proc
 base64 = "0.21.0"
 flate2 = "1.0.25"
-serde = "1.0.159"
-serde_json = "1.0.95"
+serde = "1.0.160"
+serde_json = "1.0.96"
 
 # pgrx core details
-pgrx = { version = "=0.7.4" }
+pgrx = { version = "=0.8.0" }
 
 # language handler support
 libloading = "0.7.4"
@@ -67,7 +67,7 @@ memfd = "0.6.3" # for anonymously writing/loading user function .so
 
 
 [dev-dependencies]
-pgrx-tests = { version = "=0.7.4" }
+pgrx-tests = { version = "=0.8.0" }
 tempdir = "0.3.7"
 once_cell = "1.17.1"
 toml = "0.7.3"
