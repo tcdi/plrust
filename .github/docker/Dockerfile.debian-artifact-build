@@ -107,5 +107,6 @@ RUN cd ${RELEASE_DIR} && fpm \
     -v ${PLRUST_VER} \
     --deb-no-default-config-files \
     -p /out/${DEB_FILENAME} \
+    --deb-user postgres \
     -a native \
     .
