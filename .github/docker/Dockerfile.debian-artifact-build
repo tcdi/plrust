@@ -96,7 +96,7 @@ RUN cd $HOME/.rustup && \
 # Creates a PGX configuration Toml file, as it is required to build plrust user-defined functions
 RUN mkdir -p ${RELEASE_DIR}$HOME/.pgx && \
     echo '[configs]' >> ${RELEASE_DIR}$HOME/.pgx/config.toml && \
-    echo "pg${PG_VER}=$(command -v pg_config)" >> ${RELEASE_DIR}$HOME/.pgx/config.toml
+    echo "pg${PG_VER}='$(command -v pg_config)'" >> ${RELEASE_DIR}$HOME/.pgx/config.toml
 
 # Package everything up based on whatever's in RELEASE_DIR, and send the resulting
 # .deb file to the /out directory
