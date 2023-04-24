@@ -25,7 +25,7 @@ jobs:
         echo "-- Setting variables --"
         export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
         export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
-        export DEB_FILENAME="plrust-$PLRUST_VER-debian-pg$PG_VER-x86_64.deb"
+        export DEB_FILENAME="plrust-trusted-$PLRUST_VER-debian-pg$PG_VER-x86_64.deb"
 
         echo "-- Building artifact via Docker --"
         docker build \
