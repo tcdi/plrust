@@ -8,43 +8,47 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # build_deb:
-  #   name: Build Debian .deb
+  build_deb:
+    name: Build x86_64 Debian artifacts
 
-  #   runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #   - uses: actions/checkout@v3
+    strategy:
+      matrix:
+        pg_version: [pg13, pg14, pg15]
 
-  #   - name: Build and extract Debian .deb artifact via Docker
-  #     run: |
-  #       echo "-- Setting variables --"
-  #       export PG_VER=15
-  #       export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
-  #       export DEB_FILENAME="plrust-$PLRUST_VER-debian-pg$PG_VER-x86_64.deb"
+    steps:
+    - uses: actions/checkout@v3
 
-  #       echo "-- Building artifact via Docker --"
-  #       docker build \
-  #         --build-arg PG_VER=$PG_VER \
-  #         --build-arg PLRUST_VER=$PLRUST_VER\
-  #         --build-arg DEB_FILENAME=$DEB_FILENAME \
-  #         -f .github/docker/Dockerfile.debian-artifact-build \
-  #         -t plrust-debian \
-  #         .
+    - name: Build and extract Debian .deb artifact via Docker
+      run: |
+        echo "-- Setting variables --"
+        export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
+        export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
+        export DEB_FILENAME="plrust-$PLRUST_VER-debian-pg$PG_VER-x86_64.deb"
 
-  #       echo "-- Creating container --"
-  #       container_id=$(docker create plrust-debian)
+        echo "-- Building artifact via Docker --"
+        docker build \
+          --build-arg PG_VER=$PG_VER \
+          --build-arg PLRUST_VER=$PLRUST_VER\
+          --build-arg DEB_FILENAME=$DEB_FILENAME \
+          -f .github/docker/Dockerfile.debian-artifact-build \
+          -t plrust-debian \
+          .
 
-  #       echo "-- Extracting file from container --"
-  #       docker cp $container_id:/out/$DEB_FILENAME /home/runner/$DEB_FILENAME
+        echo "-- Creating container --"
+        container_id=$(docker create plrust-debian)
 
-  #       echo "-- Destroying container --"
-  #       docker rm -v $container_id
+        echo "-- Extracting file from container --"
+        docker cp $container_id:/out/$DEB_FILENAME /home/runner/$DEB_FILENAME
 
-  #   - name: Upload Debian .deb artifact
-  #     uses: softprops/action-gh-release@v1
-  #     with:
-  #       files: /home/runner/plrust*.deb
+        echo "-- Destroying container --"
+        docker rm -v $container_id
+
+    - name: Upload Debian .deb artifact
+      uses: softprops/action-gh-release@v1
+      with:
+        files: /home/runner/plrust*.deb
 
 # jobs:
 #   setup:
@@ -83,8 +87,7 @@ jobs:
 
     strategy:
       matrix:
-        # pg_version: [13,14,15]
-        pg_version: [pg13]
+        pg_version: [pg13, pg14, pg15]
 
     permissions:
       id-token: write # Required for requesting OCDI JWTs
@@ -106,14 +109,13 @@ jobs:
       run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-0bad2911d6aad1b0d
 
   build_deb_artifacts:
-    name: Build aarch64 debian artifacts
+    name: Build aarch64 Debian artifacts
     needs: spin_up_aarch64_instances
     runs-on: [self-hosted, linux, ARM64, plrust_artifacts]
 
     strategy:
       matrix:
-        # pg_version: [13,14,15]
-        pg_version: [pg13]
+        pg_version: [pg13, pg14, pg15]
 
     steps:
       - uses: actions/checkout@v3
