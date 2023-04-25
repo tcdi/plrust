@@ -129,7 +129,9 @@ fn plrust_process_utility_hook_internal(
 fn call_prev_hook(
     pstmt: *mut pg_sys::PlannedStmt,
     query_string: *const ::std::os::raw::c_char,
-    read_only_tree: bool,
+
+    // this isn't by pg13 but we need it here in the argument list anyways
+    #[allow(unused_variables)] read_only_tree: bool,
     context: pg_sys::ProcessUtilityContext,
     params: pg_sys::ParamListInfo,
     query_env: *mut pg_sys::QueryEnvironment,
