@@ -31,12 +31,14 @@ pub(crate) use ready::FnReady;
 pub(crate) use validate::FnValidate;
 pub(crate) use verify::FnVerify;
 
-use crate::prosrc::maybe_extract_source_from_json;
+use crate::prosrc::extract_source_and_capabilities_from_json;
 use crate::target::CompilationTarget;
+use crate::user_crate::capabilities::FunctionCapabilitySet;
 use crate::user_crate::lint::LintSet;
 use crate::PlRustError;
 
 mod build;
+pub(crate) mod capabilities;
 mod cargo;
 mod crate_variant;
 mod crating;
@@ -219,7 +221,11 @@ impl UserCrate<FnReady> {
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(type_oid = %type_oid.value()))]
-pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {
+pub(crate) fn oid_to_syn_type(
+    type_oid: &PgOid,
+    owned: bool,
+    capabilities: &FunctionCapabilitySet,
+) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 
     let (base_oid, array) = if array_type != pg_sys::InvalidOid {
@@ -271,7 +277,14 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
     };
 
     let rust_type = if array {
-        quote! { Vec<Option<#base_rust_type>> }
+        if owned {
+            quote! { Vec<Option<#base_rust_type>> }
+        } else if capabilities.has_zero_copy_arrays() {
+            quote! { pgrx::Array<'a, #base_rust_type> }
+        } else {
+            // same as "owned"
+            quote! { Vec<Option<#base_rust_type>> }
+        }
     } else {
         base_rust_type
     };
@@ -281,14 +294,16 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
-fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml::value::Table)> {
+fn parse_source_and_deps(
+    code_and_deps: &str,
+) -> eyre::Result<(syn::Block, toml::value::Table, FunctionCapabilitySet)> {
     enum Parse {
         Code,
         Deps,
     }
 
     // it's possible, especially via a `pg_restore` operation, that "code_and_deps" is actually
-    // our JSON structure stored in `pg_proc.prosrc`.  We'll pass it to [`maybe_extract_source_from_json`]
+    // our JSON structure stored in `pg_proc.prosrc`.  We'll pass it to [`extract_source_and_capabilities_from_json`]
     // and let it figure out what to do.
     //
     // If it **is** our JSON structure, we only care about the `"src"` property.  That's all
@@ -298,7 +313,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     //
     // It's also possible "code_and_deps" is exactly that, given to us via a user-written
     // "CREATE OR REPLACE FUNCTION" statement.
-    let code_and_deps = maybe_extract_source_from_json(code_and_deps);
+    let (code_and_deps, capabilities) = extract_source_and_capabilities_from_json(code_and_deps);
 
     let mut deps_block = String::new();
     let mut code_block = String::from("{ ");
@@ -322,7 +337,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
 
-    Ok((user_code, user_dependencies))
+    Ok((user_code, user_dependencies, capabilities))
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
@@ -438,7 +453,13 @@ mod tests {
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    return_oid,
+                    return_set,
+                    is_strict,
+                    FunctionCapabilitySet::default(),
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {

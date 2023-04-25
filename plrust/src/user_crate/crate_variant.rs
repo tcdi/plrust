@@ -6,6 +6,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use crate::user_crate::capabilities::FunctionCapabilitySet;
 use crate::{user_crate::oid_to_syn_type, PlRustError};
 use eyre::WrapErr;
 use pgrx::PgOid;
@@ -38,11 +39,12 @@ impl CrateVariant {
         return_oid: PgOid,
         return_set: bool,
         is_strict: bool,
+        capabilities: FunctionCapabilitySet,
     ) -> eyre::Result<Self> {
         let mut arguments = Vec::new();
         for (argument_oid, arg_name) in argument_oids_and_names.into_iter() {
             let rust_type: syn::Type = {
-                let bare = oid_to_syn_type(&argument_oid, false)?;
+                let bare = oid_to_syn_type(&argument_oid, false, &capabilities)?;
                 match is_strict {
                     true => bare,
                     false => syn::parse2(quote! {
@@ -61,7 +63,7 @@ impl CrateVariant {
         }
 
         let return_type: syn::Type = {
-            let bare = oid_to_syn_type(&return_oid, true)?;
+            let bare = oid_to_syn_type(&return_oid, true, &capabilities)?;
             match return_set {
                 true => syn::parse2(quote! { ::std::result::Result<Option<::pgrx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
                     .wrap_err("Wrapping return type")?,

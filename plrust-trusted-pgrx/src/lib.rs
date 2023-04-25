@@ -25,6 +25,9 @@ pub mod datum {
     // // dates & times
     // pub use ::pgrx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
+    // zero-copy Arrays
+    pub use ::pgrx::datum::{Array, ArrayIntoIterator, ArrayIterator, ArrayTypedIterator};
+
     // json
     pub use ::pgrx::datum::{Json, JsonB};
 

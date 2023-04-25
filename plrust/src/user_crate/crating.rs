@@ -63,7 +63,7 @@ impl FnCrating {
     ) -> eyre::Result<Self> {
         let meta = PgProc::new(fn_oid)?;
         let generation_number = meta.generation_number();
-        let (user_code, user_dependencies) = parse_source_and_deps(&meta.prosrc())?;
+        let (user_code, user_dependencies, capabilities) = parse_source_and_deps(&meta.prosrc())?;
 
         let variant = match meta.prorettype() == pg_sys::TRIGGEROID {
             true => CrateVariant::trigger(),
@@ -97,6 +97,7 @@ impl FnCrating {
                     PgOid::from(meta.prorettype()),
                     meta.proretset(),
                     meta.proisstrict(),
+                    capabilities,
                 )?
             }
         };
@@ -365,6 +366,7 @@ fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
+    use crate::user_crate::capabilities::FunctionCapabilitySet;
     use pgrx::*;
     use syn::parse_quote;
 
@@ -385,7 +387,13 @@ mod tests {
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    return_oid,
+                    return_set,
+                    is_strict,
+                    FunctionCapabilitySet::default(),
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
@@ -456,7 +464,13 @@ mod tests {
                 let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
                 let is_strict = false;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    return_oid,
+                    return_set,
+                    is_strict,
+                    FunctionCapabilitySet::default(),
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
@@ -527,7 +541,13 @@ mod tests {
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = true;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    return_oid,
+                    return_set,
+                    is_strict,
+                    FunctionCapabilitySet::default(),
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
