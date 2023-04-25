@@ -14,6 +14,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         "cargo:rustc-env=PLRUST_TRUSTED_PGRX_VERSION={}",
         find_trusted_pgrx_current_version()?
     );
+
+    // if the pgrx override definition changes we want a recompile
+    println!("cargo:rerun-if-env-changed=PLRUST_TRUSTED_PGRX_OVERRIDE");
     Ok(())
 }
 
