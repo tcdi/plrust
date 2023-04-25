@@ -1,0 +1,128 @@
+# Example of how to build and run this Dockerfile:
+#   docker build -f Dockerfile.try -t tcdi/try-plrust . # Build the container
+#   docker run -it tcdi/try-plrust # Run the container
+
+FROM postgres:15-bullseye
+
+SHELL ["/bin/bash", "-c"]
+
+# Install just enough to set up the official Postgres debian repository,
+# then install everything else needed for Rust and plrust
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        lsb-release \
+        wget && \
+    sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null && \
+    apt-get update -y -qq --fix-missing && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        clang-11 \
+        gcc \
+        git \
+        jq \
+        libssl-dev \
+        llvm-11 \
+        make \
+        postgresql-server-dev-15 \
+        pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set up permissions so that the postgres user can install the plrust plugin
+RUN chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+
+# The 'postgres' user is the default user that the official postgres:15-bullseye image sets up
+USER postgres
+ENV USER postgres
+
+# Install Rust
+RUN wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=1.67.1
+ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
+
+# Copy in plrust source
+COPY --chown=${USER} . src/
+WORKDIR /src
+
+# Build/install/remove all that is necessary in one step as to keep the resulting layer as small as possible.
+RUN PGX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
+    cargo install cargo-pgx --force --version "$PGX_VERSION" && \
+    rustup component add llvm-tools-preview rustc-dev && \
+    cd /src/plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && \
+    cargo pgx init --pg15 $(which pg_config) && \
+    cd /src/plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && \
+    cargo pgx install --release --features trusted && \
+    cd /src && find . -type d -name target | xargs rm -r && \
+    rustup component remove llvm-tools-preview rustc-dev
+
+# Reset the permissions of files/directories that was created or touched by the postgres user.
+# Switching to the root user here temporarily is easier than installing and setting up sudo
+USER root
+
+RUN chmod 0755 `$(which pg_config) --pkglibdir` && \
+    cd `$(which pg_config) --pkglibdir` && \
+    chown root:root *.so && \
+    chmod 0644 *.so && \
+    chmod 755 `$(which pg_config) --sharedir`/extension && \
+    cd `$(which pg_config) --sharedir`/extension && \
+    chown root:root *
+
+USER postgres
+
+# Create initial main database
+RUN pg_createcluster 15 main
+
+# NOTE: Heredocs do not work in older versions of Docker, so multiple 'echo' lines
+# will be used in various places in this Dockerfile.
+
+# Set up host based auth. *DO NOT* use this in production!
+RUN echo 'local all all trust' > /etc/postgresql/15/main/pg_hba.conf && \
+    echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/15/main/pg_hba.conf
+
+# Set up plrust configuration options
+RUN echo "shared_preload_libraries='plrust'" >> /etc/postgresql/15/main/postgresql.conf && \
+    echo "plrust.work_dir='/tmp'" >>/etc/postgresql/15/main/postgresql.conf
+
+# Set up custom prompt
+RUN echo "\set PROMPT1 '%/(plrust)=# '" >> ~/.psqlrc && \
+    echo "\set PROMPT2 '%/(plrust)-# '" >> ~/.psqlrc
+
+# Create startup/CMD scripts
+RUN mkdir ~/scripts
+ENV PATH="~/scripts:${PATH}"
+
+# Set up script that launches both postgresql server (background) and psql client (foreground)
+RUN echo 'echo "Starting Postgresql..."' >> ~/scripts/all && \
+    echo 'service postgresql start' >> ~/scripts/all && \
+    echo 'echo ""' >> ~/scripts/all && \
+    echo 'echo "Installing plrust"' >> ~/scripts/all && \
+    echo 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"' >> ~/scripts/all && \
+    echo 'echo ""' >> ~/scripts/all && \
+    echo 'echo "Starting psql"' >> ~/scripts/all && \
+    echo 'echo ""' >> ~/scripts/all && \
+    echo 'psql' >> ~/scripts/all
+
+RUN chmod +x ~/scripts/all
+
+# Set up script that launches Postgresql in the foreground. Need to launch it as a service first so that
+# plrust can be installed.
+RUN echo 'echo "Starting Postgresql service..."' >> ~/scripts/server && \
+    echo 'service postgresql start' >> ~/scripts/server && \
+    echo 'echo ""' >> ~/scripts/server && \
+    echo 'echo "Installing plrust"' >> ~/scripts/server && \
+    echo 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"' >> ~/scripts/server && \
+    echo 'echo ""' >> ~/scripts/server && \
+    echo 'echo "Stopping service"' >> ~/scripts/server && \
+    echo 'service postgresql stop' >> ~/scripts/server && \
+    echo 'echo "Starting Postgresql in the foreground"' >> ~/scripts/server && \
+    echo 'echo ""' >> ~/scripts/server && \
+    echo 'postgres -D /etc/postgresql/15/main/' >> ~/scripts/server
+
+RUN chmod +x ~/scripts/server
+
+# By default, run the "all" script, which will start up the postgres server in the background,
+# and the psql cli in the foreground
+CMD [ "all" ]

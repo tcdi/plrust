@@ -148,7 +148,7 @@ jobs:
     - name: install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Run cargo pgrx init for PG14
+    - name: Run cargo pgrx init
       run: cargo pgrx init --pg14 $(which pg_config)
 
     - name: Test PL/rust as "untrusted"
@@ -157,7 +157,7 @@ jobs:
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
     - name: Print sccache stats (after build)
       run: sccache --show-stats
@@ -325,7 +325,7 @@ jobs:
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build
+      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
     # # Maybe this is not necessary if we switch to sccache?
     # # Attempt to make the cache payload slightly smaller.
