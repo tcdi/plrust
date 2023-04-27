@@ -29,7 +29,7 @@ cargo update -p pgrx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgrx \
-     --version "0.7.2" \
+     --version "0.8.2" \
      --locked # use the Cargo.lock in the pgrx repo
 fi
 
