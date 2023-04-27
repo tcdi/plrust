@@ -42,7 +42,7 @@ mod forbidden {
        #![forbid(where_clauses_object_safety)]
     
        #[allow(unused_imports)]
-       use pgx::prelude::*;
+       use pgrx::prelude::*;
     
        #[allow(unused_lifetimes)]
        fn plrust_fn_oid_16384_16404<'a>(
@@ -67,11 +67,11 @@ These are the lints that, if triggered, will fail compilation.  These [lints](..
 and are not applied to external dependencies.
 
 
-### `use pgx::prelude::*`
+### `use pgrx::prelude::*`
 
 A default set of types and traits available to every PL/Rust function.  Despite the name, these originate from 
-[`plrust-trusted-pgx`](https://docs.rs/plrust-trusted-pgx/latest/plrust_trusted_pgx/).  `plrust-trusted-pgx` is a very
-small subset of `pgx`, the crate upon which PL/Rust *and* `LANGUAGE plrust` functions are based.
+[`plrust-trusted-pgrx`](https://docs.rs/plrust-trusted-pgrx/latest/plrust_trusted_pgrx/).  `plrust-trusted-pgrx` is a very
+small subset of `pgrx`, the crate upon which PL/Rust *and* `LANGUAGE plrust` functions are based.
 
 ### `fn plrust_fn_oid_16384_16404(...) -> ... {}`
 
