@@ -39,8 +39,9 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
         ruby && \
     rm -rf /var/lib/apt/lists/*
 
-# Install fpm for the creation of the .deb file
-RUN gem install --no-document fpm
+# Install fpm for the creation of the .deb file,
+# and install toml so TOML files can be parsed later
+RUN gem install --no-document fpm toml
 
 # Set up permissions so that the postgres user can install the plrust plugin
 RUN chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
@@ -52,13 +53,24 @@ RUN mkdir /out && chmod 777 /out
 USER postgres
 ENV USER postgres
 
-# Install Rust
-RUN wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=1.67.1
-ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
-
 # Copy in plrust source
 COPY --chown=${USER} . src/
 WORKDIR /src
+
+# Obtain the toolchain version from rust-toolchain.toml and store that into a file.
+RUN ruby <<EOF
+require 'toml'
+toml=TOML.load_file('/src/rust-toolchain.toml')
+if ver=toml['toolchain']['channel']
+  File.open('/tmp/.toolchain-ver', 'w') { |file| file.write(ver) }
+else
+  raise 'Could not determine toolchain channel version. Is rust-toolchain.toml missing or malformed?'
+end
+EOF
+
+# Install Rust
+RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER
+ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 
 # Install the version of PGX that is dictated by Cargo.toml for this project
 RUN PGX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
@@ -98,15 +110,62 @@ RUN mkdir -p ${RELEASE_DIR}$HOME/.pgx && \
     echo '[configs]' >> ${RELEASE_DIR}$HOME/.pgx/config.toml && \
     echo "pg${PG_VER}='$(command -v pg_config)'" >> ${RELEASE_DIR}$HOME/.pgx/config.toml
 
+# Create a Debian preinst script that will run before the installation of the pl/Rust package.
+# This will check to be sure the proper Rust toolchain and components are set up beforehand.
+RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && cat <<EOF > /tmp/preinst
+#!/usr/bin/env bash
+
+if ! id -u postgres 2&> /dev/null; then
+    echo "[!] User 'postgres' does not exist. Have the official Postgres packages been installed yet?"
+    exit 1
+fi
+
+if ! runuser -l postgres -c 'command -v rustup'; then
+    echo "[!] The 'postgres' user does not have rustup installed. Please see package installation instructions on how to do this.";
+    exit 1
+fi
+
+if ! runuser -l postgres -c 'command -v rustc'; then
+    echo "[!] The 'postgres' user does not have Rust installed. Please see package installation instructions on how to do this.";
+    exit 1
+fi
+
+if ! runuser -l postgres -c 'rustup toolchain list | grep -q "^$TOOLCHAIN_VER-$(uname -m)\b"'; then
+    echo "[!] The 'postgres' user does not have the Rust toolchain $TOOLCHAIN_VER-$(uname -m) installed. Please see package installation instructions on how to do this.";
+    exit 1
+fi
+
+if ! runuser -l postgres -c 'rustup component list | grep -q "^rustc-dev-$(uname -m)\b.*(installed)$"'; then
+    echo "[!] The 'postgres' user does not have the Rust component 'rustc-dev' installed. Please see package installation instructions on how to do this.";
+    exit 1
+fi
+
+if ! runuser -l postgres -c 'rustup toolchain list | grep -q "^$TOOLCHAIN_VER-$(uname -m)\b.*(default)$"'; then
+    echo "[!] The 'postgres' user does not have the default toolchain set to $TOOLCHAIN_VER. Please see package installation instructions on how to do this.";
+    exit 1
+fi
+
+EOF
+
 # Package everything up based on whatever's in RELEASE_DIR, and send the resulting
 # .deb file to the /out directory
 RUN cd ${RELEASE_DIR} && fpm \
     -s dir \
     -t deb \
-    -n ${DEB_FILENAME} \
+    -n plrust \
+    --deb-pre-depends "postgresql-${PG_VER}" \
+    -d "postgresql-${PG_VER}" \
+    -d "postgresql-server-dev-${PG_VER}" \
+    -m 'Technology Concepts & Design, Inc. <support@tcdi.com>' \
+    --description 'PL/Rust is a loadable procedural language that enables writing PostgreSQL functions in the Rust programming language.' \
     -v ${PLRUST_VER} \
+    --url 'https://github.com/tcdi/plrust' \
+    --license 'The PostgreSQL License' \
+    --category 'Databases' \
     --deb-no-default-config-files \
+    --before-install /tmp/preinst \
     -p /out/${DEB_FILENAME} \
     --deb-user postgres \
+    --deb-group postgres \
     -a native \
     .
