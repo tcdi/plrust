@@ -18,7 +18,7 @@ pg15 = ["pgrx/pg15"]
 
 [dependencies]
 # changing the pgrx version will likely require at least a minor version bump to this create
-pgrx = { version = "=0.8.2", features = [ "no-schema-generation" ], default-features = false }
+pgrx = { version = "=0.8.3", features = [ "no-schema-generation" ], default-features = false }
 
 [package.metadata.docs.rs]
 features = ["pg14"]
