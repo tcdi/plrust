@@ -58,6 +58,7 @@ extension_sql!(
     r#"
 DO LANGUAGE plpgsql $$
 BEGIN
+   RAISE WARNING 'I am Brady';
    IF pg_catalog.getdatabaseencoding() <> 'UTF8' THEN
         RAISE EXCEPTION 'PL/Rust only supports UTF8-encoded databases.';
    END IF;
