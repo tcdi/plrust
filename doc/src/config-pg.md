@@ -73,14 +73,14 @@ plrust.path_override = '/special/path/to/.cargo/bin:/usr/bin'
 ```
 
 
-#### `plrust.trusted_pgx_version` (string)
+#### `plrust.trusted_pgrx_version` (string)
 
-The version of the `plrust-trusted-pgx` crate from crates.io to use when
+The version of the `plrust-trusted-pgrx` crate from crates.io to use when
 compiling user functions. This typically should not need to be manually set.
 
 
 ```bash
-plrust.trusted_pgx_version = '1.0.0'
+plrust.trusted_pgrx_version = '1.1.1'
 ```
 
 
@@ -125,14 +125,14 @@ plrust.aarch64_linker = 'aarch64_linux_gnu_gcc'
 
 
 
-#### `plrust.{arch}_pgx_bindings_path` (string)
+#### `plrust.{arch}_pgrx_bindings_path` (string)
 
-The `plrust.{arch}_pgx_bindings_path` settings are actually required but PL/Rust will happily cross compile without them. If unspecified,
-PL/Rust will use the pgx bindings of the host architecture for the cross compilation target architecture too. In other words, if the host 
-is `x86_64` and PL/Rust is configured to cross compile to `aarch64` and the `plrust.aarch64_pgx_bindings_path` is *not* configured, it'll
+The `plrust.{arch}_pgrx_bindings_path` settings are actually required but PL/Rust will happily cross compile without them. If unspecified,
+PL/Rust will use the pgrx bindings of the host architecture for the cross compilation target architecture too. In other words, if the host 
+is `x86_64` and PL/Rust is configured to cross compile to `aarch64` and the `plrust.aarch64_pgrx_bindings_path` is *not* configured, it'll
 blindly use the bindings it already has for `x86_64`.  This may or may not actually work.
 
-To get the bindings, install `cargo-pgx` on the other system and run `cargo pgx cross pgx-target`. That'll generate a tarball. Copy that back 
+To get the bindings, install `cargo-pgrx` on the other system and run `cargo pgrx cross pgrx-target`. That'll generate a tarball. Copy that back 
 to the primary host machine and `untar` it somewhere (PL/Rust doesn't care where), and use that path as the configuration setting.
 
 Note that it is perfectly fine (and really, expected) to set all of these configuration settings on both architectures.

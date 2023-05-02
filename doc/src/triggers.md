@@ -6,8 +6,8 @@ A trigger function is created using the `CREATE FUNCTION` command, declaring it 
 to describe the condition that triggered the call and the `new` and `old`
 rows.
 
-PL/Rust trigger support options are [documented on docs.rs](https://docs.rs/pgx/latest/pgx/prelude/struct.PgTrigger.html) and defined in the `.rs` files in the
-[trigger_support](https://github.com/tcdi/pgx/tree/master/pgx/src/trigger_support) directory.
+PL/Rust trigger support options are [documented on docs.rs](https://docs.rs/pgrx/latest/pgrx/prelude/struct.PgTrigger.html) and defined in the `.rs` files in the
+[trigger_support](https://github.com/tcdi/pgrx/tree/master/pgrx/src/trigger_support) directory.
 
 These examples are an expansion of the code from [`plrust/plrust/src/tests.rs`](https://github.com/tcdi/plrust/blob/main/plrust/src/tests.rs). The elaborations here
 illustrate additional functionality.
@@ -74,7 +74,7 @@ CREATE TRIGGER dog_trigger
 
 The `tg_op` variable is available from the `trigger.op()` method and has values
 of `INSERT`, `UPDATE`, `DELETE` and `TRUNCATE`.  See the definition
-of [`PgTriggerOperation` for more](https://docs.rs/pgx/latest/pgx/prelude/enum.PgTriggerOperation.html).
+of [`PgTriggerOperation` for more](https://docs.rs/pgrx/latest/pgrx/prelude/enum.PgTriggerOperation.html).
 The `tg_op` value is used in a `match` to define the `my_row` variable.
 
 

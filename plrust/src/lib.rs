@@ -47,11 +47,26 @@ pub(crate) mod target;
 pub mod tests;
 
 use error::PlRustError;
-use pgx::{pg_getarg, prelude::*};
+use pgrx::{pg_getarg, prelude::*};
 
 #[cfg(any(test, feature = "pg_test"))]
 pub use tests::pg_test;
-pgx::pg_module_magic!();
+
+pgrx::pg_module_magic!();
+
+extension_sql!(
+    r#"
+DO LANGUAGE plpgsql $$
+BEGIN
+   IF pg_catalog.getdatabaseencoding() <> 'UTF8' THEN
+        RAISE EXCEPTION 'PL/Rust only supports UTF8-encoded databases.';
+   END IF;
+END;
+$$;
+"#,
+    name = "check_encoding",
+    bootstrap
+);
 
 /// This is the default set of lints we apply to PL/Rust user functions, and require of PL/Rust user
 /// functions before we'll load and execute them.
@@ -124,7 +139,7 @@ fn _PG_init() {
 
     let format_layer = tracing_subscriber::fmt::Layer::new()
         .with_ansi(false)
-        .with_writer(|| logging::PgxNoticeWriter::<true>)
+        .with_writer(|| logging::PgrxNoticeWriter::<true>)
         .without_time()
         .pretty();
     tracing_subscriber::registry()
@@ -137,7 +152,7 @@ fn _PG_init() {
     plrust::init();
 }
 
-/// `pgx` doesn't know how to declare a CREATE FUNCTION statement for a function
+/// `pgrx` doesn't know how to declare a CREATE FUNCTION statement for a function
 /// whose only argument is a `pg_sys::FunctionCallInfo`, so we gotta do that ourselves.
 #[pg_extern(sql = "
 CREATE FUNCTION plrust_call_handler() RETURNS language_handler
@@ -166,7 +181,7 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
     // SAFETY: This is more of a "don't call us, we'll call you" situation.
     match unsafe { plrust_call_handler_inner(fcinfo) } {
         Ok(datum) => datum,
-        // Panic into the pgx guard.
+        // Panic into the pgrx guard.
         Err(err) => panic!("{:?}", err),
     }
 }
@@ -209,7 +224,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
         let stderr =
             String::from_utf8(output.stdout.clone()).expect("`cargo`'s stdout was not UTF-8");
         if stderr.contains("warning: ") {
-            pgx::warning!("\n{}", stderr);
+            pgrx::warning!("\n{}", stderr);
         }
 
         Ok(())
@@ -217,7 +232,7 @@ unsafe fn plrust_validator(fn_oid: pg_sys::Oid, fcinfo: pg_sys::FunctionCallInfo
 
     match unsafe { plrust_validator_inner(fn_oid, fcinfo) } {
         Ok(()) => (),
-        // Panic into the pgx guard.
+        // Panic into the pgrx guard.
         Err(err) => panic!("{:?}", err),
     }
 }

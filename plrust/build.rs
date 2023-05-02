@@ -11,24 +11,27 @@ use std::process::Command;
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!(
-        "cargo:rustc-env=PLRUST_TRUSTED_PGX_VERSION={}",
-        find_trusted_pgx_current_version()?
+        "cargo:rustc-env=PLRUST_TRUSTED_PGRX_VERSION={}",
+        find_trusted_pgrx_current_version()?
     );
+
+    // if the pgrx override definition changes we want a recompile
+    println!("cargo:rerun-if-env-changed=PLRUST_TRUSTED_PGRX_OVERRIDE");
     Ok(())
 }
 
-fn find_trusted_pgx_current_version() -> Result<String, Box<dyn Error>> {
+fn find_trusted_pgrx_current_version() -> Result<String, Box<dyn Error>> {
     let output = Command::new("cargo")
         .arg("tree")
         .arg("-p")
-        .arg("plrust-trusted-pgx")
+        .arg("plrust-trusted-pgrx")
         .arg("--depth")
         .arg("0")
         .output()?;
 
     // looking for some output similar to:
     //
-    //      plrust-trusted-pgx v1.0.0 (/home/zombodb/_work/plrust/plrust-trusted-pgx)
+    //      plrust-trusted-pgrx v1.0.0 (/home/zombodb/_work/plrust/plrust-trusted-pgrx)
     //
     // and we want the "v1.0.0" part
     let stdout = String::from_utf8_lossy(&output.stdout);

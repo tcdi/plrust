@@ -48,13 +48,13 @@ COPY --chown=${USER} . src/
 WORKDIR /src
 
 # Build/install/remove all that is necessary in one step as to keep the resulting layer as small as possible.
-RUN PGX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgx")|.version') && \
-    cargo install cargo-pgx --force --version "$PGX_VERSION" && \
+RUN PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version') && \
+    cargo install cargo-pgrx --force --version "$PGRX_VERSION" && \
     rustup component add llvm-tools-preview rustc-dev && \
     cd /src/plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && \
-    cargo pgx init --pg15 $(which pg_config) && \
+    cargo pgrx init --pg15 $(which pg_config) && \
     cd /src/plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build && \
-    cargo pgx install --release --features trusted && \
+    cargo pgrx install --release --features trusted && \
     cd /src && find . -type d -name target | xargs rm -r && \
     rustup component remove llvm-tools-preview rustc-dev
 

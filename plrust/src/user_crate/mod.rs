@@ -18,7 +18,7 @@ cargo doc --no-deps --document-private-items --open
 */
 use std::{path::Path, process::Output};
 
-use pgx::{pg_sys, PgBuiltInOids, PgOid};
+use pgrx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
 use semver;
@@ -31,12 +31,14 @@ pub(crate) use ready::FnReady;
 pub(crate) use validate::FnValidate;
 pub(crate) use verify::FnVerify;
 
-use crate::prosrc::maybe_extract_source_from_json;
+use crate::prosrc::extract_source_and_capabilities_from_json;
 use crate::target::CompilationTarget;
+use crate::user_crate::capabilities::FunctionCapabilitySet;
 use crate::user_crate::lint::LintSet;
 use crate::PlRustError;
 
 mod build;
+pub(crate) mod capabilities;
 mod cargo;
 mod crate_variant;
 mod crating;
@@ -219,7 +221,11 @@ impl UserCrate<FnReady> {
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(type_oid = %type_oid.value()))]
-pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type, PlRustError> {
+pub(crate) fn oid_to_syn_type(
+    type_oid: &PgOid,
+    owned: bool,
+    capabilities: &FunctionCapabilitySet,
+) -> Result<syn::Type, PlRustError> {
     let array_type = unsafe { pg_sys::get_element_type(type_oid.value()) };
 
     let (base_oid, array) = if array_type != pg_sys::InvalidOid {
@@ -230,15 +236,16 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 
     let base_rust_type: TokenStream = match base_oid {
         PgOid::BuiltIn(builtin) => match builtin {
-            PgBuiltInOids::ANYELEMENTOID => quote! { pgx::AnyElement },
+            PgBuiltInOids::ANYELEMENTOID => quote! { pgrx::AnyElement },
             PgBuiltInOids::BOOLOID => quote! { bool },
-            PgBuiltInOids::BOXOID => quote! {pgx::BOX },
-            PgBuiltInOids::BYTEAOID if owned => quote! { Vec<Option<[u8]>> },
+            PgBuiltInOids::BOXOID => quote! {pgrx::BOX },
+            PgBuiltInOids::BYTEAOID if owned => quote! { Vec<u8> },
             PgBuiltInOids::BYTEAOID if !owned => quote! { &'a [u8] },
             PgBuiltInOids::CHAROID => quote! { u8 },
-            PgBuiltInOids::CSTRINGOID => quote! { std::ffi::CStr },
-            // PgBuiltInOids::DATEOID => quote! { pgx::Date },
-            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgx::Date> },
+            PgBuiltInOids::CSTRINGOID if owned => quote! { std::ffi::CString },
+            PgBuiltInOids::CSTRINGOID if !owned => quote! { &std::ffi::CStr },
+            // PgBuiltInOids::DATEOID => quote! { pgrx::Date },
+            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgrx::Date> },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
             PgBuiltInOids::FLOAT8OID => quote! { f64 },
             // PgBuiltInOids::INETOID => quote! { Inet },
@@ -247,22 +254,22 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
             PgBuiltInOids::INT4RANGEOID => quote! { Range<i32> },
             PgBuiltInOids::INT8OID => quote! { i64 },
             PgBuiltInOids::INT8RANGEOID => quote! { Range<i64> },
-            PgBuiltInOids::JSONBOID => quote! { pgx::JsonB },
-            PgBuiltInOids::JSONOID => quote! { pgx::Json },
-            PgBuiltInOids::POINTOID => quote! { pgx::Point },
-            PgBuiltInOids::NUMERICOID => quote! { pgx::AnyNumeric },
-            PgBuiltInOids::NUMRANGEOID => quote! { Range<pgx::AnyNumeric> },
-            PgBuiltInOids::OIDOID => quote! { pgx::Oid },
+            PgBuiltInOids::JSONBOID => quote! { pgrx::JsonB },
+            PgBuiltInOids::JSONOID => quote! { pgrx::Json },
+            PgBuiltInOids::POINTOID => quote! { pgrx::Point },
+            PgBuiltInOids::NUMERICOID => quote! { pgrx::AnyNumeric },
+            PgBuiltInOids::NUMRANGEOID => quote! { Range<pgrx::AnyNumeric> },
+            PgBuiltInOids::OIDOID => quote! { pgrx::Oid },
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
-            PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointer },
-            // PgBuiltInOids::TIMEOID => quote! { pgx::Time },
-            // PgBuiltInOids::TIMETZOID => quote! { pgx::TimeWithTimeZone },
-            // PgBuiltInOids::TIMESTAMPOID => quote! { pgx::Timestamp },
-            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgx::TimestampWithTimeZone },
-            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgx::Timestamp> },
-            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgx::TimestampWithTimeZone> },
-            PgBuiltInOids::UUIDOID => quote! { pgx::Uuid },
+            PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointerData },
+            // PgBuiltInOids::TIMEOID => quote! { pgrx::Time },
+            // PgBuiltInOids::TIMETZOID => quote! { pgrx::TimeWithTimeZone },
+            // PgBuiltInOids::TIMESTAMPOID => quote! { pgrx::Timestamp },
+            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgrx::TimestampWithTimeZone },
+            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgrx::Timestamp> },
+            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgrx::TimestampWithTimeZone> },
+            PgBuiltInOids::UUIDOID => quote! { pgrx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
@@ -271,7 +278,14 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
     };
 
     let rust_type = if array {
-        quote! { Vec<Option<#base_rust_type>> }
+        if owned {
+            quote! { Vec<Option<#base_rust_type>> }
+        } else if capabilities.has_zero_copy_arrays() {
+            quote! { pgrx::Array<'a, #base_rust_type> }
+        } else {
+            // same as "owned"
+            quote! { Vec<Option<#base_rust_type>> }
+        }
     } else {
         base_rust_type
     };
@@ -281,14 +295,16 @@ pub(crate) fn oid_to_syn_type(type_oid: &PgOid, owned: bool) -> Result<syn::Type
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
-fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml::value::Table)> {
+fn parse_source_and_deps(
+    code_and_deps: &str,
+) -> eyre::Result<(syn::Block, toml::value::Table, FunctionCapabilitySet)> {
     enum Parse {
         Code,
         Deps,
     }
 
     // it's possible, especially via a `pg_restore` operation, that "code_and_deps" is actually
-    // our JSON structure stored in `pg_proc.prosrc`.  We'll pass it to [`maybe_extract_source_from_json`]
+    // our JSON structure stored in `pg_proc.prosrc`.  We'll pass it to [`extract_source_and_capabilities_from_json`]
     // and let it figure out what to do.
     //
     // If it **is** our JSON structure, we only care about the `"src"` property.  That's all
@@ -298,7 +314,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     //
     // It's also possible "code_and_deps" is exactly that, given to us via a user-written
     // "CREATE OR REPLACE FUNCTION" statement.
-    let code_and_deps = maybe_extract_source_from_json(code_and_deps);
+    let (code_and_deps, capabilities) = extract_source_and_capabilities_from_json(code_and_deps);
 
     let mut deps_block = String::new();
     let mut code_block = String::from("{ ");
@@ -322,7 +338,7 @@ fn parse_source_and_deps(code_and_deps: &str) -> eyre::Result<(syn::Block, toml:
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
 
-    Ok((user_code, user_dependencies))
+    Ok((user_code, user_dependencies, capabilities))
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
@@ -413,9 +429,9 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::*;
+    use pgrx::*;
     use quote::quote;
     use syn::parse_quote;
 
@@ -438,7 +454,13 @@ mod tests {
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
-                CrateVariant::function(argument_oids_and_names, return_oid, return_set, is_strict)?
+                CrateVariant::function(
+                    argument_oids_and_names,
+                    return_oid,
+                    return_set,
+                    is_strict,
+                    FunctionCapabilitySet::default(),
+                )?
             };
             let user_deps = toml::value::Table::default();
             let user_code = syn::parse2(quote! {
@@ -490,7 +512,7 @@ mod tests {
             );
 
             let generated_cargo_toml = generated.cargo_toml()?;
-            let version_feature = format!("pgx/pg{}", pgx::pg_sys::get_pg_major_version_num());
+            let version_feature = format!("pgrx/pg{}", pgrx::pg_sys::get_pg_major_version_num());
             let crate_name = crate::plrust::crate_name(db_oid, fn_oid, generation_number);
             let fixture_cargo_toml = cargo_toml_template(&crate_name, &version_feature);
 

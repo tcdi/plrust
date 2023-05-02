@@ -8,9 +8,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::{datum::IntoDatum, prelude::*};
+    use pgrx::{datum::IntoDatum, prelude::*};
+    use std::error::Error;
 
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
@@ -118,7 +119,7 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                use pgx::IntoDatum;
+                use pgrx::IntoDatum;
                 Ok(Spi::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
                     vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
@@ -271,7 +272,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Ok(Some(::pgx::iter::SetOfIterator::new(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))))
+                Ok(Some(::pgrx::iter::SetOfIterator::new(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))))
             $$;
         "#;
         Spi::run(definition)?;
@@ -402,7 +403,7 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
-    fn pgx_can_panic() {
+    fn pgrx_can_panic() {
         panic!()
     }
 
@@ -594,7 +595,7 @@ mod tests {
     #[should_panic]
     fn plrust_block_unsafe_hidden() -> spi::Result<()> {
         // PL/Rust should not allow hidden injection of unsafe code
-        // that may rely on the way PGX expands into `unsafe fn` to "sneak in"
+        // that may rely on the way PGRX expands into `unsafe fn` to "sneak in"
         let definition = r#"
             CREATE FUNCTION naughty()
             RETURNS text AS
@@ -681,7 +682,7 @@ mod tests {
             CREATE FUNCTION dont_allcaps_panic()
             RETURNS text AS
             $$
-                use pgx::log::{PgLogLevel, elog};
+                use pgrx::log::{PgLogLevel, elog};
 
                 elog(PgLogLevel::PANIC, "If other tests completed, PL/Rust did not actually destroy the entire database, \
                                          But if you see this in the error output, something might be wrong.");
@@ -956,7 +957,7 @@ mod tests {
                         IMMUTABLE STRICT
                         LANGUAGE PLRUST AS
                     $$
-                        pgx::error!("issue78 works");
+                        pgrx::error!("issue78 works");
                         Ok(Some("hi".to_string()))
                     $$;"#;
         Spi::run(sql)?;
@@ -1032,13 +1033,13 @@ mod tests {
         Spi::run(
             r#"CREATE FUNCTION test_uuid(u uuid) RETURNS uuid LANGUAGE plrust AS $$ Ok(u) $$"#,
         )?;
-        let u = Spi::get_one::<pgx::Uuid>(
+        let u = Spi::get_one::<pgrx::Uuid>(
             "SELECT test_uuid('e4176a4d-790c-4750-85b7-665d72471173'::uuid);",
         )?
         .expect("SPI result was null");
         assert_eq!(
             u,
-            pgx::Uuid::from_bytes([
+            pgrx::Uuid::from_bytes([
                 0xe4, 0x17, 0x6a, 0x4d, 0x79, 0x0c, 0x47, 0x50, 0x85, 0xb7, 0x66, 0x5d, 0x72, 0x47,
                 0x11, 0x73
             ])
@@ -1083,6 +1084,42 @@ mod tests {
                 AnyNumeric::try_from(10.0f32).unwrap()
             )
         );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_tid_roundtrip() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION tid_roundtrip(t tid) RETURNS tid LANGUAGE plrust AS $$ Ok(t) $$"#,
+        )?;
+        let tid = Spi::get_one::<pg_sys::ItemPointerData>("SELECT tid_roundtrip('(42, 99)'::tid)")?
+            .expect("SPI result was null");
+        let (blockno, offno) = pgrx::item_pointer_get_both(tid);
+        assert_eq!(blockno, 42);
+        assert_eq!(offno, 99);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_return_bytea() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION return_bytea() RETURNS bytea LANGUAGE plrust AS $$ Ok(Some(vec![1,2,3])) $$"#,
+        )?;
+        let bytes = Spi::get_one::<Vec<u8>>("SELECT return_bytea()")?.expect("SPI result was null");
+        assert_eq!(bytes, vec![1, 2, 3]);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_cstring_roundtrip() -> Result<(), Box<dyn Error>> {
+        use std::ffi::CStr;
+        Spi::run(
+            r#"CREATE FUNCTION cstring_roundtrip(s cstring) RETURNS cstring STRICT LANGUAGE plrust as $$ Ok(Some(s.into())) $$;"#,
+        )?;
+        let cstr = Spi::get_one::<&CStr>("SELECT cstring_roundtrip('hello')")?
+            .expect("SPI result was null");
+        let expected = CStr::from_bytes_with_nul(b"hello\0")?;
+        assert_eq!(cstr, expected);
         Ok(())
     }
 

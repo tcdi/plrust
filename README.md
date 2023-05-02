@@ -18,12 +18,12 @@ same level of safety guarantees.
 # Learn More
 
 PL/Rust's documentation, an ongoing project, can be found at https://tcdi.github.io/plrust.  Also see the 
-[`plrust-trusted-pgx`](https://docs.rs/plrust-trusted-pgx/latest/plrust_trusted_pgx/) Rust documentation.
+[`plrust-trusted-pgrx`](https://docs.rs/plrust-trusted-pgrx/latest/plrust_trusted_pgrx/) Rust documentation.
 
 # Join our Community
 
 The PL/Rust team at [TCDI](https://www.tcdi.com/) manages a Discord server where we discuss PL/Rust and related technologies
-such as [`pgx`](https://github.com/tcdi/pgx), Rust, and Postgres.  Feel free to join:  https://discord.gg/mHKrj55zyh
+such as [`pgrx`](https://github.com/tcdi/pgrx), Rust, and Postgres.  Feel free to join:  https://discord.gg/mHKrj55zyh
 
 # Quick Example
 
@@ -40,9 +40,9 @@ add_two_numbers
                4
 ```
 
-PL/Rust itself is a [`pgx`](https://github.com/tcdi/pgx)-based Postgres extension.  Furthermore,  `LANGUAGE
-plrust` functions are themselves mini-pgx extensions. `pgx`is a generalized framework for developing Postgres extensions 
-with Rust.  Like this project, `pgx` is developed by [TCDI](https://www.tcdi.com).
+PL/Rust itself is a [`pgrx`](https://github.com/tcdi/pgrx)-based Postgres extension.  Furthermore, each `LANGUAGE
+plrust` function are themselves mini-pgrx extensions. `pgrx`is a generalized framework for developing Postgres extensions 
+with Rust.  Like this project, `pgrx` is developed by [TCDI](https://www.tcdi.com).
 
 The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.
 
@@ -94,11 +94,11 @@ To quickly evaluate PL/Rust from this repository...
 First, install and initialize the required build environment tools:
 
 ```bash
-$ cargo install cargo-pgx --locked
-$ cargo pgx init
+$ cargo install cargo-pgrx --locked
+$ cargo pgrx init
 ```
 
-Then clone this repository and build/run PL/Rust once to complete the `cargo-pgx` environment initialization:
+Then clone this repository and build/run PL/Rust once to complete the `cargo-pgrx` environment initialization:
 
 ```bash
 $ git clone https://github.com/tcdi/plrust.git
@@ -110,7 +110,7 @@ $ cp ../build/bin/plrustc ~/.cargo/bin
 
 # build and run plrust itself
 $ cd ../plrust/plrust
-$ cargo pgx run pg14 --release
+$ cargo pgrx run pg14 --release
 
 # which drops you into a psql shell.  just \quit it for now
 psql> \q
@@ -121,7 +121,7 @@ Apply the required `postgresql.conf` configuration:
 ```bash
 $ SCRATCH_DIR=${HOME}/plrust-scratch
 $ mkdir -p ${SCRATCH_DIR}
-$ cat <<-EOF >> ~/.pgx/data-14/postgresql.conf
+$ cat <<-EOF >> ~/.pgrx/data-14/postgresql.conf
 shared_preload_libraries = 'plrust'
 plrust.work_dir = '${SCRATCH_DIR}'
 EOF
@@ -130,7 +130,7 @@ EOF
 Finally, run it for real and start writing functions!
 
 ```bash
-$ cargo pgx run pg14
+$ cargo pgrx run pg14
 psql> CREATE EXTENSION plrust;
 psql> CREATE FUNCTION add_two_numbers(a NUMERIC, b NUMERIC) RETURNS NUMERIC STRICT LANGUAGE plrust AS $$
     Ok(Some(a + b))

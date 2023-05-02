@@ -13,9 +13,9 @@ owned values.
 | `jsonb`            | `JsonB(serde_json::Value)` | `JsonB(serde_json::Value)` |
 | `box`              | `BOX`<sup>1</sup>          | `BOX`                      |
 | `point`            | `Point`                    | `Point`                    |
-| `cstring`          | `CStr`                     | `CStr`                     |
+| `cstring`          | `&CStr`                    | `CString`                  |
 | `oid`              | `Oid`                      | `Oid`                      |
-| `tid`              | `ItemPointer`              | `ItemPointer`              |
+| `tid`              | `ItemPointerData`          | `ItemPointerData`          |
 | `uuid`             | `Uuid`                     | `Uuid`                     |
 | `int4range`        | `Range<i32>`               | `Range<i32>`               |
 | `int8range`        | `Range<i64>`               | `Range<i64>`               |
@@ -32,6 +32,7 @@ owned values.
 | `NULL`             | `Option::None`             | `Option::None`             |
 
 <sup>1: This is Postgres' geometric BOX type, not to be confused with Rust's `Box` type, which stores allocated data on the heap</sup>
+
 
 ## Date and Time Support?
 

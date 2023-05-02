@@ -19,12 +19,12 @@ and give [PL/Rust a try](install-plrust.html#try-it-out)!
 
 ### Untrusted install
 
-To install **untrusted** PL/Rust use `cargo pgx install`
+To install **untrusted** PL/Rust use `cargo pgrx install`
 without `--features trusted`.  See the [trusted install](#trusted-install) if you
 wish to install the trusted PL/Rust instead.
 
 ```bash
-cargo pgx install --release -c /usr/bin/pg_config
+cargo pgrx install --release -c /usr/bin/pg_config
 ```
 
 Continue on to [configuring PostgreSQL](install-plrust.html#configure-and-restart-postgresql)
@@ -78,35 +78,35 @@ test tests::tests::pg_plrust_aggregate has been running for over 60 seconds
 
 
 The final step for trusted PL/Rust installation is to use
-`cargo pgx install` with `--features trusted`.
+`cargo pgrx install` with `--features trusted`.
 
 ```bash
-cargo pgx install --release --features trusted -c /usr/bin/pg_config
+cargo pgrx install --release --features trusted -c /usr/bin/pg_config
 ```
 
 Continue on to [configuring PostgreSQL](install-plrust.html#configure-and-restart-postgresql)
 for PL/Rust.
 
-### Choosing a different `plrust-trusted-pgx` dependency at compile time
+### Choosing a different `plrust-trusted-pgrx` dependency at compile time
 
 When a user creates a `LANGUAGE plrust` function, PL/Rust first generates a small Cargo crate for the function.  That
-crate has a dependency on `plrust-trusted-pgx`.  By default, `plrust-trusted-pgx` comes from crates.io, using the same 
+crate has a dependency on `plrust-trusted-pgrx`.  By default, `plrust-trusted-pgrx` comes from crates.io, using the same 
 version as PL/Rust itself.
 
 It is possible to override this dependency when compiling PL/Rust itself so that PL/Rust will use a different 
-`plrust-trusted-pgx` crate.  To do this, set an environment variable named `PLRUST_TRUSTED_PGX_OVERRIDE` to the
+`plrust-trusted-pgrx` crate.  To do this, set an environment variable named `PLRUST_TRUSTED_PGRX_OVERRIDE` to the
 full "Cargo.toml"-compatible dependency line, like so:
 
 ```shell
-PLRUST_TRUSTED_PGX_OVERRIDE="pgx = { path = '~/code/plrust/plrust-trusted-pgx', package='plrust-trusted-pgx' }" \
-cargo pgx install --release --features trusted -c /usr/bin/pg_config
+PLRUST_TRUSTED_PGRX_OVERRIDE="pgrx = { path = '~/code/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }" \
+cargo pgrx install --release --features trusted -c /usr/bin/pg_config
 ```
 
-This will instead compile all user functions using this specific `plrust-trusted-pgx`, not the default on crates.io.
-Generally, changing the `plrust-trusted-pgx` dependency is only useful for PL/Rust development and CI, not for production 
+This will instead compile all user functions using this specific `plrust-trusted-pgrx`, not the default on crates.io.
+Generally, changing the `plrust-trusted-pgrx` dependency is only useful for PL/Rust development and CI, not for production 
 deployments, but is worth mentioning as the environment variable *will* influence how user functions are compiled.
 
-It may also be useful for providing a local patch to `plrust-trusted-pgx` if such a need were to arise.
+It may also be useful for providing a local patch to `plrust-trusted-pgrx` if such a need were to arise.
 
 ### Trusted installation plus cross compilation
 
@@ -200,9 +200,11 @@ sudo chown root -R /usr/lib/postgresql/15/lib/
 Create a `plrust` database and connect to the `plrust` database
 using `psql`.
 
+PL/Rust only supports databases encoded as `UTF8`.  This is to ensure proper compatibility between Postgres/SQL `TEXT`
+(and internal strings) and Rust `String` and `&str` types.
 
 ```bash
-sudo -u postgres psql -c "CREATE DATABASE plrust;"
+sudo -u postgres psql -c "CREATE DATABASE plrust WITH ENCODING = 'utf8' TEMPLATE = 'template0';"
 sudo -u postgres psql -d plrust
 ```
 

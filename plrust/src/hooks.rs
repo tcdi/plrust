@@ -9,8 +9,8 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 use std::ffi::CStr;
 
-use pgx::pg_sys::Oid;
-use pgx::{pg_guard, pg_sys, PgBox, PgList, PgLogLevel, PgSqlErrorCode};
+use pgrx::pg_sys::Oid;
+use pgrx::{pg_guard, pg_sys, PgBox, PgList, PgLogLevel, PgSqlErrorCode};
 
 use crate::pgproc::PgProc;
 
@@ -129,7 +129,9 @@ fn plrust_process_utility_hook_internal(
 fn call_prev_hook(
     pstmt: *mut pg_sys::PlannedStmt,
     query_string: *const ::std::os::raw::c_char,
-    read_only_tree: bool,
+
+    // this isn't by pg13 but we need it here in the argument list anyways
+    #[allow(unused_variables)] read_only_tree: bool,
     context: pg_sys::ProcessUtilityContext,
     params: pg_sys::ParamListInfo,
     query_env: *mut pg_sys::QueryEnvironment,
@@ -204,7 +206,7 @@ fn handle_alter_function(
             // if the defelem name contains "strict", we need to stop the show.  Changing the
             // "strict-ness" of a pl/rust function without also changing the **source code** of that
             // function and re-compiling it would cause all sorts of undefined and unexpected
-            // behavior.  Declaring a function as "STRICT" means plrust/pgx doesn't need to treat
+            // behavior.  Declaring a function as "STRICT" means plrust/pgrx doesn't need to treat
             // the arguments as `Option<T>` and instead as simply `T`.  These things are not compatible!
             //
             // We could go through the trouble of checking the current strict-ness of the function
@@ -215,7 +217,7 @@ fn handle_alter_function(
                 .to_ascii_lowercase()
                 .contains("strict")
             {
-                pgx::ereport!(PgLogLevel::ERROR,
+                pgrx::ereport!(PgLogLevel::ERROR,
                     PgSqlErrorCode::ERRCODE_FEATURE_NOT_SUPPORTED,
                     "plrust functions cannot have their STRICT property altered",
                     "Use 'CREATE OR REPLACE FUNCTION' to alter the STRICT-ness of an existing plrust function"

@@ -9,4 +9,4 @@
 # the LICENSE file.
 
 set -x
-cd plrust-trusted-pgx && cargo publish --no-verify
+cd plrust-trusted-pgrx && cargo publish --no-verify

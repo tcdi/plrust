@@ -15,16 +15,17 @@ use std::rc::Rc;
 use base64::Engine;
 use flate2::read::{GzDecoder, GzEncoder};
 use flate2::Compression;
-use pgx::pg_sys;
-use pgx::pg_sys::MyDatabaseId;
-use pgx::prelude::PgHeapTuple;
+use pgrx::pg_sys;
+use pgrx::pg_sys::MyDatabaseId;
+use pgrx::prelude::PgHeapTuple;
 use serde::{Deserialize, Serialize};
 
 use crate::error::PlRustError;
-use crate::gucs::get_trusted_pgx_version;
+use crate::gucs::get_trusted_pgrx_version;
 use crate::pgproc::PgProc;
 use crate::target;
 use crate::target::CompilationTarget;
+use crate::user_crate::capabilities::FunctionCapabilitySet;
 use crate::user_crate::lint::LintSet;
 use crate::user_crate::{FnReady, UserCrate};
 
@@ -81,11 +82,20 @@ struct ProSrcEntry {
     /// the user-provided `LANGUAGE plrust` source code
     src: String,
 
-    /// the `plrust-trusted-pgx` crate used to compile this function
-    trusted_pgx_version: String,
+    /// the `plrust-trusted-pgrx` crate used to compile this function
+    /// For a brief time this field was named `trusted_pgx_version` and we need to maintain
+    /// backwards compatibility with those functions
+    #[serde(alias = "trusted_pgrx_version", alias = "trusted_pgx_version")]
+    trusted_pgrx_version: String,
 
     /// A map of compiled artifacts per compilation target (ie, x86_64, aarch64)
     lib: BTreeMap<CompilationTarget, SharedLibrary>,
+
+    /// The set of [`FunctionCapability`] that was used to compile this function
+    /// If there are `None`, that means the function was compiled prior to this field
+    /// and we'll just use an empty set of function capabilities for that
+    #[serde(default = "FunctionCapabilitySet::empty")]
+    capabilities: FunctionCapabilitySet,
 }
 
 impl TryFrom<&PgProc> for ProSrcEntry {
@@ -132,13 +142,15 @@ impl ProSrcEntry {
 /// else away.
 ///
 /// If it's not, then we just return the input unchanged.
-pub(crate) fn maybe_extract_source_from_json(code: &str) -> Cow<str> {
+pub(crate) fn extract_source_and_capabilities_from_json(
+    code: &str,
+) -> (Cow<str>, FunctionCapabilitySet) {
     match ProSrcEntry::try_from(code) {
-        Ok(entry) => Cow::Owned(entry.src),
+        Ok(entry) => (Cow::Owned(entry.src), entry.capabilities),
         Err(_) => {
             // `code` didn't parse as json, so assume it's just the raw function source code
             // likely means it's the first time this function is being CREATEd
-            Cow::Borrowed(code)
+            (Cow::Borrowed(code), FunctionCapabilitySet::default())
         }
     }
 }
@@ -160,7 +172,8 @@ pub(crate) fn create_or_replace_function(
         ProSrcEntry {
             src: pg_proc.prosrc(),
             lib: Default::default(),
-            trusted_pgx_version: get_trusted_pgx_version(),
+            trusted_pgrx_version: get_trusted_pgrx_version(),
+            capabilities: FunctionCapabilitySet::default(),
         }
     });
 
@@ -185,7 +198,7 @@ pub(crate) fn create_or_replace_function(
     let prosrc_value: String = entry.into();
     heap_tuple.set_by_name("prosrc", prosrc_value)?;
 
-    // TODO:  [`pgx::PgHeapTuple`] really needs a `.into_pg() -> *mut pg_sys::HeapTupleData` function.
+    // TODO:  [`pgrx::PgHeapTuple`] really needs a `.into_pg() -> *mut pg_sys::HeapTupleData` function.
     //        in the meantime, `.into_trigger_datum()` essentially does what that function would do,
     //        we just need to cast it to the right pointer type
     let datum = heap_tuple.into_trigger_datum().unwrap();

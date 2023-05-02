@@ -9,7 +9,7 @@ excludes:
   - "logo.*"
   - ".github/**/*"
   - ".cargo/config"
-  - "cargo-pgx/src/templates/*"
+  - "cargo-pgrx/src/templates/*"
   - ".*\\.control"
   - ".*\\.md"
   - ".*\\.nix"

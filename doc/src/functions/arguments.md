@@ -30,7 +30,7 @@ $$;
 PL/Rust essentially generates a wrapper Rust function like this:
 
 ```rust
-use pgx::prelude::*;
+use pgrx::prelude::*;
 
 fn lots_of_args(a: &str, b: i32, c: Vec<Option<bool>>, d: Json) -> Result<Option<i32>, Box<dyn std::error::Error + Send + Sync + 'static>> {
     // ... code goes here ...

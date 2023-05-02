@@ -1,7 +1,7 @@
 # Trusted and Untrusted PL/Rust
 
 Normally, PL/Rust is installed as a "trusted" programming language named `plrust`.
-In this setup, certain Rust and `pgx` operations are disabled to preserve security.
+In this setup, certain Rust and `pgrx` operations are disabled to preserve security.
 In general, the operations that are restricted are those that interact with the environment.
 This includes file handle operations, require, and use (for external modules).
 There is no way to access internals of the database server process or to gain

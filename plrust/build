@@ -23,17 +23,17 @@ else
     exit 1
 fi
 
-# Make sure the tip of pgx's develop branch is used,
+# Make sure the tip of pgrx's develop branch is used,
 # until a release that has all the necessary features is cut.
-cargo update -p pgx
+cargo update -p pgrx
 cargo fetch
 if [ "$CI" != true ]; then
-    cargo install cargo-pgx \
-     --version "0.7.2" \
-     --locked # use the Cargo.lock in the pgx repo
+    cargo install cargo-pgrx \
+     --version "0.8.2" \
+     --locked # use the Cargo.lock in the pgrx repo
 fi
 
-# Don't need to run cargo pgx init: user might already have set it up,
+# Don't need to run cargo pgrx init: user might already have set it up,
 # and doing so risks clobbering their configuration.
 # If they get an error, it's fairly self-explanatory.
 

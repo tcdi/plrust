@@ -13,9 +13,9 @@ use crate::user_crate::lint::LintSet;
 pub(crate) enum PlRustError {
     #[error("Failed pg_sys::CheckFunctionValidatorAccess")]
     CheckFunctionValidatorAccess,
-    #[error("pgx::pg_sys::FunctionCallInfo was Null")]
+    #[error("pgrx::pg_sys::FunctionCallInfo was Null")]
     NullFunctionCallInfo,
-    #[error("pgx::pg_sys::FmgrInfo was Null")]
+    #[error("pgrx::pg_sys::FmgrInfo was Null")]
     NullFmgrInfo,
     #[error("libloading error: {0}")]
     LibLoading(#[from] libloading::Error),
@@ -24,11 +24,11 @@ pub(crate) enum PlRustError {
     #[error("Generating `Cargo.toml`")]
     GeneratingCargoToml,
     #[error("Function `{0}` does not exist")]
-    NoSuchFunction(pgx::pg_sys::Oid),
+    NoSuchFunction(pgrx::pg_sys::Oid),
     #[error("Oid `{0}` was not mappable to a Rust type")]
-    NoOidToRustMapping(pgx::pg_sys::Oid),
+    NoOidToRustMapping(pgrx::pg_sys::Oid),
     #[error("Generated Rust type (`{1}`) for `{0}` was unparsable: {2}")]
-    ParsingRustMapping(pgx::pg_sys::Oid, String, syn::Error),
+    ParsingRustMapping(pgrx::pg_sys::Oid, String, syn::Error),
     #[error("Parsing `[code]` block: {0}")]
     ParsingCodeBlock(syn::Error),
     #[error("Parsing error at span `{:?}`", .0.span())]

@@ -9,19 +9,19 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 /*!
 Provisioned and ready for validation steps
 
-To detect unsafe code in PL/Rust while still using PGX requires some circumlocution.
-PGX creates `#[no_mangle] unsafe extern "C" fn` wrappers that allow Postgres to call Rust,
+To detect unsafe code in PL/Rust while still using PGRX requires some circumlocution.
+PGRX creates `#[no_mangle] unsafe extern "C" fn` wrappers that allow Postgres to call Rust,
 as PostgreSQL will dynamically load what it thinks is a C library and call C ABI wrapper fn
 that themselves handle the Postgres fn call ABI for the programmer and then, finally,
 call into the programmer's Rust ABI fn!
-This blocks simply using rustc's `unsafe` detection as pgx-macros generated code is unsafe.
+This blocks simply using rustc's `unsafe` detection as pgrx-macros generated code is unsafe.
 
 The circumlocution is brutal, simple, and effective:
-pgx-macros wraps actual Rust which can be safe if it contains no unsafe code!
+pgrx-macros wraps actual Rust which can be safe if it contains no unsafe code!
 Such code is powerless (it really, truly, will not run, and may not even build)
 but it should still typecheck. Writing an empty shell function first
 allows using the linting power of rustc on it as a validation step.
-Then the function can be rewritten with annotations from pgx-macros injected.
+Then the function can be rewritten with annotations from pgrx-macros injected.
 */
 
 use std::{
@@ -30,7 +30,7 @@ use std::{
 };
 
 use eyre::{eyre, WrapErr};
-use pgx::pg_sys;
+use pgrx::pg_sys;
 
 use crate::user_crate::cargo::cargo;
 use crate::user_crate::lint::LintSet;
