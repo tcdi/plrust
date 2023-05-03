@@ -21,13 +21,13 @@ Steps to install PL/Rust:
 
 PL/Rust requires PostgreSQL and all prerequisites outlined for
 [pgrx](https://github.com/tcdi/pgrx#system-requirements)
-are installed.  
+are installed.
 
 PL/Rust also requires that any databases in which it's created is `UTF8`.  Postgres' default encoding is determined
-by the locale of the environment when `initdb` is first run.  Depending on your operating system configuration, this may 
+by the locale of the environment when `initdb` is first run.  Depending on your operating system configuration, this may
 not resolve to `UTF8`.
 
-[Building PL/Rust from source](https://wiki.postgresql.org/wiki/Compile_and_Install_from_source_code) requires 
+[Building PL/Rust from source](https://wiki.postgresql.org/wiki/Compile_and_Install_from_source_code) requires
 installing `cargo-pgrx` which requires a development toolchain capable of building Postgres itself.
 
 
@@ -111,7 +111,7 @@ rustc -V
 The output from `rustc -V` should look similar to the following example.
 
 ```
-rustc 1.67.1 (d5a82bbd2 2023-02-07)
+rustc {{toolchain_ver}} (d5a82bbd2 2023-02-07)
 ```
 
 Use `rustup default` to check that the explicit version of `rustc` is
@@ -127,7 +127,7 @@ rustup default
 The expected output is below.
 
 ```
-1.67.1-x86_64-unknown-linux-gnu (default)
+{{toolchain_ver}}-x86_64-unknown-linux-gnu (default)
 ```
 
 If `rustup default` returns a different version number or `stable`,
@@ -136,7 +136,7 @@ updates accordingly.
 
 
 ```bash
-rustup default 1.67.1
+rustup default {{toolchain_ver}}
 rustup default
 ```
 
@@ -145,7 +145,7 @@ rustup default
 ### Be careful with Rust versions
 
 
-> **WARNING!** The `stable` version of `rustc` cannot be used to install Trusted PL/Rust.  This is the case even when the `stable` version is identical to the tagged version number, such as `1.67.1`.
+> **WARNING!** The `stable` version of `rustc` cannot be used to install Trusted PL/Rust.  This is the case even when the `stable` version is identical to the tagged version number, such as `{{toolchain_ver}}`.
 
 
 The above checks of `rustc -V` and `rustup default` are important to
@@ -158,7 +158,7 @@ A misconfigured `rustup default` results in
 errors when creating functions with trusted PL/Rust. The error can
 manifest as a problem in the `postgrestd` linking with the following error.
 This happens because Rust makes a distinction between the latest stable
-version of Rust, and the actual version of the stable release (e.g. 1.67.1),
+version of Rust, and the actual version of the stable release (e.g. {{toolchain_ver}}),
 even when they refer to the same release.
 
 ```bash
@@ -182,7 +182,7 @@ This is done using `pgrx init`.  This step needs to know where your
 `pg_config` file is located at.  If you have a standard Ubuntu
 `apt` installation of PostgreSQL with a single version of PostgreSQL
 installed you can use the generic
-`/usr/bin/pg_config` path.  
+`/usr/bin/pg_config` path.
 
 ```bash
 cargo pgrx init --pg15 /usr/bin/pg_config

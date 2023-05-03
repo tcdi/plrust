@@ -7,6 +7,7 @@
 - [Install Prerequisites](./install-prerequisites.md)
 - [Install PL/Rust](./install-plrust.md)
 - [Update PL/Rust](./update-plrust.md)
+- [Install PL/Rust on Debian/Ubuntu](./install-plrust-on-debian-ubuntu.md)
 - [Try PL/Rust with Docker](./try-plrust-with-docker.md)
 
 
@@ -17,7 +18,7 @@
     - [Arguments](./functions/arguments.md)
     - [Return Type](./functions/return-type.md)
 - [Data types](./data-types.md)
-    - [No Unsigned Types](./data-types/no-unsigned-types.md) 
+    - [No Unsigned Types](./data-types/no-unsigned-types.md)
     - [Arrays](./data-types/arrays.md)
 - [Built-in functions](./built-in-functions.md)
     - [Logging to PostgreSQL from PL/Rust](./logging.md)
