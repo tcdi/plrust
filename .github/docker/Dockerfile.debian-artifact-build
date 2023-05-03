@@ -3,7 +3,6 @@ FROM debian:bullseye
 # Args to pass in at build-time. Note that these are defaulted.
 ARG PG_VER=15
 ARG PLRUST_VER=0.0.0
-ARG DEB_FILENAME=unknown-filename-not-set.deb
 
 # Change this value if the entire build cache needs to be busted for any reason.
 # Any random value can work here. UUIDs seemed to be a good choice.
@@ -149,7 +148,9 @@ EOF
 
 # Package everything up based on whatever's in RELEASE_DIR, and send the resulting
 # .deb file to the /out directory
-RUN cd ${RELEASE_DIR} && fpm \
+RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && \
+    DEB_FILENAME="plrust-trusted-${PLRUST_VER}_$TOOLCHAIN_VER-debian-pg${PG_VER}-$(dpkg --print-architecture).deb" && \
+    cd ${RELEASE_DIR} && fpm \
     -s dir \
     -t deb \
     -n plrust \
@@ -164,7 +165,7 @@ RUN cd ${RELEASE_DIR} && fpm \
     --category 'Databases' \
     --deb-no-default-config-files \
     --before-install /tmp/preinst \
-    -p /out/${DEB_FILENAME} \
+    -p /out/$DEB_FILENAME \
     --deb-user postgres \
     --deb-group postgres \
     -a native \

@@ -52,13 +52,11 @@ jobs:
         echo "-- Setting variables --"
         export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
         export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
-        export DEB_FILENAME="plrust-trusted-$PLRUST_VER-debian-pg$PG_VER-amd64.deb"
 
         echo "-- Building artifact via Docker --"
         docker build \
           --build-arg PG_VER=$PG_VER \
           --build-arg PLRUST_VER=$PLRUST_VER\
-          --build-arg DEB_FILENAME=$DEB_FILENAME \
           -f .github/docker/Dockerfile.debian-artifact-build \
           -t plrust-debian \
           .
@@ -67,7 +65,7 @@ jobs:
         container_id=$(docker create plrust-debian)
 
         echo "-- Extracting file from container --"
-        docker cp $container_id:/out/$DEB_FILENAME /home/runner/$DEB_FILENAME
+        docker cp $container_id:/out /home/runner
 
         echo "-- Destroying container --"
         docker rm -v $container_id
@@ -75,7 +73,7 @@ jobs:
     - name: Upload Debian .deb artifact
       uses: softprops/action-gh-release@v1
       with:
-        files: /home/runner/plrust*.deb
+        files: /home/runner/out/plrust*.deb
 
 # jobs:
 #   setup:
@@ -183,13 +181,11 @@ jobs:
           echo "-- Setting variables --"
           export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
           export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
-          export DEB_FILENAME="plrust-trusted-$PLRUST_VER-debian-pg$PG_VER-arm64.deb"
 
           echo "-- Building artifact via Docker --"
           sudo docker build \
             --build-arg PG_VER=$PG_VER \
             --build-arg PLRUST_VER=$PLRUST_VER \
-            --build-arg DEB_FILENAME=$DEB_FILENAME \
             -f .github/docker/Dockerfile.debian-artifact-build \
             -t plrust-artifact-debian \
             .
@@ -198,7 +194,7 @@ jobs:
           container_id=$(sudo docker create plrust-artifact-debian)
 
           echo "-- Extracting file from container --"
-          sudo docker cp $container_id:/out/$DEB_FILENAME /home/ubuntu/$DEB_FILENAME
+          sudo docker cp $container_id:/out /home/ubuntu
 
           echo "-- Destroying container --"
           sudo docker rm -v $container_id
@@ -206,4 +202,4 @@ jobs:
       - name: Upload Debian .deb artifact
         uses: softprops/action-gh-release@v1
         with:
-          files: /home/ubuntu/*.deb
+          files: /home/ubuntu/out/*.deb
