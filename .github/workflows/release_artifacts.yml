@@ -24,8 +24,7 @@ jobs:
 
     strategy:
       matrix:
-        pg_version: [pg13]
-        # pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
 
     steps:
     - uses: actions/checkout@v3
@@ -93,8 +92,7 @@ jobs:
 
     strategy:
       matrix:
-        pg_version: [pg13]
-        # pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
 
     # The following permissions are required to instruct GHA that it is allowed
     # to communicate to another service via OIDC
@@ -130,8 +128,7 @@ jobs:
 
     strategy:
       matrix:
-        # pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
-        pg_version: [pg13]
+        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
 
     steps:
       - uses: actions/checkout@v3
