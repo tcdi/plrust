@@ -1,5 +1,13 @@
+# MATRIX NOTES:
+# At the time of this writing, Github Actions YAML does not allow for the declaration and sharing of variables
+# across different jobs "easily". For example, the 'pg_version' strategy.matrix variable needs to be the same
+# across all jobs, but at this time there is no way to declare an array of anything once and share it across
+# several jobs.
+# Therefore, any time a change is needed to strategy.matrix.pg_version (such as the case of adding or removing
+# a new version of Postgres), it needs to be changed everywhere in this file as well.
 name: Build release artifacts
 
+# workflow_dispatch is also included here so that we can run this workflow at any time against a specific branch/tag
 on:
   release:
     types: [published]
@@ -17,11 +25,14 @@ jobs:
     strategy:
       matrix:
         pg_version: [pg13]
-        # pg_version: [pg13, pg14, pg15]
+        # pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
 
     steps:
     - uses: actions/checkout@v3
 
+    # The default installation of Docker on Github Actions runners are pretty outdated, as the artifact builder
+    # Dockerfiles require a newer version of Docker that has heredoc support. This may not be necesssary in the future,
+    # but it is definitely needed at the time of this writing.
     - name: Install newer version of Docker
       run: |
         echo "-- Remove existing installations of Docker --"
@@ -75,55 +86,30 @@ jobs:
       with:
         files: /home/runner/out/plrust*.deb
 
-# jobs:
-#   setup:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - run: ./setup_server.sh
-#   build:
-#     needs: setup
-#     runs-on: ubuntu-latest
-#     steps:
-#       - run: ./build_server.sh
-#   test:
-#     needs: build
-#     runs-on: ubuntu-latest
-#     steps:
-#       - run: ./test_server.sh
-
-# ------
-# jobs.<job_id>.strategy.matrix
-#
-
-# jobs:
-#   example_matrix:
-#     strategy:
-#       matrix:
-#         version: [10, 12, 14]
-#     steps:
-#       - uses: actions/setup-node@v3
-#         with:
-#           node-version: ${{ matrix.version }}
-
-
-
+  # Because (at the time of this writing) Github Actions does not have support for aarch64, we need to spin up
+  # aarch64 instances in AWS in order to build the artifacts.
   spin_up_aarch64_instances:
     name: Spin up aarch64 runner instances
 
     strategy:
       matrix:
         pg_version: [pg13]
-        # pg_version: [pg13, pg14, pg15]
+        # pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
 
+    # The following permissions are required to instruct GHA that it is allowed
+    # to communicate to another service via OIDC
     permissions:
-      id-token: write # Required for requesting OCDI JWTs
+      id-token: write # Required for requesting OIDC JWTs
       contents: read  # This is required for actions/checkout
 
     runs-on: ubuntu-latest
 
+    # In order to run this against aarch64 instances in AWS, GHA needs to authenticate
+    # against AWS via OIDC so it can directly communicate and launch AWS instances as
+    # needed. All the infrastructure and machinery is set up outside of Github Actions.
+    # Using OIDC is an alternative to setting up hard-coded AWS CLI credentials somewhere
+    # on a Github Action runner.
     steps:
-    # - uses: actions/checkout@v3
-
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
@@ -131,17 +117,20 @@ jobs:
         role-to-assume: arn:aws:iam::950481341027:role/github_oidc_iam_role
         role-session-name: GithubPlrustSession
 
+    # Launch as many instances as needed, dictated by strategy.matrix.pg_version above.
+    # LaunchTemplateId is something known ahead of time, and is created elsewhere outside
+    # of Github Actions.
     - name: Launch runner instance
       run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-0bad2911d6aad1b0d
 
   build_deb_artifacts:
     name: Build aarch64 Debian artifacts
-    needs: spin_up_aarch64_instances
+    needs: spin_up_aarch64_instances # Dont run this until 'spin_up_aarch64_instances' has completed
     runs-on: [self-hosted, linux, ARM64, plrust_artifacts]
 
     strategy:
       matrix:
-        # pg_version: [pg13, pg14, pg15]
+        # pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
         pg_version: [pg13]
 
     steps:
