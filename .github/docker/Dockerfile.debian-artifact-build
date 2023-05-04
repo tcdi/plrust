@@ -1,3 +1,16 @@
+# NOTE: This Dockerfile will require a more recent version of Docker that has heredoc support.
+#
+# Example of how to build this Dockerfile (requires being launched from the root of checkout):
+#   docker build --build-arg PG_VER=15 --build-arg PLRUST_VER=1.0.2 -f .github/docker/Dockerfile.debian-artifact-build -t plrust-debian .
+#
+# Example of how to run an image after it has been built (assuming previous step has been done):
+#   docker run -it --rm plrust-debian /bin/bash
+#
+# Any artifacts produced will be in the /out directory of the running Docker container. With a container running, an example
+# of how to copy out artifacts:
+#   docker cp container_name:/out .
+# which will copy the container's /out directory to the current directory of the host
+
 FROM debian:bullseye
 
 # Args to pass in at build-time. Note that these are defaulted.
@@ -85,6 +98,7 @@ RUN cd /src/plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 RUN cargo pgrx init --pg${PG_VER} $(which pg_config)
 
 # Build plrust with postgrestd. Architecture is determined by the host running this Dockerfile
+# (i.e. no cross-compiling)
 RUN cd /src/plrust && STD_TARGETS="$(uname -m)-postgres-linux-gnu" ./build
 
 # Use cargo pgrx package to create everything necessary, placed into RELEASE_DIR below
