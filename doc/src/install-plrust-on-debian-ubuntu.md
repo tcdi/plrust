@@ -98,6 +98,8 @@ Instructions that follow assume the latest version of PL/Rust, which requires `{
       -y \
       --profile minimal \
       --default-toolchain={{toolchain_ver}}
+
+    source "$HOME/.cargo/env"
     ```
 1. If Rust has previously been installed as the `postgres` user, then ensure that the `{{toolchain_ver}}` toolchain is installed and set to default:
     ```
