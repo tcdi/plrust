@@ -35,7 +35,7 @@ plrust-trusted-1.2.3_1.67.1-debian-pg15-amd64.deb
 
 Certain applications, libraries and dependencies must be set up before PL/Rust can be installed from a Debian package.
 
-Note that `sudo` may be required during the setup and configuration of certain system components.
+Note that the following instructions assume `sudo` capabilities.
 
 
 ### System and development requirements
@@ -43,8 +43,8 @@ Note that `sudo` may be required during the setup and configuration of certain s
 Because PL/Rust is a compiled language, certain libraries and development tools will be required to be installed:
 
 ```
-apt-get update && \
-apt-get install -y --no-install-recommends \
+sudo apt-get update && \
+sudo apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     clang \
@@ -66,17 +66,17 @@ If Postgres has already been installed with the official [Postgres Debian packag
 
 1. Set up the official PostgreSQL APT repository:
     ```
-    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > \
-      /etc/apt/sources.list.d/pgdg.list
+    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | \
+      sudo tee -a /etc/apt/sources.list.d/pgdg.list > /dev/null
     ```
     ```
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
-      gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
+      gpg --dearmor | sudo tee -a /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
     ```
 1. Update APT and install PostgreSQL. Replace `XX` with the PostgreSQL major version to be installed (e.g. 13, 14, 15):
     ```
-    apt-get update -y -qq --fix-missing && \
-    apt-get install -y --no-install-recommends \
+    sudo apt-get update -y -qq --fix-missing && \
+    sudo apt-get install -y --no-install-recommends \
         postgresql-XX \
         postgresql-server-dev-XX
     ```
@@ -89,7 +89,7 @@ Instructions that follow assume the latest version of PL/Rust, which requires `{
 
 1. Switch to the `postgres` user:
     ```
-    su -l - postgres
+    sudo su -l - postgres
     ```
 1. If Rust has never been installed as the `postgres` user, then run the following:
     ```
@@ -110,17 +110,21 @@ Instructions that follow assume the latest version of PL/Rust, which requires `{
     ```
     rustup component add rustc-dev
     ```
+1. Drop back to your normal user:
+    ```
+    exit
+    ```
 
 Future versions of PL/Rust may require a different version of the Rust toolchain to be installed and set to default. In such an event, step 3 and onward must be repeated with the new required version of the specific toolchain. The filename of the PL/Rust Debian package contains the version of the Rust toolchain it was built with -- see [Filename convention](#filename-convention) for more details.
 
 ### Installing PL/Rust
 
-With the prerequisites installed and set up, it is time to install the PL/Rust Debian package:
+With the prerequisites installed and set up, it is time to install the PL/Rust Debian package.
 
-1. Head to [the PL/Rust releases page](https://github.com/tcdi/plrust/releases) and download the appropriate version onto the target system
+1. Head to [the PL/Rust releases page](https://github.com/tcdi/plrust/releases) and download the appropriate version onto the target system. When choosing a destination in which to place the dowloaded Debian package, pick a directory that is readable and writable by the `_apt` user, such `/tmp`. Otherwise, the installation might produce an error.
 1. Install the package:
     ```
-    apt install /path/to/plrust-trusted-X.X.X_{{toolchain_ver}}-debian-pgXX-yourarch.deb
+    sudo apt install /tmp/plrust-trusted-X.X.X_{{toolchain_ver}}-debian-pgXX-yourarch.deb
     ```
 
 The package installation will fail if at least one of the above Rust dependencies are not met.
@@ -142,7 +146,14 @@ Any configuration changes will require a restart of the PostgreSQL service on th
 
 ### Finishing up
 
-To test if PL/Rust is set up correctly, load up `psql` as the `postgres` user and run the following:
+To test if PL/Rust is set up correctly, load up `psql` as the `postgres` user
+
+```
+sudo su -l - postgres
+psql
+```
+
+ and run the following:
 
 ```SQL
 CREATE EXTENSION plrust;
