@@ -10,4 +10,4 @@ cmake*/
 .direnv
 plrust/postgrestd
 .git
-Dockerfile.try
+Dockerfile.*

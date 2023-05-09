@@ -8,6 +8,12 @@ Install mdbook.
 cargo install mdbook
 ```
 
+Install mdbook-variables preprocessor
+
+```bash
+cargo install mdbook-variables
+```
+
 Serve the book locally and open your default browser.
 
 ```bash

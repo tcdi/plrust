@@ -12,11 +12,13 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - name: Install mdbook
+    - name: Install Rust
       run: |
-        mkdir mdbook
-        curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.14/mdbook-v0.4.14-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
-        echo `pwd`/mdbook >> $GITHUB_PATH
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+    - name: Install mdbook and other preprocessors
+      run: |
+        cargo install mdbook mdbook-variables
     - name: Deploy GitHub Pages
       run: |
         # This assumes your book is in the root of your repository.

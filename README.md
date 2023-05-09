@@ -20,6 +20,11 @@ same level of safety guarantees.
 PL/Rust's documentation, an ongoing project, can be found at https://tcdi.github.io/plrust.  Also see the 
 [`plrust-trusted-pgrx`](https://docs.rs/plrust-trusted-pgrx/latest/plrust_trusted_pgrx/) Rust documentation.
 
+# Install on Debian today!
+
+Head on over to the PL/Rust [releases page](https://github.com/tcdi/plrust/releases) to get the latest release and check out [the documentation page](https://tcdi.github.io/plrust/install-plrust-on-debian-ubuntu.html) to get started with PL/Rust.
+
+
 # Join our Community
 
 The PL/Rust team at [TCDI](https://www.tcdi.com/) manages a Discord server where we discuss PL/Rust and related technologies
@@ -54,6 +59,7 @@ Installing PL/Rust and especially `postgrestd` requires a normal installation of
 See the [Install PL/Rust](https://tcdi.github.io/plrust/install-plrust.html)
 section of the documentation for notes on installing PL/Rust and its dependencies.
 
+Debian packages are also available -- see [the documentation page](https://tcdi.github.io/plrust/install-plrust-on-debian-ubuntu.html) for installation instructions.
 
 
 ## Cross Compilation Support
