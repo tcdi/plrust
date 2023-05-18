@@ -19,7 +19,8 @@ function loadcache() {
 
   echo "Checking to see if cache archive exists: $cache_key"
 
-  if aws s3api head-object --profile $ARTIFACT_USER_AWS_PROFILE --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
+  # if aws s3api head-object --profile $ARTIFACT_USER_AWS_PROFILE --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
+  if aws s3api head-object --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
     echo "Cache archive exists for $cache_key -- downloading and extracting now."
 
     mkdir -p $HOME/artifacts/
@@ -28,7 +29,6 @@ function loadcache() {
     echo "Downloadng archive $cache_key and storing to $archive_path"
 
     aws s3api get-object \
-      --profile $ARTIFACT_USER_AWS_PROFILE \
       --bucket $AWS_CACHE_BUCKET \
       --key $cache_key \
       $archive_path

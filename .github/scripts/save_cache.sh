@@ -23,7 +23,8 @@ function savecache() {
 
   echo "Checking to see if cache archive exists: $cache_key"
 
-  if aws s3api head-object --profile $ARTIFACT_USER_AWS_PROFILE --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
+  # if aws s3api head-object --profile $ARTIFACT_USER_AWS_PROFILE --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
+  if aws s3api head-object --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
     echo "Cache archive exists for $cache_key -- skipping archive creation."
   else
     echo "Cache archive does not exist for $cache_key -- creating archive now."
@@ -38,7 +39,6 @@ function savecache() {
     echo "Created archive $archive_path -- uploading now"
 
     aws s3api put-object \
-      --profile $ARTIFACT_USER_AWS_PROFILE \
       --bucket $AWS_CACHE_BUCKET \
       --key $cache_key \
       --body $archive_path

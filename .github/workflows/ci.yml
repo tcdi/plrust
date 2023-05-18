@@ -31,7 +31,7 @@ jobs:
       CACHE_KEY_VERSION: v0
       SCCACHE_CACHE_SIZE: 20G
       WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
-      ARTIFACT_USER_AWS_PROFILE: artifact-user
+      # ARTIFACT_USER_AWS_PROFILE: artifact-user
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
       PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
 
