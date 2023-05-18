@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Temporary Step
-        run: exit 0
+        run: exit 1
     # - uses: actions/checkout@v3
 
     # - name: Generate cache filename checksum
