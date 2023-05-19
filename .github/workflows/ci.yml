@@ -93,7 +93,7 @@ jobs:
         echo "$HOME/.local/bin" >> $GITHUB_PATH
         export PATH="$HOME/.local/bin:$PATH"
         echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
-        echo "RUSTC_WRAPPER=$HOME/.local/bin/sccache"" >> $GITHUB_ENV
+        echo "RUSTC_WRAPPER=$HOME/.local/bin/sccache" >> $GITHUB_ENV
         mkdir -p $HOME/.cache/sccache
         echo ""
 
