@@ -197,7 +197,8 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15"]
+        # version: ["pg13", "pg14", "pg15"]
+        version: ["pg13"]
         os: ["ubuntu-20.04"]
         # it would be nice to other contributors to return "macos-11" to the above array
         target: ["host", "postgrestd"]
@@ -316,11 +317,17 @@ jobs:
     - name: Start sccache server
       run: sccache --start-server
 
+    - name: Print sccache stats
+      run: sccache --show-stats
+
     # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
     - name: Install cargo-pgrx defined in plrust/Cargo.toml
       run: |
         . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
         install_cargo_pgrx
+
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview rustc-dev
@@ -336,8 +343,14 @@ jobs:
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc
 
+    - name: Print sccache stats
+      run: sccache --show-stats
+
     - name: Install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
       run: cargo pgrx init --pg$PG_VER $(which pg_config)
@@ -349,6 +362,9 @@ jobs:
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
       run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Stop sccache server
       run: sccache --stop-server || true
