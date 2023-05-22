@@ -326,7 +326,7 @@ jobs:
           /home/runner/.cargo
         key: v0-plrust-x86_64-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml') }}
 
-    - name: Cache directories
+    - name: Cache sccache directory
       uses: actions/cache@v3
       continue-on-error: false
       with:
@@ -336,6 +336,9 @@ jobs:
 
     - name: Start sccache server
       run: sccache --start-server && sccache --show-stats
+
+    - name: sccache dir
+      run: ls -lath /home/runner/.cache/sccache
 
     # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
     - name: Install cargo-pgrx defined in plrust/Cargo.toml
