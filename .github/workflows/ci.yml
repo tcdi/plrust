@@ -386,5 +386,8 @@ jobs:
     - name: Print sccache stats
       run: sccache --show-stats
 
+    - name: sccache dir
+      run: ls -lath /home/runner/.cache/sccache
+
     - name: Stop sccache server
       run: sccache --stop-server || true
