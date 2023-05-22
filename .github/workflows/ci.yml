@@ -252,7 +252,7 @@ jobs:
           gcc \
           libssl-dev \
           libz-dev \
-          llvm-10 \
+          llvm-11 \
           make \
           pkg-config \
           postgresql-$PG_VER \
