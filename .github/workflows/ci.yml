@@ -13,11 +13,11 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+  # PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
-  # plrust_tests_arm64:
+  # plrust_arm64:
   #   name: aarch64 tests (pg14, amzn2)
   #   runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0013395587950cb5d]
 
@@ -66,19 +66,19 @@ jobs:
   #       sudo amazon-linux-extras enable postgresql14
   #       sudo yum clean metadata
 
-  #       sudo yum install -y \
-  #         libpq \
-  #         libpq-devel \
-  #         postgresql \
-  #         postgresql-server \
-  #         postgresql-server-devel \
-  #         openssl \
-  #         openssl-devel \
-  #         bison \
-  #         flex \
-  #         readline \
-  #         readline-devel \
-  #         clang
+        # sudo yum install -y \
+        #   libpq \
+        #   libpq-devel \
+        #   postgresql \
+        #   postgresql-server \
+        #   postgresql-server-devel \
+        #   openssl \
+        #   openssl-devel \
+        #   bison \
+        #   flex \
+        #   readline \
+        #   readline-devel \
+        #   clang
   #       echo ""
 
   #       echo "----- Set postgres permissions -----"
@@ -86,15 +86,15 @@ jobs:
   #       echo ""
 
   #       echo "----- Install sccache -----"
-  #       mkdir -p $HOME/.local/bin
-  #       curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
-  #       mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
-  #       chmod +x $HOME/.local/bin/sccache
-  #       echo "$HOME/.local/bin" >> $GITHUB_PATH
-  #       export PATH="$HOME/.local/bin:$PATH"
-  #       echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
-  #       echo "RUSTC_WRAPPER=$HOME/.local/bin/sccache" >> $GITHUB_ENV
-  #       mkdir -p $HOME/.cache/sccache
+        # mkdir -p $HOME/.local/bin
+        # curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
+        # mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
+        # chmod +x $HOME/.local/bin/sccache
+        # echo "$HOME/.local/bin" >> $GITHUB_PATH
+        # export PATH="$HOME/.local/bin:$PATH"
+        # echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
+        # echo "RUSTC_WRAPPER=$HOME/.local/bin/sccache" >> $GITHUB_ENV
+        # mkdir -p $HOME/.cache/sccache
   #       echo ""
 
   #       echo "----- Create artifacts directory -----"
@@ -185,22 +185,25 @@ jobs:
   #       sccache_dirs=($HOME/.cache/sccache)
   #       savecache $sccache_key "${sccache_dirs[@]}"
 
-  plrust_tests:
-    name: tests
+  plrust_x86_64:
+    name: x86_64 tests
     runs-on: ${{ matrix.os }}
     if: "!contains(github.event.head_commit.message, 'nogha')"
 
     env:
+      # HOST: x86_64-unknown-linux-gnu
+      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
       RUSTC_WRAPPER: sccache
-      SCCACHE_DIR: /home/runner/.cache/sccache
       RUSTFLAGS: -Copt-level=0
-      HOST: x86_64-unknown-linux-gnu
+      SCCACHE_BIN_DIR: /home/runner/.local/bin
+      SCCACHE_CACHE_SIZE: 20G
+      SCCACHE_DIR: /home/runner/.cache/sccache
 
     strategy:
       matrix:
         # version: ["pg13", "pg14", "pg15"]
         version: ["pg13"]
-        os: ["ubuntu-20.04"]
+        os: ["ubuntu-latest"]
         # it would be nice to other contributors to return "macos-11" to the above array
         target: ["host", "postgrestd"]
       fail-fast: false
@@ -222,15 +225,12 @@ jobs:
 
 
         echo "----- Install sccache -----"
-        # echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-        mkdir -p $HOME/.local/bin
-        curl -L https://github.com/mozilla/sccache/releases/download/v0.4.2/sccache-v0.4.2-x86_64-unknown-linux-musl.tar.gz | tar xz
-        mv -f sccache-v0.4.2-x86_64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
-        chmod +x $HOME/.local/bin/sccache
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-        echo "SCCACHE_CACHE_SIZE=20G" >> $GITHUB_ENV
-        echo "SCCACHE_DIR=$HOME/.cache/sccache" >> $GITHUB_ENV
-        mkdir -p $HOME/.cache/sccache
+        mkdir -p $SCCACHE_BIN_DIR
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.3.1/sccache-v0.3.1-x86_64-unknown-linux-musl.tar.gz | tar xz
+        mv -f sccache-v0.3.1-x86_64-unknown-linux-musl/sccache $SCCACHE_BIN_DIR/sccache
+        chmod +x $SCCACHE_BIN_DIR/sccache
+        echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
+        mkdir -p $SCCACHE_DIR
         echo ""
 
         echo "----- Remove old postgres -----"
@@ -246,24 +246,31 @@ jobs:
 
         echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
         sudo apt-get install -y \
-          clang-10 \
-          llvm-10 \
-          clang \
-          gcc \
-          make \
           build-essential \
-          libz-dev \
-          zlib1g-dev \
-          strace \
+          clang \
+          clang-10 \
+          gcc \
           libssl-dev \
+          libz-dev \
+          llvm-10 \
+          make \
           pkg-config \
           postgresql-$PG_VER \
-          postgresql-server-dev-$PG_VER
+          postgresql-server-dev-$PG_VER \
+          strace \
+          zlib1g-dev
         echo ""
 
         echo "----- Set up Postgres permissions -----"
         sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
         echo ""
+
+        # echo "----- Install any Ruby gems necessary -----"
+        # gem install --no-document toml
+
+        # echo "----- Extract Rust toolchain version -----"
+        # TOOLCHAIN_VER=$(ruby -e "require 'toml'; toolchain_data = TOML.load_file('/home/ec2-user/plrust/rust-toolchain.toml'); puts toolchain_data['toolchain']['channel']")
+        # echo "TOOLCHAIN_VER=$TOOLCHAIN_VER" >> $GITHUB_ENV
 
         echo "----- Print env -----"
         env
@@ -306,20 +313,29 @@ jobs:
         env
         echo ""
 
-    - name: Cache directories
+    # # Pre-clone postgrestd and submodules, so that **/Cargo.lock can be used to determine cache key below
+    # - name: Pre-clone postgrestd and submodules
+    #   run: |
+    #     cd plrust && git clone https://github.com/tcdi/postgrestd.git --branch "$TOOLCHAIN_VER" --recurse-submodules
+
+    - name: Cache cargo registry
       uses: actions/cache@v3
       continue-on-error: false
       with:
         path: |
           /home/runner/.cargo
+        key: v0-plrust-x86_64-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml') }}
+
+    - name: Cache directories
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
           /home/runner/.cache/sccache
-        key: v0-plrust-x86_64-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '.github/workflows/ci.yml') }}
+        key: v0-plrust-x86_64-sccache-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml') }}
 
     - name: Start sccache server
-      run: sccache --start-server
-
-    - name: Print sccache stats
-      run: sccache --show-stats
+      run: sccache --start-server && sccache --show-stats
 
     # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
     - name: Install cargo-pgrx defined in plrust/Cargo.toml
@@ -369,19 +385,3 @@ jobs:
 
     - name: Stop sccache server
       run: sccache --stop-server || true
-
-  #   # # Maybe this is not necessary if we switch to sccache?
-  #   # # Attempt to make the cache payload slightly smaller.
-  #   # - name: Clean up built PGRX files
-  #   #   run: |
-  #   #     cd target/debug/deps/
-  #   #     for built_file in $(find * -type f -executable -print | grep -v "\.so$"); do
-  #   #       base_name=$(echo $built_file | cut -d- -f1);
-  #   #       for basefile in "$base_name".*; do
-  #   #         [ -f "$basefile" ] || continue;
-  #   #         echo "Removing $basefile"
-  #   #         rm $basefile
-  #   #       done;
-  #   #       echo "Removing $built_file"
-  #   #       rm $built_file
-  #   #     done
