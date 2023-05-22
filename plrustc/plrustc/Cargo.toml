@@ -13,7 +13,7 @@ libc = "0.2.144"
 once_cell = "1.17.1"
 
 [dev-dependencies]
-compiletest_rs = "0.9"
+compiletest_rs = {git = "https://github.com/thomcc/compiletest-rs", branch = "compiletest-host"}
 
 [package.metadata.rust-analyzer]
 rustc_private = true
