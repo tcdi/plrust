@@ -191,7 +191,6 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'nogha')"
 
     env:
-      # HOST: x86_64-unknown-linux-gnu
       PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
       RUSTC_WRAPPER: sccache
       RUSTFLAGS: -Copt-level=0
@@ -226,8 +225,8 @@ jobs:
 
         echo "----- Install sccache -----"
         mkdir -p $SCCACHE_BIN_DIR
-        curl -L https://github.com/mozilla/sccache/releases/download/v0.3.1/sccache-v0.3.1-x86_64-unknown-linux-musl.tar.gz | tar xz
-        mv -f sccache-v0.3.1-x86_64-unknown-linux-musl/sccache $SCCACHE_BIN_DIR/sccache
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.5.0/sccache-v0.5.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+        mv -f sccache-v0.5.0-x86_64-unknown-linux-musl/sccache $SCCACHE_BIN_DIR/sccache
         chmod +x $SCCACHE_BIN_DIR/sccache
         echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
         mkdir -p $SCCACHE_DIR
