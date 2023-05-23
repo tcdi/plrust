@@ -13,177 +13,172 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  # PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
   # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
-  # plrust_arm64:
-  #   name: aarch64 tests (pg14, amzn2)
-  #   runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0013395587950cb5d]
+  plrust_arm64_amzn2:
+    name: aarch64 tests (pg14, amzn2)
+    runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0013395587950cb5d]
 
-  #   strategy:
-  #     matrix:
-  #       # target: ["host", "postgrestd"]
-  #       target: ["postgrestd"]
-  #     fail-fast: false
+    strategy:
+      matrix:
+        # target: ["host", "postgrestd"]
+        target: ["postgrestd"]
+      fail-fast: false
 
-  #   env:
-  #     SCCACHE_DIR: /home/ec2-user/.cache/sccache
-  #     CACHE_KEY_VERSION: v0
-  #     SCCACHE_CACHE_SIZE: 20G
-  #     WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
-  #     # ARTIFACT_USER_AWS_PROFILE: artifact-user
-  #     AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
-  #     PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+    env:
+      AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
+      CACHE_KEY_VERSION: v0
+      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+      RUSTC_WRAPPER: sccache
+      RUSTFLAGS: -Copt-level=0
+      SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
+      SCCACHE_CACHE_SIZE: 20G
+      SCCACHE_DIR: /home/ec2-user/.cache/sccache
+      WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
 
-  #   steps:
-  #   - uses: actions/checkout@v3
+    steps:
+    - uses: actions/checkout@v3
 
-  #   - name: Generate cache filename checksum
-  #     run: |
-  #       cd $WORK_DIR
-  #       shopt -s globstar
-  #       checksum=$(cat **/Cargo.lock .github/workflows/ci.yml | sha256sum | awk '{print $1}')
-  #       echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
+    - name: Generate cache filename checksum
+      run: |
+        cd $WORK_DIR
+        shopt -s globstar
+        checksum=$(cat **/Cargo.lock **/rust-toolchain.toml .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+        echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
 
-  #   - name: Set up (Linux) prerequisites and environment
-  #     run: |
-  #       echo ""
-  #       echo "----- Print kernel info -----"
-  #       uname -a
-  #       echo ""
+    - name: Set up (Linux) prerequisites and environment
+      run: |
+        echo ""
+        echo "----- Print kernel info -----"
+        uname -a
+        echo ""
 
-  #       echo "----- Set up dynamic variables -----"
-  #       echo "PG_VER=14" >> $GITHUB_ENV
-  #       echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-  #       echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
-  #       echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
-  #       echo "CI=true" >> $GITHUB_ENV
-  #       cat $GITHUB_ENV
-  #       echo ""
+        echo "----- Set up dynamic variables -----"
+        echo "PG_VER=14" >> $GITHUB_ENV
+        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        echo "CI=true" >> $GITHUB_ENV
+        cat $GITHUB_ENV
+        echo ""
 
-  #       echo "----- Install system dependencies -----"
-  #       sudo amazon-linux-extras enable postgresql14
-  #       sudo yum clean metadata
+        echo "----- Install system dependencies -----"
+        sudo amazon-linux-extras enable postgresql14
+        sudo yum clean metadata
 
-        # sudo yum install -y \
-        #   libpq \
-        #   libpq-devel \
-        #   postgresql \
-        #   postgresql-server \
-        #   postgresql-server-devel \
-        #   openssl \
-        #   openssl-devel \
-        #   bison \
-        #   flex \
-        #   readline \
-        #   readline-devel \
-        #   clang
-  #       echo ""
+        sudo yum install -y \
+          libpq \
+          libpq-devel \
+          postgresql \
+          postgresql-server \
+          postgresql-server-devel \
+          openssl \
+          openssl-devel \
+          bison \
+          flex \
+          readline \
+          readline-devel \
+          clang
+        echo ""
 
-  #       echo "----- Set postgres permissions -----"
-  #       sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-  #       echo ""
+        echo "----- Set postgres permissions -----"
+        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+        echo ""
 
-  #       echo "----- Install sccache -----"
-        # mkdir -p $HOME/.local/bin
-        # curl -L https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-aarch64-unknown-linux-musl.tar.gz | tar xz
-        # mv -f sccache-v0.3.0-aarch64-unknown-linux-musl/sccache $HOME/.local/bin/sccache
-        # chmod +x $HOME/.local/bin/sccache
-        # echo "$HOME/.local/bin" >> $GITHUB_PATH
-        # export PATH="$HOME/.local/bin:$PATH"
-        # echo 'SCCACHE_CACHE_SIZE="20G"' >> $GITHUB_ENV
-        # echo "RUSTC_WRAPPER=$HOME/.local/bin/sccache" >> $GITHUB_ENV
-        # mkdir -p $HOME/.cache/sccache
-  #       echo ""
+        echo "----- Install sccache -----"
+        mkdir -p $SCCACHE_BIN_DIR
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.5.0/sccache-v0.5.0-aarch64-unknown-linux-musl.tar.gz | tar xz
+        mv -f sccache-v0.5.0-aarch64-unknown-linux-musl/sccache $SCCACHE_BIN_DIR/sccache
+        chmod +x $SCCACHE_BIN_DIR/sccache
+        echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
+        mkdir -p $SCCACHE_DIR
+        echo ""
 
-  #       echo "----- Create artifacts directory -----"
-  #       mkdir -p $HOME/artifacts
-  #       echo ""
+        echo "----- Create artifacts directory -----"
+        mkdir -p $HOME/artifacts
+        echo ""
 
-  #       echo "----- Install rust via rustup -----"
-  #       export RUSTUP_HOME="$HOME/.rustup"
-  #       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-  #       source "$HOME/.cargo/env"
-  #       cargo --version
+        echo "----- Install rust via rustup -----"
+        export RUSTUP_HOME="$HOME/.rustup"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+        cargo --version
 
-  #   - name: Load Cargo cache if available
-  #     run: |
-  #       # See <plrust-root>/.github/scripts/load_cache.sh for more details
-  #       . $WORK_DIR/.github/scripts/load_cache.sh
-  #       cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       loadcache $cargo_cache_key
+    - name: Load Cargo cache if available
+      run: |
+        # See <plrust-root>/.github/scripts/load_cache.sh for more details
+        . $WORK_DIR/.github/scripts/load_cache.sh
+        cargo_cache_key="plrust-arm64-amzn2-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $cargo_cache_key
 
-  #   - name: Create protected files
-  #     run: |
-  #       sudo mkdir -p /var/ci-stuff/secret_rust_files
-  #       sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
-  #       sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
-  #       sudo chmod -R 600 /var/ci-stuff/secret_rust_files
-  #     if: matrix.target == 'postgrestd'
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
 
-  #   - name: Load sccache cache if available
-  #     run: |
-  #       # See <plrust-root>/.github/scripts/load_cache.sh for more details
-  #       . $WORK_DIR/.github/scripts/load_cache.sh
-  #       sccache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       loadcache $sccache_key
+    - name: Load sccache cache if available
+      run: |
+        # See <plrust-root>/.github/scripts/load_cache.sh for more details
+        . $WORK_DIR/.github/scripts/load_cache.sh
+        sccache_key="plrust-arm64-amzn2-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $sccache_key
 
-  #   - name: Start sccache server
-  #     run: sccache --start-server
+    - name: Start sccache server
+      run: sccache --start-server && sccache --show-stats
 
-  #   - name: Print sccache stats (before build)
-  #     run: sccache --show-stats
+    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+    - name: Install cargo-pgrx defined in plrust/Cargo.toml
+      run: |
+        . $WORK_DIR/.github/scripts/install_cargo_pgrx.sh
+        install_cargo_pgrx
 
-  #   # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
-  #   - name: Install cargo-pgrx defined in plrust/Cargo.toml
-  #     run: |
-  #       . $WORK_DIR/.github/scripts/install_cargo_pgrx.sh
-  #       install_cargo_pgrx
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
 
-  #   - name: Install llvm-tools-preview
-  #     run: rustup component add llvm-tools-preview rustc-dev
+    - name: Test plrustc
+      run: cd plrustc && cargo test -p plrustc
 
-  #   - name: Test plrustc
-  #     run: cd plrustc && cargo test -p plrustc
+    - name: install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-  #   - name: install plrustc
-  #     run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+    - name: Run cargo pgrx init
+      run: cargo pgrx init --pg14 $(which pg_config)
 
-  #   - name: Run cargo pgrx init
-  #     run: cargo pgrx init --pg14 $(which pg_config)
+    - name: Test PL/rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
 
-  #   - name: Test PL/rust as "untrusted"
-  #     if: matrix.target == 'host'
-  #     run: cargo test --all --features "pg$PG_VER" --no-default-features
+    - name: Test PL/rust as "trusted" (inc. postgrestd)
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
-  #   - name: Test PL/rust as "trusted" (inc. postgrestd)
-  #     if: matrix.target == 'postgrestd'
-  #     run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+    - name: Print sccache stats (after build)
+      run: sccache --show-stats
 
-  #   - name: Print sccache stats (after build)
-  #     run: sccache --show-stats
+    - name: Stop sccache server
+      run: sccache --stop-server || true
 
-  #   - name: Stop sccache server
-  #     run: sccache --stop-server || true
+    - name: Store Cargo cache if applicable
+      run: |
+        . $WORK_DIR/.github/scripts/save_cache.sh
+        # See <plrust-root>/.github/scripts/save_cache.sh for more details
+        cargo_cache_key="plrust-arm64-amzn2-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        cargo_dirs=( \
+            $HOME/.cargo/ \
+        )
+        savecache $cargo_cache_key "${cargo_dirs[@]}"
 
-  #   - name: Store Cargo cache if applicable
-  #     run: |
-  #       . $WORK_DIR/.github/scripts/save_cache.sh
-  #       # See <plrust-root>/.github/scripts/save_cache.sh for more details
-  #       cargo_cache_key="plrust-arm64-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       cargo_dirs=( \
-  #           $HOME/.cargo/ \
-  #       )
-  #       savecache $cargo_cache_key "${cargo_dirs[@]}"
-
-  #   - name: Store sccache if applicable
-  #     run: |
-  #       # See <plrust-root>/.github/scripts/save_cache.sh for more details
-  #       . $WORK_DIR/.github/scripts/save_cache.sh
-  #       sccache_key="plrust-arm64-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       sccache_dirs=($HOME/.cache/sccache)
-  #       savecache $sccache_key "${sccache_dirs[@]}"
+    - name: Store sccache if applicable
+      run: |
+        # See <plrust-root>/.github/scripts/save_cache.sh for more details
+        . $WORK_DIR/.github/scripts/save_cache.sh
+        sccache_key="plrust-arm64-amzn2-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        sccache_dirs=($HOME/.cache/sccache)
+        savecache $sccache_key "${sccache_dirs[@]}"
 
   plrust_x86_64:
     name: x86_64 tests
