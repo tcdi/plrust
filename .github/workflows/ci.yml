@@ -136,14 +136,23 @@ jobs:
         . $WORK_DIR/.github/scripts/install_cargo_pgrx.sh
         install_cargo_pgrx
 
+    - name: Print sccache stats
+      run: sccache --show-stats
+
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview rustc-dev
 
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc
 
+    - name: Print sccache stats
+      run: sccache --show-stats
+
     - name: install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Run cargo pgrx init
       run: cargo pgrx init --pg14 $(which pg_config)
