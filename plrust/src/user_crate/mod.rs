@@ -18,6 +18,7 @@ cargo doc --no-deps --document-private-items --open
 */
 use std::{path::Path, process::Output};
 
+use pgrx::prelude::PgHeapTuple;
 use pgrx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -274,6 +275,13 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
+        },
+        PgOid::Custom(oid) => match PgHeapTuple::new_composite_type_by_oid(oid) {
+            Ok(_) => {
+                let oid_u32 = oid.as_u32();
+                quote! { pgrx::composite_type!(#oid_u32) }
+            }
+            Err(_) => return Err(PlRustError::NoOidToRustMapping(oid)),
         },
         _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
     };

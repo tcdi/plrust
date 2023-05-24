@@ -66,6 +66,7 @@ pub use heap_tuple::*;
 
 /// Support for arbitrary composite types as a "heap tuple".
 pub mod heap_tuple {
+    pub use ::pgrx::composite_type;
     pub use ::pgrx::heap_tuple::PgHeapTuple;
 }
 
@@ -87,7 +88,7 @@ pub mod memcxt {
 pub use pgbox::*;
 #[doc(hidden)]
 pub mod pgbox {
-    pub use ::pgrx::pgbox::{PgBox, WhoAllocated};
+    pub use ::pgrx::pgbox::{AllocatedByPostgres, AllocatedByRust, PgBox, WhoAllocated};
 }
 
 pub use pg_sys::panic::ErrorReportable;
