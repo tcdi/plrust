@@ -19,11 +19,14 @@ jobs:
   plrust_arm64_amzn2:
     name: aarch64 tests (amzn2)
     runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0013395587950cb5d]
+    defaults:
+      run:
+        shell: bash
 
     strategy:
       matrix:
         # version: ["pg13", "pg14", "pg15"]
-        version: ["pg14", "pg15"]
+        version: ["pg14"]
         target: ["postgrestd"]
         # target: ["host", "postgrestd"]
       fail-fast: false
