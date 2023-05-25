@@ -113,6 +113,8 @@ jobs:
         # cargo --version
 
         cat $GITHUB_ENV
+        echo ""
+        env
 
     - name: Load Cargo cache if available
       run: |
