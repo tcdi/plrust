@@ -22,20 +22,24 @@ jobs:
 
     strategy:
       matrix:
-        # target: ["host", "postgrestd"]
+        # version: ["pg13", "pg14", "pg15"]
+        version: ["pg14", "pg15"]
         target: ["postgrestd"]
+        # target: ["host", "postgrestd"]
       fail-fast: false
 
     env:
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
       CACHE_KEY_VERSION: v0
       PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+      RUSTUP_HOME: /home/ec2-user/.rustup
       RUSTC_WRAPPER: sccache
       RUSTFLAGS: -Copt-level=0
       SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
       SCCACHE_CACHE_SIZE: 20G
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
       WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
+      CI: true
 
     steps:
     - uses: actions/checkout@v3
@@ -57,30 +61,29 @@ jobs:
         echo "----- Set up dynamic variables -----"
         echo "PG_VER=14" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-        echo "RUSTUP_HOME=$HOME/.rustup" >> $GITHUB_ENV
-        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
-        echo "CI=true" >> $GITHUB_ENV
-        cat $GITHUB_ENV
         echo ""
 
         echo "----- Install system dependencies -----"
-        sudo amazon-linux-extras enable postgresql14
-        sudo yum clean metadata
+        #sudo amazon-linux-extras enable postgresql14
+        #sudo yum clean metadata
 
-        sudo yum install -y \
-          libpq \
-          libpq-devel \
-          postgresql \
-          postgresql-server \
-          postgresql-server-devel \
-          openssl \
-          openssl-devel \
-          bison \
-          flex \
-          readline \
-          readline-devel \
-          clang
-        echo ""
+        #sudo yum install -y \
+        #  libpq \
+        #  libpq-devel \
+        #  postgresql \
+        #  postgresql-server \
+        #  postgresql-server-devel \
+        #  openssl \
+        #  openssl-devel \
+        #  bison \
+        #  flex \
+        #  readline \
+        #  readline-devel \
+        #  clang
+        #echo ""
+
+        sudo yum install -y "postgresql$PG_VER" "postgresql$PG_VER-server" "postgresql$PG_VER-devel"
+        export PATH="./usr/pgsql-$PG_VER/bin/:$PATH"
 
         echo "----- Set postgres permissions -----"
         sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
@@ -100,10 +103,12 @@ jobs:
         echo ""
 
         echo "----- Install rust via rustup -----"
-        export RUSTUP_HOME="$HOME/.rustup"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source "$HOME/.cargo/env"
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
         cargo --version
+
+        cat $GITHUB_ENV
 
     - name: Load Cargo cache if available
       run: |
