@@ -84,7 +84,7 @@ jobs:
         #echo ""
 
         sudo yum install -y "postgresql$PG_VER" "postgresql$PG_VER-server" "postgresql$PG_VER-devel"
-        export PATH="./usr/pgsql-$PG_VER/bin/:$PATH"
+        export PATH="/usr/pgsql-$PG_VER/bin/:$PATH"
 
         echo "----- Set postgres permissions -----"
         sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
