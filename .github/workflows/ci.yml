@@ -38,9 +38,9 @@ jobs:
       RUSTUP_HOME: /home/ec2-user/.rustup
       RUSTC_WRAPPER: sccache
       RUSTFLAGS: -Copt-level=0
-      # SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
+      SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
       SCCACHE_CACHE_SIZE: 20G
-      # SCCACHE_DIR: /home/ec2-user/.cache/sccache
+      SCCACHE_DIR: /home/ec2-user/.cache/sccache
       WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
       CI: true
 
@@ -65,6 +65,7 @@ jobs:
         export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
         echo ""
 
         echo "----- Install system dependencies -----"
