@@ -66,6 +66,7 @@ jobs:
         echo "PG_VER=$PG_VER" >> $GITHUB_ENV
         echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
         echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
         echo ""
 
         echo "----- Install system dependencies -----"
