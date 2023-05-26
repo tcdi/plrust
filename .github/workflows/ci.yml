@@ -27,8 +27,8 @@ jobs:
       matrix:
         # version: ["pg13", "pg14", "pg15"]
         version: ["pg14"]
-        target: ["postgrestd"]
-        # target: ["host", "postgrestd"]
+        # target: ["postgrestd"]
+        target: ["host", "postgrestd"]
       fail-fast: false
 
     env:
@@ -41,6 +41,7 @@ jobs:
       SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
       SCCACHE_CACHE_SIZE: 20G
       SCCACHE_DIR: /home/ec2-user/.cache/sccache
+      SCCACHE_IDLE_TIMEOUT: 0
       WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
       CI: true
 
