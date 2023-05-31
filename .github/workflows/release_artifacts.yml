@@ -27,6 +27,9 @@ jobs:
         pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
       fail-fast: false
 
+    permissions:
+      contents: write
+
     steps:
     - uses: actions/checkout@v3
 
