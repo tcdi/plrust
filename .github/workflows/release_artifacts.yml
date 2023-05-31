@@ -130,6 +130,9 @@ jobs:
       matrix:
         pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
 
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v3
 
