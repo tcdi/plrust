@@ -22,8 +22,11 @@ pub mod datum {
     // traits
     pub use ::pgrx::datum::{FromDatum, IntoDatum};
 
-    // // dates & times
-    // pub use ::pgrx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+    // dates & times
+    pub use ::pgrx::datum::{
+        Date, DateTimeConversionError, DateTimeParts, HasExtractableParts, Interval, Time,
+        TimeWithTimeZone, Timestamp, TimestampWithTimeZone,
+    };
 
     // zero-copy Arrays
     pub use ::pgrx::datum::{Array, ArrayIntoIterator, ArrayIterator, ArrayTypedIterator};
