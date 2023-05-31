@@ -1012,9 +1012,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "212defb470deb5a24014649acdf63770bbb019729515af9b7b5c70669f915180"
+checksum = "807d11f60735140422c08faf7ae239b21e9f4339bb9e9fde25a5e0a76369a625"
 dependencies = [
  "atomic-traits",
  "bitflags 2.3.1",
@@ -1037,9 +1037,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-macros"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50da67295088ba3db32b7abb74163d22abf2c04b1e423f02a16499544efa4aa6"
+checksum = "6818d4d69e83673d50b83525c48c298a6d94278af2b73e9eed5c79b3299addbc"
 dependencies = [
  "pgrx-sql-entity-graph",
  "proc-macro2",
@@ -1049,9 +1049,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-pg-config"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0e2cd6c0ae5277ac3b63b93f7778fdad75709d9b97e473a0561e5a848c3bd4d"
+checksum = "d6ef77b2d9d59b9825f1949d3c3565468672fd11200d4609e9e1ae8afd5c5aca"
 dependencies = [
  "cargo_toml",
  "dirs",
@@ -1067,9 +1067,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-pg-sys"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e98a7319f0c34106b7558c7ddcd83cf5ef60602091a42f84ca0895bd0cfb5c92"
+checksum = "c790691712b3bf67e0d3a4fc3b92458c9a23f105b5ae472cf11c7dc2ec8ee4ed"
 dependencies = [
  "bindgen",
  "eyre",
@@ -1089,9 +1089,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-sql-entity-graph"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9707e7e99667b41803e72a743eec74a38d8fa2252255d96d153d8e26c22a4ed0"
+checksum = "6287a0592c3bca75ceab11eb6b3ab189158e935e08215a708b47503db5b4f848"
 dependencies = [
  "convert_case",
  "eyre",
@@ -1104,9 +1104,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-tests"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f06fcfb328376bbb1adba95e3f0c991f9eeccbad2fa13fdac15ce495b9439d5"
+checksum = "36de0f06f2b17e19700527b506c1f1021d651fe52021eaeda623cb39908b0fb3"
 dependencies = [
  "clap-cargo",
  "eyre",
