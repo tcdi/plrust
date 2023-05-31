@@ -37,7 +37,7 @@ impl PlrustStaticImpls {
         use hir::{Lifetime, LifetimeName::Static, MutTy, TyKind};
         match &t.kind {
             TyKind::Infer
-            | TyKind::Err
+            | TyKind::Err(..)
             // Doesn't exist
             | TyKind::Typeof(..)
             // Not strictly correct but we forbid this elsewhere anyway.
@@ -47,9 +47,9 @@ impl PlrustStaticImpls {
             | TyKind::OpaqueDef(..)
             | TyKind::Never => false,
             // Found one!
-            TyKind::Rptr(Lifetime { res: Static, .. }, _) | TyKind::TraitObject(_, Lifetime { res: Static, .. }, _) => true,
+            TyKind::Ref(Lifetime { res: Static, .. }, _) | TyKind::TraitObject(_, Lifetime { res: Static, .. }, _) => true,
             // Need to keep looking.
-            TyKind::Rptr(_, MutTy { ty, .. })
+            TyKind::Ref(_, MutTy { ty, .. })
             | TyKind::Ptr(MutTy { ty, .. })
             | TyKind::Array(ty, _)
             | TyKind::Slice(ty) => self.has_static(*ty),

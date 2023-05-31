@@ -25,8 +25,8 @@ fi
 export RUSTC_BOOTSTRAP=1
 
 version=$($RUSTC --version | cut -d ' ' -f 2)
-if [ "$version" != "1.67.1" ]; then
-    echo "rustc ('$RUSTC') is not version 1.67.1" >&2
+if [ "$version" != "1.69.0" ]; then
+    echo "rustc ('$RUSTC') is not version 1.69.0" >&2
     exit 1
 fi
 
