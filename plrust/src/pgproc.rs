@@ -7,7 +7,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::error::PlRustError;
-use pgx::{pg_sys, FromDatum, IntoDatum, PgRelation};
+use pgrx::{pg_sys, FromDatum, IntoDatum, PgLogLevel, PgRelation, PgSqlErrorCode};
 use std::ptr::NonNull;
 
 /// Provides a safe wrapper around a Postgres "SysCache" entry from `pg_catalog.pg_proc`.
@@ -158,9 +158,30 @@ impl PgProc {
             .collect::<Vec<_>>()
     }
 
-    pub(crate) fn proargnames(&self) -> Vec<Option<String>> {
-        self.get_attr(pg_sys::Anum_pg_proc_proargnames)
-            .unwrap_or_default()
+    pub(crate) fn pronargs(&self) -> usize {
+        // SAFETY:  `pronargs` has a NOT NULL constraint
+        self.get_attr::<i16>(pg_sys::Anum_pg_proc_pronargs).unwrap() as usize
+    }
+
+    pub(crate) fn proargnames(&self) -> Vec<syn::Ident> {
+        self.get_attr::<Vec<Option<String>>>(pg_sys::Anum_pg_proc_proargnames)
+            .unwrap_or_else(|| vec![None; self.pronargs()])
+            .into_iter()
+            .map(|name| {
+                let name = name.unwrap_or_else(|| String::default());
+
+                syn::parse_str::<syn::Ident>(&name)
+                    .unwrap_or_else(|_| {
+                        static DETAIL:&'static str = "PL/Rust argument names must also be valid Rust identifiers.  Rust's identifier specification can be found at https://doc.rust-lang.org/reference/identifiers.html";
+                        if name.is_empty() {
+                            pgrx::ereport!(PgLogLevel::ERROR, PgSqlErrorCode::ERRCODE_INVALID_NAME, "PL/Rust does not support unnamed arguments", DETAIL);
+                        } else {
+                            pgrx::ereport!(PgLogLevel::ERROR, PgSqlErrorCode::ERRCODE_INVALID_NAME, format!("`{name}` is an invalid Rust identifier and cannot be used as an argument name"), DETAIL);
+                        }
+                        unreachable!()
+                    })
+            })
+            .collect()
     }
 
     pub(crate) fn proargtypes(&self) -> Vec<pg_sys::Oid> {

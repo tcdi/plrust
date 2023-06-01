@@ -6,7 +6,7 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
-use pgx::pg_sys;
+use pgrx::pg_sys;
 
 use crate::target::CompilationTarget;
 use crate::user_crate::lint::LintSet;

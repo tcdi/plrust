@@ -8,9 +8,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::{datum::IntoDatum, prelude::*};
+    use pgrx::{datum::IntoDatum, prelude::*};
+    use std::error::Error;
 
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
@@ -118,7 +119,7 @@ mod tests {
                 STRICT
                 LANGUAGE PLRUST AS
             $$
-                use pgx::IntoDatum;
+                use pgrx::IntoDatum;
                 Ok(Spi::get_one_with_args(
                     "SELECT id FROM contributors_pets WHERE name = $1",
                     vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())],
@@ -271,7 +272,7 @@ mod tests {
                 IMMUTABLE STRICT
                 LANGUAGE PLRUST AS
             $$
-                Ok(Some(::pgx::iter::SetOfIterator::new(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))))
+                Ok(Some(::pgrx::iter::SetOfIterator::new(names.into_iter().map(|maybe| maybe.map(|name| name.to_string() + " was booped!")))))
             $$;
         "#;
         Spi::run(definition)?;
@@ -340,17 +341,16 @@ mod tests {
             );
 
             CREATE FUNCTION pet_trigger() RETURNS trigger AS $$
-                let current = trigger.current().unwrap();
-                let mut current = current.into_owned();
+                let mut new = trigger.new().unwrap().into_owned();
 
                 let field = "scritches";
 
-                match current.get_by_name::<i32>(field).unwrap() {
-                    Some(val) => current.set_by_name(field, val + 1).unwrap(),
+                match new.get_by_name::<i32>(field)? {
+                    Some(val) => new.set_by_name(field, val + 1)?,
                     None => (),
                 }
 
-                Ok(current)
+                Ok(Some(new))
             $$ LANGUAGE plrust;
 
             CREATE TRIGGER pet_trigger BEFORE INSERT OR UPDATE ON dogs
@@ -403,7 +403,7 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic]
-    fn pgx_can_panic() {
+    fn pgrx_can_panic() {
         panic!()
     }
 
@@ -453,7 +453,7 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "error: the `include_str` and `include_bytes` macros are forbidden"]
+    #[should_panic = "error: the `include_str`, `include_bytes`, and `include` macros are forbidden"]
     fn postgrestd_no_include_str() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION include_str()
@@ -468,6 +468,102 @@ mod tests {
         let retval = Spi::get_one::<String>("SELECT include_str();\n")?;
         assert_eq!(retval.unwrap(), "");
         Ok(())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_exists_no_access() {
+        // This file is created in CI and exists, but can only be accessed by
+        // root. Check that the actual access is reported as file not found (we
+        // should be ensuring that via
+        // `PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS`). We don't need to gate
+        // this test on CI, since the file is unlikely to exist outside of CI
+        // (so the test will pass).
+        let definition = r#"
+            CREATE FUNCTION include_no_access()
+            RETURNS text AS $$
+                include!("/var/ci-stuff/secret_rust_files/const_foo.rs");
+                Ok(Some(format!("{BAR}")))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition).unwrap()
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_exists_external() {
+        // This file is created in CI, exists, and can be accessed by anybody,
+        // but the actual access is forbidden via
+        // `PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS`. We don't need to gate this test on
+        // CI, since the file is unlikely to exist outside of CI, so the test
+        // will pass anyway.
+        let definition = r#"
+            CREATE FUNCTION include_exists_external()
+            RETURNS text AS $$
+                include!("/var/ci-stuff/const_bar.rs");
+                Ok(Some(format!("{BAR}")))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition).unwrap();
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_made_up() {
+        // This file does not exist, and should be reported as such.
+        let definition = r#"
+            CREATE FUNCTION include_madeup()
+            RETURNS int AS $$
+                include!("/made/up/path/lol.rs");
+                Ok(Some(1))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition).unwrap();
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_path_traversal() {
+        use std::path::PathBuf;
+        let workdir = crate::gucs::work_dir();
+        let wd: PathBuf = workdir
+            .canonicalize()
+            .ok()
+            .expect("Failed to canonicalize workdir");
+        // Produce a path that looks like
+        // `/allowed/path/here/../../../illegal/path/here` and check that it's
+        // rejected, in order to ensure we are not succeptable to path traversal
+        // attacks.
+        let mut evil_path = wd.clone();
+        for _ in wd.ancestors().skip(1) {
+            evil_path.push("..");
+        }
+        debug_assert_eq!(
+            evil_path
+                .canonicalize()
+                .ok()
+                .expect("Failed to produce unpath")
+                .to_str(),
+            Some("/")
+        );
+        evil_path.push("var/ci-stuff/const_bar.rs");
+        // This file does not exist, and should be reported as such.
+        let definition = format!(
+            r#"CREATE FUNCTION include_sneaky_traversal()
+            RETURNS int AS $$
+                include!({evil_path:?});
+                Ok(Some(1))
+            $$ LANGUAGE plrust;"#
+        );
+        Spi::run(&definition).unwrap();
     }
 
     #[pg_test]
@@ -499,7 +595,7 @@ mod tests {
     #[should_panic]
     fn plrust_block_unsafe_hidden() -> spi::Result<()> {
         // PL/Rust should not allow hidden injection of unsafe code
-        // that may rely on the way PGX expands into `unsafe fn` to "sneak in"
+        // that may rely on the way PGRX expands into `unsafe fn` to "sneak in"
         let definition = r#"
             CREATE FUNCTION naughty()
             RETURNS text AS
@@ -510,6 +606,36 @@ mod tests {
                 ptr.write(0x00_1BADC0DE_00);
                 let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
                 Ok(str::from_utf8(cstr.to_bytes()).ok().map(|s| s.to_owned()))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    #[cfg(feature = "trusted")]
+    fn plrust_block_env() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION get_path() RETURNS text AS $$
+                let path = env!("PATH");
+                Ok(Some(path.to_string()))
+            $$ LANGUAGE plrust;
+        "#;
+        Spi::run(definition)
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic]
+    #[cfg(feature = "trusted")]
+    fn plrust_block_option_env() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION try_get_path() RETURNS text AS $$
+                match option_env!("PATH") {
+                    None => Ok(None),
+                    Some(s) => Ok(Some(s.to_string()))
+                }
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)
@@ -556,7 +682,7 @@ mod tests {
             CREATE FUNCTION dont_allcaps_panic()
             RETURNS text AS
             $$
-                use pgx::log::{PgLogLevel, elog};
+                use pgrx::log::{PgLogLevel, elog};
 
                 elog(PgLogLevel::PANIC, "If other tests completed, PL/Rust did not actually destroy the entire database, \
                                          But if you see this in the error output, something might be wrong.");
@@ -831,7 +957,7 @@ mod tests {
                         IMMUTABLE STRICT
                         LANGUAGE PLRUST AS
                     $$
-                        pgx::error!("issue78 works");
+                        pgrx::error!("issue78 works");
                         Ok(Some("hi".to_string()))
                     $$;"#;
         Spi::run(sql)?;
@@ -876,6 +1002,237 @@ mod tests {
         )?;
         assert_eq!(Ok(Some(2)), Spi::get_one("SELECT replace_me()"));
         Ok(())
+    }
+
+    #[pg_test]
+    fn test_point() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_point(p point) RETURNS point LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let p = Spi::get_one::<pg_sys::Point>("SELECT test_point('42, 99'::point);")?
+            .expect("SPI result was null");
+        assert_eq!(p.x, 42.0);
+        assert_eq!(p.y, 99.0);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_box() -> spi::Result<()> {
+        Spi::run(r#"CREATE FUNCTION test_box(b box) RETURNS box LANGUAGE plrust AS $$ Ok(b) $$"#)?;
+        let b = Spi::get_one::<pg_sys::BOX>("SELECT test_box('1,2,3,4'::box);")?
+            .expect("SPI result was null");
+        assert_eq!(b.high.x, 3.0);
+        assert_eq!(b.high.y, 4.0);
+        assert_eq!(b.low.x, 1.0);
+        assert_eq!(b.low.y, 2.0);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_uuid() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_uuid(u uuid) RETURNS uuid LANGUAGE plrust AS $$ Ok(u) $$"#,
+        )?;
+        let u = Spi::get_one::<pgrx::Uuid>(
+            "SELECT test_uuid('e4176a4d-790c-4750-85b7-665d72471173'::uuid);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            u,
+            pgrx::Uuid::from_bytes([
+                0xe4, 0x17, 0x6a, 0x4d, 0x79, 0x0c, 0x47, 0x50, 0x85, 0xb7, 0x66, 0x5d, 0x72, 0x47,
+                0x11, 0x73
+            ])
+        );
+
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_int4range() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_int4range(r int4range) RETURNS int4range LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<i32>>("SELECT test_int4range('[1, 10)'::int4range);")?
+            .expect("SPI result was null");
+        assert_eq!(r, (1..10).into());
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_int8range() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_int8range(r int8range) RETURNS int8range LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<i64>>("SELECT test_int8range('[1, 10)'::int8range);")?
+            .expect("SPI result was null");
+        assert_eq!(r, (1..10).into());
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_numrange() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION test_numrange(r numrange) RETURNS numrange LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<AnyNumeric>>("SELECT test_numrange('[1, 10]'::numrange);")?
+            .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                AnyNumeric::try_from(1.0f32).unwrap(),
+                AnyNumeric::try_from(10.0f32).unwrap()
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_tid_roundtrip() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION tid_roundtrip(t tid) RETURNS tid LANGUAGE plrust AS $$ Ok(t) $$"#,
+        )?;
+        let tid = Spi::get_one::<pg_sys::ItemPointerData>("SELECT tid_roundtrip('(42, 99)'::tid)")?
+            .expect("SPI result was null");
+        let (blockno, offno) = pgrx::item_pointer_get_both(tid);
+        assert_eq!(blockno, 42);
+        assert_eq!(offno, 99);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_return_bytea() -> spi::Result<()> {
+        Spi::run(
+            r#"CREATE FUNCTION return_bytea() RETURNS bytea LANGUAGE plrust AS $$ Ok(Some(vec![1,2,3])) $$"#,
+        )?;
+        let bytes = Spi::get_one::<Vec<u8>>("SELECT return_bytea()")?.expect("SPI result was null");
+        assert_eq!(bytes, vec![1, 2, 3]);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_cstring_roundtrip() -> Result<(), Box<dyn Error>> {
+        use std::ffi::CStr;
+        Spi::run(
+            r#"CREATE FUNCTION cstring_roundtrip(s cstring) RETURNS cstring STRICT LANGUAGE plrust as $$ Ok(Some(s.into())) $$;"#,
+        )?;
+        let cstr = Spi::get_one::<&CStr>("SELECT cstring_roundtrip('hello')")?
+            .expect("SPI result was null");
+        let expected = CStr::from_bytes_with_nul(b"hello\0")?;
+        assert_eq!(cstr, expected);
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_daterange() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION test_daterange(r daterange) RETURNS daterange LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<Date>>(
+            "SELECT test_daterange('[1977-03-20, 1980-01-01)'::daterange);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                Date::new(1977, 3, 20)?,
+                RangeBound::Exclusive(Date::new(1980, 01, 01)?)
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_tsrange() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION test_tsrange(p tsrange) RETURNS tsrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<Timestamp>>(
+            "SELECT test_tsrange('[1977-03-20, 1980-01-01)'::tsrange);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                Timestamp::new(1977, 3, 20, 0, 0, 0.0)?,
+                RangeBound::Exclusive(Timestamp::new(1980, 01, 01, 0, 0, 0.0)?)
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_tstzrange() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION test_tstzrange(p tstzrange) RETURNS tstzrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<TimestampWithTimeZone>>(
+            "SELECT test_tstzrange('[1977-03-20, 1980-01-01)'::tstzrange);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                TimestampWithTimeZone::new(1977, 3, 20, 0, 0, 0.0)?,
+                RangeBound::Exclusive(TimestampWithTimeZone::new(1980, 01, 01, 0, 0, 0.0)?)
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_interval() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION get_interval_hours(i interval) RETURNS numeric STRICT LANGUAGE plrust AS $$ Ok(i.extract_part(DateTimeParts::Hour)) $$"#,
+        )?;
+        let hours =
+            Spi::get_one::<AnyNumeric>("SELECT get_interval_hours('3 days 9 hours 12 seconds')")?
+                .expect("SPI result was null");
+        assert_eq!(hours, AnyNumeric::from(9));
+        Ok(())
+    }
+
+    #[cfg(feature = "trusted")]
+    #[pg_test]
+    #[search_path(@extschema@)]
+    fn postgrestd_net_is_unsupported() -> spi::Result<()> {
+        let sql = r#"
+        create or replace function pt106() returns text
+        IMMUTABLE STRICT
+        LANGUAGE PLRUST AS
+        $$
+        [code]
+        use std::net::TcpStream;
+
+        Ok(TcpStream::connect("127.0.0.1:22").err().map(|e| e.to_string()))
+        $$"#;
+        Spi::run(sql)?;
+        let string = Spi::get_one::<String>("SELECT pt106()")?.expect("Unconditional return");
+        assert_eq!("operation not supported on this platform", &string);
+        Ok(())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "PL/Rust does not support unnamed arguments")]
+    fn unnamed_args() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION unnamed_arg(int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(expected = "PL/Rust does not support unnamed arguments")]
+    fn named_unnamed_args() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION named_unnamed_arg(bob text, int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic(
+        expected = "is an invalid Rust identifier and cannot be used as an argument name"
+    )]
+    fn invalid_arg_identifier() -> spi::Result<()> {
+        Spi::run("CREATE FUNCTION invalid_arg_identifier(\"this isn't a valid rust identifier\" int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
     }
 }
 

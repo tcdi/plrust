@@ -1,6 +1,6 @@
 # Architecture
 
-PL/Rust, a Rust-based extension built using [pgx](https://github.com/tcdi/pgx), provides a procedural language handler for Rust in PostgreSQL. When installed, PL/Rust allows this to work:
+PL/Rust, a Rust-based extension built using [pgrx](https://github.com/tcdi/pgrx), provides a procedural language handler for Rust in PostgreSQL. When installed, PL/Rust allows this to work:
 
 ```sql
 CREATE FUNCTION {fn_name} ({args})
@@ -58,22 +58,6 @@ Following an approach similar to the selection between libc and the musl libc st
 ## Supporting Crates
 
 Because PL/Rust implements a fairly complicated language with the intention to make it sound to use as a trusted procedural language, there are multiple supporting crates necessary to make it work.
-
-### pgx with `features = ["postgrestd", ..]`
-
-The PL/Rust language handler is itself implemented using pgx, but also all PL/Rust functions must understand the PostgreSQL data types in the same way that `pgx` enables. In addition, bindings via `pgx` are used to implement most of the other supporting crates.
-
-### pallocator
-
-The PostgreSQL allocator project maps the PostgreSQL memory allocation methods to standard library methods. 
-
-| libc    | postgrestd |
-|---------|------------|
-| alloc   | palloc     |
-| free    | pfree      |
-| realloc | prealloc   |
-
-Using this crate to override the allocator guarantees it is the linked allocator, as only one `#[global_allocator]` may be linked in the entire build graph for a crate.
 
 ### postgrestd
 

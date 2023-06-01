@@ -1,0 +1,246 @@
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:4:5
+   |
+LL |     print!("hello");
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-F plrust-print-macros` implied by `-F plrust-lints`
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:5:5
+   |
+LL |     println!("world");
+   |     ^^^^^^^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:7:5
+   |
+LL |     eprint!("test");
+   |     ^^^^^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:8:5
+   |
+LL |     eprintln!("123");
+   |     ^^^^^^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:10:5
+   |
+LL |     dbg!("baz");
+   |     ^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:15:5
+   |
+LL |     p!("hello");
+   |     ^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:16:5
+   |
+LL |     pln!("world");
+   |     ^^^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:18:5
+   |
+LL |     e!("test");
+   |     ^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:19:5
+   |
+LL |     eln!("123");
+   |     ^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:21:5
+   |
+LL |     d!("baz");
+   |     ^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:26:9
+   |
+LL |         print!("hello");
+   |         ^^^^^^^^^^^^^^^
+...
+LL |     wrapped!();
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:27:9
+   |
+LL |         println!("world");
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |     wrapped!();
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:29:9
+   |
+LL |         eprint!("test");
+   |         ^^^^^^^^^^^^^^^
+...
+LL |     wrapped!();
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:30:9
+   |
+LL |         eprintln!("123");
+   |         ^^^^^^^^^^^^^^^^
+...
+LL |     wrapped!();
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:32:9
+   |
+LL |         dbg!("baz");
+   |         ^^^^^^^^^^^
+...
+LL |     wrapped!();
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:53:15
+   |
+LL |     indirect!(println!("foo"));
+   |               ^^^^^^^^^^^^^^^
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:45:9
+   |
+LL |         $mac!($arg)
+   |         ^^^^^^^^^^^
+...
+LL |     indirect!(println, "foo");
+   |     ------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:26:9
+   |
+LL |         print!("hello");
+   |         ^^^^^^^^^^^^^^^
+...
+LL |     indirect!(wrapped!());
+   |               ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:27:9
+   |
+LL |         println!("world");
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |     indirect!(wrapped!());
+   |               ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:29:9
+   |
+LL |         eprint!("test");
+   |         ^^^^^^^^^^^^^^^
+...
+LL |     indirect!(wrapped!());
+   |               ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:30:9
+   |
+LL |         eprintln!("123");
+   |         ^^^^^^^^^^^^^^^^
+...
+LL |     indirect!(wrapped!());
+   |               ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:32:9
+   |
+LL |         dbg!("baz");
+   |         ^^^^^^^^^^^
+...
+LL |     indirect!(wrapped!());
+   |               ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:26:9
+   |
+LL |         print!("hello");
+   |         ^^^^^^^^^^^^^^^
+...
+LL |     indirect!(@call wrapped);
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:27:9
+   |
+LL |         println!("world");
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |     indirect!(@call wrapped);
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:29:9
+   |
+LL |         eprint!("test");
+   |         ^^^^^^^^^^^^^^^
+...
+LL |     indirect!(@call wrapped);
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:30:9
+   |
+LL |         eprintln!("123");
+   |         ^^^^^^^^^^^^^^^^
+...
+LL |     indirect!(@call wrapped);
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the printing macros are forbidden, consider using `log!()` instead
+  --> $DIR/print_macros.rs:32:9
+   |
+LL |         dbg!("baz");
+   |         ^^^^^^^^^^^
+...
+LL |     indirect!(@call wrapped);
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `wrapped` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 27 previous errors
+

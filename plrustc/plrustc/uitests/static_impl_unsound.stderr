@@ -1,0 +1,10 @@
+error: `impl` blocks for types containing `'static` references are not allowed
+  --> $DIR/static_impl_unsound.rs:11:34
+   |
+LL | impl<T: Display> Displayable for (T, Box<Option<&'static T>>) {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-F plrust-static-impls` implied by `-F plrust-lints`
+
+error: aborting due to previous error
+

@@ -12,9 +12,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use once_cell::sync::Lazy;
-use pgx::guc::{GucContext, GucRegistry, GucSetting};
-use pgx::pg_sys;
-use pgx::pg_sys::AsPgCStr;
+use pgrx::guc::{GucContext, GucRegistry, GucSetting};
+use pgrx::pg_sys::AsPgCStr;
+use pgrx::{pg_sys, GucFlags};
 
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 use crate::{target, DEFAULT_LINTS};
@@ -29,6 +29,11 @@ pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
 pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
+pub(crate) static PLRUST_TRUSTED_PGRX_VERSION: GucSetting<Option<&'static str>> =
+    GucSetting::new(Some(env!(
+        "PLRUST_TRUSTED_PGRX_VERSION",
+        "unknown `plrust-trusted-pgrx` version.  `build.rs` must not have run successfully"
+    )));
 
 pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
     Lazy::new(|| {
@@ -52,6 +57,7 @@ pub(crate) fn init() {
         "The directory where pl/rust will build functions with cargo",
         &PLRUST_WORK_DIR,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -59,7 +65,9 @@ pub(crate) fn init() {
           "The $PATH setting to use for building plrust user functions",
           "It may be necessary to override $PATH in order to find compilation dependencies such as `cargo`, `cc`, etc",
           &PLRUST_PATH_OVERRIDE,
-          GucContext::Sighup);
+          GucContext::Sighup,
+          GucFlags::default(),
+    );
 
     GucRegistry::define_string_guc(
         "plrust.tracing_level",
@@ -67,6 +75,7 @@ pub(crate) fn init() {
         "The tracing level to use while running pl/rust. Should be `error`, `warn`, `info`, `debug`, or `trace`",
         &PLRUST_TRACING_LEVEL,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -75,6 +84,7 @@ pub(crate) fn init() {
         "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions",
         &PLRUST_ALLOWED_DEPENDENCIES,
         GucContext::Postmaster,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -83,6 +93,7 @@ pub(crate) fn init() {
         "Useful for when it's known a system will replicate to a Postgres server on a different CPU architecture",
         &PLRUST_COMPILATION_TARGETS,
         GucContext::Postmaster,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -91,6 +102,7 @@ pub(crate) fn init() {
         "If unspecified, PL/Rust will use a set of defaults",
         &PLRUST_COMPILE_LINTS,
         GucContext::Sighup,
+        GucFlags::default(),
     );
 
     GucRegistry::define_string_guc(
@@ -99,6 +111,16 @@ pub(crate) fn init() {
         "If unspecified, PL/Rust will use a set of defaults",
         &PLRUST_REQUIRED_LINTS,
         GucContext::Sighup,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
+        "plrust.trusted_pgrx_version",
+        "The `plrust-trusted-pgrx` crate version to use when compiling user functions",
+        "If unspecified, the default is the version found when compiling plrust itself",
+        &PLRUST_TRUSTED_PGRX_VERSION,
+        GucContext::Sighup,
+        GucFlags::default(),
     );
 }
 
@@ -156,9 +178,9 @@ pub(crate) fn get_linker_for_target(target: &CrossCompilationTarget) -> Option<S
     }
 }
 
-pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Option<String> {
+pub(crate) fn get_pgrx_bindings_for_target(target: &CrossCompilationTarget) -> Option<String> {
     unsafe {
-        let guc_name = format!("plrust.{target}_pgx_bindings_path");
+        let guc_name = format!("plrust.{target}_pgrx_bindings_path");
         // SAFETY:  GetConfigOption returns a possibly NULL `char *` because `missing_ok` is true
         // but that's okay as we account for that possibility.  The named GUC not being in the
         // configuration is a perfectly fine thing.
@@ -171,4 +193,13 @@ pub(crate) fn get_pgx_bindings_for_target(target: &CrossCompilationTarget) -> Op
             Some(value_cstr.to_string_lossy().to_string())
         }
     }
+}
+
+pub(crate) fn get_trusted_pgrx_version() -> String {
+    let version = PLRUST_TRUSTED_PGRX_VERSION
+        .get()
+        .expect("unable to determine `plrust-trusted-pgrx` version"); // shouldn't happen since we set a known default
+
+    // we always want this specific version
+    format!("={}", version)
 }

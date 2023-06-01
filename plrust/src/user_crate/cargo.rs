@@ -11,7 +11,7 @@ use std::ffi::CStr;
 use std::path::Path;
 use std::process::Command;
 
-use pgx::{pg_sys, PgMemoryContexts};
+use pgrx::{pg_sys, PgMemoryContexts};
 
 use crate::gucs::PLRUST_PATH_OVERRIDE;
 use crate::target::CrossCompilationTarget;
@@ -29,7 +29,13 @@ pub(crate) fn cargo(
     sanitize_env(&mut command);
 
     command.env("CARGO_TARGET_DIR", &cargo_target_dir);
-    command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+    if cfg!(target_os = "macos") {
+        command.env("RUSTFLAGS", "-Clink-args=-Wl,-undefined,dynamic_lookup");
+    } else {
+        // Don't use `env_remove` to avoid inheriting rustflags via the normal
+        // search.
+        command.env("RUSTFLAGS", "");
+    }
 
     Ok(command)
 }
@@ -77,24 +83,24 @@ fn configure_rustc(command: &mut Command) {
 }
 
 /// There was a time in the past where plrust had a `plrust.pg_config` GUC whose value was
-/// passed down to the "pgx-pg-sys" transient dependency via an environment variable.
+/// passed down to the "pgrx-pg-sys" transient dependency via an environment variable.
 ///
 /// This turned out to be an unwanted bit of user, system, and operational complexity.
 ///
 /// Instead, we tell the environment that "pg_config" is described as environment
 /// variables, and set every property Postgres can tell us (which is essentially how
 /// `pg_config` itself works) as individual environment variables, each prefixed with
-/// "PGX_PG_CONFIG_".
+/// "PGRX_PG_CONFIG_".
 ///
-/// "pgx-pg-sys"'s build.rs knows how to interpret these environment variables to get what
+/// "pgrx-pg-sys"'s build.rs knows how to interpret these environment variables to get what
 /// it needs to properly generate bindings.
 fn configure_pg_config(
     command: &mut Command,
     cross_compilation_target: Option<CrossCompilationTarget>,
 ) {
-    command.env("PGX_PG_CONFIG_AS_ENV", "true");
+    command.env("PGRX_PG_CONFIG_AS_ENV", "true");
     for (k, v) in pg_config_values() {
-        let k = format!("PGX_PG_CONFIG_{k}");
+        let k = format!("PGRX_PG_CONFIG_{k}");
         command.env(k, v);
     }
 
@@ -104,21 +110,23 @@ fn configure_pg_config(
         let (k, v) = target_triple.linker_envar();
         command.env(k, v);
 
-        // pgx-specified variable for where the bindings are
+        // pgrx-specified variable for where the bindings are
         if let Some((k, v)) = target_triple.bindings_envar() {
             command.env(k, v);
         }
     }
 }
 
-/// these are environment variables that could possibly impact pgx compilation that we don't
+/// these are environment variables that could possibly impact pgrx compilation that we don't
 /// want to accidentally or purposely be inherited from the running "postgres" process
 fn sanitize_env(command: &mut Command) {
     command.env_remove("DOCS_RS"); // we'll never be building user function on https://docs.rs
-    command.env_remove("PGX_BUILD_VERBOSE"); // unnecessary to ever build a user function in verbose mode
-    command.env_remove("PGX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE"); // while an interesting idea, PL/Rust user functions are not used to generate a `pgx` release
+    command.env_remove("PGRX_BUILD_VERBOSE"); // unnecessary to ever build a user function in verbose mode
+    command.env_remove("PGRX_PG_SYS_GENERATE_BINDINGS_FOR_RELEASE"); // while an interesting idea, PL/Rust user functions are not used to generate a `pgrx` release
     command.env_remove("CARGO_MANIFEST_DIR"); // we are in the manifest directory b/c of `command.current_dir()` above
     command.env_remove("OUT_DIR"); // rust's default decision for OUT_DIR is perfectly acceptable to PL/Rust
+    command.env_remove("RUSTC_WRAPPER"); // plrustc doesn't like being invoked with RUSTC_WRAPPER set.
+    command.env_remove("RUSTC_WORKSPACE_WRAPPER"); // ditto.
 }
 
 /// Asks Postgres, via FFI, for all of its compile-time configuration data.  This is the full

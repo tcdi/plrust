@@ -23,12 +23,20 @@ macro_rules! in_macro {
     ($invocation:expr) => {
         $invocation
     };
+    ($mac:ident, $arg:expr) => {
+        $mac!($arg)
+    };
 }
 
 const _G: &str = in_macro!();
 const _H: &str = in_macro!(include_str!("fs_macros_included_file.txt"));
 const _I: &[u8] = in_macro!(include_bytes!("fs_macros_included_file.txt"));
+const _J: &[u8] = in_macro!(include_bytes, "fs_macros_included_file.txt");
 
 use core::include_str as sneaky;
+const _L: &str = sneaky!("fs_macros_included_file.txt");
+const _M: &str = in_macro!(sneaky, "fs_macros_included_file.txt");
 
-const _J: &str = sneaky!("fs_macros_included_file.txt");
+fn _foo() -> String {
+    format!("{:?}", in_macro!())
+}

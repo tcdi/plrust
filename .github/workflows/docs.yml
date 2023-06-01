@@ -1,0 +1,38 @@
+# Based on https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions
+name: Deploy mdbook
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Rust
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+    - name: Install mdbook and other preprocessors
+      run: |
+        cargo install mdbook mdbook-variables
+    - name: Deploy GitHub Pages
+      run: |
+        # This assumes your book is in the root of your repository.
+        # Just add a `cd` here if you need to change to another directory.
+        cd doc
+        mdbook build
+        git worktree add gh-pages
+        git config user.name "Deploy from CI"
+        git config user.email ""
+        cd gh-pages
+        # Delete the ref to avoid keeping history.
+        git update-ref -d refs/heads/gh-pages
+        rm -rf *
+        mv ../book/* .
+        git add .
+        git commit -m "Deploy $GITHUB_SHA to gh-pages"
+        git push --force --set-upstream origin gh-pages

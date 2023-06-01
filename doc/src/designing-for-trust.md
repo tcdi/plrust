@@ -106,7 +106,7 @@ A comprehensive approach that blocks off these exit routes is still required, an
 
 <details>
 <summary>
-Needs rewrite after rewrite of PGX error handling
+Needs rewrite after rewrite of PGRX error handling
 </summary>
 
 In Rust, the `Drop` trait promises that if execution reaches certain points in a program then a destructor has been run.
@@ -145,15 +145,15 @@ Code can by hypothetically verified to be "safe" by either scanning the tokens d
 
 No.
 
-The problem with blocking all `unsafe` code is that pgx, the Rust standard library, and essentially all implementation details of PL/Rust,
+The problem with blocking all `unsafe` code is that pgrx, the Rust standard library, and essentially all implementation details of PL/Rust,
 will be implemented using `unsafe` code. There are also many crates which are soundly implemented and theoretically fine to use for PL/Rust,
 but rely on an `unsafe` implementation primitive.
 
 Further, some way must exist to implement the function call interface from PostgreSQL to Rust code.
-In PL/Rust, that is done via the [pgx crate][pgx@crates.io]. This requires a lot of `unsafe` code.
+In PL/Rust, that is done via the [pgrx crate][pgrx@crates.io]. This requires a lot of `unsafe` code.
 Thus, in order to compile any PL/Rust function, *a lot of unsafe code must be used*.
-This also means that something must be done to prevent the use of pgx's `unsafe fn` in PL/Rust
-while still allowing pgx to use `unsafe` code to implement its own interfaces.
+This also means that something must be done to prevent the use of pgrx's `unsafe fn` in PL/Rust
+while still allowing pgrx to use `unsafe` code to implement its own interfaces.
 
 ### plutonium
 
@@ -169,21 +169,21 @@ cannot simply jump outside the database and start doing arbitrary things.
 It is limited to subverting the database, which admittedly is still a bountiful target,
 but in this event containing the database itself can still be meaningfully done.
 
-## The other elephant in the room: pgx
+## The other elephant in the room: pgrx
 
-In addition to being used as the implementation detail of PL/Rust, pgx offers a full-fledged interface for building Postgres extensions in general.
-This means that like the Rust standard library, pgx is not perfectly adapted to being an interface for a trusted procedural language.
-There are two possible options in carving out what parts of pgx are appropriate to use:
+In addition to being used as the implementation detail of PL/Rust, pgrx offers a full-fledged interface for building Postgres extensions in general.
+This means that like the Rust standard library, pgrx is not perfectly adapted to being an interface for a trusted procedural language.
+There are two possible options in carving out what parts of pgrx are appropriate to use:
 
 - remove all inappropriate features behind `#[cfg]` blocks, OR
-- create a separate crate and expose it as the pgx-Postgres user-callable interface
+- create a separate crate and expose it as the pgrx-Postgres user-callable interface
 
 Neither of these are perfectly satisfying because neither option provides a neatly-defined, automatic answer
-to the question "of pgx's safe code, what should be allowed?" to begin with.
+to the question "of pgrx's safe code, what should be allowed?" to begin with.
 
-There is also the unfortunate question of "is pgx's safe code actually sound?"
+There is also the unfortunate question of "is pgrx's safe code actually sound?"
 The crate's early implementation days included a few declared-safe wrappers that didn't fully check all invariants,
-and in some cases did not document the implied invariants, so an [audit of code in pgx][issue-audit-c-calls] is required.
+and in some cases did not document the implied invariants, so an [audit of code in pgrx][issue-audit-c-calls] is required.
 There is no getting around this, as it falls back on the fundamental problem of all procedural languages:
 They can only be as trustworthy as their implementations, which puts a burden on their implementation details to be correct.
 Fortunately, most of this audit has already been accomplished simply by the crate receiving scrutiny over the past 3 years.
@@ -193,7 +193,7 @@ Fortunately, most of this audit has already been accomplished simply by the crat
 Part of what makes Rust such a useful language is that it has crates.io: an ecosystem that allows easy sharing of code,
 like most "dynamic" languages do, with very little support needed from an operating system's package manager,
 yet is a systems programming language. Thus, it's inevitable that PL/Rust will want to be able to build arbitrary dependencies.
-In fact, it has to add at least a few specially approved crates, its own build dependencies like pgx, in order to build Rust code,
+In fact, it has to add at least a few specially approved crates, its own build dependencies like pgrx, in order to build Rust code,
 but we have to fully trust those crates anyways, so this is nothing new.
 But using crates we may not necessarily want to automatically trust introduces many, many complications as a direct result.
 
@@ -256,5 +256,5 @@ just doing arbitrary nonsense to it, even if things get overly "interesting".
 
 [^1]: There are a few cases where Unsafe Rust code can be declared without it being visibly denoted as such, and these are intended to be phased out eventually, but in these cases they generally still require an `unsafe { }` block to be called or they must be wrapped in an `unsafe fn`. The absence of the `unsafe` token can only be bypassed in Rust by declaring an `extern fn` (which is implicitly also an `unsafe fn`, allowing one to fill it with other `unsafe` code) and then calling that function from another language, like C.
 
-[pgx@crates.io]: https://crates.io/crates/pgx/
-[issue-audit-c-calls]: https://github.com/tcdi/pgx/issues/843
+[pgrx@crates.io]: https://crates.io/crates/pgrx/
+[issue-audit-c-calls]: https://github.com/tcdi/pgrx/issues/843

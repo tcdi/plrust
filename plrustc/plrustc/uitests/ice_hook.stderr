@@ -1,0 +1,11 @@
+thread 'rustc' panicked at 'Here is your ICE', plrustc/src/lints/force_ice.rs
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+error: internal compiler error: unexpected panic
+
+note: `plrustc` unexpectedly panicked. This is probably a bug.
+
+note: Please file a bug report at <https://github.com/tcdi/plrust/issues/new>
+
+note: plrustc version: <version here>
+

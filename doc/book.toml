@@ -1,0 +1,9 @@
+[book]
+authors = ["Ryan Lambert"]
+language = "en"
+multilingual = false
+src = "src"
+title = "PL/Rust Guide"
+
+[preprocessor.variables.variables]
+toolchain_ver = "1.67.1"

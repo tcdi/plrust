@@ -25,8 +25,8 @@ fi
 export RUSTC_BOOTSTRAP=1
 
 version=$($RUSTC --version | cut -d ' ' -f 2)
-if [ "$version" != "1.67.1" ]; then
-    echo "rustc ('$RUSTC') is not version 1.67.1" >&2
+if [ "$version" != "1.69.0" ]; then
+    echo "rustc ('$RUSTC') is not version 1.69.0" >&2
     exit 1
 fi
 
@@ -64,15 +64,25 @@ fi
 
 echo "plrustc build starting..." >&2
 
-env RUSTFLAGS="$RUSTFLAGS" \
-     "$CARGO" build --release \
-        -p plrustc --bin plrustc \
-        --target "$host"
 
-cd "$repo_root"
+if [[ "$1" = "install" ]]; then
+    env RUSTFLAGS="$RUSTFLAGS" \
+        "$CARGO" install \
+            --path . \
+            --target "$host"
 
-mkdir -p "$repo_root/build/bin"
-cp "$CARGO_TARGET_DIR/$host/release/plrustc" "$repo_root/build/bin/plrustc"
+    echo "plrustc installation (with 'cargo install') completed" >&2
+else
+    env RUSTFLAGS="$RUSTFLAGS" \
+        "$CARGO" build --release \
+            -p plrustc --bin plrustc \
+            --target "$host"
 
-echo "plrustc build completed" >&2
-echo "  result binary is located at '$repo_root/build/bin/plrustc'" >&2
+    cd "$repo_root"
+
+    mkdir -p "$repo_root/build/bin"
+    cp "$CARGO_TARGET_DIR/$host/release/plrustc" "$repo_root/build/bin/plrustc"
+
+    echo "plrustc build completed" >&2
+    echo "  result binary is located at '$repo_root/build/bin/plrustc'" >&2
+fi

@@ -7,9 +7,10 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 */
 
 use crate::pgproc::ProArgMode;
+use crate::user_crate::capabilities::FunctionCapabilitySet;
 use crate::{user_crate::oid_to_syn_type, PlRustError};
 use eyre::WrapErr;
-use pgx::{pg_sys, PgOid};
+use pgrx::{pg_sys, PgOid};
 use proc_macro2::{Ident, Span};
 use quote::quote;
 
@@ -36,12 +37,14 @@ pub(crate) enum CrateVariant {
 impl CrateVariant {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn function(
-        argnames: Vec<Option<String>>,
+        argnames: Vec<Ident>,
         argtypes: Vec<pg_sys::Oid>,
         argmodes: Vec<ProArgMode>,
+        argument_oids_and_names: Vec<(PgOid, syn::Ident)>,
         return_oid: PgOid,
         return_set: bool,
         is_strict: bool,
+        capabilities: FunctionCapabilitySet,
     ) -> eyre::Result<Self> {
         // we must have the same number of argument names, argument types, and modes  It's seemingly
         // impossible that we never would, but lets make sure as it's an invariant from this
@@ -99,9 +102,9 @@ impl CrateVariant {
         };
 
         let mut arguments = Vec::new();
-        for (type_oid, arg_name) in argtypes.into_iter().zip(argnames.into_iter()) {
+        for (argument_oid, arg_name) in argument_oids_and_names.into_iter() {
             let rust_type: syn::Type = {
-                let bare = oid_to_syn_type(&type_oid, false)?;
+                let bare = oid_to_syn_type(&argument_oid, false, &capabilities)?;
                 match is_strict {
                     true => bare,
                     false => syn::parse2(quote! {
@@ -111,7 +114,6 @@ impl CrateVariant {
                 }
             };
 
-            let arg_name = Ident::new(&arg_name, Span::call_site());
             let rust_pat_type: syn::FnArg = syn::parse2(quote! {
                 #arg_name: #rust_type
             })
@@ -121,30 +123,30 @@ impl CrateVariant {
         }
 
         let return_type: syn::Type = {
-            let bare = oid_to_syn_type(&return_oid, true)?;
+            let bare = oid_to_syn_type(&return_oid, true, &capabilities)?;
             match return_set {
                 true => match return_table {
                     true => {
                         // it's a `RETURNS TABLE(...)`
                         let syntypes = tabletypes
                             .into_iter()
-                            .map(|t| oid_to_syn_type(&t, true))
+                            .map(|t| oid_to_syn_type(&t, true, &capabilities))
                             .collect::<Result<Vec<_>, _>>()?;
                         syn::parse2(quote! {
-                            ::std::result::Result::<Option<::pgx::iter::TableIterator<'a, ( #(Option<#syntypes>),*, ) >>, Box<dyn ::std::error::Error>>
+                            ::std::result::Result::<Option<::pgx::iter::TableIterator<'a, ( #(Option<#syntypes>),*, ) >>, Box<dyn std::error::Error + Send + Sync + 'static>>
                         }).wrap_err("Wrapping TableIterator return type")?
                     }
 
                     false => {
                         // it's a `RETURNS SETOF xxx`
-                        syn::parse2(quote! { ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn ::std::error::Error>> })
+                        syn::parse2(quote! { ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
                             .wrap_err("Wrapping SetOfIterator return type")?
                     }
                 },
 
                 false => {
                     // it's a plain `RETURNS xxx`
-                    syn::parse2(quote! { ::std::result::Result<Option<#bare>, Box<dyn ::std::error::Error>> }).wrap_err("Wrapping return type")?
+                    syn::parse2(quote! { ::std::result::Result<Option<#bare>, Box<dyn std::error::Error + Send + Sync + 'static>> }).wrap_err("Wrapping return type")?
                 }
             }
         };

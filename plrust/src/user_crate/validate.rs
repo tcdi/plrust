@@ -1,4 +1,4 @@
-use pgx::pg_sys;
+use pgrx::pg_sys;
 
 use crate::error::PlRustError;
 use crate::user_crate::lint::{required_lints, LintSet};
