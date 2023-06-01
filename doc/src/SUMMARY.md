@@ -20,6 +20,7 @@
 - [Data types](./data-types.md)
     - [No Unsigned Types](./data-types/no-unsigned-types.md)
     - [Arrays](./data-types/arrays.md)
+    - [User Defined Types](./data-types/udts.md)
 - [Built-in functions](./built-in-functions.md)
     - [Logging to PostgreSQL from PL/Rust](./logging.md)
     - [Triggers](./triggers.md)
