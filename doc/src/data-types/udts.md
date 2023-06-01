@@ -54,7 +54,7 @@ $$
 $$;
 ```
 
-A generic accessor, for example requires encoding knowledge of the UDT structure, but provides quite a bit of flexibility.  
+A generic accessor, for example, requires encoding knowledge of the UDT structure, but provides quite a bit of flexibility.  
 
 Note that this function `returns text`.  This is a common denominator type to represent the various attribute types used 
 by `person`.  Fortunately, Postgres and PL/Rust have fantastic support for converting values to text/Strings:
