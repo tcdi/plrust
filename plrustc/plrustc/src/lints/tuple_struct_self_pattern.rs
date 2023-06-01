@@ -3,6 +3,7 @@
 use hir::def::Res;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty;
 
 declare_plrust_lint!(
     pub(crate) PLRUST_TUPLE_STRUCT_SELF_PATTERN,
@@ -16,15 +17,28 @@ impl<'tcx> LateLintPass<'tcx> for TupleStructSelfPat {
         let hir::PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..) = pat.kind else {
             return;
         };
-        if let Res::SelfCtor(..) = path.res {
-            // TODO: ideally we'd validate the visibility of the type (see
-            // https://github.com/rust-lang/rust/commit/be44860ab94f9e469d6f02232d3064a1049c47ba),
-            // but this is a pretty rare pattern, and doing so is pretty painful from here
+        let Res::SelfCtor(ctor_did) = path.res else {
+            return;
+        };
+        let o: Option<ty::TraitRef> = cx.tcx.impl_trait_ref(ctor_did);
+        let Some(trait_ref) = o else {
+            return;
+        };
+        let self_ty = trait_ref.self_ty();
+        let ty::Adt(adt_def, _) = self_ty.kind() else {
+            return;
+        };
+        let ctor = adt_def.non_enum_variant().ctor_def_id().unwrap();
+        if !cx
+            .tcx
+            .visibility(ctor)
+            .is_accessible_from(cx.tcx.parent_module(pat.hir_id).to_def_id(), cx.tcx)
+        {
             cx.lint(
                 PLRUST_TUPLE_STRUCT_SELF_PATTERN,
-                "`Self` pattern on tuple struct",
+                "`Self` pattern on tuple struct used to access private field",
                 |b| b.set_span(pat.span),
-            )
+            );
         }
     }
 }

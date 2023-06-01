@@ -1,5 +1,5 @@
-error: `Self` pattern on tuple struct
-  --> $DIR/tuple_struct_self_pat.rs:10:13
+error: `Self` pattern on tuple struct used to access private field
+  --> $DIR/tuple_struct_self_pat_box.rs:10:13
    |
 LL |         let Self(ptr, _) = self;
    |             ^^^^^^^^^^^^
