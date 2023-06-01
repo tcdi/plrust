@@ -28,7 +28,9 @@ impl<'tcx> LateLintPass<'tcx> for TupleStructSelfPat {
         let ty::Adt(adt_def, _) = self_ty.kind() else {
             return;
         };
-        let ctor = adt_def.non_enum_variant().ctor_def_id().unwrap();
+        let Some(ctor) = adt_def.non_enum_variant().ctor_def_id() else {
+            return;
+        };
         if !cx
             .tcx
             .visibility(ctor)
