@@ -264,3 +264,26 @@ foo::<dyn SomeTrait>();
 // Trait object in type default (enum, union, trait, and so on are all also forbidden)
 struct SomeStruct<T = dyn SomeTrait>(...);
 ```
+
+### `plrust_tuple_struct_self_pattern`
+
+This lint forbids use of a tuple struct named `Self` in pattern position. This
+can be used to bypass struct field privacy prior to Rust 1.71.0
+(<https://github.com/rust-lang/rust/issues/111220>). Once PL/Rust depends on
+1.71.0, this lint will be replaced by one that does nothing, as the offending
+pattern will not compile.
+
+For example, this lint will prevent the following code:
+
+```rs
+mod my {
+    pub struct Foo(&'static str);
+}
+
+impl AsRef<str> for my::Foo {
+    fn as_ref(&self) -> &str {
+        let Self(s) = self;
+        s
+    }
+}
+```
