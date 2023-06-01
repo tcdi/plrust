@@ -59,8 +59,10 @@ fn install_ice_hook() {
         // Separate output with an empty line
         eprintln!();
 
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            rustc_driver::DEFAULT_LOCALE_RESOURCES.into(),
+            false,
+        );
         let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
             rustc_errors::ColorConfig::Auto,
             None,
@@ -71,6 +73,7 @@ fn install_ice_hook() {
             None,
             false,
             false,
+            rustc_errors::TerminalUrl::No,
         ));
         let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 

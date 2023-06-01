@@ -1,5 +1,5 @@
 [toolchain]
-channel = "1.67.1"
-components = [ "rustfmt", "rust-src", "rustc-dev", "cargo" ]
+channel = "1.69.0"
+components = [ "rustfmt", "rust-src", "rustc-dev", "cargo", "llvm-tools" ]
 targets = [ ]
 profile = "minimal"
