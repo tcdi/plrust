@@ -1,0 +1,10 @@
+error: `Self` pattern on tuple struct
+  --> $DIR/tuple_struct_self_pat.rs:10:13
+   |
+LL |         let Self(ptr, _) = self;
+   |             ^^^^^^^^^^^^
+   |
+   = note: `-F plrust-tuple-struct-self-pattern` implied by `-F plrust-lints`
+
+error: aborting due to previous error
+
