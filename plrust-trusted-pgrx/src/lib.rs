@@ -67,6 +67,7 @@ pub use heap_tuple::*;
 /// Support for arbitrary composite types as a "heap tuple".
 pub mod heap_tuple {
     pub use ::pgrx::composite_type;
+    pub use ::pgrx::datum::TryFromDatumError;
     pub use ::pgrx::heap_tuple::PgHeapTuple;
 }
 
