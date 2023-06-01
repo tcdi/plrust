@@ -95,7 +95,6 @@ const DEFAULT_LINTS: &'static str = "\
     plrust_print_macros, \
     plrust_stdio, \
     plrust_suspicious_trait_object, \
-    plrust_tuple_struct_self_pattern, \
     unsafe_code, \
     deprecated, \
     suspicious_auto_trait_impls, \
