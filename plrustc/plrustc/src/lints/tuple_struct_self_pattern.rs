@@ -20,11 +20,11 @@ impl<'tcx> LateLintPass<'tcx> for TupleStructSelfPat {
         let Res::SelfCtor(ctor_did) = path.res else {
             return;
         };
-        let o: Option<ty::TraitRef> = cx.tcx.impl_trait_ref(ctor_did);
+        let o: Option<ty::EarlyBinder<ty::TraitRef>> = cx.tcx.impl_trait_ref(ctor_did);
         let Some(trait_ref) = o else {
             return;
         };
-        let self_ty = trait_ref.self_ty();
+        let self_ty = trait_ref.0.self_ty();
         let ty::Adt(adt_def, _) = self_ty.kind() else {
             return;
         };
