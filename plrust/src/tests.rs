@@ -1292,3 +1292,29 @@ tokio = { version = "1.19.2", features = ["rt", "net"]}"#
         ]
     }
 }
+
+#[test]
+#[cfg(feature = "trusted")]
+fn test_rustc_plrustc_version() {
+    fn rust_minor_version(rustc: &str) -> Option<u32> {
+        let output = std::process::Command::new(rustc)
+            .arg("--version")
+            .output()
+            .ok()?;
+        let version = std::str::from_utf8(&output.stdout).ok()?;
+        let mut iter = version.split('.');
+        if iter.next() != Some("rustc 1") {
+            None
+        } else {
+            iter.next()?.parse().ok()
+        }
+    }
+    let rustc_version = rust_minor_version("rustc").expect("Failed to get `rustc` minor version");
+    let plrustc_version =
+        rust_minor_version("plrustc").expect("Failed to get `plrustc` minor version");
+    assert_eq!(
+        rustc_version,
+        plrustc_version,
+        "`rustc` and `plrustc` minor version do not match. Perhaps you need to adjust your rustup settings?",
+    );
+}
