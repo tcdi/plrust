@@ -151,6 +151,8 @@ jobs:
         EOF
         echo ""
 
+        sudo su -l - postgres
+
         echo "----- Install Rust and components -----"
         # TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER
         TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && rustup install $TOOLCHAIN_VER
