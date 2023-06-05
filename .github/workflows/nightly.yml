@@ -122,7 +122,7 @@ jobs:
         echo ""
 
         echo "----- Install toml Rubygem -----"
-        gem install --no-document toml
+        sudo gem install --no-document toml
         echo ""
 
         echo "----- Extract Rust toolchain version from rust-toolchain.toml -----"
