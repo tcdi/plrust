@@ -9,3 +9,4 @@ note: Please file a bug report at <https://github.com/tcdi/plrust/issues/new>
 
 note: plrustc version: <version here>
 
+thread panicked while panicking. aborting.

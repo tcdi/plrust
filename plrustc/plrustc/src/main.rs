@@ -281,6 +281,13 @@ impl FileLoader for ErrorHidingFileLoader {
             replacement_error()
         })
     }
+
+    fn read_binary_file(&self, path: &Path) -> std::io::Result<Vec<u8>> {
+        std::fs::read(path).map_err(|_| {
+            // TODO: Should there be a way to preserve errors for debugging?
+            replacement_error()
+        })
+    }
 }
 
 struct PlrustcFileLoader {
@@ -311,6 +318,14 @@ impl FileLoader for PlrustcFileLoader {
     fn read_file(&self, path: &Path) -> std::io::Result<String> {
         if path.exists() && !path.is_dir() && self.is_inside_allowed_dir(path) {
             ErrorHidingFileLoader.read_file(path)
+        } else {
+            Err(replacement_error())
+        }
+    }
+
+    fn read_binary_file(&self, path: &Path) -> std::io::Result<Vec<u8>> {
+        if path.exists() && !path.is_dir() && self.is_inside_allowed_dir(path) {
+            ErrorHidingFileLoader.read_binary_file(path)
         } else {
             Err(replacement_error())
         }
