@@ -75,19 +75,21 @@ jobs:
         echo ""
         echo "----- Extract plrust version -----"
 
-        ruby <<EOF
-        require 'toml'
-        toml=TOML.load_file("#{ENV['GITHUB_WORKSPACE']}/plrust/Cargo.toml")
-        if ver=toml['package']['version']
-          File.open('/tmp/.plrust-ver', 'w') { |file| file.write(ver) }
-        else
-          raise 'Could not determine plrust version. Is plrust/Cargo.toml missing or malformed?'
-        end
-        EOF
-        echo ""
+        # ruby <<EOF
+        # require 'toml'
+        # toml=TOML.load_file("#{ENV['GITHUB_WORKSPACE']}/plrust/Cargo.toml")
+        # if ver=toml['package']['version']
+        #   File.open('/tmp/.plrust-ver', 'w') { |file| file.write(ver) }
+        # else
+        #   raise 'Could not determine plrust version. Is plrust/Cargo.toml missing or malformed?'
+        # end
+        # EOF
+        # echo ""
+
+        PLRUST_VER=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="plrust")|.version')
 
         echo "-- Building artifact via Docker --"
-        PLRUST_VER=$(</tmp/.plrust-ver) && docker build \
+        docker build \
           --build-arg PG_VER=$PG_VER \
           --build-arg PLRUST_VER=$PLRUST_VER\
           -f .github/docker/Dockerfile.debian-artifact-build \
