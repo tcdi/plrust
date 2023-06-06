@@ -14,11 +14,10 @@ on:
 
 env:
   RUST_BACKTRACE: 1
-  # CARGO_LOG: cargo::core::compiler::fingerprint=info # Uncomment this to output compiler fingerprint info
 
 jobs:
-  artifact_test:
-    name: Test .deb Artifacts
+  deb_artifact_test_x86_64:
+    name: (nightly) Test .deb Artifacts x86_64
     runs-on: [ubuntu-latest]
     defaults:
       run:
@@ -27,7 +26,6 @@ jobs:
     strategy:
       matrix:
         pg_version: ["pg13", "pg14", "pg15"]
-        # pg_version: ["pg13"]
       fail-fast: false
 
     env:
@@ -74,37 +72,31 @@ jobs:
         echo "----- Install toml Rubygem -----"
         sudo gem install --no-document toml
         echo ""
+
         echo "----- Extract plrust version -----"
-
-        # ruby <<EOF
-        # require 'toml'
-        # toml=TOML.load_file("#{ENV['GITHUB_WORKSPACE']}/plrust/Cargo.toml")
-        # if ver=toml['package']['version']
-        #   File.open('/tmp/.plrust-ver', 'w') { |file| file.write(ver) }
-        # else
-        #   raise 'Could not determine plrust version. Is plrust/Cargo.toml missing or malformed?'
-        # end
-        # EOF
-        # echo ""
-
         PLRUST_VER=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="plrust")|.version')
+        echo ""
 
-        echo "-- Building artifact via Docker --"
+        echo "----- Build artifact via Docker -----"
         docker build \
           --build-arg PG_VER=$PG_VER \
           --build-arg PLRUST_VER=$PLRUST_VER\
           -f .github/docker/Dockerfile.debian-artifact-build \
           -t plrust-debian \
           .
+        echo ""
 
         echo "-- Creating container --"
         container_id=$(docker create plrust-debian)
+        echo ""
 
         echo "-- Extracting file from container --"
         docker cp $container_id:/out /home/runner
+        echo ""
 
         echo "-- Destroying container --"
         docker rm -v $container_id
+        echo ""
 
     - name: Install official version of PostgreSQL and supporting apps/libraries
       run: |
@@ -140,6 +132,8 @@ jobs:
         sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
         echo ""
 
+    - name: Set up rust and components for postgres user
+      run: |
         echo "----- Extract Rust toolchain version from rust-toolchain.toml -----"
         ruby <<EOF
         require 'toml'
@@ -152,15 +146,10 @@ jobs:
         EOF
         echo ""
 
-        # sudo su -l - postgres
-
-        echo "----- Install Rust and components -----"
-        #TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER
+        echo "----- Install Rust and components for postgres user -----"
         sudo runuser -l postgres -c 'TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER'
-
-        # TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && rustup install $TOOLCHAIN_VER
-        # rustup component add llvm-tools-preview rustc-dev
         sudo runuser -l postgres -c 'rustup component add llvm-tools-preview rustc-dev'
+        echo ""
 
     - name: Install pl/Rust Debian package
       run: |
@@ -170,7 +159,7 @@ jobs:
 
         sudo apt install -y /tmp/$APK_BASE
 
-    - name: Set up PostgreSQL configuration and restart
+    - name: Set up PostgreSQL configuration and restart service
       run: |
         # NOTE: DO NOT USE ANY OF THIS IN A PRODUCTION SYSTEM!
         echo "----- Setting up host-based auth -----"
@@ -186,13 +175,6 @@ jobs:
 
         echo "----- Restarting postgresql -----"
         sudo service postgresql restart
-
-    # - name: Setup tunnel
-    #   uses: joshlarsen/ssh-tunnel-action@main
-    #   with:
-    #     timeout: 1h
-    #     ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-    #     ngrok_token: ${{ secrets.NGROK_TOKEN }}
 
     - name: Create pl/Rust extension and run a function
       run: |
