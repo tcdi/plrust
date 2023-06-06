@@ -151,12 +151,15 @@ jobs:
         EOF
         echo ""
 
-        sudo su -l - postgres
+        # sudo su -l - postgres
 
         echo "----- Install Rust and components -----"
-        TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER
+        #TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER
+        runuser -l postgres -c 'TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER'
+
         # TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && rustup install $TOOLCHAIN_VER
-        rustup component add llvm-tools-preview rustc-dev
+        # rustup component add llvm-tools-preview rustc-dev
+        runuser -l postgres -c 'rustup component add llvm-tools-preview rustc-dev'
 
     - name: Install pl/Rust Debian package
       run: |
