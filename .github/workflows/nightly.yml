@@ -26,8 +26,8 @@ jobs:
 
     strategy:
       matrix:
-        # pg_version: ["pg13", "pg14", "pg15"]
-        pg_version: ["pg13"]
+        pg_version: ["pg13", "pg14", "pg15"]
+        # pg_version: ["pg13"]
       fail-fast: false
 
     env:
@@ -170,37 +170,32 @@ jobs:
 
         sudo apt install -y /tmp/$APK_BASE
 
-    - name: Set up PostgreSQL configuration
+    - name: Set up PostgreSQL configuration and restart
       run: |
-        ls -lath /etc/postgresql
-        ls -lath /etc/postgresql/13
-        ls -lath /etc/postgresql/13/main/
-
+        # NOTE: DO NOT USE ANY OF THIS IN A PRODUCTION SYSTEM!
         echo "----- Setting up host-based auth -----"
-        # Set up host based auth. *DO NOT* use this in production!
-
-
-        #  gpg --dearmor | sudo tee -a /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
         echo 'local all all trust' | sudo tee /etc/postgresql/$PG_VER/main/pg_hba.conf >/dev/null
         echo 'host all all 0.0.0.0/0 trust' | sudo tee -a /etc/postgresql/$PG_VER/main/pg_hba.conf >/dev/null
 
         echo "----- Setting plrust configuration -----"
-        # Set up plrust configuration options
         echo "shared_preload_libraries='plrust'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
         echo "plrust.work_dir='/tmp'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
 
-    - name: Setup tunnel
-      uses: joshlarsen/ssh-tunnel-action@main
-      with:
-        timeout: 1h
-        ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-        ngrok_token: ${{ secrets.NGROK_TOKEN }}
+        echo "----- Ensure Postgres is listening to port 5432 -----"
+        sudo perl -pi -e 's/^port\s?=.*/port = 5432/' /etc/postgresql/$PG_VER/main/postgresql.conf
 
-    - name: Try a function
-      run: |
         echo "----- Restarting postgresql -----"
         sudo service postgresql restart
 
+    # - name: Setup tunnel
+    #   uses: joshlarsen/ssh-tunnel-action@main
+    #   with:
+    #     timeout: 1h
+    #     ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+    #     ngrok_token: ${{ secrets.NGROK_TOKEN }}
+
+    - name: Create pl/Rust extension and run a function
+      run: |
         sudo runuser -l postgres -c 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"'
         sudo runuser -l postgres -c "psql -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS \$\$ Ok(Some(1)) \$\$;'"
         sudo runuser -l postgres -c 'psql -c "SELECT * FROM plrust.one();"'
