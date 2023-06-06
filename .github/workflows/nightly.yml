@@ -165,7 +165,10 @@ jobs:
     - name: Install pl/Rust Debian package
       run: |
         FILE=$(ls /home/runner/out/*.deb | head -n 1)
-        sudo apt install -y $FILE
+        APK_BASE=$(basename $FILE)
+        mv $FILE /tmp
+
+        sudo apt install -y /tmp/$APK_BASE
 
     - name: Set up PostgreSQL configuration
       run: |
