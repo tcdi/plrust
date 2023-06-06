@@ -169,6 +169,9 @@ jobs:
 
     - name: Set up PostgreSQL configuration and restart service
       run: |
+        ls -lath /etc/postgresql
+        ls -lath /etc/postgresql/13
+        ls -lath /etc/postgresql/13/main/
 
         echo "----- Setting up host-based auth -----"
         # Set up host based auth. *DO NOT* use this in production!
