@@ -19,7 +19,6 @@ on:
 #     - cron: '0 7 * * *'
 #   workflow_dispatch:
 
-
 env:
   RUST_BACKTRACE: 1
 
