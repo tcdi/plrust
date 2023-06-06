@@ -253,6 +253,13 @@ jobs:
     - name: Build container from Dockerfile.try
       run: docker build -f Dockerfile.try -t tcdi/try-plrust .
 
+    - name: Setup tunnel
+      uses: joshlarsen/ssh-tunnel-action@main
+      with:
+        timeout: 1h
+        ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        ngrok_token: ${{ secrets.NGROK_TOKEN }}
+
     - name: Run container as server and try function
       run: |
         sudo docker run --detach -p 5432:5432 tcdi/try-plrust server
