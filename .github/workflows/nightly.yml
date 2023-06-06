@@ -188,3 +188,9 @@ jobs:
 
         echo "----- Restarting postgresql -----"
         sudo service postgresql restart
+
+    - name: Try a function
+      run: |
+        sudo runuser -l postgres -c 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"'
+        sudo runuser -l postgres -c 'psql -c "CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;"'
+        sudo runuser -l postgres -c 'psql -c "SELECT * FROM plrust.one();"'
