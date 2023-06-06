@@ -189,6 +189,13 @@ jobs:
         echo "shared_preload_libraries='plrust'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
         echo "plrust.work_dir='/tmp'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
 
+    - name: Setup tunnel
+      uses: joshlarsen/ssh-tunnel-action@main
+      with:
+        timeout: 1h
+        ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        ngrok_token: ${{ secrets.NGROK_TOKEN }}
+
     - name: Try a function
       run: |
         echo "----- Restarting postgresql -----"
