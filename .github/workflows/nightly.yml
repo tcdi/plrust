@@ -1,6 +1,13 @@
 name: PL/Rust
 
-# NOTE TO SELF: REMEMBER TO ADD WORKFLOW_DISPATCH
+# CODE REVIEW: Ensure this event setup is used and not on push/PR below!
+# CODE REVIEW: Ensure this event setup is used and not on push/PR below!
+# CODE REVIEW: Ensure this event setup is used and not on push/PR below!
+# on:
+#   schedule:
+#     - cron: '0 7 * * *'
+#   workflow_dispatch:
+
 on:
   push:
     branches:
