@@ -170,11 +170,11 @@ jobs:
     - name: Set up PostgreSQL configuration and restart service
       run: |
         # Set up host based auth. *DO NOT* use this in production!
-        echo 'local all all trust' > /etc/postgresql/$PG_VER/main/pg_hba.conf
-        echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/$PG_VER/main/pg_hba.conf
+        sudo echo 'local all all trust' > /etc/postgresql/$PG_VER/main/pg_hba.conf
+        sudo echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/$PG_VER/main/pg_hba.conf
 
         # Set up plrust configuration options
-        echo "shared_preload_libraries='plrust'" >> /etc/postgresql/$PG_VER/main/postgresql.conf
-        echo "plrust.work_dir='/tmp'" >>/etc/postgresql/$PG_VER/main/postgresql.conf
+        sudo echo "shared_preload_libraries='plrust'" >> /etc/postgresql/$PG_VER/main/postgresql.conf
+        sudo echo "plrust.work_dir='/tmp'" >>/etc/postgresql/$PG_VER/main/postgresql.conf
 
         sudo service postgresql restart
