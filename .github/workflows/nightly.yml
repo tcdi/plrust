@@ -167,7 +167,7 @@ jobs:
         FILE=$(ls /home/runner/out/*.deb | head -n 1)
         sudo apt install -y $FILE
 
-    - name: Set up PostgreSQL configuration and restart service
+    - name: Set up PostgreSQL configuration
       run: |
         ls -lath /etc/postgresql
         ls -lath /etc/postgresql/13
@@ -186,11 +186,11 @@ jobs:
         echo "shared_preload_libraries='plrust'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
         echo "plrust.work_dir='/tmp'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
 
+    - name: Try a function
+      run: |
         echo "----- Restarting postgresql -----"
         sudo service postgresql restart
 
-    - name: Try a function
-      run: |
         sudo runuser -l postgres -c 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"'
-        sudo runuser -l postgres -c 'psql -c "CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;"'
+        sudo runuser -l postgres -c "psql -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS \$\$ Ok(Some(1)) \$\$;'"
         sudo runuser -l postgres -c 'psql -c "SELECT * FROM plrust.one();"'
