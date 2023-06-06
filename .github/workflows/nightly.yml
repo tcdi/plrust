@@ -175,13 +175,16 @@ jobs:
 
         echo "----- Setting up host-based auth -----"
         # Set up host based auth. *DO NOT* use this in production!
-        sudo echo 'local all all trust' > /etc/postgresql/$PG_VER/main/pg_hba.conf
-        sudo echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/$PG_VER/main/pg_hba.conf
+
+
+        #  gpg --dearmor | sudo tee -a /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
+        echo 'local all all trust' | sudo tee /etc/postgresql/$PG_VER/main/pg_hba.conf >/dev/null
+        echo 'host all all 0.0.0.0/0 trust' | sudo tee -a /etc/postgresql/$PG_VER/main/pg_hba.conf >/dev/null
 
         echo "----- Setting plrust configuration -----"
         # Set up plrust configuration options
-        sudo echo "shared_preload_libraries='plrust'" >> /etc/postgresql/$PG_VER/main/postgresql.conf
-        sudo echo "plrust.work_dir='/tmp'" >> /etc/postgresql/$PG_VER/main/postgresql.conf
+        echo "shared_preload_libraries='plrust'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
+        echo "plrust.work_dir='/tmp'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
 
         echo "----- Restarting postgresql -----"
         sudo service postgresql restart
