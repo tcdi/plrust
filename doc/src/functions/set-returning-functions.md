@@ -67,7 +67,7 @@ split_whitespace
 ## `RETURNS TABLE (...)`
 
 Returning a table with multiple named (and typed) columns is similar to returning a test.  Instead of `SetOfIterator`, 
-PL/Rust uses `TableIterator`.  `TableIterator` is a Rust `Iterator` who's Item is a tuple, where the member types match
+PL/Rust uses `TableIterator`.  `TableIterator` is a Rust `Iterator` who's Item is a tuple where its field types match
 those of the UDF being created:
 
 ```sql
@@ -126,5 +126,5 @@ And the results from this function are:
 ```
 
 The important thing to keep in mind when writing PL/Rust functions that `RETURNS TABLE` is that the structure being 
-returned is a Rust tuple of `Option<T>`s where each member's `T` is the [return type](return-type.md) as specified in 
+returned is a Rust tuple of `Option<T>`s where each field's `T` is the [return type](return-type.md) as specified in 
 the `TABLE (...)` clause.
