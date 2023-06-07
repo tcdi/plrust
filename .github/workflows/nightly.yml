@@ -263,7 +263,9 @@ jobs:
     - name: Run container as server and try function
       run: |
         sudo docker run --detach -p 5432:5432 tcdi/try-plrust server
+        sleep 30
         psql -h 127.0.0.1 -U postgres -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;'
+        psql -h 127.0.0.1 -U postgres -c 'SELECT * FROM plrust.one()'
 
         # container_id=$(sudo docker run --detach -p 5432:5432 tcdi/try-plrust server)
         # sudo docker ps
