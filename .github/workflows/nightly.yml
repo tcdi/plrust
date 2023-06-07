@@ -210,30 +210,30 @@ jobs:
     # The default installation of Docker on Github Actions runners are pretty outdated, as the artifact builder
     # Dockerfiles require a newer version of Docker that has heredoc support. This may not be necesssary in the future,
     # but it is definitely needed at the time of this writing.
-    # - name: Install newer version of Docker
-    #   run: |
-    #     echo "-- Remove existing installations of Docker --"
-    #     sudo apt-get remove docker docker-engine docker.io containerd runc
+    - name: Install newer version of Docker
+      run: |
+        echo "-- Remove existing installations of Docker --"
+        sudo apt-get remove docker docker-engine docker.io containerd runc
 
-    #     echo "-- Install new version -- "
-    #     sudo apt-get update
-    #     sudo apt-get install \
-    #         ca-certificates \
-    #         curl \
-    #         gnupg
+        echo "-- Install new version -- "
+        sudo apt-get update
+        sudo apt-get install \
+            ca-certificates \
+            curl \
+            gnupg
 
-    #     sudo install -m 0755 -d /etc/apt/keyrings
-    #     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    #     sudo chmod a+r /etc/apt/keyrings/docker.gpg
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-    #     echo \
-    #       "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    #       "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-    #       sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        echo \
+          "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    #     sudo apt-get update
+        sudo apt-get update
 
-    #     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
     - name: Install Postgres client
       run: |
@@ -253,22 +253,9 @@ jobs:
     - name: Build container from Dockerfile.try
       run: docker build -f Dockerfile.try -t tcdi/try-plrust .
 
-    # - name: Setup tunnel
-    #   uses: joshlarsen/ssh-tunnel-action@main
-    #   with:
-    #     timeout: 1h
-    #     ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-    #     ngrok_token: ${{ secrets.NGROK_TOKEN }}
-
     - name: Run container as server and try function
       run: |
         sudo docker run --detach -p 5432:5432 tcdi/try-plrust server
         sleep 30
         psql -h 127.0.0.1 -U postgres -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;'
         psql -h 127.0.0.1 -U postgres -c 'SELECT * FROM plrust.one()'
-
-        # container_id=$(sudo docker run --detach -p 5432:5432 tcdi/try-plrust server)
-        # sudo docker ps
-        # psql -h 127.0.0.1 -U postgres -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;' || true
-        # sudo docker logs $container_id
-        # # psql -h 127.0.0.1 -U postgres -c 'SELECT * FROM plrust.one()'
