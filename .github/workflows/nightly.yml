@@ -253,15 +253,16 @@ jobs:
     - name: Build container from Dockerfile.try
       run: docker build -f Dockerfile.try -t tcdi/try-plrust .
 
-    - name: Setup tunnel
-      uses: joshlarsen/ssh-tunnel-action@main
-      with:
-        timeout: 1h
-        ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-        ngrok_token: ${{ secrets.NGROK_TOKEN }}
+    # - name: Setup tunnel
+    #   uses: joshlarsen/ssh-tunnel-action@main
+    #   with:
+    #     timeout: 1h
+    #     ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+    #     ngrok_token: ${{ secrets.NGROK_TOKEN }}
 
     - name: Run container as server and try function
       run: |
         sudo docker run --detach -p 5432:5432 tcdi/try-plrust server
-        psql -h localhost -U postgres -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;'
-        psql -h localhost -U postgres -c 'SELECT * FROM plrust.one()'
+        sudo docker ps
+        psql -h 127.0.0.1 -U postgres -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;'
+        psql -h 127.0.0.1 -U postgres -c 'SELECT * FROM plrust.one()'
