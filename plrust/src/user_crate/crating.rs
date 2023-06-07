@@ -84,17 +84,10 @@ impl FnCrating {
                 // point forward
                 assert_eq!(argnames.len(), argtypes.len());
 
-                let argument_oids_and_names = argtypes
-                    .into_iter()
-                    .map(|oid| PgOid::from(oid))
-                    .zip(argnames.into_iter())
-                    .collect();
-
                 CrateVariant::function(
                     argnames,
                     argtypes,
                     argmodes,
-                    argument_oids_and_names,
                     PgOid::from(meta.prorettype()),
                     meta.proretset(),
                     meta.proisstrict(),
@@ -384,10 +377,6 @@ mod tests {
                 let argnames = vec![Ident::new("arg0", Span::call_site())];
                 let argtypes = vec![pg_sys::TEXTOID];
                 let argmodes = vec![ProArgMode::In];
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("arg0")?,
-                )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
@@ -395,7 +384,6 @@ mod tests {
                     argnames,
                     argtypes,
                     argmodes,
-                    argument_oids_and_names,
                     return_oid,
                     return_set,
                     is_strict,
@@ -467,10 +455,6 @@ mod tests {
                 let argnames = vec![Ident::new("val", Span::call_site())];
                 let argtypes = vec![pg_sys::INT4OID];
                 let argmodes = vec![ProArgMode::In];
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::INT4OID.value()),
-                    syn::parse_str("val")?,
-                )];
                 let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
                 let is_strict = false;
                 let return_set = false;
@@ -478,7 +462,6 @@ mod tests {
                     argnames,
                     argtypes,
                     argmodes,
-                    argument_oids_and_names,
                     return_oid,
                     return_set,
                     is_strict,
@@ -550,10 +533,6 @@ mod tests {
                 let argnames = vec![Ident::new("val", Span::call_site())];
                 let argtypes = vec![pg_sys::TEXTOID];
                 let argmodes = vec![ProArgMode::In];
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("val")?,
-                )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = true;
@@ -561,7 +540,6 @@ mod tests {
                     argnames,
                     argtypes,
                     argmodes,
-                    argument_oids_and_names,
                     return_oid,
                     return_set,
                     is_strict,

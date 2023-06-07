@@ -274,6 +274,7 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::UUIDOID => quote! { pgrx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
+            PgBuiltInOids::RECORDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
         },
         PgOid::Custom(oid) => match PgHeapTuple::new_composite_type_by_oid(oid) {
@@ -461,10 +462,6 @@ mod tests {
                 let argnames = vec![Ident::new("arg0", Span::call_site())];
                 let argtypes = vec![pg_sys::TEXTOID];
                 let argmodes = vec![ProArgMode::In];
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("arg0")?,
-                )];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
@@ -472,7 +469,6 @@ mod tests {
                     argnames,
                     argtypes,
                     argmodes,
-                    argument_oids_and_names,
                     return_oid,
                     return_set,
                     is_strict,

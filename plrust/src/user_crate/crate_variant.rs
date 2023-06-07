@@ -11,7 +11,7 @@ use crate::user_crate::capabilities::FunctionCapabilitySet;
 use crate::{user_crate::oid_to_syn_type, PlRustError};
 use eyre::WrapErr;
 use pgrx::{pg_sys, PgOid};
-use proc_macro2::{Ident, Span};
+use proc_macro2::Ident;
 use quote::quote;
 
 /// What kind of PL/Rust function must be built
@@ -37,10 +37,9 @@ pub(crate) enum CrateVariant {
 impl CrateVariant {
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn function(
-        argnames: Vec<Ident>,
+        mut argnames: Vec<Ident>,
         argtypes: Vec<pg_sys::Oid>,
         argmodes: Vec<ProArgMode>,
-        argument_oids_and_names: Vec<(PgOid, syn::Ident)>,
         return_oid: PgOid,
         return_set: bool,
         is_strict: bool,
@@ -61,13 +60,6 @@ impl CrateVariant {
         );
 
         let return_table = return_set && argmodes.contains(&ProArgMode::Table);
-
-        // provide default names for any args that don't have one
-        let mut argnames = argnames
-            .into_iter()
-            .enumerate()
-            .map(|(idx, name)| name.unwrap_or_else(|| format!("arg{}", idx)))
-            .collect::<Vec<_>>();
 
         // convert the raw type oids into `PgOid`
         let mut argtypes = argtypes
@@ -102,7 +94,7 @@ impl CrateVariant {
         };
 
         let mut arguments = Vec::new();
-        for (argument_oid, arg_name) in argument_oids_and_names.into_iter() {
+        for (arg_name, argument_oid) in argnames.into_iter().zip(argtypes) {
             let rust_type: syn::Type = {
                 let bare = oid_to_syn_type(&argument_oid, false, &capabilities)?;
                 match is_strict {
@@ -133,13 +125,13 @@ impl CrateVariant {
                             .map(|t| oid_to_syn_type(&t, true, &capabilities))
                             .collect::<Result<Vec<_>, _>>()?;
                         syn::parse2(quote! {
-                            ::std::result::Result::<Option<::pgx::iter::TableIterator<'a, ( #(Option<#syntypes>),*, ) >>, Box<dyn std::error::Error + Send + Sync + 'static>>
+                            ::std::result::Result::<Option<::pgrx::iter::TableIterator<'a, ( #(::pgrx::name!(arg, Option<#syntypes>)),*, ) >>, Box<dyn std::error::Error + Send + Sync + 'static>>
                         }).wrap_err("Wrapping TableIterator return type")?
                     }
 
                     false => {
                         // it's a `RETURNS SETOF xxx`
-                        syn::parse2(quote! { ::std::result::Result<Option<::pgx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
+                        syn::parse2(quote! { ::std::result::Result<Option<::pgrx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
                             .wrap_err("Wrapping SetOfIterator return type")?
                     }
                 },

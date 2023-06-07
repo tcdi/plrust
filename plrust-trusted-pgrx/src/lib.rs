@@ -12,7 +12,7 @@ pub mod prelude {
 }
 
 pub use ::pgrx::{
-    debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, notice, warning,
+    debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, name, notice, warning,
 };
 
 pub use datum::*;
