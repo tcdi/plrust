@@ -40,7 +40,7 @@ USER postgres
 ENV USER postgres
 
 # Install Rust
-RUN wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=1.69.0
+RUN wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=1.70.0
 ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 
 # Copy in plrust source
