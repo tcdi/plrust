@@ -1235,19 +1235,15 @@ mod tests {
         Spi::run("CREATE FUNCTION invalid_arg_identifier(\"this isn't a valid rust identifier\" int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
     }
 
-    // pgrx doesn't yet support converting a one-field tuple (`( T )`) into what we'd need here
-    #[should_panic(
-        expected = "the trait bound `std::option::Option<{integer}>: pgrx::htup::IntoHeapTuple` is not satisfied"
-    )]
     #[pg_test]
     fn test_srf_one_col() -> spi::Result<()> {
         Spi::run(
             "CREATE FUNCTION srf_one_col() RETURNS TABLE (a int) LANGUAGE plrust AS $$
-            Ok(Some(TableIterator::new(vec![(Some(1))].into_iter())))
+            Ok(Some(TableIterator::new(vec![( Some(1), )].into_iter())))
         $$;",
         )?;
 
-        let a = Spi::get_one::<i32>("SELECT * FROM srf_two_col()")?;
+        let a = Spi::get_one::<i32>("SELECT * FROM srf_one_col()")?;
         assert_eq!(a, Some(1));
 
         Ok(())
