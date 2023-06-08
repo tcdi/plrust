@@ -1234,6 +1234,35 @@ mod tests {
     fn invalid_arg_identifier() -> spi::Result<()> {
         Spi::run("CREATE FUNCTION invalid_arg_identifier(\"this isn't a valid rust identifier\" int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
     }
+
+    #[pg_test]
+    fn test_srf_one_col() -> spi::Result<()> {
+        Spi::run(
+            "CREATE FUNCTION srf_one_col() RETURNS TABLE (a int) LANGUAGE plrust AS $$
+            Ok(Some(TableIterator::new(vec![( Some(1), )].into_iter())))
+        $$;",
+        )?;
+
+        let a = Spi::get_one::<i32>("SELECT * FROM srf_one_col()")?;
+        assert_eq!(a, Some(1));
+
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_srf_two_col() -> spi::Result<()> {
+        Spi::run(
+            "CREATE FUNCTION srf_two_col() RETURNS TABLE (a int, b int) LANGUAGE plrust AS $$
+            Ok(Some(TableIterator::new(vec![(Some(1), Some(2))].into_iter())))
+        $$;",
+        )?;
+
+        let (a, b) = Spi::get_two::<i32, i32>("SELECT * FROM srf_two_col()")?;
+        assert_eq!(a, Some(1));
+        assert_eq!(b, Some(2));
+
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]

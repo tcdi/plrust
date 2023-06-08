@@ -76,6 +76,7 @@ pub use iter::*;
 /// Return iterators from plrust functions
 pub mod iter {
     pub use ::pgrx::iter::{SetOfIterator, TableIterator};
+    pub use ::pgrx::name;
 }
 
 #[doc(hidden)]

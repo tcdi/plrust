@@ -13,7 +13,7 @@ use pgrx::{pg_sys, PgOid};
 use quote::quote;
 
 use crate::gucs::get_trusted_pgrx_version;
-use crate::pgproc::PgProc;
+use crate::pgproc::{PgProc, ProArgMode};
 use crate::user_crate::lint::{compile_lints, LintSet};
 use crate::{
     user_crate::{parse_source_and_deps, CrateState, CrateVariant, FnVerify},
@@ -69,16 +69,12 @@ impl FnCrating {
             true => CrateVariant::trigger(),
             false => {
                 let argnames = meta.proargnames();
-                let argtypes = meta.proargtypes();
+                let argtypes = meta.proallargtypes();
+                let argmodes = meta.proargmodes();
 
                 // quick fix for issue #197 (and likely related problems) -- we don't yet support these things
-                let argmodes = meta.proargmodes();
-                if argmodes.contains(&('t' as i8)) {
-                    todo!("RETURNS TABLE functions")
-                } else if argmodes.contains(&('o' as i8)) {
-                    todo!("OUT arguments")
-                } else if argmodes.contains(&('b' as i8)) {
-                    todo!("INOUT arguments")
+                if argmodes.contains(&ProArgMode::Out) || argmodes.contains(&ProArgMode::InOut) {
+                    panic!("PL/Rust does not support functions with `OUT` or `INOUT` arguments")
                 }
 
                 // we must have the same number of argument names and argument types.  It's seemingly
@@ -86,14 +82,10 @@ impl FnCrating {
                 // point forward
                 assert_eq!(argnames.len(), argtypes.len());
 
-                let argument_oids_and_names = argtypes
-                    .into_iter()
-                    .map(|oid| PgOid::from(oid))
-                    .zip(argnames.into_iter())
-                    .collect();
-
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     PgOid::from(meta.prorettype()),
                     meta.proretset(),
                     meta.proisstrict(),
@@ -367,6 +359,7 @@ fn safe_mod(bare_fn: syn::ItemFn) -> eyre::Result<(syn::ItemMod, LintSet)> {
 mod tests {
     use crate::user_crate::capabilities::FunctionCapabilitySet;
     use pgrx::*;
+    use proc_macro2::{Ident, Span};
     use syn::parse_quote;
 
     use super::*;
@@ -379,15 +372,16 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("arg0")?,
-                )];
+                let argnames = vec![Ident::new("arg0", Span::call_site())];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     return_oid,
                     return_set,
                     is_strict,
@@ -456,15 +450,16 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::INT4OID.value()),
-                    syn::parse_str("val")?,
-                )];
+                let argnames = vec![Ident::new("val", Span::call_site())];
+                let argtypes = vec![pg_sys::INT4OID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::INT8OID.value());
                 let is_strict = false;
                 let return_set = false;
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     return_oid,
                     return_set,
                     is_strict,
@@ -533,15 +528,16 @@ mod tests {
             let db_oid = unsafe { pg_sys::MyDatabaseId };
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("val")?,
-                )];
+                let argnames = vec![Ident::new("val", Span::call_site())];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = true;
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     return_oid,
                     return_set,
                     is_strict,

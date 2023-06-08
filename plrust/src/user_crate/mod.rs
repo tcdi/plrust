@@ -274,6 +274,7 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::UUIDOID => quote! { pgrx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
+            PgBuiltInOids::RECORDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
         },
         PgOid::Custom(oid) => match PgHeapTuple::new_composite_type_by_oid(oid) {
@@ -440,7 +441,9 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
+    use crate::pgproc::ProArgMode;
     use pgrx::*;
+    use proc_macro2::{Ident, Span};
     use quote::quote;
     use syn::parse_quote;
 
@@ -456,15 +459,16 @@ mod tests {
             let target_dir = crate::gucs::work_dir();
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("arg0")?,
-                )];
+                let argnames = vec![Ident::new("arg0", Span::call_site())];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     return_oid,
                     return_set,
                     is_strict,
