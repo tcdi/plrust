@@ -116,28 +116,27 @@ impl CrateVariant {
 
         let return_type: syn::Type = {
             let bare = oid_to_syn_type(&return_oid, true, &capabilities)?;
-            match return_set {
-                true => match return_table {
-                    true => {
-                        // it's a `RETURNS TABLE(...)`
-                        let syntypes = tabletypes
-                            .into_iter()
-                            .map(|t| oid_to_syn_type(&t, true, &capabilities))
-                            .collect::<Result<Vec<_>, _>>()?;
-                        syn::parse2(quote! {
+
+            match (return_set, return_table) {
+                // it's a `RETURNS TABLE(...)`
+                (true, true) => {
+                    let syntypes = tabletypes
+                        .into_iter()
+                        .map(|t| oid_to_syn_type(&t, true, &capabilities))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    syn::parse2(quote! {
                             ::std::result::Result::<Option<::pgrx::iter::TableIterator<'a, ( #(::pgrx::name!(arg, Option<#syntypes>)),*, ) >>, Box<dyn std::error::Error + Send + Sync + 'static>>
                         }).wrap_err("Wrapping TableIterator return type")?
-                    }
+                }
 
-                    false => {
-                        // it's a `RETURNS SETOF xxx`
-                        syn::parse2(quote! { ::std::result::Result<Option<::pgrx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
-                            .wrap_err("Wrapping SetOfIterator return type")?
-                    }
-                },
+                // it's a `RETURNS SETOF xxx`
+                (true, false) => {
+                    syn::parse2(quote! { ::std::result::Result<Option<::pgrx::iter::SetOfIterator<'a, Option<#bare>>>, Box<dyn std::error::Error + Send + Sync + 'static>> })
+                        .wrap_err("Wrapping SetOfIterator return type")?
+                }
 
-                false => {
-                    // it's a plain `RETURNS xxx`
+                // it's a plain `RETURNS xxx`
+                (false, _) => {
                     syn::parse2(quote! { ::std::result::Result<Option<#bare>, Box<dyn std::error::Error + Send + Sync + 'static>> }).wrap_err("Wrapping return type")?
                 }
             }

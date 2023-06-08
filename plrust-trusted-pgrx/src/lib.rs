@@ -12,7 +12,7 @@ pub mod prelude {
 }
 
 pub use ::pgrx::{
-    debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, name, notice, warning,
+    debug1, debug2, debug3, debug4, debug5, ereport, error, info, log, notice, warning,
 };
 
 pub use datum::*;
@@ -76,6 +76,7 @@ pub use iter::*;
 /// Return iterators from plrust functions
 pub mod iter {
     pub use ::pgrx::iter::{SetOfIterator, TableIterator};
+    pub use ::pgrx::name;
 }
 
 #[doc(hidden)]

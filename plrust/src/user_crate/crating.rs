@@ -73,10 +73,8 @@ impl FnCrating {
                 let argmodes = meta.proargmodes();
 
                 // quick fix for issue #197 (and likely related problems) -- we don't yet support these things
-                if argmodes.contains(&ProArgMode::Out) {
-                    todo!("OUT arguments")
-                } else if argmodes.contains(&ProArgMode::Out) {
-                    todo!("INOUT arguments")
+                if argmodes.contains(&ProArgMode::Out) || argmodes.contains(&ProArgMode::InOut) {
+                    panic!("PL/Rust does not support functions with `OUT` or `INOUT` arguments")
                 }
 
                 // we must have the same number of argument names and argument types.  It's seemingly
