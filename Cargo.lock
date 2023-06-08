@@ -107,7 +107,7 @@ dependencies = [
  "lazy_static",
  "lazycell",
  "peeking_take_while",
- "prettyplease 0.2.6",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
@@ -200,7 +200,7 @@ checksum = "c688fc74432808e3eb684cae8830a86be1d66a2bd58e1f248ed0960a590baf6f"
 dependencies = [
  "glob",
  "libc",
- "libloading",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -760,6 +760,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libloading"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d580318f95776505201b28cf98eb1fa5e4be3b689633ba6a3e6cd880ff22d8cb"
+dependencies = [
+ "cfg-if",
+ "windows-sys",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1012,9 +1022,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93110297e91a842a984edcb3e136852d569e47eef4ebd5dda43fd512ce050eea"
+checksum = "d1dc59fd3568519df4bff9edd358218d9e4d530dd00f88307699947350fb06dd"
 dependencies = [
  "atomic-traits",
  "bitflags 2.3.1",
@@ -1037,9 +1047,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-macros"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8bedf2d00463ca61a2e42f762e26c3079a8fab163bdf79eeb7ff73ad94b11d8"
+checksum = "4e37465f29aa634b54450afa626fa0a93bbda563f248f0a3fbe37bacb2d3e105"
 dependencies = [
  "pgrx-sql-entity-graph",
  "proc-macro2",
@@ -1049,9 +1059,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-pg-config"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2ba560501c232e910b808f1ffb78122f65211292a3a7132cf5795105e991772"
+checksum = "61bb1c1896fa415856adf85175d7a4d1ded8a73da26948dc40116831c9e9d7d7"
 dependencies = [
  "cargo_toml",
  "dirs",
@@ -1067,9 +1077,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-pg-sys"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70f2092018f177d8ad90e62dd3d47fcee8b9cd235556d9b56d1082c4b87f8f51"
+checksum = "b6ffbe81874c8b75c85ac159faadf8a141b06ead2bdc0bf6c63ed86832072295"
 dependencies = [
  "bindgen",
  "eyre",
@@ -1089,9 +1099,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-sql-entity-graph"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2537918cb5a512d5afb0db9e62d68de8dc37f4bb9918373eaf69094b6536862"
+checksum = "039226f35a9f05d58d3add7d9146bb15772b025977e237537e2d1fa2b10d1525"
 dependencies = [
  "convert_case",
  "eyre",
@@ -1104,9 +1114,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-tests"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41433effb87ae6e186bf56d118f50eb3eaddafc9f5b9f3640db14b3e744cdaa1"
+checksum = "13a19e076069a6c94c5ef77471f41fbc9643c2889420ef253d2f53da64b84974"
 dependencies = [
  "clap-cargo",
  "eyre",
@@ -1164,19 +1174,19 @@ dependencies = [
  "eyre",
  "flate2",
  "home",
- "libloading",
+ "libloading 0.8.0",
  "memfd",
  "omnipath",
  "once_cell",
  "pgrx",
  "pgrx-tests",
- "prettyplease 0.1.25",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "semver 1.0.17",
  "serde",
  "serde_json",
- "syn 1.0.109",
+ "syn 2.0.18",
  "tempdir",
  "tempfile",
  "thiserror",
@@ -1244,16 +1254,6 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "prettyplease"
-version = "0.1.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c8646e95016a7a6c4adea95bafa8a16baab64b583356217f2c85db4a39d9a86"
-dependencies = [
- "proc-macro2",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "prettyplease"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b69d39aab54d069e7f2fe8cb970493e7834601ca2d8c65fd7bbd183578080d1"
@@ -1264,9 +1264,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.59"
+version = "1.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aeca18b86b413c660b781aa319e4e2648a3e6f9eadc9b47e9038e6fe9f3451b"
+checksum = "dec2b086b7a862cf4de201096214fa870344cf922b2b30c167badb3af3195406"
 dependencies = [
  "unicode-ident",
 ]
@@ -1539,9 +1539,9 @@ checksum = "e6b44e8fc93a14e66336d230954dda83d18b4605ccace8fe09bc7514a71ad0bc"
 
 [[package]]
 name = "serde"
-version = "1.0.163"
+version = "1.0.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2113ab51b87a539ae008b5c6c02dc020ffa39afd2d83cffcb3f4eb2722cebec2"
+checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
 dependencies = [
  "serde_derive",
 ]
@@ -1558,9 +1558,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.163"
+version = "1.0.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c805777e3930c8883389c602315a24224bcc738b63905ef87cd1420353ea93e"
+checksum = "d9735b638ccc51c28bf6914d90a2e9725b377144fc612c49a611fddd1b631d68"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1715,9 +1715,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.29.1"
+version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c72130613601f6aad275f8bb9a1d4bf953df8e9c7891029f30e5fdc405ad07c4"
+checksum = "9557d0845b86eea8182f7b10dff120214fb6cd9fd937b6f4917714e546a38695"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
