@@ -1,23 +1,21 @@
-# PL/Rust: A Trusted Procedural Language Handler
+[![docs.rs badge](https://docs.rs/plrust-trusted-pgrx/badge.svg)](https://docs.rs/plrust-trusted-pgrx)
 
-PL/Rust is a loadable procedural language that enables writing PostgreSQL functions in the Rust programming
-language. These functions are compiled to native machine code. Unlike other procedural languages, PL/Rust functions
-are not interpreted.
+# PL/Rust: A Trusted Procedural Language Handler for Rust
+
+[PL/Rust](https://tcdi.github.io/plrust/spi.html) is a loadable procedural language that enables [writing PostgreSQL functions in the Rust programming language](https://tcdi.github.io/plrust/use-plrust.html). These functions are compiled to native machine code. Unlike other procedural languages, PL/Rust functions are not interpreted.
 
 The primary advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance,
 access to Rust's large development ecosystem, and Rust's compile-time safety guarantees.
 
-PL/Rust provides access to Postgres' Server Programming Interface (SPI) including dynamic queries, prepared
-statements, and cursors. It also provides safe Rust types over most of Postgres built-in data types, including (but
-not limited to), TEXT, INT, BIGINT, NUMERIC, FLOAT, DOUBLE PRECISION, etc.
+PL/Rust provides access to Postgres' [Server Programming Interface](https://tcdi.github.io/plrust/spi.html) ([SPI](https://tcdi.github.io/plrust/spi.html)) including dynamic queries, prepared
+statements, and cursors. It also provides safe Rust types over most of Postgres built-in [data types](https://tcdi.github.io/plrust/data-types.html), including (but
+not limited to), `TEXT`, `INT`/`BIGINT`, `NUMERIC`, `FLOAT`/`DOUBLE PRECISION`, `JSON`/`JSONB`, arrays, and more. You can also use PL/Rust to write [trigger functions](https://tcdi.github.io/plrust/triggers.html).
 
-On x86_64 and aarch64 Linux systems PL/Rust can be a "trusted" procedural language, assuming the proper compilation
-requirements are met. On other systems, it is perfectly usable as an "untrusted" language but cannot provide the
-same level of safety guarantees.
+On x86_64 and aarch64 Linux systems PL/Rust can be a "[trusted](https://tcdi.github.io/plrust/trusted-untrusted.html)" procedural language, assuming the proper compilation requirements are met. On other systems, it is perfectly usable as an "[untrusted](https://tcdi.github.io/plrust/trusted-untrusted.html)" language but cannot provide the same level of safety guarantees.
 
-# Learn More
+# Documentation
 
-PL/Rust's documentation, an ongoing project, can be found at https://tcdi.github.io/plrust.  Also see the 
+PL/Rust's [documentation](https://tcdi.github.io/plrust) can be found at https://tcdi.github.io/plrust.  Also see the 
 [`plrust-trusted-pgrx`](https://docs.rs/plrust-trusted-pgrx/latest/plrust_trusted_pgrx/) Rust documentation.
 
 # Install on Debian today!

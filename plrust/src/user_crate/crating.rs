@@ -288,7 +288,6 @@ pub(crate) fn cargo_toml_template(crate_name: &str, version_feature: &str) -> to
         /* User deps added here */
 
         [profile.release]
-        debug-assertions = true
         opt-level = 3_usize
         panic = "unwind"
     };
