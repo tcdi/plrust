@@ -99,7 +99,6 @@ const DEFAULT_LINTS: &'static str = "\
     unsafe_code, \
     deprecated, \
     suspicious_auto_trait_impls, \
-    unaligned_references, \
     where_clauses_object_safety, \
     soft_unstable\
 ";
