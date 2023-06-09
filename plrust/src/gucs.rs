@@ -27,8 +27,7 @@ pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> 
 static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(DEFAULT_LINTS));
-pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> =
-    GucSetting::new(Some(DEFAULT_LINTS));
+pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub(crate) static PLRUST_TRUSTED_PGRX_VERSION: GucSetting<Option<&'static str>> =
     GucSetting::new(Some(env!(
         "PLRUST_TRUSTED_PGRX_VERSION",
