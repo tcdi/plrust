@@ -19,6 +19,7 @@ mod print_macros;
 mod static_impls;
 mod stdio;
 mod sus_trait_object;
+mod tuple_struct_self_pattern;
 
 static INCLUDE_TEST_ONLY_LINTS: Lazy<bool> =
     Lazy::new(|| std::env::var("PLRUSTC_INCLUDE_TEST_ONLY_LINTS").is_ok());
@@ -38,6 +39,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         print_macros::PLRUST_PRINT_MACROS,
         stdio::PLRUST_STDIO,
         sus_trait_object::PLRUST_SUSPICIOUS_TRAIT_OBJECT,
+        tuple_struct_self_pattern::PLRUST_TUPLE_STRUCT_SELF_PATTERN,
     ];
     if *INCLUDE_TEST_ONLY_LINTS {
         let test_only_lints = [force_ice::PLRUST_TEST_ONLY_FORCE_ICE];
@@ -83,6 +85,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     store.register_late_pass(move |_| Box::new(stdio::PlrustPrintFunctions));
     store.register_late_pass(move |_| Box::new(extern_blocks::NoExternBlockPass));
     store.register_late_pass(move |_| Box::new(lifetime_param_trait::LifetimeParamTraitPass));
+    store.register_late_pass(move |_| Box::new(tuple_struct_self_pattern::TupleStructSelfPat));
 
     if *INCLUDE_TEST_ONLY_LINTS {
         store.register_early_pass(move || Box::new(force_ice::PlrustcForceIce));

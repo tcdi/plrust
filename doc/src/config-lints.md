@@ -74,12 +74,6 @@ https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#suspicious-au
 
 This defends against some patterns that can lead to soundness issues. These cases currently can only trigger in patterns which are otherwise blocked by the `unsafe_code` lint, but for better defense-in-depth, it's explicitly forbidden in PL/Rust.
 
-### `unaligned_references`
-
-https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#unaligned-references
-
-The unaligned_references lint detects unaligned references to fields of packed structs. This forbidden because it is a soundness hole in the language.
-
 ### `soft_unstable`
 
 https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#soft-unstable
@@ -263,4 +257,27 @@ This lint forbids trait object use in turbofish and generic defaults. This is an
 foo::<dyn SomeTrait>();
 // Trait object in type default (enum, union, trait, and so on are all also forbidden)
 struct SomeStruct<T = dyn SomeTrait>(...);
+```
+
+### `plrust_tuple_struct_self_pattern`
+
+This lint forbids use of a tuple struct named `Self` in pattern position. This
+can be used to bypass struct field privacy prior to Rust 1.71.0
+(<https://github.com/rust-lang/rust/issues/111220>). Once PL/Rust depends on
+1.71.0, this lint will be replaced by one that does nothing, as the offending
+pattern will not compile.
+
+For example, this lint will prevent the following code:
+
+```rs
+mod my {
+    pub struct Foo(&'static str);
+}
+
+impl AsRef<str> for my::Foo {
+    fn as_ref(&self) -> &str {
+        let Self(s) = self;
+        s
+    }
+}
 ```

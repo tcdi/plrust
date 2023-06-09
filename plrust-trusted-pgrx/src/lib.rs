@@ -22,8 +22,11 @@ pub mod datum {
     // traits
     pub use ::pgrx::datum::{FromDatum, IntoDatum};
 
-    // // dates & times
-    // pub use ::pgrx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+    // dates & times
+    pub use ::pgrx::datum::{
+        Date, DateTimeConversionError, DateTimeParts, HasExtractableParts, Interval, Time,
+        TimeWithTimeZone, Timestamp, TimestampWithTimeZone,
+    };
 
     // zero-copy Arrays
     pub use ::pgrx::datum::{Array, ArrayIntoIterator, ArrayIterator, ArrayTypedIterator};
@@ -63,6 +66,8 @@ pub use heap_tuple::*;
 
 /// Support for arbitrary composite types as a "heap tuple".
 pub mod heap_tuple {
+    pub use ::pgrx::composite_type;
+    pub use ::pgrx::datum::TryFromDatumError;
     pub use ::pgrx::heap_tuple::PgHeapTuple;
 }
 
@@ -71,6 +76,7 @@ pub use iter::*;
 /// Return iterators from plrust functions
 pub mod iter {
     pub use ::pgrx::iter::{SetOfIterator, TableIterator};
+    pub use ::pgrx::name;
 }
 
 #[doc(hidden)]
@@ -84,7 +90,7 @@ pub mod memcxt {
 pub use pgbox::*;
 #[doc(hidden)]
 pub mod pgbox {
-    pub use ::pgrx::pgbox::{PgBox, WhoAllocated};
+    pub use ::pgrx::pgbox::{AllocatedByPostgres, AllocatedByRust, PgBox, WhoAllocated};
 }
 
 pub use pg_sys::panic::ErrorReportable;

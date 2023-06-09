@@ -7,6 +7,7 @@ extern crate rustc_interface;
 
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
@@ -58,8 +59,10 @@ fn install_ice_hook() {
         // Separate output with an empty line
         eprintln!();
 
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            rustc_driver::DEFAULT_LOCALE_RESOURCES.into(),
+            false,
+        );
         let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
             rustc_errors::ColorConfig::Auto,
             None,
@@ -70,6 +73,7 @@ fn install_ice_hook() {
             None,
             false,
             false,
+            rustc_errors::TerminalUrl::No,
         ));
         let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 
@@ -277,6 +281,13 @@ impl FileLoader for ErrorHidingFileLoader {
             replacement_error()
         })
     }
+
+    fn read_binary_file(&self, path: &Path) -> std::io::Result<Vec<u8>> {
+        std::fs::read(path).map_err(|_| {
+            // TODO: Should there be a way to preserve errors for debugging?
+            replacement_error()
+        })
+    }
 }
 
 struct PlrustcFileLoader {
@@ -307,6 +318,14 @@ impl FileLoader for PlrustcFileLoader {
     fn read_file(&self, path: &Path) -> std::io::Result<String> {
         if path.exists() && !path.is_dir() && self.is_inside_allowed_dir(path) {
             ErrorHidingFileLoader.read_file(path)
+        } else {
+            Err(replacement_error())
+        }
+    }
+
+    fn read_binary_file(&self, path: &Path) -> std::io::Result<Vec<u8>> {
+        if path.exists() && !path.is_dir() && self.is_inside_allowed_dir(path) {
+            ErrorHidingFileLoader.read_binary_file(path)
         } else {
             Err(replacement_error())
         }
