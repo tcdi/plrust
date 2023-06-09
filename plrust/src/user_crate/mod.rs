@@ -18,6 +18,7 @@ cargo doc --no-deps --document-private-items --open
 */
 use std::{path::Path, process::Output};
 
+use pgrx::prelude::PgHeapTuple;
 use pgrx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -244,8 +245,8 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID if owned => quote! { std::ffi::CString },
             PgBuiltInOids::CSTRINGOID if !owned => quote! { &std::ffi::CStr },
-            // PgBuiltInOids::DATEOID => quote! { pgrx::Date },
-            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgrx::Date> },
+            PgBuiltInOids::DATEOID => quote! { pgrx::Date },
+            PgBuiltInOids::DATERANGEOID => quote! { Range<pgrx::Date> },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
             PgBuiltInOids::FLOAT8OID => quote! { f64 },
             // PgBuiltInOids::INETOID => quote! { Inet },
@@ -254,6 +255,7 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::INT4RANGEOID => quote! { Range<i32> },
             PgBuiltInOids::INT8OID => quote! { i64 },
             PgBuiltInOids::INT8RANGEOID => quote! { Range<i64> },
+            PgBuiltInOids::INTERVALOID => quote! { pgrx::Interval },
             PgBuiltInOids::JSONBOID => quote! { pgrx::JsonB },
             PgBuiltInOids::JSONOID => quote! { pgrx::Json },
             PgBuiltInOids::POINTOID => quote! { pgrx::Point },
@@ -263,16 +265,24 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointerData },
-            // PgBuiltInOids::TIMEOID => quote! { pgrx::Time },
-            // PgBuiltInOids::TIMETZOID => quote! { pgrx::TimeWithTimeZone },
-            // PgBuiltInOids::TIMESTAMPOID => quote! { pgrx::Timestamp },
-            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgrx::TimestampWithTimeZone },
-            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgrx::Timestamp> },
-            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgrx::TimestampWithTimeZone> },
+            PgBuiltInOids::TIMEOID => quote! { pgrx::Time },
+            PgBuiltInOids::TIMETZOID => quote! { pgrx::TimeWithTimeZone },
+            PgBuiltInOids::TIMESTAMPOID => quote! { pgrx::Timestamp },
+            PgBuiltInOids::TIMESTAMPTZOID => quote! { pgrx::TimestampWithTimeZone },
+            PgBuiltInOids::TSRANGEOID => quote! { Range<pgrx::Timestamp> },
+            PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgrx::TimestampWithTimeZone> },
             PgBuiltInOids::UUIDOID => quote! { pgrx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
+            PgBuiltInOids::RECORDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
+        },
+        PgOid::Custom(oid) => match PgHeapTuple::new_composite_type_by_oid(oid) {
+            Ok(_) => {
+                let oid_u32 = oid.as_u32();
+                quote! { pgrx::composite_type!(#oid_u32) }
+            }
+            Err(_) => return Err(PlRustError::NoOidToRustMapping(oid)),
         },
         _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
     };
@@ -431,7 +441,9 @@ fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
+    use crate::pgproc::ProArgMode;
     use pgrx::*;
+    use proc_macro2::{Ident, Span};
     use quote::quote;
     use syn::parse_quote;
 
@@ -447,15 +459,16 @@ mod tests {
             let target_dir = crate::gucs::work_dir();
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("arg0")?,
-                )];
+                let argnames = vec![Ident::new("arg0", Span::call_site())];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     return_oid,
                     return_set,
                     is_strict,

@@ -8,6 +8,11 @@ Just to give a brief overview: trusted mode combines various lints with a [custo
 
 It's recommended that you use rustup for your toolchain during development. Configure things as specified in the rust-toolchain.toml at the repository root.
 
+`plrustc` is not part of the overall `plrust` workspace for at least two reasons:
+
+- `-Clink-args=-Wl,-undefined,dynamic_lookup` causes problems for it
+- because it needs `rustc-dev` and `llvm-tools-preview` installed
+
 ### IDE configuration
 
 We have a few independent workspaces. My `rust-analyzer` configuration currently looks like this to support them.
