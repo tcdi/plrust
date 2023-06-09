@@ -3,7 +3,6 @@
 # Downloads and extracts cache archive from S3.
 #
 # Expects the following environment variables to already exist:
-#  * ARTIFACT_USER_AWS_PROFILE: the profile to use when issuing AWS CLI commands
 #  * AWS_CACHE_BUCKET: the S3 bucket in which to obtain the archive
 #  * HOME: executing user's home directory
 #
@@ -13,13 +12,16 @@
 # Example usage:
 #  . /path/to/plrust/.github/scripts/load_cache.sh
 #  loadcache "some-cache-key-abc123"
+#
+# Note: This assumes the host in which this script is running on has the ability
+# to read and write from the bucket specified by AWS_CACHE_BUCKET
 
 function loadcache() {
   local cache_key="$1"
 
   echo "Checking to see if cache archive exists: $cache_key"
 
-  if aws s3api head-object --profile $ARTIFACT_USER_AWS_PROFILE --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
+  if aws s3api head-object --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
     echo "Cache archive exists for $cache_key -- downloading and extracting now."
 
     mkdir -p $HOME/artifacts/
@@ -28,7 +30,6 @@ function loadcache() {
     echo "Downloadng archive $cache_key and storing to $archive_path"
 
     aws s3api get-object \
-      --profile $ARTIFACT_USER_AWS_PROFILE \
       --bucket $AWS_CACHE_BUCKET \
       --key $cache_key \
       $archive_path
