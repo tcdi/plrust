@@ -349,7 +349,7 @@ jobs:
       run: sccache --show-stats
 
     - name: Install plrustc
-      run: cd plrustc && time ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
     - name: Print sccache stats
       run: sccache --show-stats
@@ -359,11 +359,11 @@ jobs:
 
     - name: Test PL/rust as "untrusted"
       if: matrix.target == 'host'
-      run: time cargo test --all --features "pg$PG_VER" --no-default-features
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
-      run: cd plrust && time STD_TARGETS="x86_64-postgres-linux-gnu" ./build && time cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
     - name: Print sccache stats
       run: sccache --show-stats
