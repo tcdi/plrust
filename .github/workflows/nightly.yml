@@ -1,23 +1,9 @@
 name: PL/Rust nightly builds
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
-      - develop
+  schedule:
+    - cron: '0 7 * * *'
   workflow_dispatch:
-
-# CODE REVIEW: Ensure this event setup is used and not on push/PR below!
-# CODE REVIEW: Ensure this event setup is used and not on push/PR below!
-# CODE REVIEW: Ensure this event setup is used and not on push/PR below!
-# on:
-#   schedule:
-#     - cron: '0 7 * * *'
-#   workflow_dispatch:
 
 env:
   RUST_BACKTRACE: 1
