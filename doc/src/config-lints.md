@@ -74,12 +74,6 @@ https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#suspicious-au
 
 This defends against some patterns that can lead to soundness issues. These cases currently can only trigger in patterns which are otherwise blocked by the `unsafe_code` lint, but for better defense-in-depth, it's explicitly forbidden in PL/Rust.
 
-### `unaligned_references`
-
-https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#unaligned-references
-
-The unaligned_references lint detects unaligned references to fields of packed structs. This forbidden because it is a soundness hole in the language.
-
 ### `soft_unstable`
 
 https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#soft-unstable

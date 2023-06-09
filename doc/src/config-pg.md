@@ -158,7 +158,7 @@ purpose of the Lints.
 A comma-separated list of Rust lints to apply to every user function.
 
 ```bash
-plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, plrust_stdio, unknown_lints, deprecated, suspicious_auto_trait_impls, unaligned_references, soft_unstable, plrust_autotrait_impls'
+plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, plrust_stdio, unknown_lints, deprecated, suspicious_auto_trait_impls, soft_unstable, plrust_autotrait_impls'
 ```
 
 
