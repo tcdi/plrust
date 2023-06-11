@@ -33,5 +33,6 @@
 
 - [Architecture](./architecture.md)
 - [Designing for Trust](./designing-for-trust.md)
+- [External Dependencies](./dependencies.md)
 - [Lints](./config-lints.md)
 - [Environment variables](./config-env-var.md)

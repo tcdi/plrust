@@ -31,6 +31,7 @@ cfg_if::cfg_if! {
     }
 }
 
+mod allow_list;
 mod error;
 mod gucs;
 mod logging;
