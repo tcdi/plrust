@@ -15,7 +15,7 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeParamTraitPass {
                 if let hir::GenericParamKind::Lifetime { .. } = param.kind {
                     cx.lint(
                         PLRUST_LIFETIME_PARAMETERIZED_TRAITS,
-                        "Trait is parameterize by lifetime.",
+                        "PL/Rust forbids declaring traits with generic lifetime parameters",
                         |b| b.set_span(item.span),
                     )
                 }

@@ -16,7 +16,8 @@ impl<'tcx> LateLintPass<'tcx> for PlrustStaticImpls {
         if self.has_static(imp.self_ty) {
             cx.lint(
                 PLRUST_STATIC_IMPLS,
-                "`impl` blocks for types containing `'static` references are not allowed",
+                "`impl` blocks for types containing `'static` references \
+                are not allowed in PL/Rust",
                 |b| b.set_span(imp.self_ty.span),
             )
         }

@@ -19,7 +19,7 @@ impl PlrustBuiltinMacros {
     fn lint_fs(&self, cx: &LateContext<'_>, sp: Span) {
         cx.lint(
             PLRUST_FILESYSTEM_MACROS,
-            "the `include_str`, `include_bytes`, and `include` macros are forbidden",
+            "the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust",
             |b| b.set_span(sp),
         );
     }

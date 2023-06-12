@@ -27,7 +27,8 @@ impl PlrustPrintMacros {
     fn fire(&self, cx: &LateContext<'_>, span: Span) {
         cx.lint(
             PLRUST_PRINT_MACROS,
-            "the printing macros are forbidden, consider using `log!()` instead",
+            "the printing macros are forbidden in PL/Rust, \
+            consider using `pgrx::log!()` instead",
             |b| b.set_span(span),
         );
     }

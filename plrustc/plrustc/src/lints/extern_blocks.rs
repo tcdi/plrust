@@ -14,7 +14,7 @@ impl<'tcx> LateLintPass<'tcx> for NoExternBlockPass {
             // TODO: Do we need to allow ones from macros from pgrx?
             cx.lint(
                 PLRUST_EXTERN_BLOCKS,
-                "`extern` blocks are not allowed",
+                "`extern` blocks are not allowed in PL/Rust",
                 |b| b.set_span(item.span),
             )
         }

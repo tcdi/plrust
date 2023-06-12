@@ -19,7 +19,8 @@ impl<'tcx> LateLintPass<'tcx> for PlrustPrintFunctions {
             if super::utils::does_expr_call_path(cx, expr, path) {
                 cx.lint(
                     PLRUST_STDIO,
-                    "the standard streams are forbidden, consider using `log!()` instead",
+                    "the standard streams are forbidden in PL/Rust, \
+                    consider using `pgrx::log!()` instead",
                     |b| b.set_span(expr.span),
                 );
             }

@@ -30,7 +30,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustSuspiciousTraitObject {
                 if let hir::TyKind::TraitObject(..) = &ty.kind {
                     cx.lint(
                         PLRUST_SUSPICIOUS_TRAIT_OBJECT,
-                        "trait objects in turbofish are forbidden",
+                        "using trait objects in turbofish position is forbidden by PL/Rust",
                         |b| b.set_span(expr.span),
                     );
                 }
