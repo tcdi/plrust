@@ -51,18 +51,7 @@ PL/Rust functions.
 When `plrust.allowed_dependencies` is not defined, all Rust crates are allowed
 when creating PL/Rust functions.
 
-Consider a file `/path/to/plrust_allowed.toml` with the following contents.
-
-```toml
-foo = "1.1.5"
-```
-
-The configuration to restrict crates looks like the following example.
-
-```bash
-plrust.allowed_dependencies = /path/to/plrust_allowed.toml
-```
-
+For more discussion, see [dependencies.md](dependencies.md)
 
 #### `plrust.path_override` (string)
 

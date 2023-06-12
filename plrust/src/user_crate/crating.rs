@@ -174,32 +174,6 @@ impl FnCrating {
             }
         };
 
-        match std::env::var("PLRUST_EXPERIMENTAL_CRATES") {
-            Err(_) => (),
-            Ok(path) => {
-                match cargo_manifest
-                    .entry("patch")
-                    .or_insert(toml::Value::Table(Default::default()))
-                    .as_table_mut()
-                    .unwrap() // infallible
-                    .entry("crates-io")
-                {
-                    entry @ toml::map::Entry::Vacant(_) => {
-                        let mut pgrx_table = toml::value::Table::new();
-                        pgrx_table.insert("path".into(), toml::Value::String(path.to_string()));
-                        let mut crates_io_table = toml::value::Table::new();
-                        crates_io_table.insert("pgrx".into(), toml::Value::Table(pgrx_table));
-                        entry.or_insert(toml::Value::Table(crates_io_table));
-                    }
-                    _ => {
-                        return Err(PlRustError::GeneratingCargoToml).wrap_err(
-                            "Setting `[patch]`, already existed (and wasn't expected to)",
-                        )?
-                    }
-                }
-            }
-        };
-
         Ok(cargo_manifest)
     }
 

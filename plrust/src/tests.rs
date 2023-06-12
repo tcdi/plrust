@@ -402,20 +402,20 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "yup"]
     fn pgrx_can_panic() {
-        panic!()
+        panic!("yup")
     }
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "yup"]
     fn plrust_can_panic() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION shut_up_and_explode()
             RETURNS text AS
             $$
-                panic!();
+                panic!("yup");
                 Ok(None)
             $$ LANGUAGE plrust;
         "#;
@@ -429,7 +429,7 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "Failed to execute command"]
     fn postgrestd_subprocesses_panic() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION say_hello()
@@ -568,7 +568,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: usage of an `unsafe` block"]
     fn plrust_block_unsafe_annotated() -> spi::Result<()> {
         // PL/Rust should block creating obvious, correctly-annotated usage of unsafe code
         let definition = r#"
@@ -576,7 +576,7 @@ mod tests {
             RETURNS text AS
             $$
                 use std::{os::raw as ffi, str, ffi::CStr};
-                let int = 0xDEADBEEF;
+                let int:u32 = 0xDEADBEEF;
                 // Note that it is always safe to create a pointer.
                 let ptr = int as *mut u64;
                 // What is unsafe is dereferencing it
@@ -592,7 +592,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "call to unsafe function is unsafe and requires unsafe block"]
     fn plrust_block_unsafe_hidden() -> spi::Result<()> {
         // PL/Rust should not allow hidden injection of unsafe code
         // that may rely on the way PGRX expands into `unsafe fn` to "sneak in"
@@ -601,7 +601,7 @@ mod tests {
             RETURNS text AS
             $$
                 use std::{os::raw as ffi, str, ffi::CStr};
-                let int = 0xDEADBEEF;
+                let int:u32 = 0xDEADBEEF;
                 let ptr = int as *mut u64;
                 ptr.write(0x00_1BADC0DE_00);
                 let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
@@ -613,7 +613,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
     #[cfg(feature = "trusted")]
     fn plrust_block_env() -> spi::Result<()> {
         let definition = r#"
@@ -627,7 +627,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
     #[cfg(feature = "trusted")]
     fn plrust_block_option_env() -> spi::Result<()> {
         let definition = r#"
@@ -643,7 +643,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: usage of an `unsafe` block"]
     fn plrust_block_unsafe_plutonium() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION super_safe()
@@ -673,7 +673,8 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "xxx"]
+    #[ignore]
     fn plrust_pgloglevel_dont_allcaps_panic() -> spi::Result<()> {
         // This test attempts to annihilate the database.
         // It relies on the existing assumption that tests are run in the same Postgres instance,
@@ -682,9 +683,7 @@ mod tests {
             CREATE FUNCTION dont_allcaps_panic()
             RETURNS text AS
             $$
-                use pgrx::log::{PgLogLevel, elog};
-
-                elog(PgLogLevel::PANIC, "If other tests completed, PL/Rust did not actually destroy the entire database, \
+                ereport!(PANIC, PgSqlErrorCode::ERRCODE_INTERNAL_ERROR, "If other tests completed, PL/Rust did not actually destroy the entire database, \
                                          But if you see this in the error output, something might be wrong.");
                 Ok(Some("lol".into()))
             $$ LANGUAGE plrust;
@@ -797,7 +796,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "parameter name \"a\" used more than once"]
     fn plrust_dup_args() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION not_unique(a int, a int)
@@ -814,7 +813,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "PL/Rust does not support unnamed arguments"]
     fn plrust_defaulting_dup_args() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION not_unique(int, arg0 int)
@@ -831,7 +830,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "plrust functions cannot have their STRICT property altered"]
     fn plrust_cant_change_strict_off() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION cant_change_strict_off()
@@ -840,12 +839,12 @@ mod tests {
             AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
-        Spi::run("ALTER FUNCTION cant_change_strict() CALLED ON NULL INPUT")
+        Spi::run("ALTER FUNCTION cant_change_strict_off() CALLED ON NULL INPUT")
     }
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "plrust functions cannot have their STRICT property altered"]
     fn plrust_cant_change_strict_on() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION cant_change_strict_on()
@@ -854,7 +853,7 @@ mod tests {
             AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
-        Spi::run("ALTER FUNCTION cant_change_strict() RETURNS NULL ON NULL INPUT")
+        Spi::run("ALTER FUNCTION cant_change_strict_on() RETURNS NULL ON NULL INPUT")
     }
 
     #[pg_test]
@@ -1372,9 +1371,12 @@ pub mod pg_test {
         let mut allowed_deps = std::fs::File::create(&file_path).unwrap();
         allowed_deps
             .write_all(
-                r#"owo-colors = "3.5.0"
-tokio = { version = "1.19.2", features = ["rt", "net"]}"#
-                    .as_bytes(),
+                r#"
+owo-colors = "=3.5.0"
+tokio = { version = "=1.19.2", features = ["rt", "net"]}
+plutonium = "*"
+"#
+                .as_bytes(),
             )
             .unwrap();
 

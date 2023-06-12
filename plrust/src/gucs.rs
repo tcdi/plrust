@@ -11,7 +11,6 @@ use std::ffi::CStr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use once_cell::sync::Lazy;
 use pgrx::guc::{GucContext, GucRegistry, GucSetting};
 use pgrx::pg_sys::AsPgCStr;
 use pgrx::{pg_sys, GucFlags};
@@ -33,21 +32,6 @@ pub(crate) static PLRUST_TRUSTED_PGRX_VERSION: GucSetting<Option<&'static str>> 
         "PLRUST_TRUSTED_PGRX_VERSION",
         "unknown `plrust-trusted-pgrx` version.  `build.rs` must not have run successfully"
     )));
-
-pub(crate) static PLRUST_ALLOWED_DEPENDENCIES_CONTENTS: Lazy<toml::value::Table> =
-    Lazy::new(|| {
-        let path = PathBuf::from_str(
-            &PLRUST_ALLOWED_DEPENDENCIES
-                .get()
-                .expect("plrust.allowed_dependencies is not set in postgresql.conf"),
-        )
-        .expect("plrust.allowed_dependencies is not a valid path");
-
-        let contents =
-            std::fs::read_to_string(&path).expect("Unable to read allow listed dependencies");
-
-        toml::from_str(&contents).expect("Unable to format allow listed dependencies")
-    });
 
 pub(crate) fn init() {
     GucRegistry::define_string_guc(
