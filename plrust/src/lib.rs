@@ -12,10 +12,17 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 #[cfg(all(
     feature = "trusted",
-    not(all(
-        target_os = "linux",
-        any(target_arch = "x86_64", target_arch = "aarch64")
-    ))
+    not(any(
+            all(
+                target_os = "linux",
+                any(target_arch = "x86_64", target_arch = "aarch64")
+            ),
+            all(
+                target_os = "macos",
+                any(target_arch = "x86_64", target_arch = "aarch64")
+            )
+        )
+    )
 ))]
 compile_error!("This platform does not support the 'trusted' version of plrust");
 

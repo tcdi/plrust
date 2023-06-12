@@ -107,9 +107,18 @@ This is the name of the linker `rustc` should use on for cross-compile.
 The architecture linker names have sensible defaults and shouldn't need to be be
 changed (unless the host is some esoteric Linux distribution we have not encountered yet).
 
+Linux defaults:
+
 ```bash
 plrust.x86_64_linker = 'x86_64_linux_gnu_gcc'
 plrust.aarch64_linker = 'aarch64_linux_gnu_gcc'
+```
+
+macOS defaults:
+
+```bash
+plrust.x86_64_linker = 'cc'
+plrust.aarch64_linker = 'cc'
 ```
 
 
