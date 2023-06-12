@@ -174,7 +174,6 @@ impl FnCrating {
             }
         };
 
-        pgrx::warning!("Cargo.toml:\n{}", toml::to_string(&cargo_manifest)?);
         Ok(cargo_manifest)
     }
 

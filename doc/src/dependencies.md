@@ -39,11 +39,11 @@ rand = ">=0.8, <0.9"
 bitvec = [">=1, <2", "=0.2", { version = "1.0.1", features = [ "alloc" ], default-features = false }]
 ```
 
-The reason for this added flexibility to allow the administrator to declare the most precise crate version they wish
-along with that version's specific set of features and other dependency properties.
+The added flexibility allows administrators to declare the most precise crate version they wish along with that 
+version's specific set of features and other dependency properties.
 
-When a `LANGUAGE plrust` function specifies a dependency and version, it finds the largest (presumably "most recent")
-allowed version that matches what the user's plrust function requested.  More on this below.
+When a `LANGUAGE plrust` function specifies a dependency and version, the largest (presumably "most recent") configured 
+version matching the user's plrust function is used.  More on this below.
 
 ### Version Requirement Format
 
@@ -66,36 +66,37 @@ rand = "0.8.5"
 serde = ">1.1"
 ```
 
-The reason for this is that `cargo` is allowed to pick a slightly different version depending on how it was specified.
-With exact or bounded values, `cargo` becomes limited to what the administrator has decided is allowed.
+`cargo` is allowed to pick a slightly different version depending on how it was specified -- with exact and bounded 
+values, `cargo` becomes limited to what administrators decide is allowed.
 
 Using the bare wildcard pattern (`*`) is allowed and has a special meaning as it relates to a user `LANGUAGE plrust`
 function.
 
 ### Using a Dependency
 
-As demonstrated above, a `LANGUAGE plrust` function can have a `[dependencies]` section.  The function author is encouraged
-to specify exact versions for each desired dependency, and PL/Rust will use that version if it is found to match one
-of the allow-list entries for that dependency.
+As demonstrated above, a `LANGUAGE plrust` function can have a `[dependencies]` section.  Function authors are encouraged
+to specify exact versions for each desired dependency.  PL/Rust will use that exact version if it is found to match one
+of the allow-list entries.
 
-If the user requests a full, dotted triplet version such as `1.2.3` that is found to match one of the allow-list version
-requirements, then PL/Rust will transparently rewrite it to be that exact version; it will become `=1.2.3`.
+If the user requests a dotted triplet version such as `1.2.3` and it matches an allow-list entry PL/Rust will 
+transparently rewrite it to be that exact version; it will become `=1.2.3`.
 
-If the allow-list simply contains a wildcard version, for example:
+If the allow-list simply contains a wildcard version...
 
 ```toml
 rand = "*"
 ```
 
-And the user function requests a non-wildcard version such as `0.8.5`, then PL/Rust will use that specific version.  If
-the reverse is the case where the allow-list contains one or more specific version requirements, such as:
+... and the user function requests a non-wildcard version such as `0.8.5`, PL/Rust will use that specific version.  
+
+If the reverse, where the allow-list contains one or more specific version requirements, such as...
 
 ```toml
 rand = [ "0.8.5", "0.6" ]
 ```
 
-And the PL/Rust function requests a wildcard (ie, `rand = "*"`), then PL/Rust will choose the largest version requirement
-from the allow-list.  In this case, that would be `0.8.5`.
+... and the PL/Rust function requests a wildcard (ie, `rand = "*"`), then PL/Rust will choose the largest version
+requirement from the allow-list.  In this case, that would be `0.8.5`.
 
 ### Working with Crate Features
 
@@ -103,9 +104,9 @@ When a user function uses an allow-list restricted crate, the allow-list control
 dependency properties such as `features` and `default-features`.  A user function cannot override these.  It can specify
 them, but they must exactly match what is found in the allow-list.
 
-This restriction allows the administrator to have full control over how a dependency can be used.
+This restriction allows administrators full control over how dependencies may be used.
 
-For example, is fine for a user function:
+For example, this fine for a user function:
 
 ```sql
 CREATE OR REPLACE FUNCTION randint(seed bigint) RETURNS bigint STRICT LANGUAGE plrust AS $$
@@ -145,13 +146,12 @@ Ok(Some(rng.next_u64() as _))
 $$;
 ```
 
-### Operations Notes
+### Operational Notes
 
 - The dependency allow-list file must be configured in `postgresql.conf` where its full path is the value of the 
 `plrust.allowed_dependencies` GUC.
 
-- This file must be readable by the user that Postgres backend connections are run as.  Typically, the user named is named
-`postgres`.
+- This file must be readable by the user that Postgres backend connections are run.  Typically, the user is named `postgres`.
 
 - The file is read, parsed, and validated every time a `CREATE FUNCTION ... LANGUAGE plrust` statement is executed.  Doing
 so allows an administrator to modify it without requiring a Postgres cluster restart. 

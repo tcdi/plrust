@@ -38,26 +38,45 @@ impl TryFrom<String> for OrderedVersionReq {
 impl TryFrom<&str> for OrderedVersionReq {
     type Error = Error;
 
-    /// only allow "*", exact, and bounded VersionReq values
+    /// only allow "*", exact, and bounded VersionReq values.  
+    ///
+    /// Versions with "prerelease" parts are not supported
     fn try_from(version: &str) -> Result<Self, Self::Error> {
         let vreq = VersionReq::parse(&version)
             .map_err(|e| Error::MalformedVersion(version.to_string(), e.to_string()))?;
 
-        return if vreq.comparators.len() == 0 {
-            // it's a "*" version
-            Ok(OrderedVersionReq(vreq))
-        } else if vreq.comparators.len() == 1 && vreq.comparators[0].op == Op::Exact {
-            // it's an exact version: "=x.y.z"
-            Ok(OrderedVersionReq(vreq))
-        } else if vreq.comparators.len() == 2
-            && matches!(vreq.comparators[0].op, Op::Greater | Op::GreaterEq)
-            && matches!(vreq.comparators[1].op, Op::Less | Op::LessEq)
-        {
-            // it's a bounded version: ">=a.b.c, <=x.y.z"
+        if validate_versionreq(&vreq, true) {
             Ok(OrderedVersionReq(vreq))
         } else {
             Err(Error::UnsupportedVersionReq(version.to_string()))
-        };
+        }
+    }
+}
+
+fn validate_versionreq(vreq: &VersionReq, require_exact: bool) -> bool {
+    let has_prelrease = vreq.comparators.iter().any(|cmp| !cmp.pre.is_empty());
+    if has_prelrease {
+        // -shitshow versions not allowed (https://docs.rs/semver/latest/semver/struct.Prerelease.html#examples)
+        false
+    } else if vreq.comparators.len() == 0 {
+        // it's a "*" version
+        true
+    } else if vreq.comparators.len() == 1 {
+        if require_exact {
+            // is it an exact version: "=x.y.z"
+            vreq.comparators[0].op == Op::Exact
+        } else {
+            // if `require_exact` is false, then as long as it only has 1 comparator, it's valid
+            true
+        }
+    } else if vreq.comparators.len() == 2
+        && matches!(vreq.comparators[0].op, Op::Greater | Op::GreaterEq)
+        && matches!(vreq.comparators[1].op, Op::Less | Op::LessEq)
+    {
+        // it's a bounded version: ">=a.b.c, <=x.y.z"
+        true
+    } else {
+        false
     }
 }
 
@@ -129,25 +148,32 @@ fn fake_version(cmp: &Comparator) -> Version {
 }
 
 impl OrderedVersionReq {
-    /// Return `true` if the inner [`VersionReq`] matches each of the individual [`Comparator`]s of
-    /// the `other` argument.
+    /// Return `true` if our inner [`VersionReq`] matches the specified `other` [`VersionReq`].
+    ///
+    /// Our definition of "match" is that `other` needs to first pass [`validate_versionreq()`], and
+    /// then we ensure that the lower (and possibly upper) bounds of each version match each other
+    /// by pretending they're actually [`Version`]s.
     #[rustfmt::skip]
     fn matches_versionreq(&self, other: &VersionReq) -> bool {
+        if !validate_versionreq(other, false) {
+            return false;
+        }
+
         let other_lower = other.comparators.get(0);
         let other_upper = other.comparators.get(1);
 
         match (other_lower, other_upper) {
             // user gave us a single version, so lets see if it matches us
-            (Some(lower), None) => self.0.matches(&fake_version(lower)),
+            (Some(other_lower), None) => self.0.matches(&fake_version(other_lower)),
 
             // user gave us a bounded version, so lets make sure its lower and upper match ours
-            (Some(lower), Some(upper)) => {
+            (Some(other_lower), Some(other_upper)) => {
                 let my_lower = self.0.comparators.get(0);
                 let my_upper = self.0.comparators.get(1);
 
                 match (my_lower, my_upper) {
-                    (Some(my_lower), Some(my_upper)) => my_lower.matches(&fake_version(lower)) && my_upper.matches(&fake_version(upper)),
-                    (Some(my_lower), None) => my_lower.matches(&fake_version(lower)) && my_lower.matches(&fake_version(upper)),
+                    (Some(my_lower), Some(my_upper)) => my_lower.matches(&fake_version(other_lower)) && my_upper.matches(&fake_version(other_upper)),
+                    (Some(my_lower), None) => my_lower.matches(&fake_version(other_lower)) && my_lower.matches(&fake_version(other_upper)),
                     (None, _) =>  true,
                 }
             }
@@ -305,7 +331,10 @@ impl Dependency {
                 })?;
 
                 for (version, table) in ranked_versions {
-                    if version.matches_versionreq(&wanted_version) {
+                    if version.matches_versionreq(&wanted_version)
+                        || (!version.comparators.is_empty()
+                            && wanted_version.matches(&fake_version(&version.comparators[0])))
+                    {
                         let mut table = table.clone();
 
                         if version.to_string().contains('*') {

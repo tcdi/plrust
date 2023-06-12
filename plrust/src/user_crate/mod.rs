@@ -361,12 +361,24 @@ fn parse_source_and_deps(
 fn validate_user_dependencies(user_deps: String) -> eyre::Result<toml::value::Table> {
     let user_dependencies: toml::value::Table = toml::from_str(&user_deps)?;
 
+    //
+    // The validation process, such as it is, currently only requires that a dependency
+    // entry's value either be a [toml::Value::String] or a [toml::Value::Table].  We
+    // don't do any checking of the actual values here as they're essentially checked for
+    // compatibility/usefulness when squaring up against the allow-list
+    //
+    // Additionally, if there is no allow-list, then we don't really care what's going on here --
+    // the administrator has said it's fine for a function to YOLO, so who are we to judge?
+    //
+
     for (dependency, val) in &user_dependencies {
         match val {
             // user dependencies in these general forms are allowed:
             //    name = "x.y.z"
             //    name = { version = "x.y.z", features = [ "a", "b", "c" ]
-            toml::Value::String(_) | toml::Value::Table(_) => {}
+            toml::Value::String(_) | toml::Value::Table(_) => {
+                // these are allowed
+            }
 
             // everything else is unsupported
             _ => {
@@ -456,17 +468,23 @@ fn restrict_dependencies(
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use crate::allow_list::parse_allowlist;
     use crate::pgproc::ProArgMode;
     use pgrx::*;
     use proc_macro2::{Ident, Span};
     use quote::quote;
     use syn::parse_quote;
-    use toml::toml;
 
     use crate::user_crate::crating::cargo_toml_template;
     use crate::user_crate::*;
-    const TOML: &str = r#"
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_restrict_dependencies() -> eyre::Result<()> {
+        use crate::allow_list::{parse_allowlist, Error};
+        use crate::user_crate::{restrict_dependencies, RestrictionError};
+        use toml::toml;
+
+        const TOML: &str = r#"
 a = [ "=1.2.3", "=3.0", ">=6.0.0, <=10", { version = "=2.4.5", features = [ "x", "y", "z" ] }, "*", ">=1.0.0, <5.0.0",">=1.0.0, <2.0.0", ">=2, <=4", "=2.99.99" ]
 b = "*"
 c = "=1.2.3"
@@ -474,11 +492,8 @@ d = { version = "=3.4.5", features = [ "x", "y", "z" ] }
 e = ">=0.8, <0.9"
     "#;
 
-    #[rustfmt::skip]
-    #[test]
-    fn test_restrict_dependencies() -> eyre::Result<()> {
         let allowed = parse_allowlist(TOML)?;
-        
+
         let restricted = restrict_dependencies(toml! { a = "3.0" }, &allowed)?;
         assert_eq!(toml! { a = { version = "=3.0" } }, restricted);
 
@@ -512,6 +527,9 @@ e = ">=0.8, <0.9"
         assert_eq!(toml! { c = { version = "=1.2.3" } }, restricted);
 
         let restricted = restrict_dependencies(toml! { c = "*" } , &allowed)?;
+        assert_eq!(toml! { c = { version = "=1.2.3" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { c = "1" } , &allowed)?;
         assert_eq!(toml! { c = { version = "=1.2.3" } }, restricted);
 
         let restricted = restrict_dependencies(toml! { c = "99" } , &allowed);
