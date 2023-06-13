@@ -1,4 +1,4 @@
-error: Trait is parameterize by lifetime.
+error: PL/Rust forbids declaring traits with generic lifetime parameters
   --> $DIR/lifetime_trait.rs:3:1
    |
 LL | trait Foo<'a> {}
@@ -6,7 +6,7 @@ LL | trait Foo<'a> {}
    |
    = note: `-F plrust-lifetime-parameterized-traits` implied by `-F plrust-lints`
 
-error: Trait is parameterize by lifetime.
+error: PL/Rust forbids declaring traits with generic lifetime parameters
   --> $DIR/lifetime_trait.rs:9:9
    |
 LL |         trait Foobar<'a> {}

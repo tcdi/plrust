@@ -1,4 +1,4 @@
-error: trait objects in turbofish are forbidden
+error: using trait objects in turbofish position is forbidden by PL/Rust
   --> $DIR/sus_trait_obj_transmute.rs:16:5
    |
 LL |     foo::<dyn Object<U, Output = T>, U>(x)

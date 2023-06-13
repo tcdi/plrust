@@ -1,4 +1,4 @@
-error: `impl` blocks for types containing `'static` references are not allowed
+error: `impl` blocks for types containing `'static` references are not allowed in PL/Rust
   --> $DIR/static_impl_unsound.rs:11:34
    |
 LL | impl<T: Display> Displayable for (T, Box<Option<&'static T>>) {

@@ -1,4 +1,4 @@
-error: `extern` blocks are not allowed
+error: `extern` blocks are not allowed in PL/Rust
   --> $DIR/extern_block.rs:2:1
    |
 LL | extern "C" {}
@@ -6,19 +6,19 @@ LL | extern "C" {}
    |
    = note: `-F plrust-extern-blocks` implied by `-F plrust-lints`
 
-error: `extern` blocks are not allowed
+error: `extern` blocks are not allowed in PL/Rust
   --> $DIR/extern_block.rs:3:1
    |
 LL | extern "Rust" {}
    | ^^^^^^^^^^^^^^^^
 
-error: `extern` blocks are not allowed
+error: `extern` blocks are not allowed in PL/Rust
   --> $DIR/extern_block.rs:5:1
    |
 LL | extern {}
    | ^^^^^^^^^
 
-error: `extern` blocks are not allowed
+error: `extern` blocks are not allowed in PL/Rust
   --> $DIR/extern_block.rs:9:9
    |
 LL |         extern "C" {}
