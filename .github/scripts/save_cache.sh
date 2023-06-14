@@ -3,7 +3,6 @@
 # Creates cache archive and uploads to S3.
 #
 # Expects the following environment variables to already exist:
-#  * ARTIFACT_USER_AWS_PROFILE: the profile to use when issuing AWS CLI commands
 #  * AWS_CACHE_BUCKET: the S3 bucket in which to obtain the archive
 #  * HOME: executing user's home directory
 #
@@ -15,6 +14,9 @@
 #  . /path/to/plrust/.github/scripts/save_cache.sh
 #  my_paths=(/path/one /path/two /path/three)
 #  savecache "some-cache-key-abc123" "${my_paths[@]}"
+#
+# Note: This assumes the host in which this script is running on has the ability
+# to read and write from the bucket specified by AWS_CACHE_BUCKET
 
 function savecache() {
   local cache_key="$1"
@@ -23,7 +25,7 @@ function savecache() {
 
   echo "Checking to see if cache archive exists: $cache_key"
 
-  if aws s3api head-object --profile $ARTIFACT_USER_AWS_PROFILE --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
+  if aws s3api head-object --bucket $AWS_CACHE_BUCKET --key $cache_key &> /dev/null; then
     echo "Cache archive exists for $cache_key -- skipping archive creation."
   else
     echo "Cache archive does not exist for $cache_key -- creating archive now."
@@ -38,7 +40,6 @@ function savecache() {
     echo "Created archive $archive_path -- uploading now"
 
     aws s3api put-object \
-      --profile $ARTIFACT_USER_AWS_PROFILE \
       --bucket $AWS_CACHE_BUCKET \
       --key $cache_key \
       --body $archive_path

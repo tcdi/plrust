@@ -1,8 +1,8 @@
 error: using trait objects in turbofish position is forbidden by PL/Rust
-  --> $DIR/sus_trait_obj_transmute.rs:16:5
+  --> $DIR/sus_trait_obj_alias.rs:17:5
    |
-LL |     foo::<dyn Object<U, Output = T>, U>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     foo::<B<'a>>(x)
+   |     ^^^^^^^^^^^^
    |
    = note: `-F plrust-suspicious-trait-object` implied by `-F plrust-lints`
 

@@ -12,10 +12,17 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 
 #[cfg(all(
     feature = "trusted",
-    not(all(
-        target_os = "linux",
-        any(target_arch = "x86_64", target_arch = "aarch64")
-    ))
+    not(any(
+            all(
+                target_os = "linux",
+                any(target_arch = "x86_64", target_arch = "aarch64")
+            ),
+            all(
+                target_os = "macos",
+                any(target_arch = "x86_64", target_arch = "aarch64")
+            )
+        )
+    )
 ))]
 compile_error!("This platform does not support the 'trusted' version of plrust");
 
@@ -31,6 +38,7 @@ cfg_if::cfg_if! {
     }
 }
 
+mod allow_list;
 mod error;
 mod gucs;
 mod logging;
@@ -95,10 +103,10 @@ const DEFAULT_LINTS: &'static str = "\
     plrust_print_macros, \
     plrust_stdio, \
     plrust_suspicious_trait_object, \
+    plrust_tuple_struct_self_pattern, \
     unsafe_code, \
     deprecated, \
     suspicious_auto_trait_impls, \
-    unaligned_references, \
     where_clauses_object_safety, \
     soft_unstable\
 ";

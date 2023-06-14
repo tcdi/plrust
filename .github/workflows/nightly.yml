@@ -1,0 +1,363 @@
+name: PL/Rust nightly builds
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  deb_artifact_test_x86_64:
+    name: (nightly) Test .deb Artifacts x86_64
+    runs-on: [ubuntu-latest]
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      matrix:
+        pg_version: ["pg13", "pg14", "pg15"]
+      fail-fast: false
+
+    env:
+      CI: true
+
+    steps:
+    # If this workflow is being called from a schedule/cron job, then let's
+    # force the "develop" branch. Otherwise, use whatever is passed in via
+    # GITHUB_HEAD_REF. The result of this will be used below in the
+    # actions/checkout@vX step. Note that at the time of this writing, Github
+    # Actions does not allow us to specify which branch to run a schedule from
+    # (it always runs from the default branch, which in this case is master).
+    - name: Set up correct branch environment variable
+      run: |
+        if [ $GITHUB_EVENT_NAME == "schedule" ]; then
+          echo "Running via schedule, so using branch develop"
+          echo "NIGHTLY_BUILD_REF=develop" >> $GITHUB_ENV
+        else
+          echo "Not running via schedule, so using branch $GITHUB_HEAD_REF"
+          echo "NIGHTLY_BUILD_REF=$GITHUB_HEAD_REF" >> $GITHUB_ENV
+        fi
+
+    - uses: actions/checkout@v3
+
+    # The default installation of Docker on Github Actions runners are pretty outdated, as the artifact builder
+    # Dockerfiles require a newer version of Docker that has heredoc support. This may not be necesssary in the future,
+    # but it is definitely needed at the time of this writing.
+    - name: Install newer version of Docker
+      run: |
+        echo "-- Remove existing installations of Docker --"
+        sudo apt-get remove docker docker-engine docker.io containerd runc
+
+        echo "-- Install new version -- "
+        sudo apt-get update
+        sudo apt-get install \
+            ca-certificates \
+            curl \
+            gnupg
+
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+        echo \
+          "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        sudo apt-get update
+
+        sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    - name: Build and extract Debian .deb artifact via Docker
+      run: |
+        echo "-- Setting variables --"
+        export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
+        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
+
+        echo "----- Extract plrust version -----"
+        PLRUST_VER=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="plrust")|.version')
+        echo ""
+
+        echo "----- Build artifact via Docker -----"
+        docker build \
+          --build-arg PG_VER=$PG_VER \
+          --build-arg PLRUST_VER=$PLRUST_VER\
+          -f .github/docker/Dockerfile.debian-artifact-build \
+          -t plrust-debian \
+          .
+        echo ""
+
+        echo "-- Creating container --"
+        container_id=$(docker create plrust-debian)
+        echo ""
+
+        echo "-- Extracting file from container --"
+        docker cp $container_id:/out /home/runner
+        echo ""
+
+        echo "-- Destroying container --"
+        docker rm -v $container_id
+        echo ""
+
+    - name: Install official version of PostgreSQL and supporting apps/libraries
+      run: |
+        echo "----- Remove old postgres -----"
+        sudo apt remove -y postgres*
+        echo ""
+
+        echo "----- Set up PostgreSQL Apt repository -----"
+        sudo apt-get install -y wget gnupg
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null && \
+        sudo apt-get update -y -qq --fix-missing
+        echo ""
+
+        echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
+        sudo apt-get install -y \
+          build-essential \
+          clang \
+          clang-11 \
+          gcc \
+          libssl-dev \
+          libz-dev \
+          llvm-11 \
+          make \
+          pkg-config \
+          postgresql-$PG_VER \
+          postgresql-server-dev-$PG_VER \
+          strace \
+          zlib1g-dev
+        echo ""
+
+        echo "----- Set up Postgres permissions -----"
+        sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
+        echo ""
+
+    - name: Set up rust and components for postgres user
+      run: |
+        echo "----- Install toml Rubygem -----"
+        sudo gem install --no-document toml
+        echo ""
+
+        echo "----- Extract Rust toolchain version from rust-toolchain.toml -----"
+        ruby <<EOF
+        require 'toml'
+        toml=TOML.load_file("#{ENV['GITHUB_WORKSPACE']}/rust-toolchain.toml")
+        if ver=toml['toolchain']['channel']
+          File.open('/tmp/.toolchain-ver', 'w') { |file| file.write(ver) }
+        else
+          raise 'Could not determine toolchain channel version. Is rust-toolchain.toml missing or malformed?'
+        end
+        EOF
+        echo ""
+
+        echo "----- Install Rust and components for postgres user -----"
+        sudo runuser -l postgres -c 'TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER'
+        sudo runuser -l postgres -c 'rustup component add llvm-tools-preview rustc-dev'
+        echo ""
+
+    - name: Install pl/Rust Debian package
+      run: |
+        FILE=$(ls /home/runner/out/*.deb | head -n 1)
+        APK_BASE=$(basename $FILE)
+        mv $FILE /tmp
+
+        sudo apt install -y /tmp/$APK_BASE
+
+    - name: Set up PostgreSQL configuration and restart service
+      run: |
+        # NOTE: DO NOT USE ANY OF THIS IN A PRODUCTION SYSTEM!
+        echo "----- Setting up host-based auth -----"
+        echo 'local all all trust' | sudo tee /etc/postgresql/$PG_VER/main/pg_hba.conf >/dev/null
+        echo 'host all all 0.0.0.0/0 trust' | sudo tee -a /etc/postgresql/$PG_VER/main/pg_hba.conf >/dev/null
+
+        echo "----- Setting plrust configuration -----"
+        echo "shared_preload_libraries='plrust'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
+        echo "plrust.work_dir='/tmp'" | sudo tee -a /etc/postgresql/$PG_VER/main/postgresql.conf >/dev/null
+
+        echo "----- Ensure Postgres is listening to port 5432 -----"
+        sudo perl -pi -e 's/^port\s?=.*/port = 5432/' /etc/postgresql/$PG_VER/main/postgresql.conf
+
+        echo "----- Restarting postgresql -----"
+        sudo service postgresql restart
+
+    - name: Create pl/Rust extension and run a function
+      run: |
+        sudo runuser -l postgres -c 'psql -c "CREATE EXTENSION IF NOT EXISTS plrust;"'
+        sudo runuser -l postgres -c "psql -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS \$\$ Ok(Some(1)) \$\$;'"
+        sudo runuser -l postgres -c 'psql -c "SELECT * FROM plrust.one();"'
+
+  dockerfile_try_x86_64:
+    name: (nightly) Test Dockerfile.try x86_64
+    runs-on: [ubuntu-latest]
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      CI: true
+
+    steps:
+    # If this workflow is being called from a schedule/cron job, then let's
+    # force the "develop" branch. Otherwise, use whatever is passed in via
+    # GITHUB_HEAD_REF. The result of this will be used below in the
+    # actions/checkout@vX step. Note that at the time of this writing, Github
+    # Actions does not allow us to specify which branch to run a schedule from
+    # (it always runs from the default branch, which in this case is master).
+    - name: Set up correct branch environment variable
+      run: |
+        if [ $GITHUB_EVENT_NAME == "schedule" ]; then
+          echo "Running via schedule, so using branch develop"
+          echo "NIGHTLY_BUILD_REF=develop" >> $GITHUB_ENV
+        else
+          echo "Not running via schedule, so using branch $GITHUB_HEAD_REF"
+          echo "NIGHTLY_BUILD_REF=$GITHUB_HEAD_REF" >> $GITHUB_ENV
+        fi
+
+    - uses: actions/checkout@v3
+
+    # The default installation of Docker on Github Actions runners are pretty outdated, as the artifact builder
+    # Dockerfiles require a newer version of Docker that has heredoc support. This may not be necesssary in the future,
+    # but it is definitely needed at the time of this writing.
+    - name: Install newer version of Docker
+      run: |
+        echo "-- Remove existing installations of Docker --"
+        sudo apt-get remove docker docker-engine docker.io containerd runc
+
+        echo "-- Install new version -- "
+        sudo apt-get update
+        sudo apt-get install \
+            ca-certificates \
+            curl \
+            gnupg
+
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+        echo \
+          "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        sudo apt-get update
+
+        sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    - name: Install Postgres client
+      run: |
+        echo "----- Remove old postgres -----"
+        sudo apt remove -y postgres*
+        echo ""
+
+        echo "----- Set up PostgreSQL Apt repository -----"
+        sudo apt-get install -y wget gnupg
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null && \
+        sudo apt-get update -y -qq --fix-missing
+        echo ""
+
+        sudo apt install -y postgresql-client-15
+
+    - name: Build container from Dockerfile.try
+      run: docker build -f Dockerfile.try -t tcdi/try-plrust .
+
+    - name: Run container as server and try function
+      run: |
+        sudo docker run --detach -p 5432:5432 tcdi/try-plrust server
+        sleep 30
+        psql -h 127.0.0.1 -U postgres -c 'CREATE FUNCTION plrust.one() RETURNS INT LANGUAGE plrust AS $$ Ok(Some(1)) $$;'
+        psql -h 127.0.0.1 -U postgres -c 'SELECT * FROM plrust.one()'
+
+  plrust_macos_x86_64:
+    name: macos x86_64 tests
+    runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, 'nogha')"
+
+    env:
+      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/Users/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+
+    strategy:
+      matrix:
+        version: ["pg14"]
+        os: ["macos-12"]
+        target: ["host", "postgrestd"]
+      fail-fast: false
+
+    steps:
+    # If this workflow is being called from a schedule/cron job, then let's
+    # force the "develop" branch. Otherwise, use whatever is passed in via
+    # GITHUB_HEAD_REF. The result of this will be used below in the
+    # actions/checkout@vX step. Note that at the time of this writing, Github
+    # Actions does not allow us to specify which branch to run a schedule from
+    # (it always runs from the default branch, which in this case is master).
+    - name: Set up correct branch environment variable
+      run: |
+        if [ $GITHUB_EVENT_NAME == "schedule" ]; then
+          echo "Running via schedule, so using branch develop"
+          echo "NIGHTLY_BUILD_REF=develop" >> $GITHUB_ENV
+        else
+          echo "Not running via schedule, so using branch $GITHUB_HEAD_REF"
+          echo "NIGHTLY_BUILD_REF=$GITHUB_HEAD_REF" >> $GITHUB_ENV
+        fi
+
+    - uses: actions/checkout@v3
+
+    - name: Set up (Mac) prerequisites and environment
+      run: |
+        echo ""
+
+        echo "----- Getting pre-installed Postgres major version -----"
+        PG_VER=$(pg_config --version | awk '{split($2,a,"."); print a[1]}')
+        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
+        cat $GITHUB_ENV
+
+        echo "----- Set up Postgres permissions -----"
+        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+        ls -lath `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+        echo ""
+
+        echo "----- Output Cargo version -----"
+        cargo --version
+        echo ""
+
+        echo "----- Outputting env -----"
+        env
+        echo ""
+
+    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+    - name: Install cargo-pgrx defined in plrust/Cargo.toml
+      run: |
+        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
+        install_cargo_pgrx
+
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
+
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
+
+    - name: Test plrustc
+      run: cd plrustc && cargo test -p plrustc
+
+    - name: Install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
+    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+      run: cargo pgrx init --pg$PG_VER $(which pg_config)
+
+    - name: Test PL/rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
+
+    - name: Test PL/rust as "trusted" (inc. postgrestd)
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"

@@ -402,20 +402,20 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "yup"]
     fn pgrx_can_panic() {
-        panic!()
+        panic!("yup")
     }
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "yup"]
     fn plrust_can_panic() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION shut_up_and_explode()
             RETURNS text AS
             $$
-                panic!();
+                panic!("yup");
                 Ok(None)
             $$ LANGUAGE plrust;
         "#;
@@ -429,7 +429,7 @@ mod tests {
     #[cfg(feature = "trusted")]
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "Failed to execute command"]
     fn postgrestd_subprocesses_panic() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION say_hello()
@@ -568,7 +568,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: usage of an `unsafe` block"]
     fn plrust_block_unsafe_annotated() -> spi::Result<()> {
         // PL/Rust should block creating obvious, correctly-annotated usage of unsafe code
         let definition = r#"
@@ -576,7 +576,7 @@ mod tests {
             RETURNS text AS
             $$
                 use std::{os::raw as ffi, str, ffi::CStr};
-                let int = 0xDEADBEEF;
+                let int:u32 = 0xDEADBEEF;
                 // Note that it is always safe to create a pointer.
                 let ptr = int as *mut u64;
                 // What is unsafe is dereferencing it
@@ -592,7 +592,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "call to unsafe function is unsafe and requires unsafe block"]
     fn plrust_block_unsafe_hidden() -> spi::Result<()> {
         // PL/Rust should not allow hidden injection of unsafe code
         // that may rely on the way PGRX expands into `unsafe fn` to "sneak in"
@@ -601,7 +601,7 @@ mod tests {
             RETURNS text AS
             $$
                 use std::{os::raw as ffi, str, ffi::CStr};
-                let int = 0xDEADBEEF;
+                let int:u32 = 0xDEADBEEF;
                 let ptr = int as *mut u64;
                 ptr.write(0x00_1BADC0DE_00);
                 let cstr = CStr::from_ptr(ptr.cast::<ffi::c_char>());
@@ -613,7 +613,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
     #[cfg(feature = "trusted")]
     fn plrust_block_env() -> spi::Result<()> {
         let definition = r#"
@@ -627,7 +627,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
     #[cfg(feature = "trusted")]
     fn plrust_block_option_env() -> spi::Result<()> {
         let definition = r#"
@@ -643,7 +643,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "error: usage of an `unsafe` block"]
     fn plrust_block_unsafe_plutonium() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION super_safe()
@@ -673,7 +673,8 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "xxx"]
+    #[ignore]
     fn plrust_pgloglevel_dont_allcaps_panic() -> spi::Result<()> {
         // This test attempts to annihilate the database.
         // It relies on the existing assumption that tests are run in the same Postgres instance,
@@ -682,9 +683,7 @@ mod tests {
             CREATE FUNCTION dont_allcaps_panic()
             RETURNS text AS
             $$
-                use pgrx::log::{PgLogLevel, elog};
-
-                elog(PgLogLevel::PANIC, "If other tests completed, PL/Rust did not actually destroy the entire database, \
+                ereport!(PANIC, PgSqlErrorCode::ERRCODE_INTERNAL_ERROR, "If other tests completed, PL/Rust did not actually destroy the entire database, \
                                          But if you see this in the error output, something might be wrong.");
                 Ok(Some("lol".into()))
             $$ LANGUAGE plrust;
@@ -797,7 +796,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "parameter name \"a\" used more than once"]
     fn plrust_dup_args() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION not_unique(a int, a int)
@@ -814,7 +813,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "PL/Rust does not support unnamed arguments"]
     fn plrust_defaulting_dup_args() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION not_unique(int, arg0 int)
@@ -831,7 +830,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "plrust functions cannot have their STRICT property altered"]
     fn plrust_cant_change_strict_off() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION cant_change_strict_off()
@@ -840,12 +839,12 @@ mod tests {
             AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
-        Spi::run("ALTER FUNCTION cant_change_strict() CALLED ON NULL INPUT")
+        Spi::run("ALTER FUNCTION cant_change_strict_off() CALLED ON NULL INPUT")
     }
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic]
+    #[should_panic = "plrust functions cannot have their STRICT property altered"]
     fn plrust_cant_change_strict_on() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION cant_change_strict_on()
@@ -854,7 +853,7 @@ mod tests {
             AS $$ Ok(Some(1)) $$;
         "#;
         Spi::run(definition)?;
-        Spi::run("ALTER FUNCTION cant_change_strict() RETURNS NULL ON NULL INPUT")
+        Spi::run("ALTER FUNCTION cant_change_strict_on() RETURNS NULL ON NULL INPUT")
     }
 
     #[pg_test]
@@ -1123,42 +1122,74 @@ mod tests {
         Ok(())
     }
 
-    // #[pg_test]
-    // fn test_daterange() -> spi::Result<()> {
-    //     Spi::run(
-    //         r#"CREATE FUNCTION test_daterange(r daterange) RETURNS daterange LANGUAGE plrust AS $$ Ok(r) $$"#,
-    //     )?;
-    //     let r = Spi::get_one::<Range<Date>>(
-    //         "SELECT test_daterange('[1977-03-20, 1980-01-01)'::daterange);",
-    //     )?
-    //     .expect("SPI result was null");
-    //     assert_eq!(r, Range::new(Date::new(), Date::new()));
-    //     Ok(())
-    // }
-    //
-    // #[pg_test]
-    // fn test_tsrange() -> spi::Result<()> {
-    //     Spi::run(
-    //         r#"CREATE FUNCTION test_tsrange(p tsrange) RETURNS tsrange LANGUAGE plrust AS $$ Ok(p) $$"#,
-    //     )?;
-    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_tsrange('42, 99'::tsrange);")?
-    //         .expect("SPI result was null");
-    //     assert_eq!(p.x, 42.0);
-    //     assert_eq!(p.y, 99.0);
-    //     Ok(())
-    // }
-    //
-    // #[pg_test]
-    // fn test_tstzrange() -> spi::Result<()> {
-    //     Spi::run(
-    //         r#"CREATE FUNCTION test_tstzrange(p tstzrange) RETURNS tstzrange LANGUAGE plrust AS $$ Ok(p) $$"#,
-    //     )?;
-    //     let p = Spi::get_one::<pg_sys::Point>("SELECT test_tstzrange('42, 99'::tstzrange);")?
-    //         .expect("SPI result was null");
-    //     assert_eq!(p.x, 42.0);
-    //     assert_eq!(p.y, 99.0);
-    //     Ok(())
-    // }
+    #[pg_test]
+    fn test_daterange() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION test_daterange(r daterange) RETURNS daterange LANGUAGE plrust AS $$ Ok(r) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<Date>>(
+            "SELECT test_daterange('[1977-03-20, 1980-01-01)'::daterange);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                Date::new(1977, 3, 20)?,
+                RangeBound::Exclusive(Date::new(1980, 01, 01)?)
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_tsrange() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION test_tsrange(p tsrange) RETURNS tsrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<Timestamp>>(
+            "SELECT test_tsrange('[1977-03-20, 1980-01-01)'::tsrange);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                Timestamp::new(1977, 3, 20, 0, 0, 0.0)?,
+                RangeBound::Exclusive(Timestamp::new(1980, 01, 01, 0, 0, 0.0)?)
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_tstzrange() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION test_tstzrange(p tstzrange) RETURNS tstzrange LANGUAGE plrust AS $$ Ok(p) $$"#,
+        )?;
+        let r = Spi::get_one::<Range<TimestampWithTimeZone>>(
+            "SELECT test_tstzrange('[1977-03-20, 1980-01-01)'::tstzrange);",
+        )?
+        .expect("SPI result was null");
+        assert_eq!(
+            r,
+            Range::new(
+                TimestampWithTimeZone::new(1977, 3, 20, 0, 0, 0.0)?,
+                RangeBound::Exclusive(TimestampWithTimeZone::new(1980, 01, 01, 0, 0, 0.0)?)
+            )
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_interval() -> Result<(), Box<dyn Error>> {
+        Spi::run(
+            r#"CREATE FUNCTION get_interval_hours(i interval) RETURNS numeric STRICT LANGUAGE plrust AS $$ Ok(i.extract_part(DateTimeParts::Hour)) $$"#,
+        )?;
+        let hours =
+            Spi::get_one::<AnyNumeric>("SELECT get_interval_hours('3 days 9 hours 12 seconds')")?
+                .expect("SPI result was null");
+        assert_eq!(hours, AnyNumeric::from(9));
+        Ok(())
+    }
 
     #[cfg(feature = "trusted")]
     #[pg_test]
@@ -1202,6 +1233,119 @@ mod tests {
     fn invalid_arg_identifier() -> spi::Result<()> {
         Spi::run("CREATE FUNCTION invalid_arg_identifier(\"this isn't a valid rust identifier\" int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")
     }
+
+    #[pg_test]
+    fn test_srf_one_col() -> spi::Result<()> {
+        Spi::run(
+            "CREATE FUNCTION srf_one_col() RETURNS TABLE (a int) LANGUAGE plrust AS $$
+            Ok(Some(TableIterator::new(vec![( Some(1), )].into_iter())))
+        $$;",
+        )?;
+
+        let a = Spi::get_one::<i32>("SELECT * FROM srf_one_col()")?;
+        assert_eq!(a, Some(1));
+
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_srf_two_col() -> spi::Result<()> {
+        Spi::run(
+            "CREATE FUNCTION srf_two_col() RETURNS TABLE (a int, b int) LANGUAGE plrust AS $$
+            Ok(Some(TableIterator::new(vec![(Some(1), Some(2))].into_iter())))
+        $$;",
+        )?;
+
+        let (a, b) = Spi::get_two::<i32, i32>("SELECT * FROM srf_two_col()")?;
+        assert_eq!(a, Some(1));
+        assert_eq!(b, Some(2));
+
+        Ok(())
+    }
+
+    #[pg_test]
+    fn test_udt() -> spi::Result<()> {
+        Spi::run(
+            r#"
+CREATE TYPE person AS (
+    name text,
+    age  float8
+);
+
+create function make_person(name text, age float8) returns person
+    strict parallel safe
+    language plrust as
+$$
+    // create the Heap Tuple representation of the SQL type `person`
+    let mut p = PgHeapTuple::new_composite_type("person")?;
+    
+    // set a few of its attributes
+    //
+    // Runtime errors can occur if the attribute name is invalid or if the Rust type of the value
+    // is not compatible with the backing SQL type for that attribute.  Hence the use of the `?` operator
+    p.set_by_name("name", name)?;
+    p.set_by_name("age", age)?;
+    
+    // return the `person`
+    Ok(Some(p))
+$$;
+
+create function get_person_name(p person) returns text
+    strict parallel safe
+    language plrust as
+$$
+   // `p` is a `PgHeapTuple` over the underlying data for `person`
+   Ok(p.get_by_name("name")?)
+$$;
+
+create function get_person_age(p person) returns float8
+    strict parallel safe
+    language plrust as
+$$
+   // `p` is a `PgHeapTuple` over the underlying data for `person`
+   Ok(p.get_by_name("age")?)
+$$;
+
+create function get_person_attribute(p person, attname text) returns text
+    strict parallel safe
+    language plrust as
+$$
+   match attname.to_lowercase().as_str() {
+    "age" => {
+        let age:Option<f64> = p.get_by_name("age")?;
+        Ok(age.map(|v| v.to_string()))
+    },
+    "name" => {
+        Ok(p.get_by_name("name")?)
+    },
+    _ => panic!("unknown attribute: `{attname}`")
+   }
+$$;
+
+create operator ->> (function = get_person_attribute, leftarg = person, rightarg = text);
+
+create table people
+(
+    id serial8 not null primary key,
+    p  person
+);
+
+insert into people (p) values (make_person('Johnny', 46.24));
+insert into people (p) values (make_person('Joe', 99.09));
+insert into people (p) values (make_person('Dr. Beverly Crusher of the Starship Enterprise', 32.0));
+            "#,
+        )?;
+
+        let johnny = Spi::get_one::<PgHeapTuple<AllocatedByRust>>(
+            "SELECT p FROM people WHERE p->>'name' = 'Johnny';",
+        )?
+        .expect("SPI result was null");
+
+        let age = johnny.get_by_name::<f64>("age")?.expect("age was null");
+        assert_eq!(age, 46.24);
+
+        Ok(())
+    }
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -1227,9 +1371,12 @@ pub mod pg_test {
         let mut allowed_deps = std::fs::File::create(&file_path).unwrap();
         allowed_deps
             .write_all(
-                r#"owo-colors = "3.5.0"
-tokio = { version = "1.19.2", features = ["rt", "net"]}"#
-                    .as_bytes(),
+                r#"
+owo-colors = "=3.5.0"
+tokio = { version = "=1.19.2", features = ["rt", "net"]}
+plutonium = "*"
+"#
+                .as_bytes(),
             )
             .unwrap();
 

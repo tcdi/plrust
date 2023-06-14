@@ -51,18 +51,7 @@ PL/Rust functions.
 When `plrust.allowed_dependencies` is not defined, all Rust crates are allowed
 when creating PL/Rust functions.
 
-Consider a file `/path/to/plrust_allowed.toml` with the following contents.
-
-```toml
-foo = "1.1.5"
-```
-
-The configuration to restrict crates looks like the following example.
-
-```bash
-plrust.allowed_dependencies = /path/to/plrust_allowed.toml
-```
-
+For more discussion, see [dependencies.md](dependencies.md)
 
 #### `plrust.path_override` (string)
 
@@ -80,7 +69,7 @@ compiling user functions. This typically should not need to be manually set.
 
 
 ```bash
-plrust.trusted_pgrx_version = '1.1.3'
+plrust.trusted_pgrx_version = '1.2.0'
 ```
 
 
@@ -118,9 +107,18 @@ This is the name of the linker `rustc` should use on for cross-compile.
 The architecture linker names have sensible defaults and shouldn't need to be be
 changed (unless the host is some esoteric Linux distribution we have not encountered yet).
 
+Linux defaults:
+
 ```bash
 plrust.x86_64_linker = 'x86_64_linux_gnu_gcc'
 plrust.aarch64_linker = 'aarch64_linux_gnu_gcc'
+```
+
+macOS defaults:
+
+```bash
+plrust.x86_64_linker = 'cc'
+plrust.aarch64_linker = 'cc'
 ```
 
 
@@ -158,7 +156,7 @@ purpose of the Lints.
 A comma-separated list of Rust lints to apply to every user function.
 
 ```bash
-plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, plrust_stdio, unknown_lints, deprecated, suspicious_auto_trait_impls, unaligned_references, soft_unstable, plrust_autotrait_impls'
+plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_traits, implied_bounds_entailment, unsafe_code, plrust_filesystem_macros, plrust_env_macros, plrust_external_mod, plrust_fn_pointers, plrust_async, plrust_leaky, plrust_print_macros, plrust_stdio, unknown_lints, deprecated, suspicious_auto_trait_impls, soft_unstable, plrust_autotrait_impls'
 ```
 
 

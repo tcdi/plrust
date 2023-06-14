@@ -3,24 +3,48 @@ set -xe
 
 if [ -z "$STD_TARGETS" ]; then
     # if none specified, always build for these two targets
-    STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
+    if [ `uname` == "Darwin" ]; then
+       STD_TARGETS="x86_64-apple-darwin-postgres aarch64-apple-darwin-postgres"
+    else
+       STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu"
+    fi
 fi
 
 # and depending on the platform we're building on, we need to set a linker flag for the other
 # this'll get hairy when we support more platforms and we should port this script to Rust
-if [ `uname -m` == "x86_64" ]; then
-    if [[ -z "$CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" ]] && [[ -z "$CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER" ]]; then
-        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-        export CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-    fi
-elif [ `uname -m` == "aarch64" ]; then
-    if [[ -z "$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" ]] && [[ -z "$CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER" ]]; then
-        export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
-        export CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
-    fi
+
+if [ `uname` == "Darwin" ]; then
+   if [ `uname -m` == "arm64" ]; then
+      if [[ -z "$CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER" ]] && [[ -z "$CARGO_TARGET_AARCH64_APPLE_DARWIN_POSTGRES_LINKER" ]]; then
+           export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=cc
+           export CARGO_TARGET_AARCH64_APPLE_DARWIN_POSTGRES_LINKER=cc
+       fi
+   elif [ `uname -m` == "x86_64" ]; then
+       if [[ -z "$CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER" ]] && [[ -z "$CARGO_TARGET_X86_64_APPLE_DARWIN_POSTGRES_LINKER" ]]; then
+           export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=cc
+           export CARGO_TARGET_X86_64_APPLE_DARWIN_POSTGRES_LINKER=cc
+       fi
+
+   else
+      echo unsupported macos build platform: $(uname -m)
+      exit 1
+   fi 
+
 else
-    echo unsupported build platform: $(uname -m)
-    exit 1
+   if [ `uname -m` == "x86_64" ]; then
+       if [[ -z "$CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" ]] && [[ -z "$CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER" ]]; then
+           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+           export CARGO_TARGET_AARCH64_POSTGRES_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+       fi
+   elif [ `uname -m` == "aarch64" ]; then
+       if [[ -z "$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" ]] && [[ -z "$CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER" ]]; then
+           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+           export CARGO_TARGET_X86_64_POSTGRES_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+       fi
+   else
+       echo unsupported build platform: $(uname -m)
+       exit 1
+   fi
 fi
 
 # Make sure the tip of pgrx's develop branch is used,
@@ -29,7 +53,7 @@ cargo update -p pgrx
 cargo fetch
 if [ "$CI" != true ]; then
     cargo install cargo-pgrx \
-     --version "0.8.2" \
+     --version "0.9.5" \
      --locked # use the Cargo.lock in the pgrx repo
 fi
 
@@ -42,10 +66,10 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --branch "1.67.1" --recurse-submodules
+        git clone https://github.com/tcdi/postgrestd.git --branch "rust-1.70.0" --recurse-submodules
         cd ./postgrestd
     fi
-    rm --force rust-toolchain.toml
+    rm -f rust-toolchain.toml
     STD_TARGETS="$STD_TARGETS" ./run clean
     STD_TARGETS="$STD_TARGETS" ./run install
 )

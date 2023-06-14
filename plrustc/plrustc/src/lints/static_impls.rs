@@ -16,7 +16,8 @@ impl<'tcx> LateLintPass<'tcx> for PlrustStaticImpls {
         if self.has_static(imp.self_ty) {
             cx.lint(
                 PLRUST_STATIC_IMPLS,
-                "`impl` blocks for types containing `'static` references are not allowed",
+                "`impl` blocks for types containing `'static` references \
+                are not allowed in PL/Rust",
                 |b| b.set_span(imp.self_ty.span),
             )
         }
@@ -37,7 +38,7 @@ impl PlrustStaticImpls {
         use hir::{Lifetime, LifetimeName::Static, MutTy, TyKind};
         match &t.kind {
             TyKind::Infer
-            | TyKind::Err
+            | TyKind::Err(..)
             // Doesn't exist
             | TyKind::Typeof(..)
             // Not strictly correct but we forbid this elsewhere anyway.
@@ -47,9 +48,9 @@ impl PlrustStaticImpls {
             | TyKind::OpaqueDef(..)
             | TyKind::Never => false,
             // Found one!
-            TyKind::Rptr(Lifetime { res: Static, .. }, _) | TyKind::TraitObject(_, Lifetime { res: Static, .. }, _) => true,
+            TyKind::Ref(Lifetime { res: Static, .. }, _) | TyKind::TraitObject(_, Lifetime { res: Static, .. }, _) => true,
             // Need to keep looking.
-            TyKind::Rptr(_, MutTy { ty, .. })
+            TyKind::Ref(_, MutTy { ty, .. })
             | TyKind::Ptr(MutTy { ty, .. })
             | TyKind::Array(ty, _)
             | TyKind::Slice(ty) => self.has_static(*ty),

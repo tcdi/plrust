@@ -28,6 +28,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
         libssl-dev \
         llvm-11 \
         make \
+        ruby \
         postgresql-server-dev-15 \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
@@ -35,17 +36,32 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 # Set up permissions so that the postgres user can install the plrust plugin
 RUN chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
 
+# Install fpm for the creation of the .deb file,
+# and install toml so TOML files can be parsed later
+RUN gem install --no-document fpm toml
+
 # The 'postgres' user is the default user that the official postgres:15-bullseye image sets up
 USER postgres
 ENV USER postgres
 
-# Install Rust
-RUN wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=1.67.1
-ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
-
 # Copy in plrust source
 COPY --chown=${USER} . src/
 WORKDIR /src
+
+# Obtain the toolchain version from rust-toolchain.toml and store that into a file.
+RUN ruby <<EOF
+require 'toml'
+toml=TOML.load_file('/src/rust-toolchain.toml')
+if ver=toml['toolchain']['channel']
+  File.open('/tmp/.toolchain-ver', 'w') { |file| file.write(ver) }
+else
+  raise 'Could not determine toolchain channel version. Is rust-toolchain.toml missing or malformed?'
+end
+EOF
+
+# Install Rust
+RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain=$TOOLCHAIN_VER
+ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 
 # Build/install/remove all that is necessary in one step as to keep the resulting layer as small as possible.
 RUN PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version') && \

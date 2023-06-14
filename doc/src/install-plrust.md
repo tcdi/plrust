@@ -39,9 +39,18 @@ uses `x86_64` and ensures the target is installed.  If you are using `aarch64`,
 update the command accordingly.
 
 
+Linux:
+
 ```bash
 rustup component add llvm-tools-preview rustc-dev
 rustup target install x86_64-unknown-linux-gnu
+```
+
+macOS:
+
+```bash
+rustup component add llvm-tools-preview rustc-dev
+rustup target install x86_64-apple-darwin
 ```
 
 Change into the `plrust/plrustc` directory to build `plrustc`.
@@ -115,6 +124,8 @@ Adding cross compilation support to PL/Rust requires a few minor changes to the
 the changes to make for cross compile support, not the full process.
 
 
+#### Linux
+
 As a Linux user with `sudo` access, install these additional prerequisites.
 
 
@@ -132,14 +143,15 @@ rustup target install x86_64-unknown-linux-gnu
 ```
 
 
-Update the `STD_TARGETS` used when building `postgrestd` to include both architectures.
-This step will take longer with cross compilation then only one architectures, as
-it is required to double some of the work.
+#### macOS
+
+The normal trusted install uses `rustup` to install one architecture target.
+Cross compilation support requires both.
 
 ```bash
-PG_VER=15 \
-    STD_TARGETS="x86_64-postgres-linux-gnu aarch64-postgres-linux-gnu" \
-    ./build
+rustup component add llvm-tools-preview rustc-dev
+rustup target install aarch64-apple-darwin
+rustup target install x86_64-apple-darwin
 ```
 
 > The above environment variables are the default... you can just run `./build`.  `PG_VER=15` currently represents the latest released PostgreSQL version. 

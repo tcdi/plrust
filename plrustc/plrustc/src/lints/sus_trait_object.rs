@@ -1,5 +1,7 @@
+use hir::def::{DefKind, Res};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty;
 
 declare_plrust_lint!(
     pub(crate) PLRUST_SUSPICIOUS_TRAIT_OBJECT,
@@ -27,10 +29,32 @@ impl<'tcx> LateLintPass<'tcx> for PlrustSuspiciousTraitObject {
                 let hir::GenericArg::Type(ty) = arg else {
                     continue;
                 };
-                if let hir::TyKind::TraitObject(..) = &ty.kind {
+                let is_trait_obj = match &ty.kind {
+                    hir::TyKind::TraitObject(..) => true,
+                    hir::TyKind::Path(qpath) => {
+                        let res = cx.qpath_res(qpath, ty.hir_id);
+                        let did = match res {
+                            Res::Def(DefKind::TyAlias | DefKind::AssocTy, def_id) => def_id,
+                            Res::SelfTyAlias { alias_to, .. } => alias_to,
+                            _ => continue,
+                        };
+                        let binder = cx.tcx.type_of(did);
+                        let ty = binder.subst_identity();
+                        if matches!(ty.kind(), ty::TyKind::Dynamic(..)) {
+                            true
+                        } else {
+                            match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
+                                Ok(t) => matches!(t.kind(), ty::TyKind::Dynamic(..)),
+                                _ => false,
+                            }
+                        }
+                    }
+                    _ => false,
+                };
+                if is_trait_obj {
                     cx.lint(
                         PLRUST_SUSPICIOUS_TRAIT_OBJECT,
-                        "trait objects in turbofish are forbidden",
+                        "using trait objects in turbofish position is forbidden by PL/Rust",
                         |b| b.set_span(expr.span),
                     );
                 }

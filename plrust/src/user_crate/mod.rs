@@ -16,13 +16,15 @@ Consider opening the documentation like so:
 cargo doc --no-deps --document-private-items --open
 ```
 */
+use eyre::WrapErr;
 use std::{path::Path, process::Output};
 
+use pgrx::prelude::PgHeapTuple;
 use pgrx::{pg_sys, PgBuiltInOids, PgOid};
 use proc_macro2::TokenStream;
 use quote::quote;
-use semver;
 
+use crate::allow_list::{load_allowlist, AllowList, Error};
 pub(crate) use build::FnBuild;
 use crate_variant::CrateVariant;
 pub(crate) use crating::FnCrating;
@@ -244,8 +246,8 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::CHAROID => quote! { u8 },
             PgBuiltInOids::CSTRINGOID if owned => quote! { std::ffi::CString },
             PgBuiltInOids::CSTRINGOID if !owned => quote! { &std::ffi::CStr },
-            // PgBuiltInOids::DATEOID => quote! { pgrx::Date },
-            // PgBuiltInOids::DATERANGEOID => quote! { Range<pgrx::Date> },
+            PgBuiltInOids::DATEOID => quote! { pgrx::Date },
+            PgBuiltInOids::DATERANGEOID => quote! { Range<pgrx::Date> },
             PgBuiltInOids::FLOAT4OID => quote! { f32 },
             PgBuiltInOids::FLOAT8OID => quote! { f64 },
             // PgBuiltInOids::INETOID => quote! { Inet },
@@ -254,6 +256,7 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::INT4RANGEOID => quote! { Range<i32> },
             PgBuiltInOids::INT8OID => quote! { i64 },
             PgBuiltInOids::INT8RANGEOID => quote! { Range<i64> },
+            PgBuiltInOids::INTERVALOID => quote! { pgrx::Interval },
             PgBuiltInOids::JSONBOID => quote! { pgrx::JsonB },
             PgBuiltInOids::JSONOID => quote! { pgrx::Json },
             PgBuiltInOids::POINTOID => quote! { pgrx::Point },
@@ -263,16 +266,24 @@ pub(crate) fn oid_to_syn_type(
             PgBuiltInOids::TEXTOID if owned => quote! { String },
             PgBuiltInOids::TEXTOID if !owned => quote! { &'a str },
             PgBuiltInOids::TIDOID => quote! { pg_sys::ItemPointerData },
-            // PgBuiltInOids::TIMEOID => quote! { pgrx::Time },
-            // PgBuiltInOids::TIMETZOID => quote! { pgrx::TimeWithTimeZone },
-            // PgBuiltInOids::TIMESTAMPOID => quote! { pgrx::Timestamp },
-            // PgBuiltInOids::TIMESTAMPTZOID => quote! { pgrx::TimestampWithTimeZone },
-            // PgBuiltInOids::TSRANGEOID => quote! { Range<pgrx::Timestamp> },
-            // PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgrx::TimestampWithTimeZone> },
+            PgBuiltInOids::TIMEOID => quote! { pgrx::Time },
+            PgBuiltInOids::TIMETZOID => quote! { pgrx::TimeWithTimeZone },
+            PgBuiltInOids::TIMESTAMPOID => quote! { pgrx::Timestamp },
+            PgBuiltInOids::TIMESTAMPTZOID => quote! { pgrx::TimestampWithTimeZone },
+            PgBuiltInOids::TSRANGEOID => quote! { Range<pgrx::Timestamp> },
+            PgBuiltInOids::TSTZRANGEOID => quote! { Range<pgrx::TimestampWithTimeZone> },
             PgBuiltInOids::UUIDOID => quote! { pgrx::Uuid },
             PgBuiltInOids::VARCHAROID => quote! { String },
             PgBuiltInOids::VOIDOID => quote! { () },
+            PgBuiltInOids::RECORDOID => quote! { () },
             _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
+        },
+        PgOid::Custom(oid) => match PgHeapTuple::new_composite_type_by_oid(oid) {
+            Ok(_) => {
+                let oid_u32 = oid.as_u32();
+                quote! { pgrx::composite_type!(#oid_u32) }
+            }
+            Err(_) => return Err(PlRustError::NoOidToRustMapping(oid)),
         },
         _ => return Err(PlRustError::NoOidToRustMapping(type_oid.value())),
     };
@@ -333,7 +344,12 @@ fn parse_source_and_deps(
 
     code_block.push_str("\n}");
 
-    let user_dependencies = check_user_dependencies(deps_block)?;
+    let mut user_dependencies = validate_user_dependencies(deps_block)?;
+
+    if crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get().is_some() {
+        let allowlist = load_allowlist().wrap_err("Error loading dependency allow-list")?;
+        user_dependencies = restrict_dependencies(user_dependencies, &allowlist)?;
+    }
 
     let user_code: syn::Block =
         syn::parse_str(&code_block).map_err(PlRustError::ParsingCodeBlock)?;
@@ -342,101 +358,191 @@ fn parse_source_and_deps(
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
-fn check_user_dependencies(user_deps: String) -> eyre::Result<toml::value::Table> {
+fn validate_user_dependencies(user_deps: String) -> eyre::Result<toml::value::Table> {
     let user_dependencies: toml::value::Table = toml::from_str(&user_deps)?;
+
+    //
+    // The validation process, such as it is, currently only requires that a dependency
+    // entry's value either be a [toml::Value::String] or a [toml::Value::Table].  We
+    // don't do any checking of the actual values here as they're essentially checked for
+    // compatibility/usefulness when squaring up against the allow-list
+    //
+    // Additionally, if there is no allow-list, then we don't really care what's going on here --
+    // the administrator has said it's fine for a function to YOLO, so who are we to judge?
+    //
 
     for (dependency, val) in &user_dependencies {
         match val {
-            toml::Value::String(_) => {
-                // No-op, we currently only support dependencies in the format
-                // foo = "1.0.0"
+            // user dependencies in these general forms are allowed:
+            //    name = "x.y.z"
+            //    name = { version = "x.y.z", features = [ "a", "b", "c" ]
+            toml::Value::String(_) | toml::Value::Table(_) => {
+                // these are allowed
             }
+
+            // everything else is unsupported
             _ => {
-                return Err(eyre::eyre!(
-                    "dependency {} with values {:?} is malformatted. Only strings are supported",
-                    dependency,
-                    val
-                ));
+                return Err(eyre::eyre!("dependency `{}` is malformed", dependency));
             }
         }
     }
 
-    check_dependencies_against_allowed(&user_dependencies)?;
     Ok(user_dependencies)
 }
 
+#[derive(thiserror::Error, Debug, PartialEq)]
+enum RestrictionError {
+    #[error("`{0}` is not an allowed dependency")]
+    DependencyNotAllowed(String),
+    #[error("`{0}` does not specify a version")]
+    VersionMissing(String),
+    #[error("`{0}`'s version is not a String type")]
+    NotAString(String),
+    #[error("When specified, the dependency properties of `{1}` for `{0}` must be the same as the restricted set of `{2}`")]
+    DependencyDeclarationMismatch(String, String, String),
+    #[error("Dependency Error: {0}")]
+    DependencyError(crate::allow_list::Error),
+}
+
+impl From<crate::allow_list::Error> for RestrictionError {
+    fn from(value: Error) -> Self {
+        RestrictionError::DependencyError(value)
+    }
+}
+
 #[tracing::instrument(level = "debug", skip_all)]
-fn check_dependencies_against_allowed(dependencies: &toml::value::Table) -> eyre::Result<()> {
-    if matches!(crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get(), None) {
-        return Ok(());
+fn restrict_dependencies(
+    wanted: toml::value::Table,
+    allowed: &AllowList,
+) -> Result<toml::value::Table, RestrictionError> {
+    fn extract_version<'a>(
+        depname: &str,
+        version_value: &'a toml::value::Value,
+    ) -> Result<&'a str, RestrictionError> {
+        match version_value {
+            toml::value::Value::String(version) => Ok(version),
+            toml::value::Value::Table(table) => table
+                .get("version")
+                .ok_or(RestrictionError::VersionMissing(depname.to_string()))?
+                .as_str()
+                .ok_or(RestrictionError::NotAString(depname.to_string())),
+            _ => panic!("malformed dependency"),
+        }
     }
 
-    let allowed_deps = &*crate::gucs::PLRUST_ALLOWED_DEPENDENCIES_CONTENTS;
-    let mut unsupported_deps = std::vec::Vec::new();
+    let mut actual = toml::value::Table::with_capacity(wanted.len());
+    for (wanted_dep, wanted_value) in &wanted {
+        let allowed_dep = allowed
+            .get(wanted_dep)
+            .ok_or_else(|| RestrictionError::DependencyNotAllowed(wanted_dep.clone()))?;
+        let wanted_version = extract_version(wanted_dep, wanted_value)?;
+        let used = allowed_dep.get_dependency_entry(wanted_version)?;
 
-    for (dep, val) in dependencies {
-        if !allowed_deps.contains_key(dep) {
-            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
-            continue;
-        }
+        // validate that the other properties that the user might have specified exactly match what
+        // is in the allow-list
+        if let Some(wanted_table) = wanted_value.as_table() {
+            if wanted_table.len() > 1 {
+                let mut wanted = wanted_table.clone();
+                let mut used = used.as_table().unwrap().clone();
 
-        match val {
-            toml::Value::String(ver) => {
-                let req = semver::VersionReq::parse(ver.as_str()).unwrap();
+                // don't compare the version values
+                wanted.remove("version");
+                used.remove("version");
 
-                // Check if the allowed dependency is of format String or toml::Table
-                // foo = "1.0.0" vs foo = { version = "1.0.0", features = ["full", "boo"], test = ["single"]}
-                match allowed_deps.get(dep).unwrap() {
-                    toml::Value::String(allowed_deps_ver) => {
-                        if !req.matches(&semver::Version::parse(allowed_deps_ver)?) {
-                            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
-                        }
-                    }
-                    toml::Value::Table(allowed_deps_vals) => {
-                        if !req.matches(&semver::Version::parse(
-                            &allowed_deps_vals.get("version").unwrap().as_str().unwrap(),
-                        )?) {
-                            unsupported_deps.push(format!("{} = {}", dep, val.to_string()));
-                        }
-                    }
-                    _ => {
-                        return Err(eyre::eyre!(
-                            "{} contains an unsupported toml format",
-                            crate::gucs::PLRUST_ALLOWED_DEPENDENCIES.get().unwrap()
-                        ));
-                    }
+                if used != wanted {
+                    return Err(RestrictionError::DependencyDeclarationMismatch(
+                        wanted_dep.clone(),
+                        toml::to_string(&wanted).unwrap().trim().replace('\n', ", "),
+                        toml::to_string(&used).unwrap().trim().replace('\n', ", "),
+                    ));
                 }
             }
-            _ => {
-                return Err(eyre::eyre!(
-                    "dependency {} with values {:?} is malformatted. Only strings are supported",
-                    dep,
-                    val
-                ));
-            }
         }
+
+        actual.insert(wanted_dep.clone(), used);
     }
 
-    if !unsupported_deps.is_empty() {
-        return Err(eyre::eyre!(
-            "The following dependencies are unsupported {:?}. The configured PL/Rust only supports {:?}",
-            unsupported_deps,
-            allowed_deps
-        ));
-    }
-
-    Ok(())
+    Ok(actual)
 }
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
+    use crate::pgproc::ProArgMode;
     use pgrx::*;
+    use proc_macro2::{Ident, Span};
     use quote::quote;
     use syn::parse_quote;
 
     use crate::user_crate::crating::cargo_toml_template;
     use crate::user_crate::*;
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_restrict_dependencies() -> eyre::Result<()> {
+        use crate::allow_list::{parse_allowlist, Error};
+        use crate::user_crate::{restrict_dependencies, RestrictionError};
+        use toml::toml;
+
+        const TOML: &str = r#"
+a = [ "=1.2.3", "=3.0", ">=6.0.0, <=10", { version = "=2.4.5", features = [ "x", "y", "z" ] }, "*", ">=1.0.0, <5.0.0",">=1.0.0, <2.0.0", ">=2, <=4", "=2.99.99" ]
+b = "*"
+c = "=1.2.3"
+d = { version = "=3.4.5", features = [ "x", "y", "z" ] }
+e = ">=0.8, <0.9"
+    "#;
+
+        let allowed = parse_allowlist(TOML)?;
+
+        let restricted = restrict_dependencies(toml! { a = "3.0" }, &allowed)?;
+        assert_eq!(toml! { a = { version = "=3.0" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { a = { version = "2.4.5", features = [ "q", "r", "p" ], default-features = false } }, &allowed);
+        if !matches!(restricted, Err(RestrictionError::DependencyDeclarationMismatch(..))) {
+            panic!("got valid restricted table when we shouldn't have");
+        }
+
+        let restricted = restrict_dependencies(toml! { a = { version = "2.4.5", features = [ "x", "y", "z" ] } }, &allowed)?;
+        assert_eq!(toml! { a = { version = "=2.4.5", features = [ "x", "y", "z" ] } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { a = { version = "2.4.5" } }, &allowed)?;
+        assert_eq!(toml! { a = { version = "=2.4.5", features = [ "x", "y", "z" ] } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { a = { version = "6.7.8" } }, &allowed)?;
+        assert_eq!(toml! { a = { version = "=6.7.8" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { a = { version = "=6.7.8" } }, &allowed)?;
+        assert_eq!(toml! { a = { version = "=6.7.8" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { a = "*" }, &allowed)?;
+        assert_eq!(toml! { a = { version = ">=6.0.0, <=10" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { b = "=1.2.3" } , &allowed)?;
+        assert_eq!(toml! { b = { version = "=1.2.3" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { b = "42" } , &allowed)?;
+        assert_eq!(toml! { b = { version = "^42" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { c = "1.2.3" } , &allowed)?;
+        assert_eq!(toml! { c = { version = "=1.2.3" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { c = "*" } , &allowed)?;
+        assert_eq!(toml! { c = { version = "=1.2.3" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { c = "1" } , &allowed)?;
+        assert_eq!(toml! { c = { version = "=1.2.3" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { c = "99" } , &allowed);
+        assert_eq!(restricted, Err(RestrictionError::DependencyError(Error::VersionNotPermitted("99".to_string()))));
+
+        let restricted = restrict_dependencies(toml! { e = "0.8" } , &allowed)?;
+        assert_eq!(toml! { e = { version = ">=0.8, <0.9" } }, restricted);
+
+        let restricted = restrict_dependencies(toml! { e = "0.9" } , &allowed);
+        assert_eq!(restricted, Err(RestrictionError::DependencyError(Error::VersionNotPermitted("0.9".to_string()))));
+
+        Ok(())
+    }
 
     #[pg_test]
     fn full_workflow() {
@@ -447,15 +553,16 @@ mod tests {
             let target_dir = crate::gucs::work_dir();
 
             let variant = {
-                let argument_oids_and_names = vec![(
-                    PgOid::from(PgBuiltInOids::TEXTOID.value()),
-                    syn::parse_str("arg0")?,
-                )];
+                let argnames = vec![Ident::new("arg0", Span::call_site())];
+                let argtypes = vec![pg_sys::TEXTOID];
+                let argmodes = vec![ProArgMode::In];
                 let return_oid = PgOid::from(PgBuiltInOids::TEXTOID.value());
                 let is_strict = true;
                 let return_set = false;
                 CrateVariant::function(
-                    argument_oids_and_names,
+                    argnames,
+                    argtypes,
+                    argmodes,
                     return_oid,
                     return_set,
                     is_strict,

@@ -17,7 +17,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_deb:
+  x86_64_deb_artifacts:
     name: Build x86_64 Debian artifacts
 
     runs-on: ubuntu-latest
@@ -25,6 +25,10 @@ jobs:
     strategy:
       matrix:
         pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+      fail-fast: false
+
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/checkout@v3
@@ -85,50 +89,17 @@ jobs:
       with:
         files: /home/runner/out/plrust*.deb
 
-  # Because (at the time of this writing) Github Actions does not have support for aarch64, we need to spin up
-  # aarch64 instances in AWS in order to build the artifacts.
-  spin_up_aarch64_instances:
-    name: Spin up aarch64 runner instances
-
-    strategy:
-      matrix:
-        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
-
-    # The following permissions are required to instruct GHA that it is allowed
-    # to communicate to another service via OIDC
-    permissions:
-      id-token: write # Required for requesting OIDC JWTs
-      contents: read  # This is required for actions/checkout
-
-    runs-on: ubuntu-latest
-
-    # In order to run this against aarch64 instances in AWS, GHA needs to authenticate
-    # against AWS via OIDC so it can directly communicate and launch AWS instances as
-    # needed. All the infrastructure and machinery is set up outside of Github Actions.
-    # Using OIDC is an alternative to setting up hard-coded AWS CLI credentials somewhere
-    # on a Github Action runner.
-    steps:
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-region: us-east-2
-        role-to-assume: arn:aws:iam::950481341027:role/github_oidc_iam_role
-        role-session-name: GithubPlrustSession
-
-    # Launch as many instances as needed, dictated by strategy.matrix.pg_version above.
-    # LaunchTemplateId is something known ahead of time, and is created elsewhere outside
-    # of Github Actions.
-    - name: Launch runner instance
-      run: aws ec2 run-instances --launch-template LaunchTemplateId=lt-0bad2911d6aad1b0d
-
-  build_deb_artifacts:
+  arm64_deb_artifacts:
     name: Build aarch64 Debian artifacts
-    needs: spin_up_aarch64_instances # Dont run this until 'spin_up_aarch64_instances' has completed
-    runs-on: [self-hosted, linux, ARM64, plrust_artifacts]
+    runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0bad2911d6aad1b0d]
 
     strategy:
       matrix:
         pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+      fail-fast: false
+
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v3

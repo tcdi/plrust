@@ -37,7 +37,6 @@ mod forbidden {
        #![forbid(plrust_suspicious_trait_object)]
        #![forbid(soft_unstable)]
        #![forbid(suspicious_auto_trait_impls)]
-       #![forbid(unaligned_references)]
        #![forbid(unsafe_code)]
        #![forbid(where_clauses_object_safety)]
     
