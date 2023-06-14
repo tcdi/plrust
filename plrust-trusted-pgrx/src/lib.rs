@@ -24,10 +24,10 @@ pub mod datum {
 
     // dates & times
     pub use ::pgrx::datum::{
-        clock_timestamp, current_date, current_time, current_timestamp, local_timestamp, now,
-        statement_timestamp, time_of_day, to_timestamp, transaction_timestamp, Date,
-        DateTimeConversionError, DateTimeParts, HasExtractableParts, Interval,
-        IntervalConversionError, Time, TimeWithTimeZone, Timestamp, TimestampPrecision,
+        clock_timestamp, current_date, current_time, current_timestamp, get_timezone_offset,
+        local_timestamp, now, statement_timestamp, time_of_day, to_timestamp,
+        transaction_timestamp, Date, DateTimeConversionError, DateTimeParts, HasExtractableParts,
+        Interval, IntervalConversionError, Time, TimeWithTimeZone, Timestamp, TimestampPrecision,
         TimestampWithTimeZone, ToIsoString,
     };
 
