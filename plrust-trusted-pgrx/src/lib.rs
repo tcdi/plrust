@@ -24,8 +24,11 @@ pub mod datum {
 
     // dates & times
     pub use ::pgrx::datum::{
-        Date, DateTimeConversionError, DateTimeParts, HasExtractableParts, Interval, Time,
-        TimeWithTimeZone, Timestamp, TimestampWithTimeZone,
+        clock_timestamp, current_date, current_time, current_timestamp, get_timezone_offset,
+        local_timestamp, now, statement_timestamp, time_of_day, to_timestamp,
+        transaction_timestamp, Date, DateTimeConversionError, DateTimeParts, HasExtractableParts,
+        Interval, IntervalConversionError, Time, TimeWithTimeZone, Timestamp, TimestampPrecision,
+        TimestampWithTimeZone, ToIsoString,
     };
 
     // zero-copy Arrays
