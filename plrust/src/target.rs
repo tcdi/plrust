@@ -34,7 +34,13 @@ mod host {
     #[allow(non_snake_case)]
     const fn VENDOR() -> &'static str {
         if crate::TRUSTED {
-            "postgres"
+            cfg_if::cfg_if! {
+                if #[cfg(target_vendor = "apple")] {
+                    "apple-darwin"
+                } else {
+                    "postgres"
+                }
+            }
         } else {
             cfg_if::cfg_if! {
                 if #[cfg(target_vendor = "apple")] {
@@ -48,11 +54,15 @@ mod host {
         }
     }
 
-    cfg_if::cfg_if! { if #[cfg(target_os = "macos")] {
-        const OS: &str = "darwin";
-    } else {
-        const OS: &str = std::env::consts::OS;
-    }}
+    cfg_if::cfg_if! {
+        if #[cfg(all(feature = "trusted", target_os = "macos"))] {
+            const OS: &str = "postgres";
+        } else if #[cfg(target_os = "macos")] {
+            const OS: &str = "darwin";
+        } else {
+            const OS: &str = std::env::consts::OS;
+        }
+    }
 
     pub(super) fn target_tuple() -> String {
         let tuple = [ARCH, VENDOR(), OS, ENV];
@@ -148,9 +158,18 @@ impl CrossCompilationTarget {
             self.target().as_str().to_uppercase().replace('-', "_")
         );
 
-        let linker = gucs::get_linker_for_target(self).unwrap_or_else(|| match self {
-            CrossCompilationTarget::X86_64 => "x86_64-linux-gnu-gcc".into(),
-            CrossCompilationTarget::Aarch64 => "aarch64-linux-gnu-gcc".into(),
+        let linker = gucs::get_linker_for_target(self).unwrap_or_else(|| {
+            #[cfg(target_os = "macos")]
+            match self {
+                CrossCompilationTarget::X86_64 => "cc".into(),
+                CrossCompilationTarget::Aarch64 => "cc".into(),
+            }
+
+            #[cfg(target_os = "linux")]
+            match self {
+                CrossCompilationTarget::X86_64 => "x86_64-linux-gnu-gcc".into(),
+                CrossCompilationTarget::Aarch64 => "aarch64-linux-gnu-gcc".into(),
+            }
         });
 
         (key, linker)
@@ -182,7 +201,17 @@ impl TryFrom<&str> for CrossCompilationTarget {
 impl From<CrossCompilationTarget> for CompilationTarget {
     fn from(cct: CrossCompilationTarget) -> Self {
         cfg_if::cfg_if! {
-            if #[cfg(feature = "trusted")] {
+            if #[cfg(all(feature = "trusted", target_os = "macos"))] {
+                match cct {
+                    CrossCompilationTarget::X86_64 => "x86_64-apple-darwin-postgres",
+                    CrossCompilationTarget::Aarch64 => "aarch64-apple-darwin-postgres",
+                }.into()
+            } else if #[cfg(target_os = "macos")] {
+                match cct {
+                    CrossCompilationTarget::X86_64 => "x86_64-apple-darwin",
+                    CrossCompilationTarget::Aarch64 => "aarch64-apple-darwin",
+                }.into()
+            } else if #[cfg(feature = "trusted")] {
                 match cct {
                     CrossCompilationTarget::X86_64 => "x86_64-postgres-linux-gnu",
                     CrossCompilationTarget::Aarch64 => "aarch64-postgres-linux-gnu",

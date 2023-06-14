@@ -58,7 +58,7 @@ jobs:
       run: |
         cd $WORK_DIR
         shopt -s globstar
-        checksum=$(cat **/Cargo.lock **/rust-toolchain.toml .github/workflows/ci.yml | sha256sum | awk '{print $1}')
+        checksum=$(cat **/Cargo.lock **/rust-toolchain.toml .github/workflows/ci.yml .cargo/config | sha256sum | awk '{print $1}')
         echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
 
     - name: Set up (Linux) prerequisites and environment
@@ -267,46 +267,13 @@ jobs:
         cargo --version
         echo ""
 
-    - name: Set up (Mac) prerequisites and environment
-      if: matrix.os == 'macos-11'
-      run: |
-        echo ""
-
-        # https://stackoverflow.com/questions/57968497/how-do-i-set-an-env-var-with-a-bash-expression-in-github-actions/57969570#57969570
-        echo "----- Getting pre-installed Postgres major version -----"
-        PG_VER=$(pg_config --version | awk '{split($2,a,"."); print a[1]}')
-        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
-        cat $GITHUB_ENV
-
-        echo "----- Installing yq so .toml files can be parsed and queried -----"
-        pip3 install yq
-        echo ""
-
-        echo "----- Setting up RUSTFLAGS found in .cargo/config -----"
-        echo "RUSTFLAGS=$RUSTFLAGS $(tomlq --raw-output '.build.rustflags | join(" ")' .cargo/config)" >> $GITHUB_ENV
-        cat $GITHUB_ENV
-        echo ""
-
-        echo "----- Set up Postgres permissions -----"
-        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-        ls -lath `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-        echo ""
-
-        echo "----- Output Cargo version -----"
-        cargo --version
-        echo ""
-
-        echo "----- Outputting env -----"
-        env
-        echo ""
-
     - name: Cache cargo registry
       uses: actions/cache@v3
       continue-on-error: false
       with:
         path: |
           /home/runner/.cargo
-        key: v0-plrust-x86_64-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml') }}
+        key: v0-plrust-x86_64-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml', '.cargo/config') }}
 
     - name: Cache sccache directory
       uses: actions/cache@v3
@@ -314,7 +281,7 @@ jobs:
       with:
         path: |
           /home/runner/.cache/sccache
-        key: v0-plrust-x86_64-sccache-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml') }}
+        key: v0-plrust-x86_64-sccache-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml', '.cargo/config') }}
 
     - name: Start sccache server
       run: sccache --start-server && sccache --show-stats
