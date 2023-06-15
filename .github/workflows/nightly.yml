@@ -42,6 +42,8 @@ jobs:
         fi
 
     - uses: actions/checkout@v3
+      with:
+        ref: ${{ env.NIGHTLY_BUILD_REF }}
 
     # The default installation of Docker on Github Actions runners are pretty outdated, as the artifact builder
     # Dockerfiles require a newer version of Docker that has heredoc support. This may not be necesssary in the future,
@@ -218,6 +220,8 @@ jobs:
         fi
 
     - uses: actions/checkout@v3
+      with:
+        ref: ${{ env.NIGHTLY_BUILD_REF }}
 
     # The default installation of Docker on Github Actions runners are pretty outdated, as the artifact builder
     # Dockerfiles require a newer version of Docker that has heredoc support. This may not be necesssary in the future,
@@ -305,6 +309,8 @@ jobs:
         fi
 
     - uses: actions/checkout@v3
+      with:
+        ref: ${{ env.NIGHTLY_BUILD_REF }}
 
     - name: Set up (Mac) prerequisites and environment
       run: |
