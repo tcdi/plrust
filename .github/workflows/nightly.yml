@@ -2,8 +2,7 @@ name: PL/Rust nightly builds
 
 on:
   schedule:
-    # - cron: '0 7 * * *'
-    - cron: '40 19 * * *'
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 env:
