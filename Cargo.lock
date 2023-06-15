@@ -1183,6 +1183,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "plrust-tests"
+version = "0.0.0"
+dependencies = [
+ "once_cell",
+ "pgrx",
+ "pgrx-tests",
+ "tempdir",
+]
+
+[[package]]
 name = "plrust-trusted-pgrx"
 version = "1.2.3"
 dependencies = [
