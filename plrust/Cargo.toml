@@ -1,6 +1,6 @@
 [package]
 name = "plrust"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL Open Source License"
