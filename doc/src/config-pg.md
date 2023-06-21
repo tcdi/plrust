@@ -164,5 +164,4 @@ plrust.compile_lints = 'plrust_extern_blocks, plrust_lifetime_parameterized_trai
 
 A comma-separated list of Rust lints that are required to have been applied to a user function before PL/Rust will load the library and execute the function.
 
-The value of `plrust.required_lints` defaults to `plrust.compile_lints`.
 
