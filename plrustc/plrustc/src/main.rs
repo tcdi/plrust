@@ -19,8 +19,7 @@ use rustc_session::early_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FileLoader;
 use rustc_span::Symbol;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const PLRUSTC_USER_CRATE_NAME: &str = "PLRUSTC_USER_CRATE_NAME";
 const PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS: &str = "PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS";
@@ -52,6 +51,8 @@ impl Callbacks for PlrustcCallbacks {
     }
 }
 
+// TODO: eventually we can replace this with:
+// rustc_driver::install_ice_hook("https://github.com/tcdi/plrust/issues/new", |_| ());
 fn install_ice_hook() {
     fn report_plrustc_ice(info: &std::panic::PanicInfo<'_>, bug_report_url: &str) {
         // Invoke the default panic handler to print the message and (possibly) a back trace
@@ -108,45 +109,14 @@ fn main() {
     install_ice_hook();
     rustc_driver::init_rustc_env_logger();
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        let orig_args: Vec<String> = std::env::args().collect();
-        let orig_args = rustc_driver::args::arg_expand_all(&orig_args);
-
-        let sysroot_arg = arg_value(&orig_args, "--sysroot");
-        let have_sysroot_arg = sysroot_arg.is_some();
-        let sysroot = sysroot_arg
-            .map(ToString::to_string)
-            .or_else(|| sysroot().map(|p| p.display().to_string()))
-            .expect("Failed to find sysroot");
-
-        let mut args: Vec<String> = orig_args.clone();
-
-        if !have_sysroot_arg {
-            args.extend(["--sysroot".to_string(), sysroot.to_string()]);
-        }
-
-        let our_exe_filename = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.file_stem().map(ToOwned::to_owned))
-            .unwrap_or_else(|| "plrustc".into());
-
-        let wrapper_mode = orig_args
-            .get(1)
-            .map(std::path::Path::new)
-            .and_then(std::path::Path::file_stem)
-            .map_or(false, |name| {
-                name == our_exe_filename || name == "plrustc" || name == "rustc"
-            });
-
-        if wrapper_mode {
-            args.remove(1);
-        }
-
+        let args = rustc_driver::args::arg_expand_all(&std::env::args().collect::<Vec<_>>());
+        let config = PlrustcConfig::from_env_and_args(&args);
         run_compiler(
             args,
             &mut PlrustcCallbacks {
                 // FIXME SOMEDAY: check caplints?
                 lints_enabled: true,
-                config: PlrustcConfig::from_env_and_args(&orig_args),
+                config,
             },
         );
     }))
@@ -330,73 +300,6 @@ impl FileLoader for PlrustcFileLoader {
             Err(replacement_error())
         }
     }
-}
-
-/// Get the sysroot, looking from most specific to this invocation to the
-/// least.
-///
-/// - command line `--sysroot` arg (happens in caller)
-///
-/// - runtime environment
-///    - PLRUSTC_SYSROOT
-///    - SYSROOT
-///    - RUSTUP_HOME, RUSTUP_TOOLCHAIN
-///
-/// - sysroot from rustc in the path
-///
-/// - compile-time environment
-///    - PLRUSTC_SYSROOT
-///    - SYSROOT
-///    - RUSTUP_HOME, RUSTUP_TOOLCHAIN
-fn sysroot() -> Option<PathBuf> {
-    fn rustup_sysroot<H: ?Sized + AsRef<OsStr>, T: ?Sized + AsRef<Path>>(
-        home: &H,
-        toolchain: &T,
-    ) -> PathBuf {
-        let mut path = PathBuf::from(home);
-        path.push("toolchains");
-        path.push(toolchain);
-        path
-    }
-    fn runtime_rustup_sysroot() -> Option<PathBuf> {
-        let home = std::env::var_os("RUSTUP_HOME")?;
-        let toolchain = std::env::var_os("RUSTUP_TOOLCHAIN")?;
-        Some(rustup_sysroot(&home, &toolchain))
-    }
-    fn compiletime_rustup_sysroot() -> Option<PathBuf> {
-        let home: &str = option_env!("RUSTUP_HOME")?;
-        let toolchain: &str = option_env!("RUSTUP_TOOLCHAIN")?;
-        Some(rustup_sysroot(&home, &toolchain))
-    }
-    fn rustc_on_path_sysroot() -> Option<PathBuf> {
-        std::process::Command::new("rustc")
-            .arg("--print=sysroot")
-            .output()
-            .ok()
-            .and_then(|out| String::from_utf8(out.stdout).ok())
-            .map(|s| PathBuf::from(s.trim()))
-    }
-    fn runtime_explicit_env() -> Option<PathBuf> {
-        let sysroot =
-            std::env::var_os("PLRUSTC_SYSROOT").or_else(|| std::env::var_os("SYSROOT"))?;
-        Some(PathBuf::from(sysroot))
-    }
-    fn compiletime_explicit_env() -> Option<PathBuf> {
-        let plrustc_sysroot: Option<&str> = option_env!("PLRUSTC_SYSROOT");
-        if let Some(plrustc_sysroot) = plrustc_sysroot {
-            return Some(plrustc_sysroot.into());
-        }
-        let sysroot: Option<&str> = option_env!("SYSROOT");
-        if let Some(sysroot) = sysroot {
-            return Some(sysroot.into());
-        }
-        None
-    }
-    runtime_explicit_env()
-        .or_else(runtime_rustup_sysroot)
-        .or_else(rustc_on_path_sysroot)
-        .or_else(compiletime_explicit_env)
-        .or_else(compiletime_rustup_sysroot)
 }
 
 fn run_compiler(mut args: Vec<String>, callbacks: &mut PlrustcCallbacks) -> ! {

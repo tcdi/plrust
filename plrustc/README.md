@@ -33,22 +33,3 @@ The use of `RUSTC_BOOTSTRAP` here is unfortunate, but at the moment things are t
 
 Similar to `rustc`, `plrustc` is usually not invoked directly, but instead through `cargo`.
 
-## Details
-
-Some additional details are provided for users who intend to run PL/Rust and plrustc under restricted environments via seccomp and/or SELinux. These details are subject to change, although if that occurs it will be noted in the changelog.
-
-### Sysroot configuration
-
-To locate the Rust sysroot (which should have the installation of `postgrestd`), the following algorithm is used. It is very similar to the algorithm used by clippy, miri, etc. We stop at the first of these that provides a value.
-
-1. If a `--sysroot` argument is provided via normal program arguments, then that value is used.
-2. The runtime environment is checked.
-   1. First, for `PLRUSTC_SYSROOT` and `SYSROOT` in that order of preference.
-   2. Then, for rustup: If both `RUSTUP_HOME` and `RUSTUP_TOOLCHAIN` are set, then we will use the path `$RUSTUP_HOME/toolchains/$RUSTUP_TOOLCHAIN` as the sysroot.
-3. If `rustc` is on the path, then `rustc --print sysroot` is invoked and that value is used.
-4. The compile-time environment is checked.
-   1. First, for `PLRUSTC_SYSROOT` and `SYSROOT` in that order of preference.
-   2. Then, for rustup, if both `RUSTUP_HOME` and `RUSTUP_TOOLCHAIN` are set in the environment at runtime, then we will use the path `$RUSTUP_HOME/toolchains/$RUSTUP_TOOLCHAIN` as the sysroot.
-5. If none of these were successful, an error is emitted and compilation will fail.
-
-It's likely that a future version of plrustc will refine this to allow more control. In the short term this is impossible, howsever.
