@@ -12,11 +12,14 @@ these custom lints, PL/Rust uses some standard Rust lints to enforce safety.
 
 
 The `plrust.required_lints` GUC defines which lints must have been applied to a function before PL/Rust will load the
-library and execute the function.  Using the `PLRUST_REQUIRED_LINTS` environment variable, it is possible to enforce
-that certain lints are always required of compiled functions, regardless of the `plrust.required_lints` GUC value.
-`PLRUST_REQUIRED_LINTS`'s format is a comma-separated list of lint named.  It must be set in the environment in which 
-Postgres is started.  The intention here is that the system administrator can force certain lints for execution if for 
-some reason `postgresql.conf` or the users able to modify it are not trusted.
+library and execute the function.  The default value is the empty set -- PL/Rust will not require any specific lints to
+have been previously applied to a function.
+
+Using the `PLRUST_REQUIRED_LINTS` environment variable, it is possible to enforce that certain lints are always required
+of compiled functions, regardless of the `plrust.required_lints` GUC value.`PLRUST_REQUIRED_LINTS`'s format is a
+comma-separated list of lint named.  It must be set in the environment in which Postgres is started.  The intention here
+is that the system administrator can force certain lints for execution if for some reason `postgresql.conf` or the users
+able to modify it are not trusted.
 
 
 In all cases, these lints are added to the generated code which wraps the user's `LANGUAGE plrust` function, as 

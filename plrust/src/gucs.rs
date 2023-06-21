@@ -91,7 +91,7 @@ pub(crate) fn init() {
     GucRegistry::define_string_guc(
         "plrust.required_lints",
         "A comma-separated list of Rust code lints that are required to have been applied to a PL/Rust user function before PL/Rust will execute it",
-        "If unspecified, PL/Rust will use a set of defaults",
+        "If unspecified, the default is the empty set",
         &PLRUST_REQUIRED_LINTS,
         GucContext::Sighup,
         GucFlags::default(),
