@@ -111,7 +111,7 @@ rustc -V
 The output from `rustc -V` should look similar to the following example.
 
 ```
-rustc {{toolchain_ver}} (d5a82bbd2 2023-02-07)
+rustc {{toolchain_ver}} (90c541806 2023-05-31)
 ```
 
 Use `rustup default` to check that the explicit version of `rustc` is
