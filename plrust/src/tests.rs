@@ -56,6 +56,36 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
+    fn plrust_text_array_with_initial_null() -> spi::Result<()> {
+        let definition = r#"
+            CREATE FUNCTION collect_text_array_with_initial_null(i text[]) RETURNS text[]
+                STRICT
+                LANGUAGE plrust AS
+            $$
+                Ok(Some(i.into_iter().map(|s| s.map(|s| s.to_string())).collect()))
+            $$;
+        "#;
+        Spi::run(definition)?;
+
+        let retval = Spi::get_one::<Vec<Option<String>>>(
+            r#"
+            SELECT collect_text_array_with_initial_null(ARRAY[NULL, 'a', 'b', 'c']);
+        "#,
+        );
+        assert_eq!(
+            retval,
+            Ok(Some(vec![
+                None,
+                Some("a".into()),
+                Some("b".into()),
+                Some("c".into())
+            ]))
+        );
+        Ok(())
+    }
+
+    #[pg_test]
+    #[search_path(@extschema@)]
     fn plrust_update() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION update_me() RETURNS TEXT
