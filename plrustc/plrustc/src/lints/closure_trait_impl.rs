@@ -64,17 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustClosureTraitImpl {
                         // Don't care about other traits (I think)
                     }
                     hir::GenericBound::Trait(poly_trait, ..) => {
-                        let Some(impl_did) = poly_trait.trait_ref.path.res.opt_def_id() else {
-                            continue
-                        };
-                        let lang_items = cx.tcx.lang_items();
-                        let fntraits = [
-                            lang_items.get(hir::LangItem::Fn),
-                            lang_items.get(hir::LangItem::FnOnce),
-                            lang_items.get(hir::LangItem::FnMut),
-                            lang_items.get(hir::LangItem::FnPtrTrait),
-                        ];
-                        if fntraits.contains(&Some(impl_did)) {
+                        if super::utils::has_fn_trait(cx, poly_trait) {
                             cx.lint(
                                 PLRUST_CLOSURE_TRAIT_IMPL,
                                 "trait impls bounded on function traits are forbidden in PL/Rust",
