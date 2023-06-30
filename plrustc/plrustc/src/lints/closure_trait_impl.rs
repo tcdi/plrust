@@ -11,6 +11,19 @@
 //! allows `<_ as Trait>::Assoc` to get a functions return type. That said,
 //! actually writing this lint has totally defeated me at the moment, so this is
 //! good enough for now.
+//!
+//! For some intuition as to why this is tricky, consider cases like
+//! ```ignore (exposition-only)
+//! trait GivesAssoc<A> { type Assoc; }
+//! impl<A> GivesAssoc<A> for A { type Assoc = A; }
+//!
+//! trait Child<T> where Self: GivesAssoc<T> {}
+//! impl<R, F: Fn() -> R> Child<R> for F {}
+//! ```
+//! and similarly complicated variants. To figure this out you need to examine
+//! not just the directly implemented trait, but also all traits that are
+//! indirectly implemented via bounds as a result of the impl. This is possible,
+//! but... difficult.
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 
