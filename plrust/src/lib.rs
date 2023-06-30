@@ -91,6 +91,7 @@ const DEFAULT_LINTS: &'static str = "\
     plrust_lifetime_parameterized_traits, \
     implied_bounds_entailment, \
     plrust_autotrait_impls, \
+    plrust_closure_trait_impl, \
     plrust_static_impls, \
     plrust_fn_pointers, \
     plrust_filesystem_macros, \

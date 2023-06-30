@@ -1,0 +1,10 @@
+error: trait impls bounded on function traits are forbidden in PL/Rust
+  --> $DIR/static_closure.rs:7:10
+   |
+LL | impl<R, F: Fn() -> R> Trait for F {
+   |          ^^^^^^^^^^^
+   |
+   = note: `-F plrust-closure-trait-impl` implied by `-F plrust-lints`
+
+error: aborting due to previous error
+
