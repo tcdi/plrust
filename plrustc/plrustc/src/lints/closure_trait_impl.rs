@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustClosureTraitImpl {
                 continue
             };
             // TODO: should we ignore cases where `bound_pred.bounded_ty` isn't
-            // from from one of `item.generics.params`?
+            // from one of `item.generics.params`?
             for bound in bound_pred.bounds {
                 match bound {
                     hir::GenericBound::LangItemTrait(
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustClosureTraitImpl {
                         );
                     }
                     hir::GenericBound::LangItemTrait(..) => {
-                        // Don't care about other traits (I think)
+                        //  other stable builtin traits aren't useful for projecting a function's return type
                     }
                     hir::GenericBound::Trait(poly_trait, ..) => {
                         if super::utils::has_fn_trait(cx, poly_trait) {
@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for PlrustClosureTraitImpl {
                         // try_normalize_erasing_regions and retry?
                     }
                     hir::GenericBound::Outlives(..) => {
-                        // Don't care about these.
+                        // Lifetime generics are irrelevant for guards against type projection
                     }
                 }
             }
