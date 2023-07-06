@@ -1,3 +1,4 @@
+use hir::def::{DefKind, Res};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
@@ -28,9 +29,28 @@ impl<'tcx> LateLintPass<'tcx> for PlrustSuspiciousTraitObject {
                 let hir::GenericArg::Type(ty) = arg else {
                     continue;
                 };
-                let typeck_results = cx.typeck_results();
-                let is_trait_obj =
-                    matches!(typeck_results.node_type(ty.hir_id).kind(), ty::Dynamic(..));
+                let is_trait_obj = match &ty.kind {
+                    hir::TyKind::TraitObject(..) => true,
+                    hir::TyKind::Path(qpath) => {
+                        let res = cx.qpath_res(qpath, ty.hir_id);
+                        let did = match res {
+                            Res::Def(DefKind::TyAlias | DefKind::AssocTy, def_id) => def_id,
+                            Res::SelfTyAlias { alias_to, .. } => alias_to,
+                            _ => continue,
+                        };
+                        let binder = cx.tcx.type_of(did);
+                        let ty = binder.subst_identity();
+                        if matches!(ty.kind(), ty::TyKind::Dynamic(..)) {
+                            true
+                        } else {
+                            match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
+                                Ok(t) => matches!(t.kind(), ty::TyKind::Dynamic(..)),
+                                _ => false,
+                            }
+                        }
+                    }
+                    _ => false,
+                };
                 if is_trait_obj {
                     cx.lint(
                         PLRUST_SUSPICIOUS_TRAIT_OBJECT,

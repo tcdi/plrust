@@ -294,28 +294,6 @@ mod tests {
         assert!(res.is_err());
     }
 
-    // Regression for #348
-    #[pg_test]
-    #[cfg(not(feature = "sandboxed"))]
-    #[search_path(@extschema@)]
-    fn plrust_rand_dep() {
-        let definition = r#"
-            CREATE FUNCTION rust_rand() RETURNS INT
-                IMMUTABLE STRICT
-                LANGUAGE PLRUST AS
-            $$
-            [dependencies]
-                rand = "0.8.5"
-            [code]
-                Ok(Some(rand::random()))
-            $$;
-        "#;
-        Spi::run(definition).unwrap();
-
-        let rand = Spi::get_one::<i32>("SELECT rust_rand()").unwrap();
-        assert!(rand.is_some());
-    }
-
     #[pg_test]
     #[search_path(@extschema@)]
     fn plrust_returns_setof() -> spi::Result<()> {
@@ -1427,7 +1405,6 @@ pub mod pg_test {
 owo-colors = "=3.5.0"
 tokio = { version = "=1.19.2", features = ["rt", "net"]}
 plutonium = "*"
-rand = "*"
 "#
                 .as_bytes(),
             )
