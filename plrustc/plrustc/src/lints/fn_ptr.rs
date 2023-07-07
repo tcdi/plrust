@@ -22,22 +22,13 @@ impl<'tcx> LateLintPass<'tcx> for PlrustFnPointer {
                 );
             }
             hir::TyKind::TraitObject(traits, ..) => {
-                for trayt in *traits {
-                    if let Some(did) = trayt.trait_ref.path.res.opt_def_id() {
-                        let fn_traits = [
-                            &["core", "ops", "function", "Fn"],
-                            &["core", "ops", "function", "FnMut"],
-                            &["core", "ops", "function", "FnOnce"],
-                        ];
-                        for fn_trait_paths in fn_traits {
-                            if super::utils::match_def_path(cx, did, fn_trait_paths) {
-                                cx.lint(
-                                    PLRUST_FN_POINTERS,
-                                    "Use of function trait objects is forbidden in PL/Rust",
-                                    |b| b.set_span(ty.span),
-                                );
-                            }
-                        }
+                for poly_trait in *traits {
+                    if super::utils::has_fn_trait(cx, poly_trait) {
+                        cx.lint(
+                            PLRUST_FN_POINTERS,
+                            "Use of function trait objects is forbidden in PL/Rust",
+                            |b| b.set_span(ty.span),
+                        );
                     }
                 }
             }

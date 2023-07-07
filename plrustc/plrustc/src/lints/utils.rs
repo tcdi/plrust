@@ -130,3 +130,17 @@ pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -
         .map(|x| Symbol::intern(x))
         .eq(path.iter().copied())
 }
+
+pub fn has_fn_trait(cx: &LateContext<'_>, poly_trait: &hir::PolyTraitRef<'_>) -> bool {
+    let Some(impl_did) = poly_trait.trait_ref.path.res.opt_def_id() else {
+        return false
+    };
+    let lang_items = cx.tcx.lang_items();
+    let fntraits = [
+        lang_items.get(hir::LangItem::Fn),
+        lang_items.get(hir::LangItem::FnOnce),
+        lang_items.get(hir::LangItem::FnMut),
+        lang_items.get(hir::LangItem::FnPtrTrait),
+    ];
+    fntraits.contains(&Some(impl_did))
+}

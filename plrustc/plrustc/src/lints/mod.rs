@@ -9,6 +9,7 @@ mod utils;
 mod async_await;
 mod autotrait_impls;
 mod builtin_macros;
+mod closure_trait_impl;
 mod extern_blocks;
 mod external_mod;
 mod fn_ptr;
@@ -28,6 +29,7 @@ static PLRUST_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     let mut v = vec![
         async_await::PLRUST_ASYNC,
         autotrait_impls::PLRUST_AUTOTRAIT_IMPLS,
+        closure_trait_impl::PLRUST_CLOSURE_TRAIT_IMPL,
         static_impls::PLRUST_STATIC_IMPLS,
         extern_blocks::PLRUST_EXTERN_BLOCKS,
         external_mod::PLRUST_EXTERNAL_MOD,
@@ -75,6 +77,7 @@ pub fn register(store: &mut LintStore, _sess: &Session) {
     );
     store.register_early_pass(move || Box::new(async_await::PlrustAsync));
     store.register_early_pass(move || Box::new(external_mod::PlrustExternalMod));
+    store.register_late_pass(move |_| Box::new(closure_trait_impl::PlrustClosureTraitImpl));
     store.register_late_pass(move |_| Box::new(sus_trait_object::PlrustSuspiciousTraitObject));
     store.register_late_pass(move |_| Box::new(autotrait_impls::PlrustAutoTraitImpls));
     store.register_late_pass(move |_| Box::new(static_impls::PlrustStaticImpls));

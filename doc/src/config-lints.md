@@ -284,3 +284,29 @@ impl AsRef<str> for my::Foo {
     }
 }
 ```
+
+### `plrust_closure_trait_impl`
+
+This lint forbids trait impls over generic over `Fn`, `FnOnce`, `FnMut` or
+`FnPtr` types. This is to work around some soundness issues where closure types
+are incorrectly `'static`. For example, the following is forbidden:
+
+```rs
+trait Trait {}
+// This is generic over a function trait.
+impl<F: Fn()> Trait for F {}
+```
+
+However, this is currently overly strict. In the future, it may be relaxed to
+forbid only the case where the return type is projected into an associated item
+on the trait, as in:
+
+```rs
+trait Trait {
+    type Assoc;
+}
+impl<R, F: Fn() -> R> Trait for F {
+    // This is the problem
+    type Assoc = R;
+}
+```
