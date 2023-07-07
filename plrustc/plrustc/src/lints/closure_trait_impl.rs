@@ -1,3 +1,9 @@
+//! Trait objects are [often inferred as 'static][trait-obj-default],
+//! which can result, when combined with things like boxed closures,
+//! in an incorrect lifetime also being inferred for the return type.
+//! Allowing such a lifetime to become visible in Rust allows treating
+//! `&'a mut str` as `&'static mut str`, with the "fun" that implies.
+//!
 //! Ideally we'd do this in such a way that it only forbids something that
 //! allows projection through to the return type, for example
 //! ```ignore (exposition-only)
@@ -24,6 +30,9 @@
 //! not just the directly implemented trait, but also all traits that are
 //! indirectly implemented via bounds as a result of the impl. This is possible,
 //! but... difficult.
+//!
+//! [trait-obj-default]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
+//!
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 
