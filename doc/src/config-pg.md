@@ -65,11 +65,12 @@ plrust.path_override = '/special/path/to/.cargo/bin:/usr/bin'
 #### `plrust.trusted_pgrx_version` (string)
 
 The version of the `plrust-trusted-pgrx` crate from crates.io to use when
-compiling user functions. This typically should not need to be manually set.
+compiling user functions. By default, PL/Rust uses the same version of 
+`plrust-trusted-pgrx` as PL/Rust itself, and does not need to be explicitly set.
 
 
 ```bash
-plrust.trusted_pgrx_version = '1.2.2'
+plrust.trusted_pgrx_version = 'the.latest.version'
 ```
 
 
