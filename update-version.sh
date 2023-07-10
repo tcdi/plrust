@@ -21,4 +21,8 @@ fi
 
 ## update versions
 cargo workspace-version update v"${NEW_VERSION}"
-cd plrustc && cargo workspace-version update v"${NEW_VERSION}"
+cargo generate-lockfile
+
+cd plrustc
+cargo workspace-version update v"${NEW_VERSION}"
+cargo generate-lockfile
