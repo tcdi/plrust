@@ -365,7 +365,8 @@ pub fn load_allowlist() -> eyre::Result<AllowList> {
     let path = PathBuf::from_str(
         &PLRUST_ALLOWED_DEPENDENCIES
             .get()
-            .ok_or(Error::NotConfigured)?,
+            .ok_or(Error::NotConfigured)?
+            .to_str()?,
     )
     .map_err(|_| Error::InvalidPath)?;
 

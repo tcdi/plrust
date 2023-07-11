@@ -55,6 +55,7 @@ pub mod tests;
 
 use error::PlRustError;
 use pgrx::{pg_getarg, prelude::*};
+use std::ffi::CStr;
 
 #[cfg(any(test, feature = "pg_test"))]
 pub use tests::pg_test;
@@ -86,7 +87,9 @@ $$;
 // This enables the code checking not only for `unsafe {}`
 // but also "unsafe attributes" which are considered unsafe
 // but don't have the `unsafe` token.
-const DEFAULT_LINTS: &'static str = "\
+const DEFAULT_LINTS: &'static CStr = unsafe {
+    CStr::from_bytes_with_nul_unchecked(
+        b"\
     plrust_extern_blocks, \
     plrust_lifetime_parameterized_traits, \
     implied_bounds_entailment, \
@@ -108,7 +111,9 @@ const DEFAULT_LINTS: &'static str = "\
     suspicious_auto_trait_impls, \
     where_clauses_object_safety, \
     soft_unstable\
-";
+\0",
+    )
+};
 
 #[pg_guard]
 fn _PG_init() {

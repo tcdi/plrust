@@ -93,6 +93,8 @@ pub(crate) fn compile_lints() -> LintSet {
     PLRUST_COMPILE_LINTS
         .get()
         .unwrap_or_default()
+        .to_str()
+        .expect("plrust.compile_lints is not valid UTF8")
         .split(',')
         .filter(|x| !x.is_empty())
         .map(|s| s.trim().into())
@@ -128,6 +130,8 @@ pub(crate) fn required_lints() -> LintSet {
     let mut configured = PLRUST_REQUIRED_LINTS
         .get()
         .unwrap_or_default()
+        .to_str()
+        .expect("plrust.required_lints is not valid UTF8")
         .split(',')
         .filter_map(filter_map)
         .collect::<LintSet>();
