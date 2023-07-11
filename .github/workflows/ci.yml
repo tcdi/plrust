@@ -20,165 +20,165 @@ jobs:
   # The image created for running these tasks already have a majority of the dependencies installed, such as system
   # libraries, sccache, github runners, rust, etc. This is to cut back on the amount of time it takes to launch a runner.
   # If something is missing, it can be added here or baked into a new image outside of Github Actions.
-  # plrust_arm64_amzn2:
-  #   name: aarch64 tests (amzn2)
-  #   runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0013395587950cb5d]
-  #   defaults:
-  #     run:
-  #       shell: bash
+  plrust_arm64_amzn2:
+    name: aarch64 tests (amzn2)
+    runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0013395587950cb5d]
+    defaults:
+      run:
+        shell: bash
 
-  #   strategy:
-  #     matrix:
-  #       version: ["pg13", "pg14", "pg15", "pg16"]
-  #       target: ["host", "postgrestd"]
-  #     fail-fast: false
+    strategy:
+      matrix:
+        version: ["pg13", "pg14", "pg15", "pg16"]
+        target: ["host", "postgrestd"]
+      fail-fast: false
 
-  #   # Note about environment variables: Even though a majority of these environment variables are baked into the runner image,
-  #   # Github Actions seemingly runs self-hosted tasks in a different manner such that even baken-in environment variables are
-  #   # removed. Howevever, they can be declared here and persist through all tasks. Assume that the home directory for the
-  #   # runner is /home/ec2-user
-  #   env:
-  #     AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
-  #     CACHE_KEY_VERSION: v0
-  #     CI: true
-  #     PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
-  #     RUSTUP_HOME: /home/ec2-user/.rustup
-  #     RUSTC_WRAPPER: sccache
-  #     RUSTFLAGS: -Copt-level=0 -Dwarnings
-  #     SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
-  #     SCCACHE_CACHE_SIZE: 20G
-  #     SCCACHE_DIR: /home/ec2-user/.cache/sccache
-  #     SCCACHE_IDLE_TIMEOUT: 0
-  #     WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
+    # Note about environment variables: Even though a majority of these environment variables are baked into the runner image,
+    # Github Actions seemingly runs self-hosted tasks in a different manner such that even baken-in environment variables are
+    # removed. Howevever, they can be declared here and persist through all tasks. Assume that the home directory for the
+    # runner is /home/ec2-user
+    env:
+      AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
+      CACHE_KEY_VERSION: v0
+      CI: true
+      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ec2-user/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+      RUSTUP_HOME: /home/ec2-user/.rustup
+      RUSTC_WRAPPER: sccache
+      RUSTFLAGS: -Copt-level=0 -Dwarnings
+      SCCACHE_BIN_DIR: /home/ec2-user/.local/bin
+      SCCACHE_CACHE_SIZE: 20G
+      SCCACHE_DIR: /home/ec2-user/.cache/sccache
+      SCCACHE_IDLE_TIMEOUT: 0
+      WORK_DIR: /home/ec2-user/actions-runner/_work/plrust/plrust
 
-  #   steps:
-  #   - uses: actions/checkout@v3
+    steps:
+    - uses: actions/checkout@v3
 
-  #   - name: Generate cache filename checksum
-  #     run: |
-  #       cd $WORK_DIR
-  #       shopt -s globstar
-  #       checksum=$(cat **/Cargo.lock **/rust-toolchain.toml .github/workflows/ci.yml .cargo/config | sha256sum | awk '{print $1}')
-  #       echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
+    - name: Generate cache filename checksum
+      run: |
+        cd $WORK_DIR
+        shopt -s globstar
+        checksum=$(cat **/Cargo.lock **/rust-toolchain.toml .github/workflows/ci.yml .cargo/config | sha256sum | awk '{print $1}')
+        echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
 
-  #   - name: Set up (Linux) prerequisites and environment
-  #     run: |
-  #       echo ""
-  #       echo "----- Print kernel info -----"
-  #       uname -a
-  #       echo ""
+    - name: Set up (Linux) prerequisites and environment
+      run: |
+        echo ""
+        echo "----- Print kernel info -----"
+        uname -a
+        echo ""
 
-  #       echo "----- Set up dynamic variables -----"
-  #       export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
-  #       echo "PG_VER=$PG_VER" >> $GITHUB_ENV
-  #       echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-  #       echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
-  #       echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
-  #       echo ""
+        echo "----- Set up dynamic variables -----"
+        export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
+        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
+        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+        echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        echo ""
 
-  #       echo "----- Install system dependencies -----"
-  #       # Add any extra dependencies here if necessary
+        echo "----- Install system dependencies -----"
+        # Add any extra dependencies here if necessary
 
-  #       echo "----- Install PostgreSQL $PG_VER -----"
-  #       sudo yum install -y "postgresql$PG_VER" "postgresql$PG_VER-server" "postgresql$PG_VER-devel"
-  #       export PATH="/usr/pgsql-$PG_VER/bin/:$PATH"
-  #       echo "/usr/pgsql-$PG_VER/bin/" >> $GITHUB_PATH
+        echo "----- Install PostgreSQL $PG_VER -----"
+        sudo yum install -y "postgresql$PG_VER" "postgresql$PG_VER-server" "postgresql$PG_VER-devel"
+        export PATH="/usr/pgsql-$PG_VER/bin/:$PATH"
+        echo "/usr/pgsql-$PG_VER/bin/" >> $GITHUB_PATH
 
-  #       echo "----- Set postgres permissions -----"
-  #       sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
-  #       echo ""
+        echo "----- Set postgres permissions -----"
+        sudo chmod a+rwx `$(which pg_config) --pkglibdir` `$(which pg_config) --sharedir`/extension
+        echo ""
 
-  #       echo "----- Create artifacts directory -----"
-  #       mkdir -p $HOME/artifacts
-  #       echo ""
+        echo "----- Create artifacts directory -----"
+        mkdir -p $HOME/artifacts
+        echo ""
 
-  #       cat $GITHUB_ENV
-  #       echo ""
-  #       env
+        cat $GITHUB_ENV
+        echo ""
+        env
 
-  #   - name: Load Cargo cache if available
-  #     run: |
-  #       # See <plrust-root>/.github/scripts/load_cache.sh for more details
-  #       . $WORK_DIR/.github/scripts/load_cache.sh
-  #       cargo_cache_key="plrust-arm64-amzn2-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       loadcache $cargo_cache_key
+    - name: Load Cargo cache if available
+      run: |
+        # See <plrust-root>/.github/scripts/load_cache.sh for more details
+        . $WORK_DIR/.github/scripts/load_cache.sh
+        cargo_cache_key="plrust-arm64-amzn2-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $cargo_cache_key
 
-  #   - name: Create protected files
-  #     run: |
-  #       sudo mkdir -p /var/ci-stuff/secret_rust_files
-  #       sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
-  #       sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
-  #       sudo chmod -R 600 /var/ci-stuff/secret_rust_files
-  #     if: matrix.target == 'postgrestd'
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
 
-  #   - name: Load sccache cache if available
-  #     run: |
-  #       # See <plrust-root>/.github/scripts/load_cache.sh for more details
-  #       . $WORK_DIR/.github/scripts/load_cache.sh
-  #       sccache_key="plrust-arm64-amzn2-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       loadcache $sccache_key
+    - name: Load sccache cache if available
+      run: |
+        # See <plrust-root>/.github/scripts/load_cache.sh for more details
+        . $WORK_DIR/.github/scripts/load_cache.sh
+        sccache_key="plrust-arm64-amzn2-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        loadcache $sccache_key
 
-  #   - name: Start sccache server
-  #     run: sccache --start-server && sccache --show-stats
+    - name: Start sccache server
+      run: sccache --start-server && sccache --show-stats
 
-  #   # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
-  #   - name: Install cargo-pgrx defined in plrust/Cargo.toml
-  #     run: |
-  #       . $WORK_DIR/.github/scripts/install_cargo_pgrx.sh
-  #       install_cargo_pgrx
+    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+    - name: Install cargo-pgrx defined in plrust/Cargo.toml
+      run: |
+        . $WORK_DIR/.github/scripts/install_cargo_pgrx.sh
+        install_cargo_pgrx
 
-  #   - name: Print sccache stats
-  #     run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
-  #   - name: Install llvm-tools-preview
-  #     run: rustup component add llvm-tools-preview rustc-dev
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
 
-  #   - name: Test plrustc
-  #     run: cd plrustc && cargo test -p plrustc
+    - name: Test plrustc
+      run: cd plrustc && cargo test -p plrustc
 
-  #   - name: Print sccache stats
-  #     run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
-  #   - name: install plrustc
-  #     run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+    - name: install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-  #   - name: Print sccache stats
-  #     run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
-  #   - name: Run cargo pgrx init
-  #     run: cargo pgrx init --pg$PG_VER $(which pg_config)
+    - name: Run cargo pgrx init
+      run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
-  #   - name: Test PL/rust as "untrusted"
-  #     if: matrix.target == 'host'
-  #     run: cargo test --all --features "pg$PG_VER" --no-default-features
+    - name: Test PL/rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cargo test --all --features "pg$PG_VER" --no-default-features
 
-  #   - name: Test PL/rust as "trusted" (inc. postgrestd)
-  #     if: matrix.target == 'postgrestd'
-  #     run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+    - name: Test PL/rust as "trusted" (inc. postgrestd)
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
-  #   - name: Print sccache stats (after build)
-  #     run: sccache --show-stats
+    - name: Print sccache stats (after build)
+      run: sccache --show-stats
 
-  #   - name: Stop sccache server
-  #     run: sccache --stop-server || true
+    - name: Stop sccache server
+      run: sccache --stop-server || true
 
-  #   - name: Store Cargo cache if applicable
-  #     run: |
-  #       . $WORK_DIR/.github/scripts/save_cache.sh
-  #       # See <plrust-root>/.github/scripts/save_cache.sh for more details
-  #       cargo_cache_key="plrust-arm64-amzn2-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       cargo_dirs=( \
-  #           $HOME/.cargo/ \
-  #       )
-  #       savecache $cargo_cache_key "${cargo_dirs[@]}"
+    - name: Store Cargo cache if applicable
+      run: |
+        . $WORK_DIR/.github/scripts/save_cache.sh
+        # See <plrust-root>/.github/scripts/save_cache.sh for more details
+        cargo_cache_key="plrust-arm64-amzn2-cargo-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        cargo_dirs=( \
+            $HOME/.cargo/ \
+        )
+        savecache $cargo_cache_key "${cargo_dirs[@]}"
 
-  #   - name: Store sccache if applicable
-  #     run: |
-  #       # See <plrust-root>/.github/scripts/save_cache.sh for more details
-  #       . $WORK_DIR/.github/scripts/save_cache.sh
-  #       sccache_key="plrust-arm64-amzn2-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
-  #       sccache_dirs=($SCCACHE_DIR)
-  #       savecache $sccache_key "${sccache_dirs[@]}"
+    - name: Store sccache if applicable
+      run: |
+        # See <plrust-root>/.github/scripts/save_cache.sh for more details
+        . $WORK_DIR/.github/scripts/save_cache.sh
+        sccache_key="plrust-arm64-amzn2-sccache-cache-$CACHE_KEY_VERSION-$CACHE_KEY_CHECKSUM.tar.lz4"
+        sccache_dirs=($SCCACHE_DIR)
+        savecache $sccache_key "${sccache_dirs[@]}"
 
   plrust_x86_64:
     name: x86_64 tests
@@ -271,10 +271,10 @@ jobs:
         echo ""
 
         sudo apt-get install -y \
-          postgresql-$PG_VER \
-          postgresql-server-dev-$PG_VER
+          postgresql-"$PG_VER" \
+          postgresql-server-dev-"$PG_VER"
 
-    - name: Install develoment version of PostgreSQL
+    - name: Install development version of PostgreSQL
       if: matrix.version == 'pg16'
       run: |
         echo "----- Set up PostgreSQL Apt repository -----"
@@ -287,11 +287,11 @@ jobs:
         echo ""
 
         sudo apt-get install -y \
-          postgresql-$PG_VER \
-          postgresql-server-dev-$PG_VER
+          postgresql-"$PG_VER" \
+          postgresql-server-dev-"$PG_VER"
 
     - name: Set up Postgres permissions
-      run: sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
+      run: sudo chmod a+rwx "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --pkglibdir)" "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --sharedir)"/extension /var/run/postgresql/
 
     - name: Cache cargo registry
       uses: actions/cache@v3
