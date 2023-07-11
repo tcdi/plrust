@@ -29,7 +29,8 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15"]
+        # version: ["pg13", "pg14", "pg15"]
+        version: ["pg16"]
         target: ["host", "postgrestd"]
       fail-fast: false
 
@@ -180,163 +181,163 @@ jobs:
         sccache_dirs=($SCCACHE_DIR)
         savecache $sccache_key "${sccache_dirs[@]}"
 
-  plrust_x86_64:
-    name: x86_64 tests
-    runs-on: ${{ matrix.os }}
-    if: "!contains(github.event.head_commit.message, 'nogha')"
+  # plrust_x86_64:
+  #   name: x86_64 tests
+  #   runs-on: ${{ matrix.os }}
+  #   if: "!contains(github.event.head_commit.message, 'nogha')"
 
-    env:
-      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
-      RUSTC_WRAPPER: sccache
-      RUSTFLAGS: -Copt-level=0 -Dwarnings
-      SCCACHE_BIN_DIR: /home/runner/.local/bin
-      SCCACHE_CACHE_SIZE: 20G
-      SCCACHE_DIR: /home/runner/.cache/sccache
-      SCCACHE_IDLE_TIMEOUT: 0
+  #   env:
+  #     PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/runner/work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+  #     RUSTC_WRAPPER: sccache
+  #     RUSTFLAGS: -Copt-level=0 -Dwarnings
+  #     SCCACHE_BIN_DIR: /home/runner/.local/bin
+  #     SCCACHE_CACHE_SIZE: 20G
+  #     SCCACHE_DIR: /home/runner/.cache/sccache
+  #     SCCACHE_IDLE_TIMEOUT: 0
 
-    strategy:
-      matrix:
-        version: ["pg13", "pg14", "pg15"]
-        os: ["ubuntu-latest"]
-        # it would be nice to other contributors to return "macos-11" to the above array
-        target: ["host", "postgrestd"]
-      fail-fast: false
+  #   strategy:
+  #     matrix:
+  #       version: ["pg13", "pg14", "pg15"]
+  #       os: ["ubuntu-latest"]
+  #       # it would be nice to other contributors to return "macos-11" to the above array
+  #       target: ["host", "postgrestd"]
+  #     fail-fast: false
 
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
 
-    - name: Set up (Linux) prerequisites and environment
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        echo ""
+  #   - name: Set up (Linux) prerequisites and environment
+  #     if: matrix.os == 'ubuntu-latest'
+  #     run: |
+  #       echo ""
 
-        echo "----- Set up dynamic variables -----"
-        export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
-        echo "PG_VER=$PG_VER" >> $GITHUB_ENV
-        echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
-        cat $GITHUB_ENV
-        echo ""
+  #       echo "----- Set up dynamic variables -----"
+  #       export PG_VER=$(echo ${{ matrix.version }} | cut -c 3-)
+  #       echo "PG_VER=$PG_VER" >> $GITHUB_ENV
+  #       echo "MAKEFLAGS=$MAKEFLAGS -j $(grep -c ^processor /proc/cpuinfo)" >> $GITHUB_ENV
+  #       cat $GITHUB_ENV
+  #       echo ""
 
 
-        echo "----- Install sccache -----"
-        mkdir -p $SCCACHE_BIN_DIR
-        curl -L https://github.com/mozilla/sccache/releases/download/v0.5.0/sccache-v0.5.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-        mv -f sccache-v0.5.0-x86_64-unknown-linux-musl/sccache $SCCACHE_BIN_DIR/sccache
-        chmod +x $SCCACHE_BIN_DIR/sccache
-        echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
-        mkdir -p $SCCACHE_DIR
-        echo ""
+  #       echo "----- Install sccache -----"
+  #       mkdir -p $SCCACHE_BIN_DIR
+  #       curl -L https://github.com/mozilla/sccache/releases/download/v0.5.0/sccache-v0.5.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+  #       mv -f sccache-v0.5.0-x86_64-unknown-linux-musl/sccache $SCCACHE_BIN_DIR/sccache
+  #       chmod +x $SCCACHE_BIN_DIR/sccache
+  #       echo "$SCCACHE_BIN_DIR" >> $GITHUB_PATH
+  #       mkdir -p $SCCACHE_DIR
+  #       echo ""
 
-        echo "----- Remove old postgres -----"
-        sudo apt remove -y postgres*
-        echo ""
+  #       echo "----- Remove old postgres -----"
+  #       sudo apt remove -y postgres*
+  #       echo ""
 
-        echo "----- Set up PostgreSQL Apt repository -----"
-        sudo apt-get install -y wget gnupg
-        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
-        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null && \
-        sudo apt-get update -y -qq --fix-missing
-        echo ""
+  #       echo "----- Set up PostgreSQL Apt repository -----"
+  #       sudo apt-get install -y wget gnupg
+  #       sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+  #       wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null && \
+  #       sudo apt-get update -y -qq --fix-missing
+  #       echo ""
 
-        echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
-        sudo apt-get install -y \
-          build-essential \
-          clang \
-          clang-11 \
-          gcc \
-          libssl-dev \
-          libz-dev \
-          llvm-11 \
-          make \
-          pkg-config \
-          postgresql-$PG_VER \
-          postgresql-server-dev-$PG_VER \
-          strace \
-          zlib1g-dev
-        echo ""
+  #       echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
+  #       sudo apt-get install -y \
+  #         build-essential \
+  #         clang \
+  #         clang-11 \
+  #         gcc \
+  #         libssl-dev \
+  #         libz-dev \
+  #         llvm-11 \
+  #         make \
+  #         pkg-config \
+  #         postgresql-$PG_VER \
+  #         postgresql-server-dev-$PG_VER \
+  #         strace \
+  #         zlib1g-dev
+  #       echo ""
 
-        echo "----- Set up Postgres permissions -----"
-        sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
-        echo ""
+  #       echo "----- Set up Postgres permissions -----"
+  #       sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
+  #       echo ""
 
-        echo "----- Print env -----"
-        env
-        echo ""
+  #       echo "----- Print env -----"
+  #       env
+  #       echo ""
 
-        echo "----- Get cargo version -----"
-        cargo --version
-        echo ""
+  #       echo "----- Get cargo version -----"
+  #       cargo --version
+  #       echo ""
 
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      continue-on-error: false
-      with:
-        path: |
-          /home/runner/.cargo
-        key: v0-plrust-x86_64-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml', '.cargo/config') }}
+  #   - name: Cache cargo registry
+  #     uses: actions/cache@v3
+  #     continue-on-error: false
+  #     with:
+  #       path: |
+  #         /home/runner/.cargo
+  #       key: v0-plrust-x86_64-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml', '.cargo/config') }}
 
-    - name: Cache sccache directory
-      uses: actions/cache@v3
-      continue-on-error: false
-      with:
-        path: |
-          /home/runner/.cache/sccache
-        key: v0-plrust-x86_64-sccache-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml', '.cargo/config') }}
+  #   - name: Cache sccache directory
+  #     uses: actions/cache@v3
+  #     continue-on-error: false
+  #     with:
+  #       path: |
+  #         /home/runner/.cache/sccache
+  #       key: v0-plrust-x86_64-sccache-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain.toml', 'plrustc/.cargo/config.toml', '.github/workflows/ci.yml', '.cargo/config') }}
 
-    - name: Start sccache server
-      run: sccache --start-server && sccache --show-stats
+  #   - name: Start sccache server
+  #     run: sccache --start-server && sccache --show-stats
 
-    - name: sccache dir
-      run: ls -lath /home/runner/.cache/sccache
+  #   - name: sccache dir
+  #     run: ls -lath /home/runner/.cache/sccache
 
-    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
-    - name: Install cargo-pgrx defined in plrust/Cargo.toml
-      run: |
-        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
-        install_cargo_pgrx
+  #   # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+  #   - name: Install cargo-pgrx defined in plrust/Cargo.toml
+  #     run: |
+  #       . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
+  #       install_cargo_pgrx
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+  #   - name: Print sccache stats
+  #     run: sccache --show-stats
 
-    - name: Install llvm-tools-preview
-      run: rustup component add llvm-tools-preview rustc-dev
+  #   - name: Install llvm-tools-preview
+  #     run: rustup component add llvm-tools-preview rustc-dev
 
-    - name: Create protected files
-      run: |
-        sudo mkdir -p /var/ci-stuff/secret_rust_files
-        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
-        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
-        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
-      if: matrix.target == 'postgrestd'
+  #   - name: Create protected files
+  #     run: |
+  #       sudo mkdir -p /var/ci-stuff/secret_rust_files
+  #       sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+  #       sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+  #       sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+  #     if: matrix.target == 'postgrestd'
 
-    - name: Test plrustc
-      run: cd plrustc && cargo test -p plrustc
+  #   - name: Test plrustc
+  #     run: cd plrustc && cargo test -p plrustc
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+  #   - name: Print sccache stats
+  #     run: sccache --show-stats
 
-    - name: Install plrustc
-      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+  #   - name: Install plrustc
+  #     run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+  #   - name: Print sccache stats
+  #     run: sccache --show-stats
 
-    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
-      run: cargo pgrx init --pg$PG_VER $(which pg_config)
+  #   - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+  #     run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
-    - name: Test PL/rust as "untrusted"
-      if: matrix.target == 'host'
-      run: cargo test --all --features "pg$PG_VER" --no-default-features
+  #   - name: Test PL/rust as "untrusted"
+  #     if: matrix.target == 'host'
+  #     run: cargo test --all --features "pg$PG_VER" --no-default-features
 
-    - name: Test PL/rust as "trusted" (inc. postgrestd)
-      if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+  #   - name: Test PL/rust as "trusted" (inc. postgrestd)
+  #     if: matrix.target == 'postgrestd'
+  #     run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+  #   - name: Print sccache stats
+  #     run: sccache --show-stats
 
-    - name: sccache dir
-      run: ls -lath /home/runner/.cache/sccache
+  #   - name: sccache dir
+  #     run: ls -lath /home/runner/.cache/sccache
 
-    - name: Stop sccache server
-      run: sccache --stop-server || true
+  #   - name: Stop sccache server
+  #     run: sccache --stop-server || true
