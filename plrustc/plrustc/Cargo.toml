@@ -1,6 +1,6 @@
 [package]
 name = "plrustc"
-version = "1.2.3"
+version = "1.2.4-beta.pg16b2"
 edition = "2021"
 description = "`rustc_driver` wrapper for plrust"
 license = "PostgreSQL"
