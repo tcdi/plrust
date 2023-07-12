@@ -4,7 +4,7 @@
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to secure@tcdi.com to report the security issue. You should receive a response within 3 working days. If for some reason you do not, please follow up via email to ensure we received your original message. 
+Instead, please open a [security advisory][advisory] which notify the maintainers. You should receive a response within 3 working days. If for some reason you do not, please follow up via email to ensure we received your original message. 
 
 Please include the requested information listed below (as much as you can provide) to help us better understand the nature and scope of the possible issue:
 
@@ -17,3 +17,11 @@ Please include the requested information listed below (as much as you can provid
   * Impact of the issue, including how an attacker might exploit the issue
 
 This information will help us triage your report more quickly.
+
+If you find a vulnerability anywhere in this project, such as the source or scripts,
+then please let the maintainers know ASAP and we will fix it as a critical priority.
+
+Alternatively send an [email][mail] to start the disclosure process.
+
+[advisory]: https://github.com/tcdi/plrust/security/advisories/new
+[mail]: mailto:secure@tcdi.com?subject=[plrust]
