@@ -44,7 +44,6 @@ pgrx = { version = "=0.9.7" }
 # language handler support
 libloading = "0.8.0"
 toml = "0.7.4"
-tempdir = "0.3.7" # for building crates
 tempfile = "3.6.0"
 
 # error handling, tracing, formatting
@@ -68,6 +67,5 @@ memfd = "0.6.3" # for anonymously writing/loading user function .so
 
 [dev-dependencies]
 pgrx-tests = { version = "=0.9.7" }
-tempdir = "0.3.7"
 once_cell = "1.18.0"
 toml = "0.7.4"
