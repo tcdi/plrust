@@ -1,12 +1,13 @@
 thread 'rustc' panicked at 'Here is your ICE', plrustc/src/lints/force_ice.rs
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
-error: internal compiler error: unexpected panic
+error: the compiler unexpectedly panicked. this is a bug.
 
-note: `plrustc` unexpectedly panicked. This is probably a bug.
+note: we would appreciate a bug report: https://github.com/tcdi/plrust/issues/new
 
-note: Please file a bug report at <https://github.com/tcdi/plrust/issues/new>
+note: rustc 1.71.0 (8ede3aae2 2023-07-12) running on aarch64-apple-darwin
 
-note: plrustc version: <version here>
+note: compiler flags: -C prefer-dynamic -Z ui-testing
 
-thread panicked while panicking. aborting.
+query stack during panic:
+thread panicked while processing panic. aborting.

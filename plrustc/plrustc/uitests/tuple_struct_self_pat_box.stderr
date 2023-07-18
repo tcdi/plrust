@@ -1,10 +1,9 @@
-error: `Self` pattern on tuple struct used to access private field
+error[E0603]: tuple struct constructor `std::boxed::Box` is private
   --> $DIR/tuple_struct_self_pat_box.rs:10:13
    |
 LL |         let Self(ptr, _) = self;
    |             ^^^^^^^^^^^^
-   |
-   = note: `-F plrust-tuple-struct-self-pattern` implied by `-F plrust-lints`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0603`.
