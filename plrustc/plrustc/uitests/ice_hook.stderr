@@ -5,7 +5,7 @@ error: the compiler unexpectedly panicked. this is a bug.
 
 note: we would appreciate a bug report: https://github.com/tcdi/plrust/issues/new
 
-note: rustc 1.71.0 (8ede3aae2 2023-07-12) running on aarch64-apple-darwin
+note: rustc <version here> running on <target here>
 
 note: compiler flags: -C prefer-dynamic -Z ui-testing
 
