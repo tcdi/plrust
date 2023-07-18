@@ -11,7 +11,6 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use once_cell::sync::Lazy;
 use rustc_driver::Callbacks;
 use rustc_interface::interface;
 use rustc_session::config::ErrorOutputType;
@@ -23,8 +22,6 @@ use std::path::Path;
 
 const PLRUSTC_USER_CRATE_NAME: &str = "PLRUSTC_USER_CRATE_NAME";
 const PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS: &str = "PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS";
-
-const PLRUSTC_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 mod lints;
 
@@ -51,62 +48,8 @@ impl Callbacks for PlrustcCallbacks {
     }
 }
 
-// TODO: eventually we can replace this with:
-// rustc_driver::install_ice_hook("https://github.com/tcdi/plrust/issues/new", |_| ());
-fn install_ice_hook() {
-    fn report_plrustc_ice(info: &std::panic::PanicInfo<'_>, bug_report_url: &str) {
-        // Invoke the default panic handler to print the message and (possibly) a back trace
-        (*PANIC_HOOK)(info);
-        // Separate output with an empty line
-        eprintln!();
-
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-            rustc_driver::DEFAULT_LOCALE_RESOURCES.into(),
-            false,
-        );
-        let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
-            rustc_errors::ColorConfig::Auto,
-            None,
-            None,
-            fallback_bundle,
-            false,
-            false,
-            None,
-            false,
-            false,
-            rustc_errors::TerminalUrl::No,
-        ));
-        let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
-
-        // Don't need to print anything extra for ExplicitBug
-        if !info.payload().is::<rustc_errors::ExplicitBug>() {
-            let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
-            handler.emit_diagnostic(&mut d);
-        }
-        handler.note_without_error("`plrustc` unexpectedly panicked. This is probably a bug.");
-        handler.note_without_error(&format!("Please file a bug report at <{bug_report_url}>"));
-        handler.note_without_error(&format!("plrustc version: {PLRUSTC_VERSION}"));
-
-        // If backtraces are enabled, also print the query stack
-        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
-
-        let num_frames = if backtrace { None } else { Some(2) };
-
-        interface::try_print_query_stack(&handler, num_frames);
-    }
-
-    type PanicCallback = Box<dyn Fn(&std::panic::PanicInfo<'_>) + Sync + Send + 'static>;
-    static PANIC_HOOK: Lazy<PanicCallback> = Lazy::new(|| {
-        let hook = std::panic::take_hook();
-        let bug_report_url = "https://github.com/tcdi/plrust/issues/new";
-        std::panic::set_hook(Box::new(|info| report_plrustc_ice(info, bug_report_url)));
-        hook
-    });
-    Lazy::force(&PANIC_HOOK);
-}
-
 fn main() {
-    install_ice_hook();
+    rustc_driver::install_ice_hook("https://github.com/tcdi/plrust/issues/new", |_| ());
     rustc_driver::init_rustc_env_logger();
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
         let args = rustc_driver::args::arg_expand_all(&std::env::args().collect::<Vec<_>>());
@@ -177,7 +120,7 @@ impl PlrustcConfig {
             let Some(allowed) = self.plrust_user_crate_allowed_source_paths.as_deref() else {
                 early_error(
                     ErrorOutputType::default(),
-                    &format!(
+                    format!(
                         "if `{PLRUSTC_USER_CRATE_NAME}` is provided, \
                         then `{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` should also be provided",
                     ),
@@ -189,14 +132,14 @@ impl PlrustcConfig {
                 if !path.is_absolute() {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!("`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains relative path: {allowed:?}"),
+                        format!("`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains relative path: {allowed:?}"),
                     );
                 }
                 let path = path.canonicalize().ok()?;
                 let Some(pathstr) = path.to_str() else {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!("`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains non-UTF-8 path: {allowed:?}"),
+                        format!("`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` contains non-UTF-8 path: {allowed:?}"),
                     );
                 };
                 Some(pathstr.to_owned())
@@ -204,7 +147,7 @@ impl PlrustcConfig {
             if allowed_source_dirs.is_empty() {
                 early_error(
                     ErrorOutputType::default(),
-                    &format!(
+                    format!(
                         "`{PLRUSTC_USER_CRATE_ALLOWED_SOURCE_PATHS}` was provided but contained no paths \
                         which exist: {allowed:?}",
                     ),
