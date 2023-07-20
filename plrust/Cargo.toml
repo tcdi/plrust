@@ -39,7 +39,7 @@ serde = "1.0.164"
 serde_json = "1.0.97"
 
 # pgrx core details
-pgrx = { version = "=0.9.7" }
+pgrx = { version = "=0.9.8" }
 
 # language handler support
 libloading = "0.8.0"
@@ -66,6 +66,6 @@ memfd = "0.6.3" # for anonymously writing/loading user function .so
 
 
 [dev-dependencies]
-pgrx-tests = { version = "=0.9.7" }
+pgrx-tests = { version = "=0.9.8" }
 once_cell = "1.18.0"
 toml = "0.7.4"
