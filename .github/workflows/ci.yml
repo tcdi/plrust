@@ -326,7 +326,7 @@ jobs:
 
     - name: Test PL/rust as "untrusted"
       if: matrix.target == 'host'
-      run: cargo pgrx test "pg$PG_VER" --no-default-features
+      run: cd plrust-tests && cargo pgrx test "pg$PG_VER"
 
     - name: Test PL/rust as "trusted" (inc. postgrestd)
       if: matrix.target == 'postgrestd'
