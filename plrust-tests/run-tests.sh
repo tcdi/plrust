@@ -9,6 +9,8 @@ fi
 
 TEST_DIR=`pwd`
 
+set -e
+
 # install the plrust extension into the pgrx-managed postgres
 echo "============================"
 echo " installing plrust"
