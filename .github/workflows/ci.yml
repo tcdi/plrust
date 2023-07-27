@@ -156,6 +156,9 @@ jobs:
       if: matrix.target == 'postgrestd'
       run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
 
+    - name: Test PLRust non-#[pg_test] tests
+      run: cargo test --no-default-features --features "pg$PG_VER" -- --skip alter --skip argument --skip basic --skip blocked_code --skip borrow_mut_error --skip ddl --skip dependencies --skip matches --skip panics --skip range --skip recursion --skip return_values --skip round_trip --skip time_and_dates --skip trusted --skip user_defined_types --skip versioning
+
     - name: Print sccache stats (after build)
       run: sccache --show-stats
 
