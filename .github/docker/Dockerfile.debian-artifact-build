@@ -128,7 +128,7 @@ RUN mkdir -p ${RELEASE_DIR}$HOME/.pgrx && \
 RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && cat <<EOF > /tmp/preinst
 #!/usr/bin/env bash
 
-if ! id -u postgres 2&> /dev/null; then
+if ! id -u postgres 2>&1 > /dev/null; then
     echo "[!] User 'postgres' does not exist. Have the official Postgres packages been installed yet?"
     exit 1
 fi
