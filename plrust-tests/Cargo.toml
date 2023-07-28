@@ -12,6 +12,7 @@ pg13 = ["pgrx/pg13", "pgrx-tests/pg13" ]
 pg14 = ["pgrx/pg14", "pgrx-tests/pg14" ]
 pg15 = ["pgrx/pg15", "pgrx-tests/pg15" ]
 pg_test = []
+trusted = []
 
 [dependencies]
 pgrx = "=0.9.8"
