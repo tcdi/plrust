@@ -10,6 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
+    #[allow(unused)]
     use pgrx::prelude::*;
 
     #[cfg(feature = "trusted")]
