@@ -203,8 +203,8 @@ jobs:
         version: ["pg14"]
         os: ["ubuntu-latest"]
         # it would be nice to other contributors to return "macos-11" to the above array
-        # target: ["host", "postgrestd"]
-        target: ["postgrestd"]
+        target: ["host", "postgrestd"]
+        # target: ["postgrestd"]
       fail-fast: false
 
     steps:
@@ -343,6 +343,18 @@ jobs:
     - name: Run PL/Rust integration tests as "trusted"
       if: matrix.target == 'postgrestd'
       run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Install PL/Rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER"
+
+    - name: Test PL/Rust package as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER"
+
+    - name: Run PL/Rust integration tests as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
 
     # - name: Test PL/rust as "untrusted"
     #   if: matrix.target == 'host'
