@@ -342,7 +342,7 @@ jobs:
 
     - name: Run PL/Rust integration tests as "trusted"
       if: matrix.target == 'postgrestd'
-      run: cd plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
 
     # - name: Test PL/rust as "untrusted"
     #   if: matrix.target == 'host'
