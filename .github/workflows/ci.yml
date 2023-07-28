@@ -332,13 +332,13 @@ jobs:
     - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
       run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
-    - name: Test PL/Rust package as "trusted"
-      if: matrix.target == 'postgrestd'
-      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
-
     - name: Install PL/Rust as "trusted"
       if: matrix.target == 'postgrestd'
       run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
+
+    - name: Test PL/Rust package as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
 
     - name: Run PL/Rust integration tests as "trusted"
       if: matrix.target == 'postgrestd'
