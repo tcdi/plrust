@@ -338,7 +338,7 @@ jobs:
 
     - name: Install PL/Rust as "trusted"
       if: matrix.target == 'postgrestd'
-      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
+      run: cd plrust && STD_TARGETS="x86_64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
 
     - name: Run PL/Rust integration tests as "trusted"
       if: matrix.target == 'postgrestd'
