@@ -29,8 +29,8 @@ jobs:
 
     strategy:
       matrix:
-        # version: ["pg13", "pg14", "pg15"]
-        version: ["pg14"]
+        version: ["pg13", "pg14", "pg15"]
+        # version: ["pg14"]
         target: ["host", "postgrestd"]
       fail-fast: false
 
@@ -217,8 +217,8 @@ jobs:
 
     strategy:
       matrix:
-        # version: ["pg13", "pg14", "pg15"]
-        version: ["pg14"]
+        version: ["pg13", "pg14", "pg15"]
+        # version: ["pg14"]
         os: ["ubuntu-latest"]
         # it would be nice to other contributors to return "macos-11" to the above array
         target: ["host", "postgrestd"]
