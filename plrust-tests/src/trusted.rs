@@ -145,44 +145,48 @@ mod tests {
         Spi::run(definition).unwrap();
     }
 
-    // #[pg_test]
-    // #[search_path(@extschema@)]
-    // #[cfg(feature = "trusted")]
-    // #[should_panic = "No such file or directory (os error 2)"]
-    // fn plrustc_include_path_traversal() {
-    //     use std::path::PathBuf;
-    //     let workdir = crate::gucs::work_dir();
-    //     let wd: PathBuf = workdir
-    //         .canonicalize()
-    //         .ok()
-    //         .expect("Failed to canonicalize workdir");
-    //     // Produce a path that looks like
-    //     // `/allowed/path/here/../../../illegal/path/here` and check that it's
-    //     // rejected, in order to ensure we are not succeptable to path traversal
-    //     // attacks.
-    //     let mut evil_path = wd.clone();
-    //     for _ in wd.ancestors().skip(1) {
-    //         evil_path.push("..");
-    //     }
-    //     debug_assert_eq!(
-    //         evil_path
-    //             .canonicalize()
-    //             .ok()
-    //             .expect("Failed to produce unpath")
-    //             .to_str(),
-    //         Some("/")
-    //     );
-    //     evil_path.push("var/ci-stuff/const_bar.rs");
-    //     // This file does not exist, and should be reported as such.
-    //     let definition = format!(
-    //         r#"CREATE FUNCTION include_sneaky_traversal()
-    //         RETURNS int AS $$
-    //             include!({evil_path:?});
-    //             Ok(Some(1))
-    //         $$ LANGUAGE plrust;"#
-    //     );
-    //     Spi::run(&definition).unwrap();
-    // }
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[cfg(feature = "trusted")]
+    #[should_panic = "No such file or directory (os error 2)"]
+    fn plrustc_include_path_traversal() {
+        use std::path::PathBuf;
+        let workdir = Spi::get_one::<String>("SHOW plrust.work_dir")
+            .expect("Could not get plrust.work_dir")
+            .unwrap();
+
+        let wd: PathBuf = PathBuf::from(workdir)
+            .canonicalize()
+            .ok()
+            .expect("Failed to canonicalize workdir");
+
+        // Produce a path that looks like
+        // `/allowed/path/here/../../../illegal/path/here` and check that it's
+        // rejected, in order to ensure we are not succeptable to path traversal
+        // attacks.
+        let mut evil_path = wd.clone();
+        for _ in wd.ancestors().skip(1) {
+            evil_path.push("..");
+        }
+        debug_assert_eq!(
+            evil_path
+                .canonicalize()
+                .ok()
+                .expect("Failed to produce unpath")
+                .to_str(),
+            Some("/")
+        );
+        evil_path.push("var/ci-stuff/const_bar.rs");
+        // This file does not exist, and should be reported as such.
+        let definition = format!(
+            r#"CREATE FUNCTION include_sneaky_traversal()
+            RETURNS int AS $$
+                include!({evil_path:?});
+                Ok(Some(1))
+            $$ LANGUAGE plrust;"#
+        );
+        Spi::run(&definition).unwrap();
+    }
 
     #[pg_test]
     #[search_path(@extschema@)]
