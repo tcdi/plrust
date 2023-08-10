@@ -173,7 +173,7 @@ checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
 name = "plrustc"
-version = "1.2.4-beta.pg16b2"
+version = "1.2.4-beta.pg16b3"
 dependencies = [
  "compiletest_rs",
  "libc",
