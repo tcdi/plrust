@@ -28,7 +28,7 @@ Where:
 Example:
 
 ```
-plrust-trusted-1.2.3_1.70.0-debian-pg15-amd64.deb
+plrust-trusted-1.2.3_1.71.1-debian-pg15-amd64.deb
 ```
 
 ## Preparing the environment
