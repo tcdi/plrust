@@ -18,7 +18,8 @@ jobs:
         echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
     - name: Install mdbook and other preprocessors
       run: |
-        cargo install mdbook mdbook-variables
+        cargo install mdbook --version 0.4.32
+        cargo install mdbook-variables --version 0.2.1
     - name: Deploy GitHub Pages
       run: |
         # This assumes your book is in the root of your repository.

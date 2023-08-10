@@ -145,5 +145,6 @@ $$;
 ### Operational Notes
 
 - The dependency allow-list file path must be set in `plrust.allowed_dependencies` GUC value in `postgresql.conf`.
+- Changing the GUC value requires a configuration reload on the database to take effect.
 - The file must be readable by the user that runs Postgres backend connections. Typically, this user is named `postgres`.
 - Every time a `CREATE FUNCTION ... LANGUAGE plrust` statement is executed, the file is read, parsed, and validated. This arrangement allows administrators to edit it without needing to restart the Postgres cluster.

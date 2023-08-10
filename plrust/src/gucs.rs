@@ -79,7 +79,7 @@ pub(crate) fn init() {
         "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions",
         "The full path of a toml file containing crates and versions allowed when creating PL/Rust functions",
         &PLRUST_ALLOWED_DEPENDENCIES,
-        GucContext::Postmaster,
+        GucContext::Sighup,
         GucFlags::default(),
     );
 
