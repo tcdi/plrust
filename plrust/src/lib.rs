@@ -193,6 +193,25 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
     }
 }
 
+#[pg_extern]
+fn list_allowed_dependencies<'a>() -> Result<
+    Option<
+        ::pgrx::iter::TableIterator<
+            'a,
+            (
+                name!(name, String),
+                name!(version, String),
+                name!(features, Vec<String>),
+                name!(default_features, bool),
+            ),
+        >,
+    >,
+    Box<dyn std::error::Error + Send + Sync + 'static>,
+> {
+    let allowed_dependencies = allow_list::get_allowed_dependencies_as_tuple_vector();
+    Ok(Some(TableIterator::new(allowed_dependencies)))
+}
+
 /// Called by Postgres, not you.
 /// # Safety
 /// Don't.

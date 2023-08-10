@@ -212,6 +212,53 @@ pub enum Error {
     UnsupportedVersionReq(String),
 }
 
+// Tuple describes name of the dependency, version of the dependency, features of the dependecy that are enabled, whether default features enabled
+pub type AllowedDependencyTuple = (String, String, Vec<String>, bool);
+
+// Convert all the allowed dependencies into a vector of tuples
+pub fn get_allowed_dependencies_as_tuple_vector() -> Vec<AllowedDependencyTuple> {
+    let allowlist = load_allowlist().expect("Error loading dependency allow-list");
+    let mut tuples: Vec<AllowedDependencyTuple> = vec![];
+
+    for dependency in allowlist.values() {
+        let mut tuple: Vec<AllowedDependencyTuple> =
+            get_single_dependency_as_tuple_vector(dependency);
+        tuples.append(&mut tuple);
+    }
+    tuples
+}
+
+// Multiple version of a dependencies can be allowed. Create a tuple for each version of the dependency
+fn get_single_dependency_as_tuple_vector(dep: &Dependency) -> Vec<AllowedDependencyTuple> {
+    let mut tuples: Vec<AllowedDependencyTuple> = vec![];
+    for version in dep.versions.values() {
+        let name = dep.name.clone();
+        let ver = version
+            .get("version")
+            .unwrap()
+            .to_string()
+            .replace("\"", "");
+        let features: Vec<String> = match version.get("features") {
+            Some(features) => match features.is_array() {
+                true => features
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|f| f.as_str().unwrap().to_owned())
+                    .collect(),
+                false => vec![features.as_str().unwrap().to_owned()],
+            },
+            None => vec![],
+        };
+        let default_features = match version.get("default-features") {
+            Some(v) => v.as_bool().unwrap(),
+            None => true,
+        };
+        tuples.push((name, ver, features, default_features));
+    }
+    tuples
+}
+
 impl TryFrom<(&str, Value)> for Dependency {
     type Error = Error;
 
