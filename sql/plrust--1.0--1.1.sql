@@ -2,7 +2,7 @@ DROP FUNCTION IF EXISTS plrust.list_allowed_dependencies();
 
 -- plrust/src/lib.rs:197
 -- plrust::list_allowed_dependencies
-CREATE FUNCTION plrust."list_allowed_dependencies"() RETURNS TABLE (
+CREATE FUNCTION plrust."allowed_dependencies"() RETURNS TABLE (
 	"name" TEXT,  /* alloc::string::String */
 	"version" TEXT,  /* alloc::string::String */
 	"features" TEXT[],  /* alloc::vec::Vec<alloc::string::String> */
@@ -10,4 +10,4 @@ CREATE FUNCTION plrust."list_allowed_dependencies"() RETURNS TABLE (
 )
 STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'list_allowed_dependencies_wrapper';
+AS 'MODULE_PATHNAME', 'allowed_dependencies_wrapper';

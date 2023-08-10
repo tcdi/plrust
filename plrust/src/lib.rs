@@ -53,6 +53,7 @@ pub(crate) mod target;
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;
 
+use crate::allow_list::AllowedDependencyTuple;
 use error::PlRustError;
 use pgrx::{pg_getarg, prelude::*};
 
@@ -194,7 +195,7 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
 }
 
 #[pg_extern]
-fn list_allowed_dependencies<'a>() -> Result<
+fn allowed_dependencies<'a>() -> Result<
     Option<
         ::pgrx::iter::TableIterator<
             'a,
@@ -208,7 +209,8 @@ fn list_allowed_dependencies<'a>() -> Result<
     >,
     Box<dyn std::error::Error + Send + Sync + 'static>,
 > {
-    let allowed_dependencies = allow_list::get_allowed_dependencies_as_tuple_vector();
+    let allowed_dependencies: Vec<AllowedDependencyTuple> =
+        allow_list::get_alllowed_dependencies().into();
     Ok(Some(TableIterator::new(allowed_dependencies)))
 }
 

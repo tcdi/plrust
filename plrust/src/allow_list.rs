@@ -212,25 +212,56 @@ pub enum Error {
     UnsupportedVersionReq(String),
 }
 
-// Tuple describes name of the dependency, version of the dependency, features of the dependecy that are enabled, whether default features enabled
-pub type AllowedDependencyTuple = (String, String, Vec<String>, bool);
-
-// Convert all the allowed dependencies into a vector of tuples
-pub fn get_allowed_dependencies_as_tuple_vector() -> Vec<AllowedDependencyTuple> {
-    let allowlist = load_allowlist().expect("Error loading dependency allow-list");
-    let mut tuples: Vec<AllowedDependencyTuple> = vec![];
-
-    for dependency in allowlist.values() {
-        let mut tuple: Vec<AllowedDependencyTuple> =
-            get_single_dependency_as_tuple_vector(dependency);
-        tuples.append(&mut tuple);
-    }
-    tuples
+/// This struct describes name of the dependency, version of the dependency, features of the dependency that are enabled, and whether default features are enabled
+struct AllowedDependency {
+    name: String,
+    ver: String,
+    features: Vec<String>,
+    default_features: bool,
 }
 
-// Multiple version of a dependencies can be allowed. Create a tuple for each version of the dependency
-fn get_single_dependency_as_tuple_vector(dep: &Dependency) -> Vec<AllowedDependencyTuple> {
-    let mut tuples: Vec<AllowedDependencyTuple> = vec![];
+/// A container struct to wrap around a vector of AllowedDependency used by plrust.allowed_dependencies function
+pub struct AllowedDependencies {
+    allowed_dependencies: Vec<AllowedDependency>,
+}
+
+/// A type alias to wrap around the tuple signature of plrust.allowed_dependencies function.
+/// An AllowedDependency struct will be converted into this type.
+pub type AllowedDependencyTuple = (String, String, Vec<String>, bool);
+
+impl From<AllowedDependencies> for Vec<AllowedDependencyTuple> {
+    fn from(a: AllowedDependencies) -> Vec<AllowedDependencyTuple> {
+        a.allowed_dependencies
+            .iter()
+            .map(|item| {
+                (
+                    item.name.to_owned(),
+                    item.ver.to_owned(),
+                    item.features.to_owned(),
+                    item.default_features,
+                )
+            })
+            .collect()
+    }
+}
+
+/// Get all the allowed dependencies entries as a AllowedDependencies struct
+pub fn get_alllowed_dependencies() -> AllowedDependencies {
+    let allowlist: BTreeMap<String, Dependency> =
+        load_allowlist().expect("Error loading dependency allow-list");
+    let mut allowed_dependencies: Vec<AllowedDependency> = vec![];
+    for dependency in allowlist.values() {
+        let entries = get_entries_for_single_allowed_dependency(dependency);
+        allowed_dependencies.extend(entries)
+    }
+    AllowedDependencies {
+        allowed_dependencies,
+    }
+}
+
+/// Multiple versions of a dependency can be allowed. Create an AllowedDependency struct for each version of the dependency
+fn get_entries_for_single_allowed_dependency(dep: &Dependency) -> Vec<AllowedDependency> {
+    let mut entries: Vec<AllowedDependency> = vec![];
     for version in dep.versions.values() {
         let name = dep.name.clone();
         let ver = version
@@ -251,12 +282,20 @@ fn get_single_dependency_as_tuple_vector(dep: &Dependency) -> Vec<AllowedDepende
             None => vec![],
         };
         let default_features = match version.get("default-features") {
-            Some(v) => v.as_bool().unwrap(),
+            Some(default_features) => match default_features.is_bool() {
+                true => default_features.as_bool().unwrap(),
+                false => false,
+            },
             None => true,
         };
-        tuples.push((name, ver, features, default_features));
+        entries.push(AllowedDependency {
+            name,
+            ver,
+            features,
+            default_features,
+        });
     }
-    tuples
+    entries
 }
 
 impl TryFrom<(&str, Value)> for Dependency {

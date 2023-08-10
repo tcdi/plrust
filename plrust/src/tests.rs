@@ -1400,14 +1400,14 @@ insert into people (p) values (make_person('Dr. Beverly Crusher of the Starship 
     }
 
     #[pg_test]
-    fn test_list_allowed_dependencies() -> spi::Result<()> {
+    fn test_allowed_dependencies() -> spi::Result<()> {
         // Given the allowed list looks like this:
         // owo-colors = "=3.5.0"
         // tokio = { version = "=1.19.2", features = ["rt", "net"] }
         // plutonium = "*"
         // syn = { version = "=2.0.28", default-features = false }
         // rand = ["=0.8.3", { version = ">0.8.4, <0.8.6", features = ["getrandom"] }]
-        let query = "SELECT * FROM plrust.list_allowed_dependencies();";
+        let query = "SELECT * FROM plrust.allowed_dependencies();";
 
         // The result will look like this:
         //     name    |    version     |  features   | default_features
@@ -1421,7 +1421,7 @@ insert into people (p) values (make_person('Dr. Beverly Crusher of the Starship 
 
         Spi::connect(|client| {
             let expected_names = vec!["owo-colors", "plutonium", "rand", "rand", "syn", "tokio"];
-            let expected_veresions = vec![
+            let expected_versions = vec![
                 "=3.5.0",
                 "*",
                 "=0.8.3",
@@ -1451,7 +1451,7 @@ insert into people (p) values (make_person('Dr. Beverly Crusher of the Starship 
                 );
                 assert_eq!(
                     row["version"].value::<String>().unwrap(),
-                    Some(expected_veresions[i].to_owned())
+                    Some(expected_versions[i].to_owned())
                 );
                 assert_eq!(
                     row["features"].value::<Vec<String>>().unwrap(),
