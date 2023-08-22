@@ -110,38 +110,3 @@ plutonium = "*"
     }
 }
 
-
-/*
-#[cfg(any(test, feature = "pg_test"))]
-#[pg_schema]
-mod tests {
-    use pgrx::prelude::*;
-
-    #[pg_test]
-    fn test_plrust_works() -> spi::Result<()> {
-        Spi::run("CREATE FUNCTION test_plrust_works() RETURNS int LANGUAGE plrust AS $$ Ok(Some(1)) $$;")?;
-        let result = Spi::get_one::<i32>("SELECT test_plrust_works();");
-        assert_eq!(result, Ok(Some(1)));
-
-        Ok(()) 
-    }
-
-}
-
-/// This module is required by `cargo pgrx test` invocations.
-/// It must be visible at the root of your extension crate.
-#[cfg(test)]
-pub mod pg_test {
-    pub fn setup(_options: Vec<&str>) {
-        // perform one-off initialization when the pg_test framework starts
-    }
-
-    pub fn postgresql_conf_options() -> Vec<&'static str> {
-        // return any postgresql.conf settings that are required for your tests
-        vec![
-            "shared_preload_libraries = 'plrust'",
-            "plrust.work_dir = '/tmp/plrust-work-dir'"
-        ]
-    }
-}
-*/
