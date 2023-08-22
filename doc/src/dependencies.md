@@ -36,7 +36,7 @@ Here is a valid allow-list file for reference:
 
 ```toml
 rand = ">=0.8, <0.9"
-bitvec = [">=1, <2", "=0.2", { version = "1.0.1", features = [ "alloc" ], default-features = false }]
+bitvec = [">=1, <2", "=0.2", { version = "=1.0.1", features = [ "alloc" ], default-features = false }]
 ```
 
 This added flexibility empowers administrators to specify the exact crate version and its associated features and properties.
@@ -140,6 +140,23 @@ use rand::RngCore;
 let mut rng = SmallRng::seed_from_u64(seed as _);
 Ok(Some(rng.next_u64() as _))
 $$;
+```
+
+PL/Rust provides a function `plrust.allowed_dependencies` which lists all the allowlisted crates with their respective enabled features. For example, with an allowlist as follows:
+```toml
+rand = ">=0.8, <0.9"
+bitvec = [">=1, <2", "=0.2", { version = "=1.0.1", features = [ "alloc" ], default-features = false }]
+```
+The result of `plrust.allowed_dependencies` would be:
+```sql
+SELECT * FROM plrust.allowed_dependencies();
+  name  |   version   | features | default_features
+--------+-------------+----------+------------------
+ bitvec | =0.2        | {}       | t
+ bitvec | >=1, <2     | {}       | t
+ bitvec | =1.0.1      | {alloc}  | f
+ rand   | >=0.8, <0.9 | {}       | t
+(4 rows)
 ```
 
 ### Operational Notes

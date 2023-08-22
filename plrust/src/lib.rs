@@ -210,7 +210,7 @@ fn allowed_dependencies<'a>() -> Result<
     Box<dyn std::error::Error + Send + Sync + 'static>,
 > {
     let allowed_dependencies: Vec<AllowedDependencyTuple> =
-        allow_list::get_alllowed_dependencies().into();
+        allow_list::get_allowed_dependencies().into();
     Ok(Some(TableIterator::new(allowed_dependencies)))
 }
 

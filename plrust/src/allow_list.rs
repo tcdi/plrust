@@ -246,7 +246,7 @@ impl From<AllowedDependencies> for Vec<AllowedDependencyTuple> {
 }
 
 /// Get all the allowed dependencies entries as a AllowedDependencies struct
-pub fn get_alllowed_dependencies() -> AllowedDependencies {
+pub fn get_allowed_dependencies() -> AllowedDependencies {
     let allowlist: BTreeMap<String, Dependency> =
         load_allowlist().expect("Error loading dependency allow-list");
     let mut allowed_dependencies: Vec<AllowedDependency> = vec![];
@@ -270,24 +270,19 @@ fn get_entries_for_single_allowed_dependency(dep: &Dependency) -> Vec<AllowedDep
             .to_string()
             .replace("\"", "");
         let features: Vec<String> = match version.get("features") {
-            Some(features) => match features.is_array() {
-                true => features
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|f| f.as_str().unwrap().to_owned())
-                    .collect(),
-                false => vec![features.as_str().unwrap().to_owned()],
-            },
+            Some(features) => features
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|f| f.as_str().unwrap().to_owned())
+                .collect(),
             None => vec![],
         };
-        let default_features = match version.get("default-features") {
-            Some(default_features) => match default_features.is_bool() {
-                true => default_features.as_bool().unwrap(),
-                false => false,
-            },
-            None => true,
-        };
+        let default_features = version
+            .get("default-features")
+            .map(|b| b.as_bool().unwrap())
+            .unwrap_or(true);
+
         entries.push(AllowedDependency {
             name,
             ver,
@@ -327,16 +322,37 @@ impl TryFrom<(&str, Value)> for Dependency {
 
                             Ok((version, table))
                         }
-                        Value::Table(table) => match table.get("version") {
-                            Some(version) => {
-                                let version = version
-                                    .as_str()
-                                    .ok_or(Error::UnsupportedValueType(version.clone()))?;
-                                let version = OrderedVersionReq::try_from(version)?;
-                                Ok((version, table))
+                        Value::Table(table) => {
+                            // value of the features field can only be in form of an array of string
+                            if let Some(features) = table.get("features") {
+                                features
+                                    .as_array()
+                                    .ok_or(Error::UnsupportedValueType(features.clone()))?
+                                    .iter()
+                                    .map(|val| {
+                                        val.as_str()
+                                            .ok_or(Error::UnsupportedValueType(val.clone()))?;
+                                        Ok(())
+                                    })
+                                    .collect::<Result<Vec<()>, Error>>()?;
+                            };
+                            // value of the default-features field can only be in form of a boolean
+                            if let Some(default_features) = table.get("default-features") {
+                                default_features
+                                    .as_bool()
+                                    .ok_or(Error::UnsupportedValueType(default_features.clone()))?;
+                            };
+                            match table.get("version") {
+                                Some(version) => {
+                                    let version = version
+                                        .as_str()
+                                        .ok_or(Error::UnsupportedValueType(version.clone()))?;
+                                    let version = OrderedVersionReq::try_from(version)?;
+                                    Ok((version, table))
+                                }
+                                None => Err(Error::VersionMissing),
                             }
-                            None => Err(Error::VersionMissing),
-                        },
+                        }
                         unsupported => Err(Error::UnsupportedValueType(unsupported)),
                     })
                     .collect::<Result<_, Error>>()?;
@@ -345,6 +361,25 @@ impl TryFrom<(&str, Value)> for Dependency {
             }
 
             Value::Table(table) => {
+                // value of the features field is required to be  an array of string
+                if let Some(features) = table.get("features") {
+                    features
+                        .as_array()
+                        .ok_or(Error::UnsupportedValueType(features.clone()))?
+                        .iter()
+                        .map(|val| {
+                            val.as_str()
+                                .ok_or(Error::UnsupportedValueType(val.clone()))?;
+                            Ok(())
+                        })
+                        .collect::<Result<Vec<()>, Error>>()?;
+                };
+                // value of the default-features field is required to be a boolean
+                if let Some(default_features) = table.get("default-features") {
+                    default_features
+                        .as_bool()
+                        .ok_or(Error::UnsupportedValueType(default_features.clone()))?;
+                };
                 let version = table.get("version").ok_or(Error::VersionMissing)?;
                 let version = version
                     .as_str()
@@ -478,7 +513,7 @@ mod tests {
 a = [ "=1.2.3", "=3.0", ">=6.0.0, <=10", { version = "=2.4.5", features = [ "x", "y", "z" ] }, "*", ">=1.0.0, <5.0.0",">=1.0.0, <2.0.0", ">=2, <=4", "=2.99.99" ]
 b = "*"
 c = "=1.2.3"
-d = { version = "=3.4.5", features = [ "x", "y", "z" ] }
+d = { version = "=3.4.5", features = [ "x", "y", "z" ], default-features = false }
     "#;
 
     #[test]
@@ -493,6 +528,9 @@ d = { version = "=3.4.5", features = [ "x", "y", "z" ] }
         assert_eq!(parse_allowlist("a = '1.2.3'"), Err(Error::UnsupportedVersionReq("1.2.3".to_string())));
         assert_eq!(parse_allowlist("a = 42"), Err(Error::UnsupportedValueType(toml::Value::Integer(42))));
         assert_eq!(parse_allowlist("a = { features = ['a', 'b', 'c'] }"), Err(Error::VersionMissing));
+        assert_eq!(parse_allowlist("a = { features = 42 }"), Err(Error::UnsupportedValueType(toml::Value::Integer(42))));
+        assert_eq!(parse_allowlist("a = { features = [ 42 ] }"), Err(Error::UnsupportedValueType(toml::Value::Integer(42))));
+        assert_eq!(parse_allowlist("a = { default-features = 'false' }"), Err(Error::UnsupportedValueType(toml::Value::String("false".to_string()))));
     }
 
     #[test]
