@@ -53,6 +53,7 @@ pub(crate) mod target;
 #[cfg(any(test, feature = "pg_test"))]
 pub mod tests;
 
+use crate::allow_list::AllowedDependencyTuple;
 use error::PlRustError;
 use pgrx::{pg_getarg, prelude::*};
 
@@ -191,6 +192,26 @@ unsafe fn plrust_call_handler(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum
         // Panic into the pgrx guard.
         Err(err) => panic!("{:?}", err),
     }
+}
+
+#[pg_extern]
+fn allowed_dependencies<'a>() -> Result<
+    Option<
+        ::pgrx::iter::TableIterator<
+            'a,
+            (
+                name!(name, String),
+                name!(version, String),
+                name!(features, Vec<String>),
+                name!(default_features, bool),
+            ),
+        >,
+    >,
+    Box<dyn std::error::Error + Send + Sync + 'static>,
+> {
+    let allowed_dependencies: Vec<AllowedDependencyTuple> =
+        allow_list::get_allowed_dependencies().into();
+    Ok(Some(TableIterator::new(allowed_dependencies)))
 }
 
 /// Called by Postgres, not you.
