@@ -1,20 +1,20 @@
-mod basic;
-mod versioning;
-mod dependencies;
-mod return_values;
-mod ddl;
-mod blocked_code;
-mod recursion;
-mod matches;
-mod argument;
-mod range;
-mod user_defined_types;
-mod time_and_dates;
-mod borrow_mut_error;
-mod panics;
 mod alter;
+mod argument;
+mod basic;
+mod blocked_code;
+mod borrow_mut_error;
+mod ddl;
+mod dependencies;
+mod matches;
+mod panics;
+mod range;
+mod recursion;
+mod return_values;
 mod round_trip;
+mod time_and_dates;
 mod trusted;
+mod user_defined_types;
+mod versioning;
 
 use pgrx::prelude::*;
 
@@ -32,7 +32,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx::{prelude::*};
+    use pgrx::prelude::*;
 
     // Bootstrap a testing table for non-immutable functions
     extension_sql!(
@@ -62,8 +62,7 @@ pub mod pg_test {
     static PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME: &str = "allowed_deps.toml";
     static PLRUST_ALLOWED_DEPENDENCIES_FILE_DIRECTORY: Lazy<TempDir> = Lazy::new(|| {
         use std::io::Write;
-        let temp_allowed_deps_dir =
-            tempdir().expect("Couldnt create tempdir");
+        let temp_allowed_deps_dir = tempdir().expect("Couldnt create tempdir");
 
         let file_path = temp_allowed_deps_dir
             .path()
@@ -107,4 +106,3 @@ plutonium = "*"
         ]
     }
 }
-

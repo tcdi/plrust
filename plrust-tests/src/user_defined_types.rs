@@ -1,4 +1,3 @@
-
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
 Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
@@ -11,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx:: prelude::*;
+    use pgrx::prelude::*;
 
     #[pg_test]
     fn test_udt() -> spi::Result<()> {
@@ -89,12 +88,11 @@ insert into people (p) values (make_person('Dr. Beverly Crusher of the Starship 
         let johnny = Spi::get_one::<PgHeapTuple<AllocatedByRust>>(
             "SELECT p FROM people WHERE p->>'name' = 'Johnny';",
         )?
-            .expect("SPI result was null");
+        .expect("SPI result was null");
 
         let age = johnny.get_by_name::<f64>("age")?.expect("age was null");
         assert_eq!(age, 46.24);
 
         Ok(())
     }
-
 }

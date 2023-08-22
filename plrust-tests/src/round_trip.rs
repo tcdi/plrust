@@ -1,4 +1,3 @@
-
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
 Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
@@ -11,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx:: prelude::*;
+    use pgrx::prelude::*;
     use std::error::Error;
 
     #[pg_test]
@@ -82,7 +81,7 @@ mod tests {
         let u = Spi::get_one::<pgrx::Uuid>(
             "SELECT test_uuid('e4176a4d-790c-4750-85b7-665d72471173'::uuid);",
         )?
-            .expect("SPI result was null");
+        .expect("SPI result was null");
         assert_eq!(
             u,
             pgrx::Uuid::from_bytes([
@@ -93,5 +92,4 @@ mod tests {
 
         Ok(())
     }
-
 }

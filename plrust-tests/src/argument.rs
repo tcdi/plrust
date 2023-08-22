@@ -1,4 +1,3 @@
-
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
 Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
@@ -11,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx:: prelude::*;
+    use pgrx::prelude::*;
 
     #[pg_test]
     #[search_path(@extschema@)]
@@ -64,7 +63,7 @@ mod tests {
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic(
-    expected = "is an invalid Rust identifier and cannot be used as an argument name"
+        expected = "is an invalid Rust identifier and cannot be used as an argument name"
     )]
     fn invalid_arg_identifier() -> spi::Result<()> {
         Spi::run("CREATE FUNCTION invalid_arg_identifier(\"this isn't a valid rust identifier\" int) RETURNS int LANGUAGE plrust as $$ Ok(None) $$;")

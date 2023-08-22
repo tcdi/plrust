@@ -1,4 +1,3 @@
-
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
 Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
@@ -12,7 +11,6 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[pgrx::pg_schema]
 mod tests {
     use pgrx::{datum::IntoDatum, prelude::*};
-
 
     #[pg_test]
     #[search_path(@extschema@)]
@@ -39,7 +37,6 @@ mod tests {
         assert_eq!(retval, Ok(Some(6)));
         Ok(())
     }
-
 
     #[pg_test]
     #[search_path(@extschema@)]

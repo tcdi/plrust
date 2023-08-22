@@ -1,4 +1,3 @@
-
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
 Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
@@ -11,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx:: prelude::*;
+    use pgrx::prelude::*;
     use std::error::Error;
 
     #[pg_test]
@@ -22,7 +21,7 @@ mod tests {
         let r = Spi::get_one::<Range<Date>>(
             "SELECT test_daterange('[1977-03-20, 1980-01-01)'::daterange);",
         )?
-            .expect("SPI result was null");
+        .expect("SPI result was null");
         assert_eq!(
             r,
             Range::new(
@@ -41,7 +40,7 @@ mod tests {
         let r = Spi::get_one::<Range<Timestamp>>(
             "SELECT test_tsrange('[1977-03-20, 1980-01-01)'::tsrange);",
         )?
-            .expect("SPI result was null");
+        .expect("SPI result was null");
         assert_eq!(
             r,
             Range::new(
@@ -60,7 +59,7 @@ mod tests {
         let r = Spi::get_one::<Range<TimestampWithTimeZone>>(
             "SELECT test_tstzrange('[1977-03-20, 1980-01-01)'::tstzrange);",
         )?
-            .expect("SPI result was null");
+        .expect("SPI result was null");
         assert_eq!(
             r,
             Range::new(
@@ -82,5 +81,4 @@ mod tests {
         assert_eq!(hours, AnyNumeric::from(9));
         Ok(())
     }
-
 }

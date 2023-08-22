@@ -1,4 +1,3 @@
-
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
 Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
@@ -11,20 +10,20 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx:: prelude::*;
+    use pgrx::prelude::*;
 
     #[pg_test]
-#[search_path(@extschema@)]
-#[should_panic = "yup"]
-fn pgrx_can_panic() {
-    panic!("yup")
-}
+    #[search_path(@extschema@)]
+    #[should_panic = "yup"]
+    fn pgrx_can_panic() {
+        panic!("yup")
+    }
 
-#[pg_test]
-#[search_path(@extschema@)]
-#[should_panic = "yup"]
-fn plrust_can_panic() -> spi::Result<()> {
-    let definition = r#"
+    #[pg_test]
+    #[search_path(@extschema@)]
+    #[should_panic = "yup"]
+    fn plrust_can_panic() -> spi::Result<()> {
+        let definition = r#"
             CREATE FUNCTION shut_up_and_explode()
             RETURNS text AS
             $$
@@ -33,11 +32,11 @@ fn plrust_can_panic() -> spi::Result<()> {
             $$ LANGUAGE plrust;
         "#;
 
-    Spi::run(definition)?;
-    let retval = Spi::get_one::<String>("SELECT shut_up_and_explode();\n");
-    assert_eq!(retval, Ok(None));
-    Ok(())
-}
+        Spi::run(definition)?;
+        let retval = Spi::get_one::<String>("SELECT shut_up_and_explode();\n");
+        assert_eq!(retval, Ok(None));
+        Ok(())
+    }
     #[pg_test]
     #[search_path(@extschema@)]
     #[should_panic = "xxx"]

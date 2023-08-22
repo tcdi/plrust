@@ -10,7 +10,7 @@ Use of this source code is governed by the PostgreSQL license that can be found 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgrx::pg_schema]
 mod tests {
-    use pgrx:: prelude::*;
+    use pgrx::prelude::*;
 
     #[pg_test]
     #[should_panic(expected = "issue78 works")]
@@ -53,5 +53,4 @@ mod tests {
         assert_eq!(Ok(Some(1)), Spi::get_one::<i32>("SELECT fn1(1)"));
         Ok(())
     }
-
 }
