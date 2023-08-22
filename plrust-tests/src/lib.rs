@@ -53,19 +53,17 @@ mod tests {
 #[cfg(any(test, feature = "pg_test"))]
 pub mod pg_test {
     use once_cell::sync::Lazy;
-    use tempdir::TempDir;
-
+    use tempfile::{tempdir, TempDir};
     static WORK_DIR: Lazy<String> = Lazy::new(|| {
-        let work_dir = TempDir::new("plrust-tests").expect("Couldn't create tempdir");
+        let work_dir = tempdir().expect("Couldn't create tempdir");
         format!("plrust.work_dir='{}'", work_dir.path().display())
     });
     static LOG_LEVEL: &str = "plrust.tracing_level=trace";
-
     static PLRUST_ALLOWED_DEPENDENCIES_FILE_NAME: &str = "allowed_deps.toml";
     static PLRUST_ALLOWED_DEPENDENCIES_FILE_DIRECTORY: Lazy<TempDir> = Lazy::new(|| {
         use std::io::Write;
         let temp_allowed_deps_dir =
-            TempDir::new("plrust-allowed-deps").expect("Couldnt create tempdir");
+            tempdir().expect("Couldnt create tempdir");
 
         let file_path = temp_allowed_deps_dir
             .path()
