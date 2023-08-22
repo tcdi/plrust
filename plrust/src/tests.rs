@@ -7,6 +7,9 @@ All rights reserved.
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
 
+use pgrx::prelude::*;
+use pgrx::spi;
+
 #[pg_test]
 fn test_allowed_dependencies() -> spi::Result<()> {
     // Given the allowed list looks like this:
