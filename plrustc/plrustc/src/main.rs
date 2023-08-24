@@ -5,6 +5,7 @@ extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_interface;
 
+extern crate rustc_error_messages;
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
 extern crate rustc_middle;
@@ -12,10 +13,11 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_driver::Callbacks;
+use rustc_error_messages::DiagnosticMessage;
 use rustc_interface::interface;
 use rustc_session::config::ErrorOutputType;
-use rustc_session::early_error;
 use rustc_session::parse::ParseSess;
+use rustc_session::EarlyErrorHandler;
 use rustc_span::source_map::FileLoader;
 use rustc_span::Symbol;
 use std::path::Path;
@@ -50,9 +52,11 @@ impl Callbacks for PlrustcCallbacks {
 
 fn main() {
     rustc_driver::install_ice_hook("https://github.com/tcdi/plrust/issues/new", |_| ());
-    rustc_driver::init_rustc_env_logger();
+    let handler = &EarlyErrorHandler::new(ErrorOutputType::default());
+    rustc_driver::init_rustc_env_logger(handler);
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        let args = rustc_driver::args::arg_expand_all(&std::env::args().collect::<Vec<_>>());
+        let args =
+            rustc_driver::args::arg_expand_all(handler, &std::env::args().collect::<Vec<_>>());
         let config = PlrustcConfig::from_env_and_args(&args);
         run_compiler(
             args,
@@ -174,6 +178,10 @@ fn arg_value<'a, T: AsRef<str>>(args: &'a [T], find_arg: &str) -> Option<&'a str
         }
     }
     None
+}
+
+fn early_error(o: ErrorOutputType, msg: impl Into<DiagnosticMessage>) -> ! {
+    EarlyErrorHandler::new(o).early_error(msg)
 }
 
 struct ErrorHidingFileLoader;
