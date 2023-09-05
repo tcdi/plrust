@@ -9,5 +9,3 @@ note: rustc <version here> running on <target here>
 
 note: compiler flags: -C prefer-dynamic -Z ui-testing
 
-query stack during panic:
-thread panicked while processing panic. aborting.
