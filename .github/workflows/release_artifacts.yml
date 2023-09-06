@@ -89,74 +89,74 @@ jobs:
       with:
         files: /home/runner/out/plrust*.deb
 
-  # arm64_deb_artifacts:
-  #   name: Build aarch64 Debian artifacts
-  #   runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0bad2911d6aad1b0d]
+  arm64_deb_artifacts:
+    name: Build aarch64 Debian artifacts
+    runs-on: [self-hosted, linux, ARM64, launch_template_id__lt-0bad2911d6aad1b0d]
 
-  #   strategy:
-  #     matrix:
-  #       pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
-  #     fail-fast: false
+    strategy:
+      matrix:
+        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+      fail-fast: false
 
-  #   permissions:
-  #     contents: write
+    permissions:
+      contents: write
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Install Docker
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y \
-  #             ca-certificates \
-  #             curl \
-  #             gnupg
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+              ca-certificates \
+              curl \
+              gnupg
 
-  #         sudo install -m 0755 -d /etc/apt/keyrings
-  #         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  #         sudo chmod a+r /etc/apt/keyrings/docker.gpg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-  #         echo \
-  #           "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  #           "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  #           sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          echo \
+            "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+            "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+            sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-  #         sudo apt-get update
+          sudo apt-get update
 
-  #         sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-  #         # Set up docker to point to the EBS volume
+          # Set up docker to point to the EBS volume
 
-  #         sudo service docker stop
+          sudo service docker stop
 
-  #         echo '{"data-root": "/workdir/.dockerdata"}' | sudo tee -a /etc/docker/daemon.json > /dev/null
+          echo '{"data-root": "/workdir/.dockerdata"}' | sudo tee -a /etc/docker/daemon.json > /dev/null
 
-  #         sudo service docker start
+          sudo service docker start
 
-  #     - name: Build and extract Debian .deb artifact via Docker
-  #       run: |
-  #         echo "-- Setting variables --"
-  #         export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
-  #         export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
+      - name: Build and extract Debian .deb artifact via Docker
+        run: |
+          echo "-- Setting variables --"
+          export PG_VER=$(echo ${{ matrix.pg_version}} | cut -c 3-)
+          export PLRUST_VER=$( echo "${{ github.ref_name }}" | sed -e s/^v// )
 
-  #         echo "-- Building artifact via Docker --"
-  #         sudo docker build \
-  #           --build-arg PG_VER=$PG_VER \
-  #           --build-arg PLRUST_VER=$PLRUST_VER \
-  #           -f .github/docker/Dockerfile.debian-artifact-build \
-  #           -t plrust-artifact-debian \
-  #           .
+          echo "-- Building artifact via Docker --"
+          sudo docker build \
+            --build-arg PG_VER=$PG_VER \
+            --build-arg PLRUST_VER=$PLRUST_VER \
+            -f .github/docker/Dockerfile.debian-artifact-build \
+            -t plrust-artifact-debian \
+            .
 
-  #         echo "-- Creating container --"
-  #         container_id=$(sudo docker create plrust-artifact-debian)
+          echo "-- Creating container --"
+          container_id=$(sudo docker create plrust-artifact-debian)
 
-  #         echo "-- Extracting file from container --"
-  #         sudo docker cp $container_id:/out /home/ubuntu
+          echo "-- Extracting file from container --"
+          sudo docker cp $container_id:/out /home/ubuntu
 
-  #         echo "-- Destroying container --"
-  #         sudo docker rm -v $container_id
+          echo "-- Destroying container --"
+          sudo docker rm -v $container_id
 
-  #     - name: Upload Debian .deb artifact
-  #       uses: softprops/action-gh-release@v1
-  #       with:
-  #         files: /home/ubuntu/out/*.deb
+      - name: Upload Debian .deb artifact
+        uses: softprops/action-gh-release@v1
+        with:
+          files: /home/ubuntu/out/*.deb

@@ -52,10 +52,8 @@ fi
 cargo update -p pgrx
 cargo fetch
 if [ "$CI" != true ]; then
-    PGRX_VERSION=$(cargo tree --package plrust | grep -P "\s+pgrx\s+" | head -n 1| cut -f2- -dv)
-    echo "Installing cargo-pgrx version $PGRX_VERSION"
     cargo install cargo-pgrx \
-     --version "$PGRX_VERSION" \
+     --version "0.10.0" \
      --locked # use the Cargo.lock in the pgrx repo
 fi
 
