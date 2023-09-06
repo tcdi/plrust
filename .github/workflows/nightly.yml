@@ -351,19 +351,56 @@ jobs:
         sudo chmod -R 600 /var/ci-stuff/secret_rust_files
       if: matrix.target == 'postgrestd'
 
+    # ==========================================================
+
+    # - name: Test plrustc
+    #   run: cd plrustc && cargo test -p plrustc
+
+    # - name: Install plrustc
+    #   run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
+    # - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+    #   run: cargo pgrx init --pg$PG_VER $(which pg_config)
+
+    # - name: Test PL/rust as "untrusted"
+    #   if: matrix.target == 'host'
+    #   run: cargo test --all --features "pg$PG_VER" --no-default-features
+
+    # - name: Test PL/rust as "trusted" (inc. postgrestd)
+    #   if: matrix.target == 'postgrestd'
+    #   run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+
+    # ==========================================================
+
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc
 
     - name: Install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+    - name: Run cargo pgrx init
       run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
-    - name: Test PL/rust as "untrusted"
-      if: matrix.target == 'host'
-      run: cargo test --all --features "pg$PG_VER" --no-default-features
-
-    - name: Test PL/rust as "trusted" (inc. postgrestd)
+    - name: Install PL/Rust as "trusted"
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
+
+    - name: Test PL/Rust package as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Run PL/Rust integration tests as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Install PL/Rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && echo "\q" | cargo pgrx run "pg$PG_VER"
+
+    - name: Test PL/Rust package as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER"
+
+    - name: Run PL/Rust integration tests as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
