@@ -1,6 +1,6 @@
 [package]
 name = "plrust"
-version = "1.2.4"
+version = "1.2.5"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL Open Source License"
@@ -17,6 +17,7 @@ default = ["pg14"]
 pg13 = ["pgrx/pg13", "pgrx-tests/pg13"]
 pg14 = ["pgrx/pg14", "pgrx-tests/pg14"]
 pg15 = ["pgrx/pg15", "pgrx-tests/pg15"]
+pg16 = ["pgrx/pg16", "pgrx-tests/pg16"]
 # is plrust to be compiled as a "trusted" language handler, meaning it requires postgrestd at runtime
 trusted = []
 pg_test = []
@@ -33,13 +34,13 @@ semver = "1.0.18"
 home = "0.5.5" # where can we find cargo?
 
 # working with our entry in pg_catalog.pg_proc
-base64 = "0.21.3"
-flate2 = "1.0.27"
-serde = "1.0.188"
-serde_json = "1.0.105"
+base64 = "0.21.2"
+flate2 = "1.0.26"
+serde = "1.0.183"
+serde_json = "1.0.104"
 
 # pgrx core details
-pgrx = { version = "=0.10.0" }
+pgrx = { version = "0.10.0" }
 
 # language handler support
 libloading = "0.8.0"

@@ -29,7 +29,7 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15"]
+        version: ["pg13", "pg14", "pg15", "pg16"]
         target: ["host", "postgrestd"]
       fail-fast: false
 
@@ -212,7 +212,7 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15"]
+        version: ["pg13", "pg14", "pg15", "pg16"]
         os: ["ubuntu-latest"]
         # it would be nice to other contributors to return "macos-11" to the above array
         target: ["host", "postgrestd"]
@@ -222,7 +222,6 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Set up (Linux) prerequisites and environment
-      if: matrix.os == 'ubuntu-latest'
       run: |
         echo ""
 
@@ -265,14 +264,8 @@ jobs:
           llvm-11 \
           make \
           pkg-config \
-          postgresql-$PG_VER \
-          postgresql-server-dev-$PG_VER \
           strace \
           zlib1g-dev
-        echo ""
-
-        echo "----- Set up Postgres permissions -----"
-        sudo chmod a+rwx `/usr/lib/postgresql/$PG_VER/bin/pg_config --pkglibdir` `/usr/lib/postgresql/$PG_VER/bin/pg_config --sharedir`/extension /var/run/postgresql/
         echo ""
 
         echo "----- Print env -----"
@@ -282,6 +275,39 @@ jobs:
         echo "----- Get cargo version -----"
         cargo --version
         echo ""
+
+    - name: Install release version of PostgreSQL
+      if: matrix.version != 'pg16'
+      run: |
+        echo "----- Set up PostgreSQL Apt repository -----"
+        sudo apt-get install -y wget gnupg
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update -y -qq --fix-missing
+        echo ""
+
+        sudo apt-get install -y \
+          postgresql-"$PG_VER" \
+          postgresql-server-dev-"$PG_VER"
+
+    - name: Install development version of PostgreSQL
+      if: matrix.version == 'pg16'
+      run: |
+        echo "----- Set up PostgreSQL Apt repository -----"
+        sudo apt-get install -y wget gnupg
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7FCC7D46ACCC4CF8
+        sudo add-apt-repository "deb https://apt.postgresql.org/pub/repos/apt/ $(lsb_release -s -c)-pgdg-snapshot main 16"
+        sudo add-apt-repository "deb https://apt.postgresql.org/pub/repos/apt/ $(lsb_release -s -c)-pgdg main 16"
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update -y -qq --fix-missing
+        echo ""
+
+        sudo apt-get install -y \
+          postgresql-"$PG_VER" \
+          postgresql-server-dev-"$PG_VER"
+
+    - name: Set up Postgres permissions
+      run: sudo chmod a+rwx "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --pkglibdir)" "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --sharedir)"/extension /var/run/postgresql/
 
     - name: Cache cargo registry
       uses: actions/cache@v3
