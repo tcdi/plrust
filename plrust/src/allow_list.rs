@@ -486,10 +486,6 @@ pub fn load_allowlist() -> eyre::Result<AllowList> {
     let path = PathBuf::from_str(
         &PLRUST_ALLOWED_DEPENDENCIES
             .get()
-            .map(|cstr| {
-                cstr.to_str()
-                    .expect("plrust.allowed_dependencies is not valid UTF8")
-            })
             .ok_or(Error::NotConfigured)?,
     )
     .map_err(|_| Error::InvalidPath)?;
