@@ -18,20 +18,27 @@ use pgrx::{pg_sys, GucFlags};
 use crate::target::{CompilationTarget, CrossCompilationTarget, TargetErr};
 use crate::{target, DEFAULT_LINTS};
 
-static PLRUST_WORK_DIR: GucSetting<Option<&'static str>> = GucSetting::new(None);
-pub(crate) static PLRUST_PATH_OVERRIDE: GucSetting<Option<&'static str>> = GucSetting::new(None);
-static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static str>> = GucSetting::new(None);
-pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static str>> =
-    GucSetting::new(None);
-static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static str>> = GucSetting::new(None);
-pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static str>> =
-    GucSetting::new(Some(DEFAULT_LINTS));
-pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static str>> = GucSetting::new(None);
-pub(crate) static PLRUST_TRUSTED_PGRX_VERSION: GucSetting<Option<&'static str>> =
-    GucSetting::new(Some(env!(
-        "PLRUST_TRUSTED_PGRX_VERSION",
-        "unknown `plrust-trusted-pgrx` version.  `build.rs` must not have run successfully"
-    )));
+static PLRUST_WORK_DIR: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+pub(crate) static PLRUST_PATH_OVERRIDE: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+static PLRUST_TRACING_LEVEL: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+pub(crate) static PLRUST_ALLOWED_DEPENDENCIES: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+static PLRUST_COMPILATION_TARGETS: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+pub(crate) static PLRUST_COMPILE_LINTS: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(Some(DEFAULT_LINTS));
+pub(crate) static PLRUST_REQUIRED_LINTS: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+pub(crate) static PLRUST_TRUSTED_PGRX_VERSION: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+
+pub(crate) const COMPILED_PGRX_VERSION: &'static str = env!(
+    "PLRUST_TRUSTED_PGRX_VERSION",
+    "unknown `plrust-trusted-pgrx` version.  `build.rs` must not have run successfully"
+);
 
 pub(crate) fn init() {
     GucRegistry::define_string_guc(
@@ -111,6 +118,7 @@ pub(crate) fn work_dir() -> PathBuf {
     PathBuf::from_str(
         &PLRUST_WORK_DIR
             .get()
+            .map(|cstr| cstr.to_str().expect("plrust.work_dir is not valid UTF8"))
             .expect("plrust.work_dir is not set in postgresql.conf"),
     )
     .expect("plrust.work_dir is not a valid path")
@@ -119,7 +127,12 @@ pub(crate) fn work_dir() -> PathBuf {
 pub(crate) fn tracing_level() -> tracing::Level {
     PLRUST_TRACING_LEVEL
         .get()
-        .map(|v| v.parse().expect("plrust.tracing_level was invalid"))
+        .map(|v| {
+            v.to_str()
+                .expect("plrust.tracing_level is not valid UTF8")
+                .parse()
+                .expect("plrust.tracing_level was invalid")
+        })
         .unwrap_or(tracing::Level::INFO)
 }
 
@@ -134,6 +147,8 @@ pub(crate) fn compilation_targets() -> eyre::Result<(
     let other_targets = match PLRUST_COMPILATION_TARGETS.get() {
         None => vec![],
         Some(targets) => targets
+            .to_str()
+            .expect("plrust.compilation_targets is not valid UTF8")
             .split(',')
             .map(str::trim)
             .filter(|s| s != &std::env::consts::ARCH) // make sure we don't include this architecture in the list of other targets
@@ -181,7 +196,11 @@ pub(crate) fn get_pgrx_bindings_for_target(target: &CrossCompilationTarget) -> O
 pub(crate) fn get_trusted_pgrx_version() -> String {
     let version = PLRUST_TRUSTED_PGRX_VERSION
         .get()
-        .expect("unable to determine `plrust-trusted-pgrx` version"); // shouldn't happen since we set a known default
+        .map(|cstr| {
+            cstr.to_str()
+                .expect("plrust.plrust_trusted_pgrx is not valid UTF8")
+        })
+        .unwrap_or(COMPILED_PGRX_VERSION);
 
     // we always want this specific version
     format!("={}", version)

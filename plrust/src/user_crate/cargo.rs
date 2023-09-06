@@ -47,7 +47,11 @@ pub(crate) fn cargo(
 fn configure_path(command: &mut Command) -> eyre::Result<()> {
     if let Some(path) = PLRUST_PATH_OVERRIDE.get() {
         // we were configured with an explicit $PATH to use
-        command.env("PATH", path);
+        command.env(
+            "PATH",
+            path.to_str()
+                .expect("plrust.plrust_path_override is not valid UTF8"),
+        );
     } else {
         let is_empty = match std::env::var("PATH") {
             Ok(s) if s.trim().is_empty() => true,
