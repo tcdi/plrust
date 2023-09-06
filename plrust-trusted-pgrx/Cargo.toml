@@ -1,6 +1,6 @@
 [package]
 name = "plrust-trusted-pgrx"
-version = "1.2.3"
+version = "1.2.4"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL"
