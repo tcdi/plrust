@@ -1,6 +1,6 @@
 [package]
 name = "plrust-trusted-pgrx"
-version = "1.2.4"
+version = "1.2.5"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL"
@@ -15,6 +15,7 @@ crate-type = ["rlib"]
 pg13 = ["pgrx/pg13"]
 pg14 = ["pgrx/pg14"]
 pg15 = ["pgrx/pg15"]
+pg16 = ["pgrx/pg16"]
 
 [dependencies]
 # changing the pgrx version will likely require at least a minor version bump to this create

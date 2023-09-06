@@ -111,7 +111,7 @@ const DEFAULT_LINTS: &'static CStr = unsafe {
     suspicious_auto_trait_impls, \
     where_clauses_object_safety, \
     soft_unstable\
-\0", // NOTE:  This is a null-terminated CString.
+\0", // NOTE:  This is a null-terminated string as it's used statically as a &CStr
     )
 };
 
