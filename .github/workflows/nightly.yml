@@ -351,27 +351,6 @@ jobs:
         sudo chmod -R 600 /var/ci-stuff/secret_rust_files
       if: matrix.target == 'postgrestd'
 
-    # ==========================================================
-
-    # - name: Test plrustc
-    #   run: cd plrustc && cargo test -p plrustc
-
-    # - name: Install plrustc
-    #   run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
-
-    # - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
-    #   run: cargo pgrx init --pg$PG_VER $(which pg_config)
-
-    # - name: Test PL/rust as "untrusted"
-    #   if: matrix.target == 'host'
-    #   run: cargo test --all --features "pg$PG_VER" --no-default-features
-
-    # - name: Test PL/rust as "trusted" (inc. postgrestd)
-    #   if: matrix.target == 'postgrestd'
-    #   run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
-
-    # ==========================================================
-
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc
 
