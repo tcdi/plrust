@@ -53,7 +53,7 @@ cargo update -p pgrx
 cargo fetch
 if [ "$CI" != true ]; then
     # Attempt to get pgrx version from cargo tree. Looking for a pattern such as "pgrx v0.10.0"
-    PGRX_VERSION=$(cargo tree | grep -E "\s*pgrx\s+v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1 | cut -f2- -dv)
+    PGRX_VERSION=$(cargo tree --depth 1 --package plrust | grep -E "\s*pgrx\s+v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1 | cut -f2- -dv)
 
     if [ -z "$PGRX_VERSION" ]; then
         echo "Could not determine pgrx version from 'cargo tree'!"
