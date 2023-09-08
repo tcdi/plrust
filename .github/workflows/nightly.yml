@@ -277,7 +277,7 @@ jobs:
         psql -h 127.0.0.1 -U postgres -c 'SELECT * FROM plrust.one()'
 
   plrust_macos_x86_64:
-    name: macos x86_64 tests
+    name: (nightly) MacOS x86_64 tests
     runs-on: ${{ matrix.os }}
     if: "!contains(github.event.head_commit.message, 'nogha')"
 
@@ -357,13 +357,74 @@ jobs:
     - name: Install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+    - name: Run cargo pgrx init
       run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
-    - name: Test PL/rust as "untrusted"
-      if: matrix.target == 'host'
-      run: cargo test --all --features "pg$PG_VER" --no-default-features
-
-    - name: Test PL/rust as "trusted" (inc. postgrestd)
+    - name: Install PL/Rust as "trusted"
       if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && cargo test --verbose --no-default-features --features "pg$PG_VER trusted"
+      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
+
+    - name: Test PL/Rust package as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Run PL/Rust integration tests as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Install PL/Rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && STD_TARGETS="x86_64-apple-darwin-postgres" ./build && echo "\q" | cargo pgrx run "pg$PG_VER"
+
+    - name: Test PL/Rust package as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER"
+
+    - name: Run PL/Rust integration tests as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
+
+  test_mdbook:
+    name: (nightly) Test that mdbook can process the documentation correctly
+    runs-on: [ubuntu-latest]
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+
+    env:
+      CI: true
+
+    steps:
+    # If this workflow is being called from a schedule/cron job, then let's
+    # force the "develop" branch. Otherwise, use whatever is passed in via
+    # GITHUB_HEAD_REF. The result of this will be used below in the
+    # actions/checkout@vX step. Note that at the time of this writing, Github
+    # Actions does not allow us to specify which branch to run a schedule from
+    # (it always runs from the default branch, which in this case is master).
+    - name: Set up correct branch environment variable
+      run: |
+        if [ $GITHUB_EVENT_NAME == "schedule" ]; then
+          echo "Running via schedule, so using branch develop"
+          echo "NIGHTLY_BUILD_REF=develop" >> $GITHUB_ENV
+        else
+          echo "Not running via schedule, so using branch $GITHUB_HEAD_REF"
+          echo "NIGHTLY_BUILD_REF=$GITHUB_HEAD_REF" >> $GITHUB_ENV
+        fi
+
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ env.NIGHTLY_BUILD_REF }}
+
+    - name: Install Rust
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+
+    - name: Install mdbook and other preprocessors
+      run: cargo install --locked mdbook-variables mdbook
+
+    - name: Build documentation
+      run: cd doc && mdbook build

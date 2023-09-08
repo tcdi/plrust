@@ -28,7 +28,7 @@ if [ `uname` == "Darwin" ]; then
    else
       echo unsupported macos build platform: $(uname -m)
       exit 1
-   fi 
+   fi
 
 else
    if [ `uname -m` == "x86_64" ]; then
