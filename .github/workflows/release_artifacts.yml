@@ -24,7 +24,7 @@ jobs:
 
     strategy:
       matrix:
-        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+        pg_version: [pg13, pg14, pg15, pg16] # See MATRIX NOTES above
       fail-fast: false
 
     permissions:
@@ -95,7 +95,7 @@ jobs:
 
     strategy:
       matrix:
-        pg_version: [pg13, pg14, pg15] # See MATRIX NOTES above
+        pg_version: [pg13, pg14, pg15, pg16] # See MATRIX NOTES above
       fail-fast: false
 
     permissions:
