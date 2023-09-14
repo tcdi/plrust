@@ -37,7 +37,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     apt-get update -y -qq --fix-missing && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        llvm-14-dev libclang-14-dev clang-14 \
+        llvm-11-dev libclang-11-dev clang-11 \
         gcc \
         git \
         jq \
