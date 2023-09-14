@@ -107,7 +107,7 @@ jobs:
     - name: Install official version of PostgreSQL and supporting apps/libraries
       run: |
         echo "----- Remove old postgres -----"
-        sudo apt remove -y postgres*
+        sudo apt remove -y '^postgres.*' '^libpq.*' '^clang.*' '^llvm.*' '^libclang.*' '^libllvm.*' '^mono-llvm.*'
         echo ""
 
         echo "----- Set up PostgreSQL Apt repository -----"
@@ -120,12 +120,10 @@ jobs:
         echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
         sudo apt-get install -y \
           build-essential \
-          clang \
-          clang-11 \
+          llvm-14-dev libclang-14-dev clang-14 \
           gcc \
           libssl-dev \
           libz-dev \
-          llvm-11 \
           make \
           pkg-config \
           postgresql-$PG_VER \

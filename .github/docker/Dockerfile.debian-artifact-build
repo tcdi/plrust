@@ -37,13 +37,11 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     apt-get update -y -qq --fix-missing && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        clang \
-        clang-11 \
+        llvm-14-dev libclang-14-dev clang-14 \
         gcc \
         git \
         jq \
         libssl-dev \
-        llvm-11 \
         make \
         postgresql-${PG_VER} \
         postgresql-server-dev-${PG_VER} \
