@@ -212,7 +212,8 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15", "pg16"]
+#        version: ["pg13", "pg14", "pg15", "pg16"]
+        version: ["pg16"]
         os: ["ubuntu-latest"]
         # it would be nice to other contributors to return "macos-11" to the above array
         target: ["host", "postgrestd"]
@@ -243,7 +244,7 @@ jobs:
         echo ""
 
         echo "----- Remove old postgres -----"
-        sudo apt remove -y postgres*
+        sudo apt remove -y '^postgres.*' '^libpq.*'
         echo ""
 
         echo "----- Set up PostgreSQL Apt repository -----"
@@ -288,6 +289,9 @@ jobs:
         sudo apt-get install -y \
           postgresql-"$PG_VER" \
           postgresql-server-dev-"$PG_VER"
+        
+        echo "---- pg_config info ----"
+        /usr/lib/postgresql/"$PG_VER"/bin/pg_config
 
     - name: Set up Postgres permissions
       run: sudo chmod a+rwx "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --pkglibdir)" "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --sharedir)"/extension /var/run/postgresql/
