@@ -244,7 +244,7 @@ jobs:
         echo ""
 
         echo "----- Remove old postgres -----"
-        sudo apt remove -y '^postgres.*' '^libpq.*'
+        sudo apt remove -y '^postgres.*' '^libpq.*' '^clang.*' '^llvm.*'
         echo ""
 
         echo "----- Set up PostgreSQL Apt repository -----"
