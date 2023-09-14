@@ -29,7 +29,7 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15", "pg16"]
+        version: ["pg13", "pg14", "pg15"]
         target: ["host", "postgrestd"]
       fail-fast: false
 
@@ -243,7 +243,7 @@ jobs:
         echo ""
 
         echo "----- Remove old postgres -----"
-        sudo apt remove -y postgres*
+        sudo apt remove -y '^postgres.*' '^libpq.*' '^clang.*' '^llvm.*' '^libclang.*' '^libllvm.*' '^mono-llvm.*'
         echo ""
 
         echo "----- Set up PostgreSQL Apt repository -----"
@@ -256,18 +256,20 @@ jobs:
         echo "----- Install system dependencies and PostgreSQL version $PG_VER -----"
         sudo apt-get install -y \
           build-essential \
-          clang \
-          clang-11 \
+          llvm-14-dev libclang-14-dev clang-14 \
           gcc \
           libssl-dev \
           libz-dev \
-          llvm-11 \
           make \
           pkg-config \
           strace \
           zlib1g-dev
         echo ""
 
+        echo "----- Installed Packages -----"
+        sudo apt list --installed
+        echo ""
+        
         echo "----- Print env -----"
         env
         echo ""
@@ -277,7 +279,6 @@ jobs:
         echo ""
 
     - name: Install release version of PostgreSQL
-      if: matrix.version != 'pg16'
       run: |
         echo "----- Set up PostgreSQL Apt repository -----"
         sudo apt-get install -y wget gnupg
@@ -289,22 +290,9 @@ jobs:
         sudo apt-get install -y \
           postgresql-"$PG_VER" \
           postgresql-server-dev-"$PG_VER"
-
-    - name: Install development version of PostgreSQL
-      if: matrix.version == 'pg16'
-      run: |
-        echo "----- Set up PostgreSQL Apt repository -----"
-        sudo apt-get install -y wget gnupg
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7FCC7D46ACCC4CF8
-        sudo add-apt-repository "deb https://apt.postgresql.org/pub/repos/apt/ $(lsb_release -s -c)-pgdg-snapshot main 16"
-        sudo add-apt-repository "deb https://apt.postgresql.org/pub/repos/apt/ $(lsb_release -s -c)-pgdg main 16"
-        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-        sudo apt-get update -y -qq --fix-missing
-        echo ""
-
-        sudo apt-get install -y \
-          postgresql-"$PG_VER" \
-          postgresql-server-dev-"$PG_VER"
+        
+        echo "---- pg_config info ----"
+        /usr/lib/postgresql/"$PG_VER"/bin/pg_config
 
     - name: Set up Postgres permissions
       run: sudo chmod a+rwx "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --pkglibdir)" "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --sharedir)"/extension /var/run/postgresql/
