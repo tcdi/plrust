@@ -219,7 +219,7 @@ jobs:
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
       CACHE_KEY_VERSION: v0
       CI: true
-      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ubuntu/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
+      PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/workdir/ubuntu/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
       RUSTUP_HOME: /workdir/ubuntu/.rustup
       RUSTC_WRAPPER: sccache
       RUSTFLAGS: -Copt-level=0 -Dwarnings
@@ -228,6 +228,7 @@ jobs:
       SCCACHE_DIR: /workdir/sccache
       SCCACHE_IDLE_TIMEOUT: 0
       WORK_DIR: /workdir/ubuntu/actions-runner/_work/plrust/plrust
+      TMPDIR: /workdir/tmp
 
     steps:
     - uses: actions/checkout@v3
