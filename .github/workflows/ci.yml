@@ -253,8 +253,8 @@ jobs:
 
         echo "----- Install sccache -----"
         mkdir -p $SCCACHE_BIN_DIR
-        curl -L "https://github.com/mozilla/sccache/releases/download/v$SCCACHE_VER/sccache-v0.5.4-x86_64-unknown-linux-musl.tar.gz" | tar xz
-        mv -f "sccache-v$SCCACHE_VER-x86_64-unknown-linux-musl/sccache" "$SCCACHE_BIN_DIR/sccache"
+        curl -L "https://github.com/mozilla/sccache/releases/download/v$SCCACHE_VER/sccache-v$SCCACHE_VER-aarch64-unknown-linux-musl.tar.gz" | tar xz
+        mv -f "sccache-v$SCCACHE_VER-aarch64-unknown-linux-musl/sccache" "$SCCACHE_BIN_DIR/sccache"
         chmod +x "$SCCACHE_BIN_DIR/sccache"
         echo "$SCCACHE_BIN_DIR" >> "$GITHUB_PATH"
         mkdir -p "$SCCACHE_DIR"
@@ -308,6 +308,77 @@ jobs:
 
     - name: Set up Postgres permissions
       run: sudo chmod a+rwx "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --pkglibdir)" "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --sharedir)"/extension /var/run/postgresql/
+
+    # See <plrust-root>/.github/scripts/install_cargo_pgrx.sh for more details
+    - name: Install cargo-pgrx defined in plrust/Cargo.toml
+      run: |
+        . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
+        install_cargo_pgrx
+
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
+
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview rustc-dev
+
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
+
+    - name: Test plrustc
+      run: cd plrustc && cargo test -p plrustc
+
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
+
+    - name: Test plrustc
+      run: cd plrustc && cargo test
+
+    - name: Install plrustc
+      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
+
+    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+      run: cargo pgrx init --pg$PG_VER $(which pg_config)
+
+    - name: Install PL/Rust as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
+
+    - name: Test PL/Rust package as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Run PL/Rust integration tests as "trusted"
+      if: matrix.target == 'postgrestd'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
+
+    - name: Install PL/Rust as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER"
+
+    - name: Test PL/Rust package as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER"
+
+    - name: Run PL/Rust integration tests as "untrusted"
+      if: matrix.target == 'host'
+      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
+
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
+
+    # - name: sccache dir
+    #   run: ls -lath /home/runner/.cache/sccache
+
+    # - name: Stop sccache server
+    #   run: sccache --stop-server || true
 
   # plrust_x86_64:
   #   name: x86_64 tests
