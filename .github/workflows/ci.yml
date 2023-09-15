@@ -220,14 +220,14 @@ jobs:
       CACHE_KEY_VERSION: v0
       CI: true
       PLRUST_TRUSTED_PGRX_OVERRIDE: "pgrx = { path = '/home/ubuntu/actions-runner/_work/plrust/plrust/plrust-trusted-pgrx', package='plrust-trusted-pgrx' }"
-      RUSTUP_HOME: /home/ubuntu/.rustup
+      RUSTUP_HOME: /workdir/ubuntu/.rustup
       RUSTC_WRAPPER: sccache
       RUSTFLAGS: -Copt-level=0 -Dwarnings
-      SCCACHE_BIN_DIR: /home/ubuntu/.local/bin
+      SCCACHE_BIN_DIR: /workdir/ubuntu/.local/bin
       SCCACHE_CACHE_SIZE: 20G
       SCCACHE_DIR: /workdir/sccache
       SCCACHE_IDLE_TIMEOUT: 0
-      WORK_DIR: /workdir/actions-runner/_work/plrust/plrust
+      WORK_DIR: /workdir/ubuntu/actions-runner/_work/plrust/plrust
 
     steps:
     - uses: actions/checkout@v3
