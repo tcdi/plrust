@@ -286,6 +286,10 @@ jobs:
           zlib1g-dev
         echo ""
 
+        echo "----- Install rustup -----"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo ""
+
         echo "----- Print env -----"
         env
         echo ""
@@ -293,6 +297,18 @@ jobs:
         echo "----- Get cargo version -----"
         cargo --version
         echo ""
+
+    - name: Install release version of PostgreSQL
+      run: |
+        sudo apt-get install -y \
+          postgresql-"$PG_VER" \
+          postgresql-server-dev-"$PG_VER"
+
+        echo "---- pg_config info ----"
+        /usr/lib/postgresql/"$PG_VER"/bin/pg_config
+
+    - name: Set up Postgres permissions
+      run: sudo chmod a+rwx "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --pkglibdir)" "$(/usr/lib/postgresql/"$PG_VER"/bin/pg_config --sharedir)"/extension /var/run/postgresql/
 
   # plrust_x86_64:
   #   name: x86_64 tests
