@@ -288,14 +288,13 @@ jobs:
 
         echo "----- Install rustup -----"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        source "$HOME/.cargo/env"
+        cargo --version
         echo ""
 
         echo "----- Print env -----"
         env
-        echo ""
-
-        echo "----- Get cargo version -----"
-        cargo --version
         echo ""
 
     - name: Install release version of PostgreSQL
