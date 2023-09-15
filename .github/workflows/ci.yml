@@ -209,9 +209,9 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15", "pg16"]
+        # version: ["pg13", "pg14", "pg15", "pg16"]
         # target: ["host", "postgrestd"]
-        # version: ["pg13"]
+        version: ["pg16"]
         target: ["postgrestd"]
       fail-fast: false
 
