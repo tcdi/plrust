@@ -5,12 +5,10 @@ on:
     branches:
       - main
       - develop
-      - brady/migrate-aarch64-ci-to-ubuntu
   pull_request:
     branches:
       - main
       - develop
-      - brady/migrate-aarch64-ci-to-ubuntu
   workflow_dispatch:
 
 env:
