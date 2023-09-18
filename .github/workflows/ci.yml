@@ -283,6 +283,7 @@ jobs:
           libssl-dev \
           libz-dev \
           llvm-14-dev \
+          lz4 \
           make \
           pkg-config \
           strace \
