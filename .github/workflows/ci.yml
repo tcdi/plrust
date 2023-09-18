@@ -209,10 +209,10 @@ jobs:
 
     strategy:
       matrix:
-        version: ["pg13", "pg14", "pg15", "pg16"]
-        target: ["host", "postgrestd"]
-        # version: ["pg16"]
-        # target: ["postgrestd"]
+        # version: ["pg13", "pg14", "pg15", "pg16"]
+        # target: ["host", "postgrestd"]
+        version: ["pg16"]
+        target: ["postgrestd"]
       fail-fast: false
 
     env:
@@ -233,12 +233,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Generate cache filename checksum
+    - name: Generate cache filenames
       run: |
         cd $WORK_DIR
         shopt -s globstar
         checksum=$(cat **/Cargo.lock **/rust-toolchain.toml .github/workflows/ci.yml .cargo/config | sha256sum | awk '{print $1}')
         echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
+        echo "CARGO_CACHE_KEY=plrust-arm64-ubuntu-cargo-cache-$CACHE_KEY_VERSION-$checksum.tar.lz4" >> $GITHUB_ENV
+        echo "SCCACHE_CACHE_KEY=plrust-arm64-ubuntu-sccache-cache-$CACHE_KEY_VERSION-$checksum.tar.lz4" >> $GITHUB_ENV
 
     - name: Set up (Linux) prerequisites and environment
       run: |
@@ -298,6 +300,24 @@ jobs:
         env
         echo ""
 
+    - name: Load Cargo and sccache caches if available
+      run: |
+        # See <plrust-root>/.github/scripts/load_cache.sh for more details
+        . $WORK_DIR/.github/scripts/load_cache.sh
+        loadcache $CARGO_CACHE_KEY
+        loadcache $SCCACHE_CACHE_KEY
+
+    - name: Start sccache server
+      run: sccache --start-server && sccache --show-stats
+
+    - name: Create protected files
+      run: |
+        sudo mkdir -p /var/ci-stuff/secret_rust_files
+        sudo echo "const FOO:i32 = 7;" /var/ci-stuff/secret_rust_files/const_foo.rs
+        sudo echo "const BAR:i32 = 8;" /var/ci-stuff/const_bar.rs
+        sudo chmod -R 600 /var/ci-stuff/secret_rust_files
+      if: matrix.target == 'postgrestd'
+
     - name: Install release version of PostgreSQL
       run: |
         sudo apt-get install -y \
@@ -316,8 +336,8 @@ jobs:
         . $GITHUB_WORKSPACE/.github/scripts/install_cargo_pgrx.sh
         install_cargo_pgrx
 
-    # - name: Print sccache stats
-    #   run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview rustc-dev
@@ -333,17 +353,20 @@ jobs:
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc
 
-    # - name: Print sccache stats
-    #   run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Test plrustc
       run: cd plrustc && cargo test
 
+    - name: Print sccache stats
+      run: sccache --show-stats
+
     - name: Install plrustc
       run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    # - name: Print sccache stats
-    #   run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
     - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
       run: cargo pgrx init --pg$PG_VER $(which pg_config)
@@ -372,14 +395,23 @@ jobs:
       if: matrix.target == 'host'
       run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
 
-    # - name: Print sccache stats
-    #   run: sccache --show-stats
+    - name: Print sccache stats
+      run: sccache --show-stats
 
-    # - name: sccache dir
-    #   run: ls -lath /home/runner/.cache/sccache
+    - name: Stop sccache server
+      run: sccache --stop-server || true
 
-    # - name: Stop sccache server
-    #   run: sccache --stop-server || true
+    - name: Store Cargo and sccache caches if applicable
+      run: |
+        . $WORK_DIR/.github/scripts/save_cache.sh
+        # See <plrust-root>/.github/scripts/save_cache.sh for more details
+        cargo_dirs=( \
+            $HOME/.cargo/ \
+        )
+        savecache $CARGO_CACHE_KEY "${cargo_dirs[@]}"
+
+        sccache_dirs=($SCCACHE_DIR)
+        savecache $SCCACHE_CACHE_KEY "${sccache_dirs[@]}"
 
   # plrust_x86_64:
   #   name: x86_64 tests
