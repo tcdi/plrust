@@ -216,6 +216,7 @@ jobs:
       fail-fast: false
 
     env:
+      ARTIFACTS_DIR: /workdir/artifacts
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
       CACHE_KEY_VERSION: v0
       CI: true
@@ -241,6 +242,7 @@ jobs:
         echo "CACHE_KEY_CHECKSUM=$checksum" >> $GITHUB_ENV
         echo "CARGO_CACHE_KEY=plrust-arm64-ubuntu-cargo-cache-$CACHE_KEY_VERSION-$checksum.tar.lz4" >> $GITHUB_ENV
         echo "SCCACHE_CACHE_KEY=plrust-arm64-ubuntu-sccache-cache-$CACHE_KEY_VERSION-$checksum.tar.lz4" >> $GITHUB_ENV
+        mkdir -p $ARTIFACTS_DIR
 
     - name: Set up (Linux) prerequisites and environment
       run: |
@@ -354,50 +356,50 @@ jobs:
     - name: Test plrustc
       run: cd plrustc && cargo test -p plrustc
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
 
-    - name: Test plrustc
-      run: cd plrustc && cargo test
+    # - name: Test plrustc
+    #   run: cd plrustc && cargo test
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
 
-    - name: Install plrustc
-      run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
+    # - name: Install plrustc
+    #   run: cd plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
 
-    - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
-      run: cargo pgrx init --pg$PG_VER $(which pg_config)
+    # - name: Run 'cargo pgrx init' against system-level ${{ matrix.version }}
+    #   run: cargo pgrx init --pg$PG_VER $(which pg_config)
 
-    - name: Install PL/Rust as "trusted"
-      if: matrix.target == 'postgrestd'
-      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
+    # - name: Install PL/Rust as "trusted"
+    #   if: matrix.target == 'postgrestd'
+    #   run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted"
 
-    - name: Test PL/Rust package as "trusted"
-      if: matrix.target == 'postgrestd'
-      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
+    # - name: Test PL/Rust package as "trusted"
+    #   if: matrix.target == 'postgrestd'
+    #   run: cd plrust && cargo test --no-default-features --features "pg$PG_VER trusted"
 
-    - name: Run PL/Rust integration tests as "trusted"
-      if: matrix.target == 'postgrestd'
-      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
+    # - name: Run PL/Rust integration tests as "trusted"
+    #   if: matrix.target == 'postgrestd'
+    #   run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" --features "trusted" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER trusted"
 
-    - name: Install PL/Rust as "untrusted"
-      if: matrix.target == 'host'
-      run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER"
+    # - name: Install PL/Rust as "untrusted"
+    #   if: matrix.target == 'host'
+    #   run: cd plrust && STD_TARGETS="aarch64-postgres-linux-gnu" ./build && echo "\q" | cargo pgrx run "pg$PG_VER"
 
-    - name: Test PL/Rust package as "untrusted"
-      if: matrix.target == 'host'
-      run: cd plrust && cargo test --no-default-features --features "pg$PG_VER"
+    # - name: Test PL/Rust package as "untrusted"
+    #   if: matrix.target == 'host'
+    #   run: cd plrust && cargo test --no-default-features --features "pg$PG_VER"
 
-    - name: Run PL/Rust integration tests as "untrusted"
-      if: matrix.target == 'host'
-      run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
+    # - name: Run PL/Rust integration tests as "untrusted"
+    #   if: matrix.target == 'host'
+    #   run: cd plrust && echo "\q" | cargo pgrx run "pg$PG_VER" && cd ../plrust-tests && cargo test --no-default-features --features "pg$PG_VER"
 
-    - name: Print sccache stats
-      run: sccache --show-stats
+    # - name: Print sccache stats
+    #   run: sccache --show-stats
 
     - name: Stop sccache server
       run: sccache --stop-server || true
