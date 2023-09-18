@@ -216,7 +216,7 @@ jobs:
       fail-fast: false
 
     env:
-      ARTIFACTS_DIR: /workdir/artifacts
+      ARTIFACTS_DIR: /workdir/ubuntu/artifacts
       AWS_CACHE_BUCKET: tcdi-ci-plrust-build-cache.private
       CACHE_KEY_VERSION: v0
       CI: true
