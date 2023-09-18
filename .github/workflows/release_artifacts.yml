@@ -8,9 +8,19 @@
 name: Build release artifacts
 
 # workflow_dispatch is also included here so that we can run this workflow at any time against a specific branch/tag
+# on:
+#   release:
+#     types: [published]
+#   workflow_dispatch:
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
   workflow_dispatch:
 
 env:
@@ -84,10 +94,10 @@ jobs:
         echo "-- Destroying container --"
         docker rm -v $container_id
 
-    - name: Upload Debian .deb artifact
-      uses: softprops/action-gh-release@v1
-      with:
-        files: /home/runner/out/plrust*.deb
+    # - name: Upload Debian .deb artifact
+    #   uses: softprops/action-gh-release@v1
+    #   with:
+    #     files: /home/runner/out/plrust*.deb
 
   arm64_deb_artifacts:
     name: Build aarch64 Debian artifacts
@@ -156,7 +166,7 @@ jobs:
           echo "-- Destroying container --"
           sudo docker rm -v $container_id
 
-      - name: Upload Debian .deb artifact
-        uses: softprops/action-gh-release@v1
-        with:
-          files: /home/ubuntu/out/*.deb
+      # - name: Upload Debian .deb artifact
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: /home/ubuntu/out/*.deb
