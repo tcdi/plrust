@@ -75,7 +75,7 @@ fi
         git pull
         git submodule update --init --recursive
     else
-        git clone https://github.com/tcdi/postgrestd.git --branch "rust-1.72.0" --recurse-submodules
+        git clone https://github.com/tcdi/postgrestd.git --branch "rust-1.72.1" --recurse-submodules
         cd ./postgrestd
     fi
     rm -f rust-toolchain.toml
