@@ -176,8 +176,7 @@ complex_example
 You'll notice here that the `Arg::Null` and `Arg::Default` argument values are typed with `::<i64>` and `::<f32>` 
 respectively.  It is necessary for PL/Rust to know the types of each argument at compile time, so that during runtime
 the proper function can be chosen.  This helps to ensure there's no ambiguity related to Postgres' function overloading
-features.  For example, now lets add another function named `debug_format_args` but with a different type for the 
-second argument:
+features.  For example, now let's overload `debug_format_args` with a different type for the second argument:
 
 ```sql
 CREATE OR REPLACE FUNCTION debug_format_args(a text, b bool, c float4 DEFAULT 0.99) RETURNS text LANGUAGE plrust AS $$
@@ -191,7 +190,7 @@ LINE 1: SELECT debug_format_args('hi', NULL);
 HINT:  Could not choose a best candidate function. You might need to add explicit type casts.
 ```
 
-As you can see, even Postgres can't figure out which `debug_format_args` function to call as it doesn't know the intented
+As you can see, even Postgres can't figure out which `debug_format_args` function to call as it doesn't know the intended
 type of the second `NULL` argument.  We can tell it, of course:
 
 ```sql
