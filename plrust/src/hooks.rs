@@ -104,7 +104,7 @@ fn plrust_process_utility_hook_internal(
     };
 
     // examine the UtilityStatement itself.  We're only interested in  "ALTER FUNCTION".
-    if utility_stmt.type_ == pg_sys::NodeTag_T_AlterFunctionStmt {
+    if utility_stmt.type_ == pg_sys::NodeTag::T_AlterFunctionStmt {
         // for ALTER FUNCTION we call the previous hook first as it could decide it needs to change
         // the STRICT-ness of the function and we absolutely need to stop that in its tracks
         #[rustfmt::skip]
