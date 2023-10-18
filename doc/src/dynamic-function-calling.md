@@ -118,14 +118,14 @@ to Postgres, not the caller.  This is typical Postgres and PL/Rust behavior in t
 
 ## Simple Example
 
-First, lets define a SQL function that sums the elements of an `int[]`.  We're using a `LANGUAGE sql` function here
+First, define a SQL function that sums the elements of an `int[]`.  We're using a `LANGUAGE sql` function here
 to demonstrate how PL/Rust can call functions of any other language:
 
 ```sql
 CREATE OR REPLACE FUNCTION sum_array(a int[]) RETURNS int STRICT LANGUAGE sql AS $$ SELECT sum(e) FROM unnest(a) e $$;
 ```
 
-Now, lets call this function from a PL/Rust function:
+Now, call this function from a PL/Rust function:
 
 ```sql
 CREATE OR REPLACE FUNCTION transform_array(a int[]) RETURNS int STRICT LANGUAGE plrust AS $$
@@ -142,7 +142,7 @@ transform_array
 
 ## Complex Example
 
-This is contrived, of course, but lets make a PL/Rust function with a few different argument types and have it simply
+This is contrived, of course, but let's make a PL/Rust function with a few different argument types and have it simply
 convert their values to a debug-formatted String.  Then we'll call that function from another PL/Rust function.
 
 ```sql
@@ -157,7 +157,7 @@ SELECT debug_format_args('hi', NULL);
 (1 row)
 ```
 
-Now, lets call it from another PL/Rust function using these same argument values.  Which is `'hi'` for the first argument,
+Now, call it from another PL/Rust function using these same argument values.  Which is `'hi'` for the first argument,
 NULL for the second, and using the default value for the third:
 
 ```sql
@@ -176,7 +176,7 @@ complex_example
 You'll notice here that the `Arg::Null` and `Arg::Default` argument values are typed with `::<i64>` and `::<f32>` 
 respectively.  It is necessary for PL/Rust to know the types of each argument at compile time, so that during runtime
 the proper function can be chosen.  This helps to ensure there's no ambiguity related to Postgres' function overloading
-features.  For example, now let's overload `debug_format_args` with a different type for the second argument:
+features.  For example, let's overload `debug_format_args` with a different type for the second argument:
 
 ```sql
 CREATE OR REPLACE FUNCTION debug_format_args(a text, b bool, c float4 DEFAULT 0.99) RETURNS text LANGUAGE plrust AS $$
