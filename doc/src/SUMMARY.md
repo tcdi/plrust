@@ -18,6 +18,7 @@
     - [Arguments](./functions/arguments.md)
     - [Return Type](./functions/return-type.md)
     - [Set Returning Functions](./functions/set-returning-functions.md)
+    - [Dynamic Function Calling](./functions/dynamic-function-calling.md)
 - [Data types](./data-types.md)
     - [No Unsigned Types](./data-types/no-unsigned-types.md)
     - [Arrays](./data-types/arrays.md)
