@@ -1,4 +1,5 @@
-thread 'rustc' panicked at 'Here is your ICE', plrustc/src/lints/force_ice.rs
+thread 'rustc' panicked at plrustc/src/lints/force_ice.rs:
+Here is your ICE
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 error: the compiler unexpectedly panicked. this is a bug.
