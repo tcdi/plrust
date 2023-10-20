@@ -34,5 +34,7 @@ jobs:
         rm -rf *
         mv ../book/* .
         git add .
+        echo 'plrust.io' > ../../CNAME
+        git add ../../CNAME
         git commit -m "Deploy $GITHUB_SHA to gh-pages"
         git push --force --set-upstream origin gh-pages
