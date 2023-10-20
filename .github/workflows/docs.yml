@@ -33,8 +33,7 @@ jobs:
         git update-ref -d refs/heads/gh-pages
         rm -rf *
         mv ../book/* .
+        echo 'plrust.io' > CNAME
         git add .
-        echo 'plrust.io' > ../../CNAME
-        git add ../../CNAME
         git commit -m "Deploy $GITHUB_SHA to gh-pages"
         git push --force --set-upstream origin gh-pages
