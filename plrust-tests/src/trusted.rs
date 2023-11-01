@@ -190,7 +190,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
+    #[should_panic = "environment variable `PATH` not defined at compile time."]
     #[cfg(feature = "trusted")]
     fn plrust_block_env() -> spi::Result<()> {
         let definition = r#"
@@ -204,15 +204,14 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
+    #[should_panic = "the `option_env` macro always returns `None` in the PL/Rust user function"]
     #[cfg(feature = "trusted")]
     fn plrust_block_option_env() -> spi::Result<()> {
         let definition = r#"
             CREATE FUNCTION try_get_path() RETURNS text AS $$
-                match option_env!("PATH") {
-                    None => Ok(None),
-                    Some(s) => Ok(Some(s.to_string()))
-                }
+                let v = option_env!("PATH")
+                    .expect("the `option_env` macro always returns `None` in the PL/Rust user function");
+                Ok(Some(v.to_string()))
             $$ LANGUAGE plrust;
         "#;
         Spi::run(definition)

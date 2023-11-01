@@ -49,6 +49,14 @@ impl Callbacks for PlrustcCallbacks {
         }
     }
 }
+fn clear_env() {
+    let all_var_names = std::env::vars_os()
+        .map(|(name, _)| name)
+        .collect::<Vec<_>>();
+    for name in all_var_names {
+        std::env::remove_var(name);
+    }
+}
 
 fn main() {
     rustc_driver::install_ice_hook("https://github.com/tcdi/plrust/issues/new", |_| ());
@@ -58,6 +66,9 @@ fn main() {
         let args =
             rustc_driver::args::arg_expand_all(handler, &std::env::args().collect::<Vec<_>>());
         let config = PlrustcConfig::from_env_and_args(&args);
+        if config.compiling_user_crate() {
+            clear_env();
+        }
         run_compiler(
             args,
             &mut PlrustcCallbacks {
