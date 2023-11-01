@@ -190,15 +190,16 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "environment variable `PATH` not defined at compile time."]
+    #[should_panic = "environment variable `FOOBAR` not defined at compile time"]
     #[cfg(feature = "trusted")]
     fn plrust_block_env() -> spi::Result<()> {
         let definition = r#"
-            CREATE FUNCTION get_path() RETURNS text AS $$
-                let path = env!("PATH");
-                Ok(Some(path.to_string()))
+            CREATE FUNCTION get_foobar() RETURNS text AS $$
+                let foo = env!("FOOBAR");
+                Ok(Some(foo.to_string()))
             $$ LANGUAGE plrust;
         "#;
+        std::env::set_var("FOOBAR", "1");
         Spi::run(definition)
     }
 
@@ -208,12 +209,13 @@ mod tests {
     #[cfg(feature = "trusted")]
     fn plrust_block_option_env() -> spi::Result<()> {
         let definition = r#"
-            CREATE FUNCTION try_get_path() RETURNS text AS $$
-                let v = option_env!("PATH")
+            CREATE FUNCTION try_get_foobar2() RETURNS text AS $$
+                let v = option_env!("FOOBAR2")
                     .expect("the `option_env` macro always returns `None` in the PL/Rust user function");
                 Ok(Some(v.to_string()))
             $$ LANGUAGE plrust;
         "#;
+        std::env::set_var("FOOBAR2", "1");
         Spi::run(definition)
     }
 
