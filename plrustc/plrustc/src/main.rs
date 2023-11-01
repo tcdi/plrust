@@ -54,11 +54,14 @@ fn clear_env() {
         .map(|(name, _)| name)
         .filter(|name| {
             let name = name.to_string_lossy().to_lowercase();
-            !(name.starts_with("rust") || name.starts_with("plrust"))
+            !(name.starts_with("rust")
+                || name.starts_with("plrust")
+                || name.starts_with("cargo")
+                || name == "path")
         })
         .collect::<Vec<_>>();
     for name in all_var_names {
-        std::env::set_var(name, "");
+        std::env::remove_var(name);
     }
 }
 
