@@ -52,9 +52,13 @@ impl Callbacks for PlrustcCallbacks {
 fn clear_env() {
     let all_var_names = std::env::vars_os()
         .map(|(name, _)| name)
+        .filter(|name| {
+            let name = name.to_string_lossy().to_lowercase();
+            !(name.starts_with("rust") || name.starts_with("plrust"))
+        })
         .collect::<Vec<_>>();
     for name in all_var_names {
-        std::env::remove_var(name);
+        std::env::set_var(name, "");
     }
 }
 
