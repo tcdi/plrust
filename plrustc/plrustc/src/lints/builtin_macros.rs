@@ -61,7 +61,7 @@ impl PlrustBuiltinMacros {
         {
             self.lint_env(cx, span);
             if span != s {
-                self.lint_env(cx, span);
+                self.lint_env(cx, s);
             }
         }
         let env_def_paths: &[&[Symbol]] = &[
@@ -75,7 +75,7 @@ impl PlrustBuiltinMacros {
         if let Some((s, ..)) = utils::check_span_against_macro_def_paths(cx, span, &env_def_paths) {
             self.lint_env(cx, span);
             if span != s {
-                self.lint_env(cx, span);
+                self.lint_env(cx, s);
             }
         }
     }
