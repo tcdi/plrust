@@ -10,13 +10,25 @@ macro_rules! declare_plrust_lint {
         $v:vis $NAME:ident,
         $desc:expr $(,)?
     ) => {
-        rustc_lint_defs::declare_lint! (
-            $(#[$attr])*
-            $v $NAME,
-            Allow,
-            $desc,
-            report_in_external_macro
-        );
+        $(#[$attr])*
+        $v static $NAME: &rustc_lint_defs::Lint = &rustc_lint_defs::Lint {
+            name: stringify!($NAME),
+            default_level: rustc_lint_defs::Allow,
+            desc: $desc,
+            edition_lint_opts: None,
+            report_in_external_macro: true,
+            is_plugin: false,
+            crate_level_only: false,
+            ..rustc_lint_defs::Lint::default_fields_for_macro()
+        };
+    // );
+        // rustc_lint_defs::declare_lint! (
+        //     $(#[$attr])*
+        //     $v $NAME,
+        //     Allow,
+        //     $desc,
+        //     report_in_external_macro
+        // );
     };
 }
 
@@ -133,7 +145,7 @@ pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -
 
 pub fn has_fn_trait(cx: &LateContext<'_>, poly_trait: &hir::PolyTraitRef<'_>) -> bool {
     let Some(impl_did) = poly_trait.trait_ref.path.res.opt_def_id() else {
-        return false
+        return false;
     };
     let lang_items = cx.tcx.lang_items();
     let fntraits = [

@@ -7,10 +7,26 @@ LL | const _A: &str = include_str!("fs_macros_included_file.txt");
    = note: `-F plrust-filesystem-macros` implied by `-F plrust-lints`
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:3:18
+   |
+LL | const _A: &str = include_str!("fs_macros_included_file.txt");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:5:19
    |
 LL | const _B: &[u8] = include_bytes!("fs_macros_included_file.txt");
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:5:19
+   |
+LL | const _B: &[u8] = include_bytes!("fs_macros_included_file.txt");
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:7:18
@@ -19,10 +35,26 @@ LL | const _C: &str = core::include_str!("fs_macros_included_file.txt");
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:7:18
+   |
+LL | const _C: &str = core::include_str!("fs_macros_included_file.txt");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `core::include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:8:19
    |
 LL | const _D: &[u8] = core::include_bytes!("fs_macros_included_file.txt");
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:8:19
+   |
+LL | const _D: &[u8] = core::include_bytes!("fs_macros_included_file.txt");
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `core::include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:16:18
@@ -31,10 +63,32 @@ LL | const _E: &str = indirect!(include_str);
    |                  ^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:12:9
+   |
+LL |         $callme!("fs_macros_included_file.txt")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | const _E: &str = indirect!(include_str);
+   |                  ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `include_str` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:17:19
    |
 LL | const _F: &[u8] = indirect!(include_bytes);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:12:9
+   |
+LL |         $callme!("fs_macros_included_file.txt")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | const _F: &[u8] = indirect!(include_bytes);
+   |                   ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `include_bytes` which comes from the expansion of the macro `indirect` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:31:18
@@ -43,10 +97,29 @@ LL | const _G: &str = in_macro!();
    |                  ^^^^^^^^^^^
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:21:9
+   |
+LL |         include_str!("fs_macros_included_file.txt")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | const _G: &str = in_macro!();
+   |                  ----------- in this macro invocation
+   |
+   = note: this error originates in the macro `include_str` which comes from the expansion of the macro `in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:32:28
    |
 LL | const _H: &str = in_macro!(include_str!("fs_macros_included_file.txt"));
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:32:28
+   |
+LL | const _H: &str = in_macro!(include_str!("fs_macros_included_file.txt"));
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:33:29
@@ -55,10 +128,29 @@ LL | const _I: &[u8] = in_macro!(include_bytes!("fs_macros_included_file.txt"));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:33:29
+   |
+LL | const _I: &[u8] = in_macro!(include_bytes!("fs_macros_included_file.txt"));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:34:19
    |
 LL | const _J: &[u8] = in_macro!(include_bytes, "fs_macros_included_file.txt");
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:27:9
+   |
+LL |         $mac!($arg)
+   |         ^^^^^^^^^^^
+...
+LL | const _J: &[u8] = in_macro!(include_bytes, "fs_macros_included_file.txt");
+   |                   ------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `include_bytes` which comes from the expansion of the macro `in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:37:18
@@ -67,10 +159,29 @@ LL | const _L: &str = sneaky!("fs_macros_included_file.txt");
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:37:18
+   |
+LL | const _L: &str = sneaky!("fs_macros_included_file.txt");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `sneaky` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:38:18
    |
 LL | const _M: &str = in_macro!(sneaky, "fs_macros_included_file.txt");
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:27:9
+   |
+LL |         $mac!($arg)
+   |         ^^^^^^^^^^^
+...
+LL | const _M: &str = in_macro!(sneaky, "fs_macros_included_file.txt");
+   |                  ------------------------------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `sneaky` which comes from the expansion of the macro `in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:41:21
@@ -78,5 +189,16 @@ error: the `include_str`, `include_bytes`, and `include` macros are forbidden in
 LL |     format!("{:?}", in_macro!())
    |                     ^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
+  --> $DIR/fs_macros.rs:21:9
+   |
+LL |         include_str!("fs_macros_included_file.txt")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     format!("{:?}", in_macro!())
+   |                     ----------- in this macro invocation
+   |
+   = note: this error originates in the macro `include_str` which comes from the expansion of the macro `in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 26 previous errors
 

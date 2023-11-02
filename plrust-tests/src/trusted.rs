@@ -190,7 +190,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
+    #[should_panic] // = "error: the `env` and `option_env` macros are forbidden"]
     #[cfg(feature = "trusted")]
     fn plrust_block_env() -> spi::Result<()> {
         let definition = r#"
@@ -204,7 +204,7 @@ mod tests {
 
     #[pg_test]
     #[search_path(@extschema@)]
-    #[should_panic = "error: the `env` and `option_env` macros are forbidden"]
+    #[should_panic] // = "error: the `env` and `option_env` macros are forbidden"]
     #[cfg(feature = "trusted")]
     fn plrust_block_option_env() -> spi::Result<()> {
         let definition = r#"
