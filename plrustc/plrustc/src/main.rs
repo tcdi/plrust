@@ -49,21 +49,13 @@ impl Callbacks for PlrustcCallbacks {
         }
     }
 }
+
 fn clear_env() {
-    let all_var_names = std::env::vars_os()
-        .map(|(name, _)| name)
-        .filter(|name| {
-            let name = name.to_string_lossy().to_lowercase();
-            !(
-                name.starts_with("plrust")
-                // || name.starts_with("rust")
-                // || name.starts_with("cargo")
-                || name == "path"
-                // || name == "rustflags"
-            )
-        })
-        .collect::<Vec<_>>();
-    for name in all_var_names {
+    for (name, _) in std::env::vars_os() {
+        // Can't remove `PATH`, need it to locate linker and such.
+        if name == "PATH" {
+            continue;
+        }
         std::env::remove_var(name);
     }
 }
