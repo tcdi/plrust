@@ -39,7 +39,9 @@ impl PlrustBuiltinMacros {
         if let Some((s, ..)) = utils::check_span_against_macro_diags(cx, span, &fs_diagnostic_items)
         {
             self.lint_fs(cx, s);
-            return;
+            if span != s {
+                self.lint_fs(cx, span);
+            }
         }
         let fs_def_paths: &[&[Symbol]] = &[
             &[sym!(core), sym!(macros), sym!(builtin), sym!(include)],
@@ -48,15 +50,19 @@ impl PlrustBuiltinMacros {
         ];
         if let Some((s, ..)) = utils::check_span_against_macro_def_paths(cx, span, &fs_def_paths) {
             self.lint_fs(cx, s);
-            return;
+            if span != s {
+                self.lint_fs(cx, span);
+            }
         }
 
         let env_diagnostic_items = [sym!(env_macro), sym!(option_env_macro)];
         if let Some((s, ..)) =
             utils::check_span_against_macro_diags(cx, span, &env_diagnostic_items)
         {
-            self.lint_env(cx, s);
-            return;
+            self.lint_env(cx, span);
+            if span != s {
+                self.lint_env(cx, span);
+            }
         }
         let env_def_paths: &[&[Symbol]] = &[
             &[sym!(core), sym!(macros), sym!(builtin), sym!(env)],
@@ -67,8 +73,10 @@ impl PlrustBuiltinMacros {
             &[sym!(core), sym!(option_env)],
         ];
         if let Some((s, ..)) = utils::check_span_against_macro_def_paths(cx, span, &env_def_paths) {
-            self.lint_env(cx, s);
-            return;
+            self.lint_env(cx, span);
+            if span != s {
+                self.lint_env(cx, span);
+            }
         }
     }
 }
