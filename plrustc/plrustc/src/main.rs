@@ -54,10 +54,13 @@ fn clear_env() {
         .map(|(name, _)| name)
         .filter(|name| {
             let name = name.to_string_lossy().to_lowercase();
-            !(name.starts_with("rust")
-                || name.starts_with("plrust")
-                || name.starts_with("cargo")
-                || name == "path")
+            !(
+                name.starts_with("plrust")
+                // || name.starts_with("rust")
+                // || name.starts_with("cargo")
+                || name == "path"
+                // || name == "rustflags"
+            )
         })
         .collect::<Vec<_>>();
     for name in all_var_names {
