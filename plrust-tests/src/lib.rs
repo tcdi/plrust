@@ -5,6 +5,7 @@ mod blocked_code;
 mod borrow_mut_error;
 mod ddl;
 mod dependencies;
+mod fn_call;
 mod matches;
 mod panics;
 mod range;

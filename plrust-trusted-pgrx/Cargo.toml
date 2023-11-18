@@ -1,6 +1,6 @@
 [package]
 name = "plrust-trusted-pgrx"
-version = "1.2.6"
+version = "1.2.7"
 authors = ["TCDI <opensource@tcdi.com>"]
 edition = "2021"
 license = "PostgreSQL"
@@ -19,7 +19,7 @@ pg16 = ["pgrx/pg16"]
 
 [dependencies]
 # changing the pgrx version will likely require at least a minor version bump to this create
-pgrx = { version = "=0.10.1", features = [ "no-schema-generation" ], default-features = false }
+pgrx = { version = "=0.11.0", features = [ "no-schema-generation" ], default-features = false }
 
 [package.metadata.docs.rs]
 features = ["pg14"]
