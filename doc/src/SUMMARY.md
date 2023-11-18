@@ -26,6 +26,7 @@
     - [Logging to PostgreSQL from PL/Rust](./logging.md)
     - [Triggers](./triggers.md)
     - [SPI](./spi.md)
+    - [Dynamic Function Calling](dynamic-function-calling.md)
 - [Trusted and Untrusted PL/Rust](./trusted-untrusted.md)
 - [PostgreSQL configuration](./config-pg.md)
 
