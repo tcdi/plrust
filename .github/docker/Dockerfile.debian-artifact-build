@@ -84,7 +84,7 @@ ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 
 # Install the version of PGRX that is dictated by Cargo.toml for this project
 RUN PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version') && \
-    cargo install cargo-pgrx --force --version "$PGRX_VERSION"
+    cargo install cargo-pgrx --locked --force --version "$PGRX_VERSION"
 
 # Necessary to build plrustc and company
 RUN rustup component add llvm-tools-preview rustc-dev
@@ -161,7 +161,7 @@ EOF
 # Package everything up based on whatever's in RELEASE_DIR, and send the resulting
 # .deb file to the /out directory
 RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && \
-    DEB_FILENAME="plrust-trusted-${PLRUST_VER}_$TOOLCHAIN_VER-debian-pg${PG_VER}-$(dpkg --print-architecture).deb" && \
+    DEB_FILENAME="plrust-trusted-${PLRUST_VER}_$TOOLCHAIN_VER-debian-bullseye-pg${PG_VER}-$(dpkg --print-architecture).deb" && \
     cd ${RELEASE_DIR} && fpm \
     -s dir \
     -t deb \

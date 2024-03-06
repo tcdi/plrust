@@ -65,7 +65,7 @@ ENV PATH="/var/lib/postgresql/.cargo/bin:${PATH}"
 
 # Build/install/remove all that is necessary in one step as to keep the resulting layer as small as possible.
 RUN PGRX_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version') && \
-    cargo install cargo-pgrx --force --version "$PGRX_VERSION" && \
+    cargo install cargo-pgrx --locked --force --version "$PGRX_VERSION" && \
     rustup component add llvm-tools-preview rustc-dev && \
     cd /src/plrustc && ./build.sh && cp ../build/bin/plrustc ~/.cargo/bin && \
     cargo pgrx init --pg15 $(which pg_config) && \

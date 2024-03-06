@@ -18,7 +18,7 @@ function install_cargo_pgrx() {
 
   if TARGET_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[]|select(.name=="pgrx")|.version'); then
     echo "Installing/upgrading cargo-pgrx to version $TARGET_VERSION"
-    cargo install cargo-pgrx --force --version "$TARGET_VERSION"
+    cargo install cargo-pgrx --locked --force --version "$TARGET_VERSION"
   else
     echo "Could not determine cargo-pgrx version to install."
     exit 1
