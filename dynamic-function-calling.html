@@ -1,0 +1,395 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Dynamic Function Calling - PL/Rust Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="plrust.html">What is PL/Rust?</a></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="install-prerequisites.html"><strong aria-hidden="true">1.</strong> Install Prerequisites</a></li><li class="chapter-item expanded "><a href="install-plrust.html"><strong aria-hidden="true">2.</strong> Install PL/Rust</a></li><li class="chapter-item expanded "><a href="update-plrust.html"><strong aria-hidden="true">3.</strong> Update PL/Rust</a></li><li class="chapter-item expanded "><a href="install-plrust-on-debian-ubuntu.html"><strong aria-hidden="true">4.</strong> Install PL/Rust on Debian/Ubuntu</a></li><li class="chapter-item expanded "><a href="try-plrust-with-docker.html"><strong aria-hidden="true">5.</strong> Try PL/Rust with Docker</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Usage</li><li class="chapter-item expanded "><a href="use-plrust.html"><strong aria-hidden="true">6.</strong> PL/Rust Functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="functions/anatomy.html"><strong aria-hidden="true">6.1.</strong> Function Anatomy</a></li><li class="chapter-item expanded "><a href="functions/arguments.html"><strong aria-hidden="true">6.2.</strong> Arguments</a></li><li class="chapter-item expanded "><a href="functions/return-type.html"><strong aria-hidden="true">6.3.</strong> Return Type</a></li><li class="chapter-item expanded "><a href="functions/set-returning-functions.html"><strong aria-hidden="true">6.4.</strong> Set Returning Functions</a></li></ol></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">7.</strong> Data types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="data-types/no-unsigned-types.html"><strong aria-hidden="true">7.1.</strong> No Unsigned Types</a></li><li class="chapter-item expanded "><a href="data-types/arrays.html"><strong aria-hidden="true">7.2.</strong> Arrays</a></li><li class="chapter-item expanded "><a href="data-types/udts.html"><strong aria-hidden="true">7.3.</strong> User Defined Types</a></li></ol></li><li class="chapter-item expanded "><a href="built-in-functions.html"><strong aria-hidden="true">8.</strong> Built-in functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="logging.html"><strong aria-hidden="true">8.1.</strong> Logging to PostgreSQL from PL/Rust</a></li><li class="chapter-item expanded "><a href="triggers.html"><strong aria-hidden="true">8.2.</strong> Triggers</a></li><li class="chapter-item expanded "><a href="spi.html"><strong aria-hidden="true">8.3.</strong> SPI</a></li><li class="chapter-item expanded "><a href="dynamic-function-calling.html" class="active"><strong aria-hidden="true">8.4.</strong> Dynamic Function Calling</a></li></ol></li><li class="chapter-item expanded "><a href="trusted-untrusted.html"><strong aria-hidden="true">9.</strong> Trusted and Untrusted PL/Rust</a></li><li class="chapter-item expanded "><a href="config-pg.html"><strong aria-hidden="true">10.</strong> PostgreSQL configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Under the Hood</li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">11.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="designing-for-trust.html"><strong aria-hidden="true">12.</strong> Designing for Trust</a></li><li class="chapter-item expanded "><a href="dependencies.html"><strong aria-hidden="true">13.</strong> External Dependencies</a></li><li class="chapter-item expanded "><a href="config-lints.html"><strong aria-hidden="true">14.</strong> Lints</a></li><li class="chapter-item expanded "><a href="config-env-var.html"><strong aria-hidden="true">15.</strong> Environment variables</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">PL/Rust Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="dynamic-function-calling"><a class="header" href="#dynamic-function-calling">Dynamic Function Calling</a></h1>
+<p>PL/Rust provides the ability to dynamically call any function (callable to the current user) directly from a Rust
+function.  These functions can be in <em>any</em> language, including <code>sql</code>, <code>plpgsql</code>, <code>plrust</code>, <code>plperl</code>, etc.</p>
+<p>The call interface is dynamic in that the callee is resolved at runtime and its argument and return types are also
+checked at runtime.  While this does introduce a small bit of overhead, it's significantly less than doing
+what might be the equivalent operation via Spi.</p>
+<p>The ability to dynamically call functions enables users to write functions in the language that makes the most sense
+for the operation being performed.  In many cases, a <code>LANGUAGE plpgsql</code> function is exactly what's needed, and a
+<code>LANGUAGE plrust</code> function can now use its result to execute further, possibly CPU-intensive, work.</p>
+<h2 id="important-rust-types"><a class="header" href="#important-rust-types">Important Rust Types</a></h2>
+<p>This dynamic calling interface introduces two new types that are used to facilitate dynamically calling functions:
+<code>Arg</code> and <code>FnCallError</code>.</p>
+<h3 id="arg"><a class="header" href="#arg"><code>Arg</code></a></h3>
+<p><code>Arg</code> describes the style of a user-provided function argument.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// The kinds of [`fn_call`] arguments.  
+pub enum Arg&lt;T&gt; {
+    /// The argument value is a SQL NULL
+    Null,
+
+    /// The argument's `DEFAULT` value should be used
+    Default,
+
+    /// Use this actual value
+    Value(T),
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Rust doesn't exactly have the concept of "NULL" nor does it have direct support for overloaded functions.  This is where
+the <code>Null</code> and <code>Default</code> variants come in.</p>
+<p>There's a sealed trait that corresponds to this enum named <code>FnCallArg</code>.  It is not a trait that users needs to implement,
+but is used by PL/Rust to dynamically represent a set of heterogeneous argument types.</p>
+<h3 id="fncallerror"><a class="header" href="#fncallerror"><code>FnCallError</code></a></h3>
+<p>There's also a set of runtime error conditions if function resolution fails.  These are recoverable errors in that user
+code could <code>match</code> on the return value and potentially make different decisions, or just raise a panic with the error to
+immediately abort the current transaction.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// [`FnCallError`]s represent the set of conditions that could case [`fn_call()`] to fail in a
+/// user-recoverable manner.
+#[derive(thiserror::Error, Debug, Clone, Eq, PartialEq)]
+pub enum FnCallError {
+    #[error("Invalid identifier: `{0}`")]
+    InvalidIdentifier(String),
+
+    #[error("The specified function does not exist")]
+    UndefinedFunction,
+
+    #[error("The specified function exists, but has overloaded versions which are ambiguous given the argument types provided")]
+    AmbiguousFunction,
+
+    #[error("Can only dynamically call plain functions")]
+    UnsupportedFunctionType,
+
+    #[error("Functions with OUT/IN_OUT/TABLE arguments are not supported")]
+    UnsupportedArgumentModes,
+
+    #[error("Functions with argument or return types of `internal` are not supported")]
+    InternalTypeNotSupported,
+
+    #[error("The requested return type `{0}` is not compatible with the actual return type `{1}`")]
+    IncompatibleReturnType(pg_sys::Oid, pg_sys::Oid),
+
+    #[error("Function call has more arguments than are supported")]
+    TooManyArguments,
+
+    #[error("Did not provide enough non-default arguments")]
+    NotEnoughArguments,
+
+    #[error("Function has no default arguments")]
+    NoDefaultArguments,
+
+    #[error("Argument #{0} does not have a DEFAULT value")]
+    NotDefaultArgument(usize),
+
+    #[error("Argument's default value is not a constant expression")]
+    DefaultNotConstantExpression,
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="calling-a-function"><a class="header" href="#calling-a-function">Calling a Function</a></h2>
+<p>The top-level function <code>fn_call()</code> is what is used to dynamically call a function.  Its signature is:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn fn_call&lt;R: FromDatum + IntoDatum&gt;(
+    fname: &amp;str,
+    args: &amp;[&amp;dyn FnCallArg],
+) -&gt; Result&lt;Option&lt;R&gt;, FnCallError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p><code>fn_call</code> itself takes two arguments.  The first, <code>fname</code> is the (possibly schema-qualified) function name, as a string.</p>
+<p>The second argument, <code>args</code>, is a slice of <code>FnCallArg</code> dyn references (these are written using <code>&amp;Arg::XXX</code>).  And it
+returns a <code>Result&lt;Option&lt;R&gt;, FnCallError&gt;</code>.</p>
+<p>An <code>Ok</code> response will either contain <code>Some(R)</code> if the called function returned a non-null value, or <code>None</code> if it did.</p>
+<p>An <code>Err</code> response will contain one of the <code>FnCallError</code> variants detailed above, indicating the problem encountered
+while trying to call the function.  It is guaranteed that if <code>fn_call</code> returns an <code>Err</code>, then the desired function was
+<strong>not</strong> called.</p>
+<p>If the called function raises a Postgres <code>ERROR</code> then the current transaction is aborted and control is returned back
+to Postgres, not the caller.  This is typical Postgres and PL/Rust behavior in the face of an <code>ERROR</code> or Rust panic.</p>
+<h2 id="simple-example"><a class="header" href="#simple-example">Simple Example</a></h2>
+<p>First, define a SQL function that sums the elements of an <code>int[]</code>.  We're using a <code>LANGUAGE sql</code> function here
+to demonstrate how PL/Rust can call functions of any other language:</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION sum_array(a int[]) RETURNS int STRICT LANGUAGE sql AS $$ SELECT sum(e) FROM unnest(a) e $$;
+</code></pre>
+<p>Now, call this function from a PL/Rust function:</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION transform_array(a int[]) RETURNS int STRICT LANGUAGE plrust AS $$
+    let a = a.into_iter().map(|e| e.unwrap_or(0) + 1).collect::&lt;Vec&lt;_&gt;&gt;();  // add one to every element of the array
+    Ok(fn_call("sum_array", &amp;[&amp;Arg::Value(a)])?)
+$$;
+
+SELECT transform_array(ARRAY[1,2,3]);
+transform_array 
+-----------------
+               9
+(1 row)
+</code></pre>
+<h2 id="complex-example"><a class="header" href="#complex-example">Complex Example</a></h2>
+<p>This is contrived, of course, but let's make a PL/Rust function with a few different argument types and have it simply
+convert their values to a debug-formatted String.  Then we'll call that function from another PL/Rust function.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION debug_format_args(a text, b bigint, c float4 DEFAULT 0.99) RETURNS text LANGUAGE plrust AS $$
+    Ok(Some(format!("{:?}, {:?}, {:?}", a, b, c)))  
+$$;
+
+SELECT debug_format_args('hi', NULL);
+      debug_format_args       
+------------------------------
+ Some("hi"), None, Some(0.99)
+(1 row)
+</code></pre>
+<p>Now, call it from another PL/Rust function using these same argument values.  Which is <code>'hi'</code> for the first argument,
+NULL for the second, and using the default value for the third:</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION complex_example() RETURNS text LANGUAGE plrust AS $$
+    let result = fn_call("debug_format_args", &amp;[&amp;Arg::Value("hi"), &amp;Arg::&lt;i64&gt;::Null, &amp;Arg::&lt;f32&gt;::Default])?;
+    Ok(result)    
+$$;
+
+SELECT complex_example();
+complex_example        
+------------------------------
+ Some("hi"), None, Some(0.99)
+(1 row)
+</code></pre>
+<p>You'll notice here that the <code>Arg::Null</code> and <code>Arg::Default</code> argument values are typed with <code>::&lt;i64&gt;</code> and <code>::&lt;f32&gt;</code>
+respectively.  It is necessary for PL/Rust to know the types of each argument at compile time, so that during runtime
+the proper function can be chosen.  This helps to ensure there's no ambiguity related to Postgres' function overloading
+features.  For example, let's overload <code>debug_format_args</code> with a different type for the second argument:</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION debug_format_args(a text, b bool, c float4 DEFAULT 0.99) RETURNS text LANGUAGE plrust AS $$
+    Ok(Some(format!("{:?}, {:?}, {:?}", a, b, c)))  
+$$;
+
+SELECT debug_format_args('hi', NULL);
+ERROR:  42725: function debug_format_args(unknown, unknown) is not unique
+LINE 1: SELECT debug_format_args('hi', NULL);
+               ^
+HINT:  Could not choose a best candidate function. You might need to add explicit type casts.
+</code></pre>
+<p>As you can see, even Postgres can't figure out which <code>debug_format_args</code> function to call as it doesn't know the intended
+type of the second <code>NULL</code> argument.  We can tell it, of course:</p>
+<pre><code class="language-sql">SELECT debug_format_args('hi', NULL::bool);
+      debug_format_args       
+------------------------------
+ Some("hi"), None, Some(0.99)
+(1 row)
+</code></pre>
+<p>Note that if we call our <code>complex_example</code> function again, now that we've added another version of <code>debug_format_args</code>,
+it <em>still</em> calls the correct one -- the version with an <code>int</code> as the second argument.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p>PL/Rust does <strong>not</strong> support dynamically calling functions with <code>OUT</code> or <code>IN OUT</code> arguments.  Nor does it support
+calling functions that return <code>SETOF $type</code> or <code>TABLE(...)</code>.</p>
+<p>It is possible these limitations will be lifted in a future version.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="spi.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="trusted-untrusted.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="spi.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="trusted-untrusted.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

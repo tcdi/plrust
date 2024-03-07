@@ -1,0 +1,382 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>PL/Rust Functions - PL/Rust Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="plrust.html">What is PL/Rust?</a></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="install-prerequisites.html"><strong aria-hidden="true">1.</strong> Install Prerequisites</a></li><li class="chapter-item expanded "><a href="install-plrust.html"><strong aria-hidden="true">2.</strong> Install PL/Rust</a></li><li class="chapter-item expanded "><a href="update-plrust.html"><strong aria-hidden="true">3.</strong> Update PL/Rust</a></li><li class="chapter-item expanded "><a href="install-plrust-on-debian-ubuntu.html"><strong aria-hidden="true">4.</strong> Install PL/Rust on Debian/Ubuntu</a></li><li class="chapter-item expanded "><a href="try-plrust-with-docker.html"><strong aria-hidden="true">5.</strong> Try PL/Rust with Docker</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Usage</li><li class="chapter-item expanded "><a href="use-plrust.html" class="active"><strong aria-hidden="true">6.</strong> PL/Rust Functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="functions/anatomy.html"><strong aria-hidden="true">6.1.</strong> Function Anatomy</a></li><li class="chapter-item expanded "><a href="functions/arguments.html"><strong aria-hidden="true">6.2.</strong> Arguments</a></li><li class="chapter-item expanded "><a href="functions/return-type.html"><strong aria-hidden="true">6.3.</strong> Return Type</a></li><li class="chapter-item expanded "><a href="functions/set-returning-functions.html"><strong aria-hidden="true">6.4.</strong> Set Returning Functions</a></li></ol></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">7.</strong> Data types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="data-types/no-unsigned-types.html"><strong aria-hidden="true">7.1.</strong> No Unsigned Types</a></li><li class="chapter-item expanded "><a href="data-types/arrays.html"><strong aria-hidden="true">7.2.</strong> Arrays</a></li><li class="chapter-item expanded "><a href="data-types/udts.html"><strong aria-hidden="true">7.3.</strong> User Defined Types</a></li></ol></li><li class="chapter-item expanded "><a href="built-in-functions.html"><strong aria-hidden="true">8.</strong> Built-in functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="logging.html"><strong aria-hidden="true">8.1.</strong> Logging to PostgreSQL from PL/Rust</a></li><li class="chapter-item expanded "><a href="triggers.html"><strong aria-hidden="true">8.2.</strong> Triggers</a></li><li class="chapter-item expanded "><a href="spi.html"><strong aria-hidden="true">8.3.</strong> SPI</a></li><li class="chapter-item expanded "><a href="dynamic-function-calling.html"><strong aria-hidden="true">8.4.</strong> Dynamic Function Calling</a></li></ol></li><li class="chapter-item expanded "><a href="trusted-untrusted.html"><strong aria-hidden="true">9.</strong> Trusted and Untrusted PL/Rust</a></li><li class="chapter-item expanded "><a href="config-pg.html"><strong aria-hidden="true">10.</strong> PostgreSQL configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Under the Hood</li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">11.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="designing-for-trust.html"><strong aria-hidden="true">12.</strong> Designing for Trust</a></li><li class="chapter-item expanded "><a href="dependencies.html"><strong aria-hidden="true">13.</strong> External Dependencies</a></li><li class="chapter-item expanded "><a href="config-lints.html"><strong aria-hidden="true">14.</strong> Lints</a></li><li class="chapter-item expanded "><a href="config-env-var.html"><strong aria-hidden="true">15.</strong> Environment variables</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">PL/Rust Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="plrust-functions"><a class="header" href="#plrust-functions">PL/Rust Functions</a></h1>
+<p>PL/Rust functions are created with the standard
+<a href="https://www.postgresql.org/docs/current/sql-createfunction.html"><code>CREATE FUNCTION</code></a>
+syntax and <code>LANGUAGE plrust</code>.
+This section provides examples how to create a variety
+of function using PL/Rust.</p>
+<p>The basic function structure is shown in the following example.</p>
+<pre><code class="language-sql">CREATE FUNCTION funcname (argument-list)
+    RETURNS return-type
+    -- function attributes can go here
+AS $$
+    # PL/Rust function body goes here
+$$ LANGUAGE plrust;
+</code></pre>
+<p>The body of the function is ordinary
+Rust code. When the <code>CREATE FUNCTION</code> is ran the Rust code is
+complied using the <code>pgrx</code> framework.
+This compile process can take a bit of time.
+The compile time required is one reason anonymous blocks (<code>DO</code> blocks)
+are not supported at this time.</p>
+<p>The syntax of the <code>CREATE FUNCTION</code> command requires the function
+body to be written as a string constant. It is usually most convenient
+to use dollar quoting (<code>$$</code>, see <a href="https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING">Section 4.1.2.4</a>)
+for the string constant. If you choose to use escape string syntax
+<code>E''</code>, you must double any single quote marks (') and
+backslashes () used in the body of the function (see
+<a href="https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS">Section 4.1.2.1</a>).</p>
+<h2 id="basic-plrust-example"><a class="header" href="#basic-plrust-example">Basic PL/Rust Example</a></h2>
+<p>The following example creates a basic <code>plrust</code> function named
+<code>plrust.one()</code> to simply returns the integer <code>1</code>.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION plrust.one()
+    RETURNS INT
+    LANGUAGE plrust
+AS
+$$
+    Ok(Some(1))
+$$
+;
+</code></pre>
+<h2 id="function-with-parameters"><a class="header" href="#function-with-parameters">Function with parameters</a></h2>
+<p>The following example creates a function named <code>plrust.strlen</code>
+that accepts one parameter named <code>val</code>. The function returns a <code>BIGINT</code> representing the length of the text in <code>val</code>.  The variable names
+defined in the function definition can be used directly in the Rust
+code within the function's body.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION plrust.strlen(val TEXT)
+    RETURNS BIGINT
+    LANGUAGE plrust
+AS $$
+    Ok(Some(val.unwrap().len() as i64))
+$$;
+</code></pre>
+<p>Using the <code>strlen()</code> function works as expected.</p>
+<pre><code class="language-sql">SELECT plrust.strlen('Hello, PL/Rust');
+</code></pre>
+<pre><code>┌────────┐
+│ strlen │
+╞════════╡
+│     14 │
+└────────┘
+</code></pre>
+<p>The <code>plrust.strlen</code> function above used <code>unwrap()</code> to parse the
+text variable. Changing the function definition to include <code>STRICT</code>
+avoids the need to use <code>unwrap()</code>.  The following version
+of <code>plrust.strlen</code> works the same as above.</p>
+<pre><code class="language-sql">    CREATE OR REPLACE FUNCTION plrust.strlen(val TEXT)
+    RETURNS BIGINT
+    LANGUAGE plrust STRICT
+AS $$
+    Ok(Some(val.len() as i64))
+$$;
+</code></pre>
+<h3 id="functions-with-anonymous-parameters-not-allowed"><a class="header" href="#functions-with-anonymous-parameters-not-allowed">Functions with anonymous parameters not allowed</a></h3>
+<p>PL/Rust functions with parameters require named parameters.
+This is different from functions written in other languages,
+such as SQL where <code>strlen(TEXT, INT)</code> allows the use of
+<code>$1</code> and <code>$2</code> within the function body.</p>
+<p>https://www.postgresql.org/docs/current/sql-createfunction.html</p>
+<p>The succinct reason anonymous parameters are not allowed is because
+"It does not align with Rust."  Requiring named parameters
+keeps functionality simple, direct and obvious.</p>
+<p>One of the reasons people use Rust is because of the quality of the compiler's feedback on incorrect code. Allowing anonymous parameters would ultimately require transforming the code in a way that would either result in potentially garbled error messages, or arbitrarily restricting what sets of identifiers can be used. Simply requiring identifiers skips all of that.</p>
+<h2 id="calculations"><a class="header" href="#calculations">Calculations</a></h2>
+<p>PL/Rust functions can performance calculations, such as converting
+distance values from feet to miles.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION plrust.distance_feet_to_miles(feet FLOAT)
+    RETURNS FLOAT
+    LANGUAGE plrust STRICT
+AS $$
+    Ok(Some(feet / 5280.0))
+$$;
+</code></pre>
+<p>Using the function.</p>
+<pre><code class="language-sql">SELECT plrust.distance_feet_to_miles(10000);
+</code></pre>
+<pre><code>┌────────────────────────┐
+│ distance_feet_to_miles │
+╞════════════════════════╡
+│      1.893939393939394 │
+└────────────────────────┘
+</code></pre>
+<h2 id="use-dependencies"><a class="header" href="#use-dependencies">Use dependencies</a></h2>
+<p>One of the powerful features of <code>plrust</code> is its ability to define <code>dependencies</code>
+in the function.  The following examples use the
+<a href="https://docs.rs/faker_rand/latest/faker_rand/index.html"><code>faker_rand</code> crate</a>
+in functions to generate fake text data.</p>
+<p>The <code>random_first_name()</code> function returns a random first name using the
+<code>en_us</code> locale.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION plrust.random_slogan() RETURNS TEXT
+LANGUAGE plrust AS $$
+[dependencies]
+    faker_rand = "0.1"
+    rand = "0.8"
+[code]
+    use faker_rand::en_us::company::Slogan;
+    Ok(Some(rand::random::&lt;Slogan&gt;().to_string()))
+$$;
+</code></pre>
+<pre><code class="language-sql">SELECT plrust.random_slogan();
+</code></pre>
+<pre><code>┌─────────────────────────────┐
+│        random_slogan        │
+╞═════════════════════════════╡
+│ Ergonomic composite schemas │
+└─────────────────────────────┘
+</code></pre>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION plrust.random_company_name(locale TEXT)
+    RETURNS TEXT
+    LANGUAGE plrust STRICT
+AS $$
+[dependencies]
+    faker_rand = "0.1"
+    rand = "0.8"
+[code]
+    match locale {
+        "en_us" =&gt; {
+            use faker_rand::en_us::company::CompanyName;
+            Ok(Some(rand::random::&lt;CompanyName&gt;().to_string()))
+        }
+        "fr_fr" =&gt; {
+            use faker_rand::fr_fr::company::CompanyName;
+            Ok(Some(rand::random::&lt;CompanyName&gt;().to_string()))
+        }
+        _ =&gt; panic!("Unsupported locale. Use en_us or fr_fr")
+    }
+$$;
+</code></pre>
+<pre><code class="language-sql">SELECT plrust.random_company_name('en_us') AS en_us,
+    plrust.random_company_name('fr_fr') AS fr_fr;
+</code></pre>
+<pre><code>┌────────────┬───────────────┐
+│   en_us    │     fr_fr     │
+╞════════════╪═══════════════╡
+│ Furman Inc │ Élisabeth SEM │
+└────────────┴───────────────┘
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="try-plrust-with-docker.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="functions/anatomy.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="try-plrust-with-docker.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="functions/anatomy.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

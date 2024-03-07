@@ -1,0 +1,434 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Lints - PL/Rust Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="plrust.html">What is PL/Rust?</a></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="install-prerequisites.html"><strong aria-hidden="true">1.</strong> Install Prerequisites</a></li><li class="chapter-item expanded "><a href="install-plrust.html"><strong aria-hidden="true">2.</strong> Install PL/Rust</a></li><li class="chapter-item expanded "><a href="update-plrust.html"><strong aria-hidden="true">3.</strong> Update PL/Rust</a></li><li class="chapter-item expanded "><a href="install-plrust-on-debian-ubuntu.html"><strong aria-hidden="true">4.</strong> Install PL/Rust on Debian/Ubuntu</a></li><li class="chapter-item expanded "><a href="try-plrust-with-docker.html"><strong aria-hidden="true">5.</strong> Try PL/Rust with Docker</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Usage</li><li class="chapter-item expanded "><a href="use-plrust.html"><strong aria-hidden="true">6.</strong> PL/Rust Functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="functions/anatomy.html"><strong aria-hidden="true">6.1.</strong> Function Anatomy</a></li><li class="chapter-item expanded "><a href="functions/arguments.html"><strong aria-hidden="true">6.2.</strong> Arguments</a></li><li class="chapter-item expanded "><a href="functions/return-type.html"><strong aria-hidden="true">6.3.</strong> Return Type</a></li><li class="chapter-item expanded "><a href="functions/set-returning-functions.html"><strong aria-hidden="true">6.4.</strong> Set Returning Functions</a></li></ol></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">7.</strong> Data types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="data-types/no-unsigned-types.html"><strong aria-hidden="true">7.1.</strong> No Unsigned Types</a></li><li class="chapter-item expanded "><a href="data-types/arrays.html"><strong aria-hidden="true">7.2.</strong> Arrays</a></li><li class="chapter-item expanded "><a href="data-types/udts.html"><strong aria-hidden="true">7.3.</strong> User Defined Types</a></li></ol></li><li class="chapter-item expanded "><a href="built-in-functions.html"><strong aria-hidden="true">8.</strong> Built-in functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="logging.html"><strong aria-hidden="true">8.1.</strong> Logging to PostgreSQL from PL/Rust</a></li><li class="chapter-item expanded "><a href="triggers.html"><strong aria-hidden="true">8.2.</strong> Triggers</a></li><li class="chapter-item expanded "><a href="spi.html"><strong aria-hidden="true">8.3.</strong> SPI</a></li><li class="chapter-item expanded "><a href="dynamic-function-calling.html"><strong aria-hidden="true">8.4.</strong> Dynamic Function Calling</a></li></ol></li><li class="chapter-item expanded "><a href="trusted-untrusted.html"><strong aria-hidden="true">9.</strong> Trusted and Untrusted PL/Rust</a></li><li class="chapter-item expanded "><a href="config-pg.html"><strong aria-hidden="true">10.</strong> PostgreSQL configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Under the Hood</li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">11.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="designing-for-trust.html"><strong aria-hidden="true">12.</strong> Designing for Trust</a></li><li class="chapter-item expanded "><a href="dependencies.html"><strong aria-hidden="true">13.</strong> External Dependencies</a></li><li class="chapter-item expanded "><a href="config-lints.html" class="active"><strong aria-hidden="true">14.</strong> Lints</a></li><li class="chapter-item expanded "><a href="config-env-var.html"><strong aria-hidden="true">15.</strong> Environment variables</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">PL/Rust Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="lints"><a class="header" href="#lints">Lints</a></h1>
+<p>PL/Rust has its own "rustc driver" named <code>plrustc</code>.  This must be installed using the
+<a href="plrustc/build.sh"><code>plrustc/build.sh</code></a> script and the resulting executable must be on the <code>PATH</code>, or it should reside
+somewhere that is included in the <code>plrust.PATH_override</code> GUC.</p>
+<p>PL/Rust uses its own "rustc driver" so that it can employ custom lints to detect certain Rust code idioms and patterns
+that trigger "I-Unsound" bugs in Rust itself.  Think "clippy" but built into the Rust compiler itself. In addition to
+these custom lints, PL/Rust uses some standard Rust lints to enforce safety.</p>
+<p>The <code>plrust.required_lints</code> GUC defines which lints must have been applied to a function before PL/Rust will load the
+library and execute the function.  The default value is the empty set -- PL/Rust will not require any specific lints to
+have been previously applied to a function.</p>
+<p>Using the <code>PLRUST_REQUIRED_LINTS</code> environment variable, it is possible to enforce that certain lints are always required
+of compiled functions, regardless of the <code>plrust.required_lints</code> GUC value.<code>PLRUST_REQUIRED_LINTS</code>'s format is a
+comma-separated list of lint named.  It must be set in the environment in which Postgres is started.  The intention here
+is that the system administrator can force certain lints for execution if for some reason <code>postgresql.conf</code> or the users
+able to modify it are not trusted.</p>
+<p>In all cases, these lints are added to the generated code which wraps the user's <code>LANGUAGE plrust</code> function, as
+<code>#![forbid(${lint_name})]</code>.  They are used with "forbid" to ensure a user function cannot change it back to "allow".</p>
+<p>PL/Rust does <strong>not</strong> apply these lints to dependant, external crates.  Dependencies <em>are</em> allowed to internally use
+whatever code they want, including <code>unsafe</code>.  Note that any public-facing <code>unsafe</code> functions won't be callable by a plrust
+function.</p>
+<p>Dependencies are granted more freedom as the usable set can be controlled via the <code>plrust.allowed_dependencies</code> GUC.</p>
+<hr />
+<p><strong>It is the administrator's responsibility to properly vet external dependencies for safety issues that may impact
+the running environment.</strong></p>
+<hr />
+<p>Any <code>LANGUAGE plrust</code> code that triggers any of the below lints will fail to compile, indicating the triggered lint.</p>
+<h2 id="standard-rust-lints"><a class="header" href="#standard-rust-lints">Standard Rust Lints</a></h2>
+<h3 id="unknown_lints"><a class="header" href="#unknown_lints"><code>unknown_lints</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unknown-lints</p>
+<p>PL/Rust won't allow any unknown (to our "rustc driver") lints to be applied.  The justification for this is to mainly
+guard against type-os in the <code>plrust.compile_lints</code> GUC.</p>
+<h3 id="unsafe_code"><a class="header" href="#unsafe_code"><code>unsafe_code</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#unsafe-code</p>
+<p>PL/Rust does not allow usage of <code>unsafe</code> code in <code>LANGUAGE plrust</code> functions.  This includes all the unsafe idioms such
+as dereferencing pointers and calling other <code>unsafe</code> functions.</p>
+<h3 id="implied_bounds_entailment"><a class="header" href="#implied_bounds_entailment"><code>implied_bounds_entailment</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#implied-bounds-entailment</p>
+<p>This lint detects cases where the arguments of an impl method have stronger implied bounds than those from the trait
+method it's implementing.</p>
+<p>If used incorrectly, this can be used to implement unsound APIs.</p>
+<h3 id="deprecated"><a class="header" href="#deprecated"><code>deprecated</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#deprecated</p>
+<p>The deprecated lint detects use of deprecated items. This is forbidden because certain items in the Rust standard library are incorrectly-safe APIs but were only deprecated rather than removed when a version with the appropriate safety annotation was added.</p>
+<h3 id="suspicious_auto_trait_impls"><a class="header" href="#suspicious_auto_trait_impls"><code>suspicious_auto_trait_impls</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#suspicious-auto-trait-impls</p>
+<p>This defends against some patterns that can lead to soundness issues. These cases currently can only trigger in patterns which are otherwise blocked by the <code>unsafe_code</code> lint, but for better defense-in-depth, it's explicitly forbidden in PL/Rust.</p>
+<h3 id="soft_unstable"><a class="header" href="#soft_unstable"><code>soft_unstable</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#soft-unstable</p>
+<p>This prevents the use of language and library features which were accidentally stabilized. This is forbidden because there's no reason to need to use these, and forbidding them reduces the set of APIs and features we have to consider in PL/Rust.</p>
+<h3 id="where_clauses_object_safety"><a class="header" href="#where_clauses_object_safety"><code>where_clauses_object_safety</code></a></h3>
+<p>https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#where-clauses-object-safety</p>
+<p>This avoids some soundness holes that are in the language which can be used to trigger various crashes, see the lint documentation for details.</p>
+<h2 id="plrust-plrustc-lints"><a class="header" href="#plrust-plrustc-lints">PL/Rust <code>plrustc</code> Lints</a></h2>
+<h3 id="plrust_extern_blocks"><a class="header" href="#plrust_extern_blocks"><code>plrust_extern_blocks</code></a></h3>
+<p>This blocks the declaration of <code>extern "API" {}"</code> blocks.  Primarily, this is to ensure a plrust function cannot
+declare internal Postgres symbols as external.</p>
+<p>For example, this code pattern is blocked:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>extern "C" {
+    pub fn palloc(size: Size) -&gt; *mut ::std::os::raw::c_void;
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_lifetime_parameterized_traits"><a class="header" href="#plrust_lifetime_parameterized_traits"><code>plrust_lifetime_parameterized_traits</code></a></h3>
+<p>Traits parameterized by lifetimes can be used to exploit Rust compiler bugs that lead to unsoundness issues.  PL/Rust
+does not allow such traits to be declared.</p>
+<p>For example, this code pattern is blocked:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    trait Foo&lt;'a&gt; {}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_filesystem_macros"><a class="header" href="#plrust_filesystem_macros"><code>plrust_filesystem_macros</code></a></h3>
+<p>Filesystem macros such as <code>include_bytes!</code> and <code>include_str!</code> are disallowed, as they provide access to the underlying filesystem which should be unavailable to a trusted language handler.</p>
+<p>For example, this code pattern is blocked:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>const SOMETHING: &amp;str = include_str!("/etc/passwd");
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_fn_pointers"><a class="header" href="#plrust_fn_pointers"><code>plrust_fn_pointers</code></a></h3>
+<p>Currently, several soundness holes have to do with the interaction between function pointers, implied bounds, and nested references. As a stopgap against these, use of function pointer types and function trait objects are currently blocked. This lint will likely be made more precise in the future.</p>
+<p>Note that function types (such as the types resulting from closures as required by iterator functions) are still allowed, as these do not have the issues around variance.</p>
+<p>For example, the following code pattern is blocked:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn takes_fn_arg(x: fn()) {
+    x();
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_async"><a class="header" href="#plrust_async"><code>plrust_async</code></a></h3>
+<p>Currently async/await are forbidden by PL/Rust due to unclear interactions around lifetime and soundness constraints. This may be out of an overabundance of caution. Specifically, code like the following will fail to compile:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>async fn an_async_fn() {
+    // ...
+}
+
+fn normal_function() {
+    let async_block = async {
+        // ...
+    };
+    // ...
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_leaky"><a class="header" href="#plrust_leaky"><code>plrust_leaky</code></a></h3>
+<p>This lint forbids use of "leaky" functions such as <a href="https://doc.rust-lang.org/stable/std/mem/fn.forget.html"><code>mem::forget</code></a> and <a href="https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.leak"><code>Box::leak</code></a>. While leaking memory is considered safe, it has undesirable effects and thus is blocked by default. For example, the lint will trigger on (at least) the following code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>core::mem::forget(something);
+let foo = Box::leak(Box::new(1u32));
+let bar = vec![1, 2, 3].leak();
+<span class="boring">}</span></code></pre></pre>
+<p>Note that this will not prevent all leaks, as PL/Rust code could still create a leak by constructing a reference cycle using Rc/Arc, for example.</p>
+<h3 id="plrust_env_macros"><a class="header" href="#plrust_env_macros"><code>plrust_env_macros</code></a></h3>
+<p>This lint forbids use of environment macros such as <a href="https://doc.rust-lang.org/nightly/std/macro.env.html"><code>env!</code></a> and <a href="https://doc.rust-lang.org/nightly/std/macro.option_env.html"><code>option_env!</code></a>, as it allows access to data that should not be available to a trusted language handler.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let path = env!("PATH");
+let rustup_toolchain_dir = option_env!("RUSTUP_TOOLCHAIN");
+// ...
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_external_mod"><a class="header" href="#plrust_external_mod"><code>plrust_external_mod</code></a></h3>
+<p>This lint forbids use of non-inline <code>mod blah</code>, as it can be used to access files a trusted language handler should not give access to.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// This is allowed
+mod foo {
+    // some functions or whatever here...
+}
+
+// This is disallowed.
+mod bar;
+// More importantly, this is disallowed as well.
+#[path = "/sneaky/path/to/something"]
+mod baz;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_print_macros"><a class="header" href="#plrust_print_macros"><code>plrust_print_macros</code></a></h3>
+<p>This lint forbids use of the <code>println!</code>/<code>eprintln!</code> family of macros (including <code>dbg!</code> and the non-<code>ln</code> variants), as these allow bypassing the norm. Users should use <code>pgrx::log!</code> or <code>pgrx::debug!</code> instead.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>println!("hello");
+print!("plrust");
+
+eprintln!("this is also blocked");
+eprint!("even without the newline");
+
+dbg!("same here");
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_stdio"><a class="header" href="#plrust_stdio"><code>plrust_stdio</code></a></h3>
+<p>This lint forbids use of the functions for accessing standard streams (stdin, stdout, stderr) from PL/Rust, for the same reason as above. For example, the following code is forbidden:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>std::io::stdout().write_all(b"foobar").unwrap();
+std::io::stderr().write_all(b"foobar").unwrap();
+let _stdin_is_forbidden_too = std::io::stdin();
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_static_impls"><a class="header" href="#plrust_static_impls"><code>plrust_static_impls</code></a></h3>
+<p>This lint forbids certain <code>impl</code> blocks for types containing <code>&amp;'static</code> references. The precise details are somewhat obscure, but can usually be avoided by making a custom struct to contain your static reference, which avoids the particular soundness hole we're concerned with. For example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// This is forbidden:
+impl SomeTrait for (&amp;'static Foo, Bar) {
+    // ...
+}
+
+// Instead, do this:
+struct MyType(&amp;'static Foo, Bar);
+impl SomeTrait for MyType {
+    // ...
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="plrust_autotrait_impls"><a class="header" href="#plrust_autotrait_impls"><code>plrust_autotrait_impls</code></a></h3>
+<p>This lint forbids explicit implementations of the safe auto traits, as a workaround for various soundness holes around these. It may be relaxed in the future if those are fixed.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Foo(std::cell::Cell&lt;i32&gt;, std::marker::PhantomPinned);
+// Any of the following implementations would be forbidden.
+impl std::panic::UnwindSafe for Foo {}
+impl std::panic::RefUnwindSafe for Foo {}
+impl std::marker::Unpin for Foo {}
+<span class="boring">}</span></code></pre></pre>
+<p>As a workaround, in most cases, you should be able to use <a href="https://doc.rust-lang.org/nightly/std/panic/struct.AssertUnwindSafe.html"><code>std::panic::AssertUnwindSafe</code></a> instead of implementing one of the <code>UnwindSafe</code> traits, and Boxing your type can usually work around the need for <code>Unpin</code> (which should be rare in non-<code>async</code> code anyway).</p>
+<h3 id="plrust_suspicious_trait_object"><a class="header" href="#plrust_suspicious_trait_object"><code>plrust_suspicious_trait_object</code></a></h3>
+<p>This lint forbids trait object use in turbofish and generic defaults. This is an effort to fix <a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2021&amp;gist=764d78856996e1985ee88819b013c645">certain soundness holes</a> in the Rust language. More simply, the following patterns are disallowed:</p>
+<pre><code class="language-rs">// Trait object in turbofish
+foo::&lt;dyn SomeTrait&gt;();
+// Trait object in type default (enum, union, trait, and so on are all also forbidden)
+struct SomeStruct&lt;T = dyn SomeTrait&gt;(...);
+</code></pre>
+<h3 id="plrust_closure_trait_impl"><a class="header" href="#plrust_closure_trait_impl"><code>plrust_closure_trait_impl</code></a></h3>
+<p>This lint forbids trait impls over generic over <code>Fn</code>, <code>FnOnce</code>, <code>FnMut</code> or
+<code>FnPtr</code> types. This is to work around some soundness issues where closure types
+are incorrectly <code>'static</code>. For example, the following is forbidden:</p>
+<pre><code class="language-rs">trait Trait {}
+// This is generic over a function trait.
+impl&lt;F: Fn()&gt; Trait for F {}
+</code></pre>
+<p>However, this is currently overly strict. In the future, it may be relaxed to
+forbid only the case where the return type is projected into an associated item
+on the trait, as in:</p>
+<pre><code class="language-rs">trait Trait {
+    type Assoc;
+}
+impl&lt;R, F: Fn() -&gt; R&gt; Trait for F {
+    // This is the problem
+    type Assoc = R;
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="dependencies.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="config-env-var.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="dependencies.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="config-env-var.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

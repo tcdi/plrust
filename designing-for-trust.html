@@ -1,0 +1,437 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Designing for Trust - PL/Rust Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="plrust.html">What is PL/Rust?</a></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="install-prerequisites.html"><strong aria-hidden="true">1.</strong> Install Prerequisites</a></li><li class="chapter-item expanded "><a href="install-plrust.html"><strong aria-hidden="true">2.</strong> Install PL/Rust</a></li><li class="chapter-item expanded "><a href="update-plrust.html"><strong aria-hidden="true">3.</strong> Update PL/Rust</a></li><li class="chapter-item expanded "><a href="install-plrust-on-debian-ubuntu.html"><strong aria-hidden="true">4.</strong> Install PL/Rust on Debian/Ubuntu</a></li><li class="chapter-item expanded "><a href="try-plrust-with-docker.html"><strong aria-hidden="true">5.</strong> Try PL/Rust with Docker</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Usage</li><li class="chapter-item expanded "><a href="use-plrust.html"><strong aria-hidden="true">6.</strong> PL/Rust Functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="functions/anatomy.html"><strong aria-hidden="true">6.1.</strong> Function Anatomy</a></li><li class="chapter-item expanded "><a href="functions/arguments.html"><strong aria-hidden="true">6.2.</strong> Arguments</a></li><li class="chapter-item expanded "><a href="functions/return-type.html"><strong aria-hidden="true">6.3.</strong> Return Type</a></li><li class="chapter-item expanded "><a href="functions/set-returning-functions.html"><strong aria-hidden="true">6.4.</strong> Set Returning Functions</a></li></ol></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">7.</strong> Data types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="data-types/no-unsigned-types.html"><strong aria-hidden="true">7.1.</strong> No Unsigned Types</a></li><li class="chapter-item expanded "><a href="data-types/arrays.html"><strong aria-hidden="true">7.2.</strong> Arrays</a></li><li class="chapter-item expanded "><a href="data-types/udts.html"><strong aria-hidden="true">7.3.</strong> User Defined Types</a></li></ol></li><li class="chapter-item expanded "><a href="built-in-functions.html"><strong aria-hidden="true">8.</strong> Built-in functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="logging.html"><strong aria-hidden="true">8.1.</strong> Logging to PostgreSQL from PL/Rust</a></li><li class="chapter-item expanded "><a href="triggers.html"><strong aria-hidden="true">8.2.</strong> Triggers</a></li><li class="chapter-item expanded "><a href="spi.html"><strong aria-hidden="true">8.3.</strong> SPI</a></li><li class="chapter-item expanded "><a href="dynamic-function-calling.html"><strong aria-hidden="true">8.4.</strong> Dynamic Function Calling</a></li></ol></li><li class="chapter-item expanded "><a href="trusted-untrusted.html"><strong aria-hidden="true">9.</strong> Trusted and Untrusted PL/Rust</a></li><li class="chapter-item expanded "><a href="config-pg.html"><strong aria-hidden="true">10.</strong> PostgreSQL configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Under the Hood</li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">11.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="designing-for-trust.html" class="active"><strong aria-hidden="true">12.</strong> Designing for Trust</a></li><li class="chapter-item expanded "><a href="dependencies.html"><strong aria-hidden="true">13.</strong> External Dependencies</a></li><li class="chapter-item expanded "><a href="config-lints.html"><strong aria-hidden="true">14.</strong> Lints</a></li><li class="chapter-item expanded "><a href="config-env-var.html"><strong aria-hidden="true">15.</strong> Environment variables</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">PL/Rust Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="designing-for-trust"><a class="header" href="#designing-for-trust">Designing for Trust</a></h1>
+<h1 id="a-note-on-definitions"><a class="header" href="#a-note-on-definitions">A note on definitions</a></h1>
+<p>In order to allow building a Postgres extension in Rust, quite a lot of bindings to C code are required,
+and a language handler is necessarily a Postgres "C" function, which is usually packaged as a Postgres extension.
+Since the only Postgres extension of true concern for PL/Rust is the language handler and associated components,
+and most other functions that will be embedded in Postgres will be managed by this extension, I will redefine the difference arbitrarily for this document: the language handler is a Postgres extension, and "Postgres function" will be used to refer to any Postgres function <em>except</em> a language handler.</p>
+<h1 id="the-goal"><a class="header" href="#the-goal">The goal</a></h1>
+<p>Nominally, to make PL/Rust exist: a dialect of Rust nested in SQL that can function as a "trusted procedural language".</p>
+<h1 id="the-caveat"><a class="header" href="#the-caveat">The caveat</a></h1>
+<p>A major obstacle to making PL/Rust a trustworthy language is that Rust is not an intrinsically safe language.</p>
+<p>Again, Rust is not an intrinsically safe language.</p>
+<p>There are three major details to this:</p>
+<ol>
+<li>Rust has not been formally verified to have all of the safety properties it intends to have. Bugs exist that undoubtedly violate its own design for memory safety. These bugs will eventually be fixed, because there is no soundness bug that is considered a "breaking change", or rather, Rust considers all flaws in its type system that would prevent the type system from verifying memory safety to be acceptable to change and they are explicitly not governed by any stability promises. Nonetheless, Rust is only as safe as its implementation is safe.</li>
+<li>Rust is split into two sublanguages: Safe Rust and Unsafe Rust. Most Rust is Safe Rust. An <code>unsafe { }</code> block allows the usage of Unsafe Rust code, and most Unsafe Rust code item declarations are also annotated with <code>unsafe</code><sup class="footnote-reference"><a href="#1">1</a></sup>. It is required to have Unsafe Rust as an implementation primitive in order to be able to specify the behavior of Rust: otherwise it would have to be written in another, also memory-unsafe language. By using both as part of Rust, certain guarantees based in the type system can traverse between Safe and Unsafe Rust and remain intact. Otherwise, the work to prove the type soundness would have to begin entirely within Safe Rust, without the ability to incrementally validate claims. However, this means that Unsafe Rust is always waiting behind all Safe Rust, so the abstraction boundary must be evaluated carefully.</li>
+<li>Rust is not safe against all logic errors, nor does it consider all operations to be <code>unsafe</code> that the programmer might think of as <code>unsafe</code>. For instance, Rust considers <code>panic!</code> to be "safe": arguably, it is very not safe for <em>someone</em> if Rust code forms the core of an actively-running flight system for some airplane or helicopter and an uncaught panic terminates the flight system abruptly, rendering it inoperative for sufficiently long that the flight system cannot recover stability even after it reboots. It is also usually considered safe to perform IO on arbitrary files, but a database might take a dim view of writing to its storage files.</li>
+</ol>
+<p>This three-part caveat, one might notice, is largely a problem of <em>definition</em>:</p>
+<ol>
+<li>Safe according to whom?</li>
+<li>Safe for what uses?</li>
+<li>Safe in which context?</li>
+</ol>
+<p>However, each of these remain distinct issues because they cover different domains: validity, implementation, and context.</p>
+<h2 id="is-trust-insufficient-paranoia"><a class="header" href="#is-trust-insufficient-paranoia">Is Trust Insufficient Paranoia?</a></h2>
+<p>The caveats that apply to Rust apply in very similar form to other existing procedural languages, whether or not they are "trusted":</p>
+<ol>
+<li>The question is not whether there is another vulnerability to discover in PL/Tcl, PL/Perl, PL/pgSQL, or with their shared interface with PostgreSQL: it's how long it will take to find it, whether anyone bothers to look, and whether it can actually be used to inflict damage.</li>
+<li>The trusted procedural languages have an underlying implementation in a memory-unsafe language. This poses the question of whether those languages are fully secure against the surface implementation being used to achieve unsafe effects. They undoubtedly are against trivial attacks.</li>
+<li>Some undesirable effects can still be achieved via the procedural languages. Notably, it's not clear they have much of a defense against e.g. using infinite loops to lock up that thread of execution rather than proceed further.</li>
+</ol>
+<p>This is not to say these languages are equally safe or unsafe: there's some advantages in being able to deploy dynamic checks.
+It merely is to observe that in the presence of sufficient paranoia, all implementations for all languages that exist are hard to trust.
+Web browsers face similar dilemmas, and many users run browsers with JavaScript limited or disabled because they do not trust it, despite its sandboxing.
+Any trusted language still means allowing arbitrary users with access to the database to execute code within that database which has broad capabilities.
+If there is a weak point those capabilities can be applied to break through, and an attacker cares enough to keep searching, it will be found.</p>
+<p>In effect, "trust" in practice only exists in two cases:</p>
+<ul>
+<li>not being aware of the consequences</li>
+<li>being willing to accept the possibility that worst-case consequences might happen</li>
+</ul>
+<h1 id="safety-and-trust-are-implementation-defined"><a class="header" href="#safety-and-trust-are-implementation-defined">Safety and trust are implementation-defined</a></h1>
+<p>Rust defines "safety" around the concept of "memory safety", and uses a type system that includes ownership types to implement that.</p>
+<p>For PostgreSQL's database code, a "trusted procedural language" has only one concrete definition:
+Did a database administrator install it with the TRUSTED designation?
+There's nothing technically stopping a DBA with the appropriate privileges from installing an "untrusted" language as TRUSTED in PostgreSQL.</p>
+<p>A more amorphous but more practically useful definition is extensively implied throughout the documentation on procedural language:
+A trusted procedural language is a language where, if you install it as TRUSTED, this decision will not immediately bite you on the ass.
+The Postgres documentation defines this kind of "trusted" around the idea of limiting trusted language code to effects that either
+are of no consequence to the database or that the database was going to allow a user to hypothetically do anyway,
+and it uses dynamic checks and SQL roles to assist implementing that.
+Specifically, this means a trusted language's code should also respect SQL roles and not produce unintentional denials of service.
+It may still serve as an attack vector on the system, as can normal SQL-DDL commands, but if it does,
+it should make it slightly more frustrating for an attacker than running arbitrary assembly (AKA shellcode) would permit.
+Many attacks of this nature unfortunately will still end in being able to run shellcode if successful.</p>
+<p>It may be worth drawing a parallel to cryptography, another way of assuring data security and integrity:
+many supposedly "one-way" hash functions can theoretically be reversed by an attacker with sufficient power.
+The security of hashed data usually instead lies in making it so that the attacker would require large amounts of computational power,
+considerable time, and probably at least one or two novel breakthroughs in the understanding of computation itself,
+or else they may be spending so much time that the Earth will grow cold before they can unlock the data.
+Or hopefully at least a few days, allowing time for, say, discovering the breach and generating new passwords.
+We call something that achieves this goal "secure", even though in actuality it is in fact "eventually breakable".
+Likewise, a "trusted procedural language" will in practice be "eventually breakable",
+and the goal is not necessarily to be inviolate but to offer some resistance.</p>
+<p>A quality implementation of a trusted procedural language should offer enough resistance that you can worry much less.
+The rest of this discussion will revolve around what is ultimately a proposal to implement PL/Rust
+as a high-quality trusted procedural language and how to evaluate that as an ongoing event,
+rather than one that is necessarily expected to be "finished".</p>
+<h1 id="solving-the-problems"><a class="header" href="#solving-the-problems">Solving the problems</a></h1>
+<p>A perfectly elegant solution would address all of these parts of the problem in one swoop.
+However, that would require there to be some unifying dilemma that, if answered, can easily handle all of these outward projections.
+Unfortunately, a formally-verified wasm virtual machine that can be used to safely execute arbitrary Rust code inside it,
+yet still bind easily against PostgreSQL's C API is... a tall order. In other words, the more elegant solution simply doesn't exist yet.</p>
+<p>Because such a provably-secure-yet-porous-enough wasm sandbox currently doesn't exist, it's debatable if it would actually elegantly solve the issue, as we can't actually assess that claim.
+Notably, it's not clear that allowing arbitrary bindings in such a wasm sandbox would not simply create a sandbox that can do dangerous things.
+A protective box that encloses its contents yet still has many dangerous projections outside it is usually called a "tank",
+and is considered to be a weapon of war, which may not be something you wish to introduce into your database.</p>
+<p>So in this, more clumsy world, such a three-part problem calls for a three-part solution... at least.</p>
+<ol>
+<li>To align Safe Rust more closely with what Postgres expects a trusted language to be able to do, replace <code>std</code> with <code>postgrestd</code>.</li>
+<li>To prevent Unsafe Rust from being used to violate expectations, bar the use of <code>unsafe</code> code.</li>
+<li>Deploy any and all additional hardening necessary.</li>
+<li>Keep doing that, actually: Defense in depth is a good thing.</li>
+</ol>
+<p>Eventually, using more effective and total layers of sandboxing can be used when that becomes more convenient, but the problem would remain:
+Normally, Rust code has the ability to call bindings that can do things a trusted procedural language should not be allowed to do,
+so if you allow Rust to bind calls to arbitrary external functions into wasm, then you allow Rust to "break trust".
+A comprehensive approach that blocks off these exit routes is still required, and any additional sandboxing serves as reinforcement.</p>
+<h2 id="safety-unwinding-and-impl-drop"><a class="header" href="#safety-unwinding-and-impl-drop">Safety, Unwinding, and <code>impl Drop</code></a></h2>
+<details>
+<summary>
+Needs rewrite after rewrite of PGRX error handling
+</summary>
+<p>In Rust, the <code>Drop</code> trait promises that if execution reaches certain points in a program then a destructor has been run.
+There is an immediate and obvious problem with this: Rust does not guarantee forward progress and includes diverging control flow that "never returns".
+Thus it is possible for Rust code to never reach certain points in control flow, such as by invoking <code>panic!()</code> first.
+Normally, however, <code>panic!()</code> will cause "unwinding", which walks back through Rust code to the nearest <code>catch_unwind</code>, running <code>Drop</code> as it goes.</p>
+<p>However, this is not always the case, and <code>panic!()</code> may be implemented by other forms of divergence such as immediate termination.
+This may seem surprising, but it is a simple extension of the natural observation that <code>SIGKILL</code> exists,
+or its sundry equivalents on non-Unix-like operating systems, and Rust code usually runs under an operating system.
+Rust does not consider terminating Rust code to be a violation of memory safety, because ceasing to progress
+is considered the appropriate way to respond to a situation where the program is not capable of soundly handling further events.
+A possible event that can cause this is the "panic-in-panic" scenario: if unwinding also causes a panic, Rust simply aborts.</p>
+<p>In a more targeted fashion, it is possible also to <code>mem::forget</code> something with <code>Drop</code>, or to wrap it in <code>ManuallyDrop</code>.
+Together, these facts mean that a destructor can never be relied on to be run when following arbitrary control flow.
+Only Rust control flow that lacks these features can be expected to run all destructors.
+In other words: <code>Drop</code> can be intercepted by both events inside normal Rust code and also "outside" it.</p>
+</details>
+<!--
+need to discuss:
+- statics
+- unwind runtimes
+- landing pads and where they are located in PL/Rust contexts
+- maybe thread safety?
+- other stuff with palloc?
+-->
+<h2 id="controlling-unsafe"><a class="header" href="#controlling-unsafe">Controlling <code>unsafe</code></a></h2>
+<p>Code can by hypothetically verified to be "safe" by either scanning the tokens directly using a procedural macro or by compiling it with various lints of the Rust compiler to detect and constrain use of <code>unsafe</code> enabled.</p>
+<h3 id="is-automatically-blocking-all-unsafe-code-enough"><a class="header" href="#is-automatically-blocking-all-unsafe-code-enough">Is automatically blocking all <code>unsafe</code> code enough?</a></h3>
+<p>No.</p>
+<p>The problem with blocking all <code>unsafe</code> code is that pgrx, the Rust standard library, and essentially all implementation details of PL/Rust,
+will be implemented using <code>unsafe</code> code. There are also many crates which are soundly implemented and theoretically fine to use for PL/Rust,
+but rely on an <code>unsafe</code> implementation primitive.</p>
+<p>Further, some way must exist to implement the function call interface from PostgreSQL to Rust code.
+In PL/Rust, that is done via the <a href="https://crates.io/crates/pgrx/">pgrx crate</a>. This requires a lot of <code>unsafe</code> code.
+Thus, in order to compile any PL/Rust function, <em>a lot of unsafe code must be used</em>.
+This also means that something must be done to prevent the use of pgrx's <code>unsafe fn</code> in PL/Rust
+while still allowing pgrx to use <code>unsafe</code> code to implement its own interfaces.</p>
+<h3 id="plutonium"><a class="header" href="#plutonium">plutonium</a></h3>
+<h2 id="postgrestd-containing-the-problem"><a class="header" href="#postgrestd-containing-the-problem"><code>postgrestd</code>: containing the problem</a></h2>
+<p>If Rust is not allowed to bind against arbitrary external interfaces, then it only has <code>std</code> and whatever crates are permitted.
+This makes controlling <code>std</code> a priority, and <code>postgrestd</code> is used to implement that.</p>
+<p>The result of this is that as long as only Rust code compiled with the <code>postgrestd</code> fork is executed via PL/Rust,
+and as long as e.g. arbitrary <code>unsafe asm!</code> is not permitted, an escalation in privileges
+cannot simply jump outside the database and start doing arbitrary things.
+It is limited to subverting the database, which admittedly is still a bountiful target,
+but in this event containing the database itself can still be meaningfully done.</p>
+<h2 id="the-other-elephant-in-the-room-pgrx"><a class="header" href="#the-other-elephant-in-the-room-pgrx">The other elephant in the room: pgrx</a></h2>
+<p>In addition to being used as the implementation detail of PL/Rust, pgrx offers a full-fledged interface for building Postgres extensions in general.
+This means that like the Rust standard library, pgrx is not perfectly adapted to being an interface for a trusted procedural language.
+There are two possible options in carving out what parts of pgrx are appropriate to use:</p>
+<ul>
+<li>remove all inappropriate features behind <code>#[cfg]</code> blocks, OR</li>
+<li>create a separate crate and expose it as the pgrx-Postgres user-callable interface</li>
+</ul>
+<p>Neither of these are perfectly satisfying because neither option provides a neatly-defined, automatic answer
+to the question "of pgrx's safe code, what should be allowed?" to begin with.</p>
+<p>There is also the unfortunate question of "is pgrx's safe code actually sound?"
+The crate's early implementation days included a few declared-safe wrappers that didn't fully check all invariants,
+and in some cases did not document the implied invariants, so an <a href="https://github.com/tcdi/pgrx/issues/843">audit of code in pgrx</a> is required.
+There is no getting around this, as it falls back on the fundamental problem of all procedural languages:
+They can only be as trustworthy as their implementations, which puts a burden on their implementation details to be correct.
+Fortunately, most of this audit has already been accomplished simply by the crate receiving scrutiny over the past 3 years.</p>
+<h2 id="building-arbitrary-crates"><a class="header" href="#building-arbitrary-crates">Building arbitrary crates</a></h2>
+<p>Part of what makes Rust such a useful language is that it has crates.io: an ecosystem that allows easy sharing of code,
+like most "dynamic" languages do, with very little support needed from an operating system's package manager,
+yet is a systems programming language. Thus, it's inevitable that PL/Rust will want to be able to build arbitrary dependencies.
+In fact, it has to add at least a few specially approved crates, its own build dependencies like pgrx, in order to build Rust code,
+but we have to fully trust those crates anyways, so this is nothing new.
+But using crates we may not necessarily want to automatically trust introduces many, many complications as a direct result.</p>
+<p>Some of the primary concerns:</p>
+<ul>
+<li>build.rs</li>
+<li>procedural macros</li>
+<li><code>unsafe</code> code in dependencies</li>
+<li><code>#[cfg]</code> for a very strange runtime</li>
+</ul>
+<h1 id="future-directions"><a class="header" href="#future-directions">Future directions</a></h1>
+<p>When you allow a user to run code in your database's process, you are allowing them to attempt to subvert that process,
+so all users to some extent must <em>also</em> be trusted with the tools you are giving them,
+claims that trusted procedural languages allow untrusted users to run untrusted code besides. They just can be trusted <em>less</em>.
+However, if a user is expected to possibly "sublet" their tenancy to another user, creating a complex multitenancy situation,
+where the current superuser adopts the position of a "hyperuser", and the user adopts the position of "virtual superuser",
+the hyperuser who decides what languages are installed may still want to allow the virtual superuser's guests to run code,
+but has to be aware that they have <em>even less</em> trust.
+This means various traditional attack venues, e.g. heap attacks, become even more of a concern,
+as the hyperuser may have to mount a defense against the virtual superuser's guests,
+and the virtual superuser may install and run PL/Rust code on behalf of these guests.</p>
+<p>These are possible future directions in adding layers of security, not currently implemented or experimented with yet.</p>
+<h2 id="dynamic-allocator-hardening"><a class="header" href="#dynamic-allocator-hardening">Dynamic allocator hardening?</a></h2>
+<p>While PL/Rust merely interposes palloc, it... still interposes palloc. This means it can implement a "buddy allocator".
+Since it's possible to control the global allocator for Rust code, this can help interfere with attacks on the heap.
+This is likely necessary, at the cost of some runtime overhead (offset by PL/Rust precompiling code for execution speed),
+to buy security against any attacks that target flaws in the Rust type system when those issues are not solved.
+Having to do this to harden a "memory-safe" language is not unusual, and the system administrator
+should be aware of this when deploying PostgreSQL and consider deploying PostgreSQL with a similarly hardened allocator
+so that all allocations benefit from this protection, but it's not unreasonable to want a second layer for PL/Rust.</p>
+<h2 id="background-worker-executor"><a class="header" href="#background-worker-executor">Background worker executor?</a></h2>
+<p>The process boundary offers a great deal of resilience against heap attacks. Background workers are separate processes, and
+PL/Java implementations use a similar approach of running code inside a daemon (which also takes care of compiling code).
+This may trade off a lot of performance gains from PL/Rust's overall approach, but it still may be worth it.</p>
+<h2 id="control-flow-integrity"><a class="header" href="#control-flow-integrity">Control Flow Integrity</a></h2>
+<p>There are various hardware-, kernel-, or compiler-level approaches to protect the integrity
+of even C or C++ code against reasonably determined attackers trying to usurp its control flow.
+Thus these approaches are sometimes called "control flow integrity" collectively,
+but they have various specific brand names like "indirect branch targeting", "control flow guard",
+or "pointer authentication". The Rust compiler supports a number of these as nightly features,
+and while they require Postgres to also be built with support these features for them to work,
+it would be worth exploring their use for PL/Rust.</p>
+<h2 id="witx-the-wasm-strikes-back"><a class="header" href="#witx-the-wasm-strikes-back">witx: the wasm strikes back</a></h2>
+<p>A method of generating bindings for wasm automatically is being prototyped,
+called witx, which builds on "WebAssembly Interface Types".
+It's not currently ready for primetime, but it is possible that
+within a few years it may be a feasible answer to many of these problems,
+especially in terms of hardening the Rust stack and heap against code
+just doing arbitrary nonsense to it, even if things get overly "interesting".</p>
+<h1 id="notes"><a class="header" href="#notes">Notes</a></h1>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>There are a few cases where Unsafe Rust code can be declared without it being visibly denoted as such, and these are intended to be phased out eventually, but in these cases they generally still require an <code>unsafe { }</code> block to be called or they must be wrapped in an <code>unsafe fn</code>. The absence of the <code>unsafe</code> token can only be bypassed in Rust by declaring an <code>extern fn</code> (which is implicitly also an <code>unsafe fn</code>, allowing one to fill it with other <code>unsafe</code> code) and then calling that function from another language, like C.</p>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="architecture.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="dependencies.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="architecture.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="dependencies.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

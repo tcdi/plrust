@@ -1,0 +1,342 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>What is PL/Rust? - PL/Rust Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="plrust.html" class="active">What is PL/Rust?</a></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="install-prerequisites.html"><strong aria-hidden="true">1.</strong> Install Prerequisites</a></li><li class="chapter-item expanded "><a href="install-plrust.html"><strong aria-hidden="true">2.</strong> Install PL/Rust</a></li><li class="chapter-item expanded "><a href="update-plrust.html"><strong aria-hidden="true">3.</strong> Update PL/Rust</a></li><li class="chapter-item expanded "><a href="install-plrust-on-debian-ubuntu.html"><strong aria-hidden="true">4.</strong> Install PL/Rust on Debian/Ubuntu</a></li><li class="chapter-item expanded "><a href="try-plrust-with-docker.html"><strong aria-hidden="true">5.</strong> Try PL/Rust with Docker</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Usage</li><li class="chapter-item expanded "><a href="use-plrust.html"><strong aria-hidden="true">6.</strong> PL/Rust Functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="functions/anatomy.html"><strong aria-hidden="true">6.1.</strong> Function Anatomy</a></li><li class="chapter-item expanded "><a href="functions/arguments.html"><strong aria-hidden="true">6.2.</strong> Arguments</a></li><li class="chapter-item expanded "><a href="functions/return-type.html"><strong aria-hidden="true">6.3.</strong> Return Type</a></li><li class="chapter-item expanded "><a href="functions/set-returning-functions.html"><strong aria-hidden="true">6.4.</strong> Set Returning Functions</a></li></ol></li><li class="chapter-item expanded "><a href="data-types.html"><strong aria-hidden="true">7.</strong> Data types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="data-types/no-unsigned-types.html"><strong aria-hidden="true">7.1.</strong> No Unsigned Types</a></li><li class="chapter-item expanded "><a href="data-types/arrays.html"><strong aria-hidden="true">7.2.</strong> Arrays</a></li><li class="chapter-item expanded "><a href="data-types/udts.html"><strong aria-hidden="true">7.3.</strong> User Defined Types</a></li></ol></li><li class="chapter-item expanded "><a href="built-in-functions.html"><strong aria-hidden="true">8.</strong> Built-in functions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="logging.html"><strong aria-hidden="true">8.1.</strong> Logging to PostgreSQL from PL/Rust</a></li><li class="chapter-item expanded "><a href="triggers.html"><strong aria-hidden="true">8.2.</strong> Triggers</a></li><li class="chapter-item expanded "><a href="spi.html"><strong aria-hidden="true">8.3.</strong> SPI</a></li><li class="chapter-item expanded "><a href="dynamic-function-calling.html"><strong aria-hidden="true">8.4.</strong> Dynamic Function Calling</a></li></ol></li><li class="chapter-item expanded "><a href="trusted-untrusted.html"><strong aria-hidden="true">9.</strong> Trusted and Untrusted PL/Rust</a></li><li class="chapter-item expanded "><a href="config-pg.html"><strong aria-hidden="true">10.</strong> PostgreSQL configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">PL/Rust Under the Hood</li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">11.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="designing-for-trust.html"><strong aria-hidden="true">12.</strong> Designing for Trust</a></li><li class="chapter-item expanded "><a href="dependencies.html"><strong aria-hidden="true">13.</strong> External Dependencies</a></li><li class="chapter-item expanded "><a href="config-lints.html"><strong aria-hidden="true">14.</strong> Lints</a></li><li class="chapter-item expanded "><a href="config-env-var.html"><strong aria-hidden="true">15.</strong> Environment variables</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">PL/Rust Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="what-is-plrust"><a class="header" href="#what-is-plrust">What is PL/Rust?</a></h1>
+<blockquote>
+<p>This documentation is under development.</p>
+</blockquote>
+<p>PL/Rust is a loadable procedural language that enables writing PostgreSQL
+functions in the Rust programming language. These functions are compiled to
+native machine code. Unlike other procedural languages, PL/Rust functions are
+not interpreted.</p>
+<p>The top advantages of PL/Rust include writing natively-compiled functions to achieve the absolute best performance,
+access to Rust's large development ecosystem, and Rust's compile-time safety guarantees.</p>
+<p>PL/Rust is Open Source and <a href="https://github.com/tcdi/plrust">actively developed on GitHub</a>.</p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<p>PL/Rust provides access to Postgres' Server Programming Interface (SPI) including dynamic queries, prepared
+statements, and cursors. It also provides safe Rust types over most of Postgres built-in data types, including (but
+not limited to), <code>TEXT</code>, <code>INT</code>, <code>BIGINT</code>, <code>NUMERIC</code>, <code>FLOAT</code>, <code>DOUBLE PRECISION</code>,
+<code>DATE</code>, <code>TIME</code>, etc.</p>
+<p>On <code>x86_64</code> and <code>aarch64</code> systems PL/Rust can be a "trusted" procedural language, assuming the proper compilation
+requirements are met. On other systems, it is perfectly usable as an "untrusted" language but cannot provide the
+same level of safety guarantees.</p>
+<h2 id="example-plrust-function"><a class="header" href="#example-plrust-function">Example PL/Rust function</a></h2>
+<p>The following example shows an example PL/Rust function to count the length of
+an input string. See <a href="./use-plrust.html">PL/Rust Functions and Arguments</a>
+for more examples.</p>
+<pre><code class="language-sql">CREATE FUNCTION strlen(name TEXT)
+    RETURNS int LANGUAGE plrust AS
+$$
+    Ok(Some(name.unwrap().len() as i32))
+$$;
+</code></pre>
+<p>Using the function is just like any other PostgreSQL function.</p>
+<pre><code class="language-sql">SELECT strlen('Hello, PL/Rust');
+</code></pre>
+<pre><code class="language-bash">┌────────┐
+│ strlen │
+╞════════╡
+│     14 │
+└────────┘
+</code></pre>
+<h2 id="built-on-pgrx"><a class="header" href="#built-on-pgrx">Built on pgrx</a></h2>
+<p>PL/Rust itself is a <a href="https://github.com/tcdi/pgrx"><code>pgrx</code></a>-based Postgres extension.  Furthermore, each <code>LANGUAGE plrust</code> function are themselves mini-pgrx extensions. <code>pgrx</code>is a generalized framework for developing Postgres extensions with Rust.  Like this project, <code>pgrx</code>
+is developed by <a href="https://www.tcdi.com">TCDI</a>.</p>
+<p>The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.</p>
+<h1 id="general-safety-by-rust"><a class="header" href="#general-safety-by-rust">General Safety, by Rust</a></h1>
+<p>Quoted from the "Rustonomicon":</p>
+<blockquote>
+<p>Safe Rust is the true Rust programming language. If all you do is write Safe Rust, you will never have to worry
+about type-safety or memory-safety. You will never endure a dangling pointer, a use-after-free, or any other kind
+of Undefined Behavior (a.k.a. UB).</p>
+</blockquote>
+<p>This is the universe in which PL/Rust functions live. If a PL/Rust function compiles it has these guarantees, by
+the Rust compiler, that it won't "crash." This quality is important for natively-compiled code running in a
+production database.</p>
+<h2 id="what-about-unsafe"><a class="header" href="#what-about-unsafe">What about <code>unsafe</code>?</a></h2>
+<p>PL/Rust uses the Rust compiler itself to wholesale <strong>disallow</strong> the use of <code>unsafe</code> in user functions. If
+a <code>LANGUAGE plrust</code> function uses <code>unsafe</code> it won't compile.</p>
+<p>Generally, what this means is that PL/Rust functions cannot call <code>unsafe fn</code>s, cannot call <code>extern "C"</code>s into
+Postgres itself, and cannot dereference pointers.</p>
+<p>This is accomplished using Rust's built-in <code>#![forbid(unsafe_code)]</code> lint.</p>
+<p>3rd-party crate dependencies are allowed to use <code>unsafe</code>. We'll discuss this below.</p>
+<h2 id="what-about-pgrx"><a class="header" href="#what-about-pgrx">What about <code>pgrx</code>?</a></h2>
+<p>If <code>pgrx</code> is a "generalized framework for developing Postgres extensions with Rust", and if PL/Rust user functions
+are themselves "mini-pgrx extensions", what prevents a <code>LANGUAGE plrust</code> function from using any part of <code>pgrx</code>?</p>
+<p>The <a href="https://github.com/tcdi/plrust/tree/main/plrust-trusted-pgrx"><code>plrust-trusted-pgrx</code></a> crate does!
+The <code>plrust-trusted-pgrx</code> crate is a tightly-controlled "re-export crate" on top of <code>pgrx</code> that exposes the bare minimum necessary for
+PL/Rust user functions to compile along with the bare minimum, <strong>safe</strong> features of <code>pgrx</code>.</p>
+<p>The crate is versioned independently to both <code>pgrx</code> and <code>plrust</code> and is published on <a href="https://crates.io/crates/plrust-trusted-pgrx">crates.io</a>.
+By default, the version a plrust user function will use is that of the one set in the project repository when plrust itself
+is compiled.  However, the <code>plrust.trusted_pgrx_version</code> GUC can be set to specify a specific version.</p>
+<p>The intent is that <code>plrust-trusted-pgrx</code> can evolve independently of both <code>pgrx</code> and <code>plrust</code>.</p>
+<p>There are a few "unsafe" parts of <code>pgrx</code> exposed through <code>plrust-trusted-pgrx</code>, but PL/Rust's ability to block <code>unsafe</code>
+renders them useless by PL/Rust user functions.  <code>plrust-trusted-pgrx</code>'s docs are available on <a href="https://docs.rs/plrust-trusted-pgrx">docs.rs</a>.</p>
+<h2 id="what-about-rust-compiler-bugs"><a class="header" href="#what-about-rust-compiler-bugs">What about Rust compiler bugs?</a></h2>
+<p>PL/Rust uses its own <code>rustc</code> driver which enables it to apply custom lints to the user's <code>LANGUAGE plrust</code> function.
+In general, these lints will fail compilation if the user's code uses certain code idioms or patterns which we know to
+have "I-Unsound" issues.</p>
+<p>PL/Rust contains a small set of <a href="config-lints.html">lints</a> to block what the developers have deemed the most egregious "I-Unsound" Rust bugs.</p>
+<p>Should new Rust bugs be found, and detection lints are developed for PL/Rust, the lints can be applied to new user
+function compilations along with ensuring that future function executions had those lints applied at compile time.</p>
+<p>Note that this is done on a best-effort basis, and does <em>not</em> provide a strong level of security — it's not a sandbox,
+and as such, it's likely that a skilled hostile attacker who is sufficiently motivated could find ways around it
+(PostgreSQL itself is not a particularly hardened codebase, after all). You should ensure such actors cannot execute SQL
+on your database, but to be clear: this is true regardless of whether or not PL/Rust is installed. Having said that, any
+issues found with our implementation will be taken seriously, and should be
+<a href="https://github.com/tcdi/plrust/blob/main/SECURITY.md">reported appropriately</a>.</p>
+<h2 id="trusted-with-postgrestd-on-linux-x86_64aarch64"><a class="header" href="#trusted-with-postgrestd-on-linux-x86_64aarch64">Trusted with <code>postgrestd</code> on Linux x86_64/aarch64</a></h2>
+<p>The "trusted" version of PL/Rust uses a unique fork of Rust's <code>std</code> entitled
+<a href="https://github.com/tcdi/postgrestd"><code>postgrestd</code></a> when compiling <code>LANGUAGE plrust</code> user functions. <code>postgrestd</code> is
+a specialized Rust compilation target which disallows access to the filesystem and the host operating system. The Install PL/Rust section outlines the steps required for
+<a href="/install-plrust.html#trusted-install">trusted install</a> of PL/Rust.
+Currently, <code>postgrestd</code> is only supported on Linux <code>x86_64</code> and <code>aarch64</code> platforms.</p>
+<p>When <code>plrust</code> user functions are compiled and linked against <code>postgrestd</code>, they are prohibited from using the
+filesystem, executing processes, and otherwise interacting with the host operating system.</p>
+<p>In order for PL/Rust to use <code>postgrestd</code>, its Rust compilation targets must be installed on the Postgres server.
+This happens via plrust's
+<a href="https://github.com/tcdi/plrust/blob/main/plrust/build"><code>plrust/build</code></a> script, which clones <code>postgrestd</code>, compiles it, by
+default, for both <code>x86_64</code> and <code>aarch64</code> architectures, and ultimately places a copy of the necessary libraries used by
+Rust for <code>std</code> into the appropriate "sysroot", which is the location that <code>rustc</code> will look for building those
+libraries.</p>
+<h2 id="the-trusted-feature-flag"><a class="header" href="#the-trusted-feature-flag">The <code>trusted</code> Feature Flag</a></h2>
+<p>PL/Rust has a feature flag simply named <code>trusted</code>. When compiled with the <code>trusted</code> feature flag PL/Rust will
+<strong>always</strong> use the <code>postgrestd</code> targets when compiling user functions.
+Again, this is only supported on <code>x86_64</code> and <code>aarch64</code> Linux systems.
+<code>postgrestd</code> and the <code>trusted</code> feature flag are <strong>not</strong> supported on other platforms.
+As such, PL/Rust cannot be considered fully trusted on those platforms.</p>
+<p>If the <code>trusted</code> feature flag is not used when compiling PL/Rust, which is the default, then <code>postgrestd</code> is <strong>not</strong>
+used when compiling user functions, and while they'll still benefit from Rust's general compile-time safety
+checked, forced usage of the <code>plrust-trusted-pgrx</code> crate, and PL/Rust's <code>unsafe</code> blocking, they will be able to access the
+filesystem and communicate with the host operating system, as the user running the connected Postgres backend
+(typically, this is a user named <code>postgres</code>).</p>
+<h1 id="plrust-is-also-a-cross-compiler"><a class="header" href="#plrust-is-also-a-cross-compiler">PL/Rust is also a Cross Compiler</a></h1>
+<p>In this day and age of sophisticated and flexible Postgres replication, along with cloud providers offering
+Postgres on, and replication to, disparate CPU architectures, it's important that plrust, since it stores the user
+function binary bytes in a database table, support running that function on a replicated Postgres server of a
+different CPU architecture.</p>
+<p><em>cross compilation has entered the chat</em></p>
+<p>By default, PL/Rust will not perform cross compilation. It must be installed
+and enabled through configuration.</p>
+<p>Configuring a <em>host</em> to properly cross compile is a thing that can take minimal effort to individual feats of
+heroic effort. Reading the (still in-progress) <a href="https://github.com/tcdi/pgrx/blob/master/CROSS_COMPILE.md">pgrx cross compile guide</a>
+can help. Generally speaking, it's not too awful to setup on Debian-based Linux systems, such as Ubuntu. Basically,
+you install the "cross compilation toolchain" <code>apt</code> package for the <em>other</em> platform.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+                            <a rel="next prefetch" href="install-prerequisites.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+                    <a rel="next prefetch" href="install-prerequisites.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
