@@ -1,6 +1,6 @@
 [package]
 name = "plrust-tests"
-version = "1.2.7"
+version = "1.2.8"
 edition = "2021"
 
 [lib]
