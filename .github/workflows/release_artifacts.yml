@@ -151,7 +151,7 @@ jobs:
           container_id=$(sudo docker create plrust-artifact-debian)
 
           echo "-- Extracting file from container --"
-          sudo docker cp $container_id:/out /home/ubuntu
+          sudo docker cp $container_id:/out /workdir
 
           echo "-- Destroying container --"
           sudo docker rm -v $container_id
@@ -159,4 +159,4 @@ jobs:
       - name: Upload Debian .deb artifact
         uses: softprops/action-gh-release@v1
         with:
-          files: /home/ubuntu/out/*.deb
+          files: /workdir/out/*.deb
