@@ -50,6 +50,16 @@ impl Callbacks for PlrustcCallbacks {
     }
 }
 
+fn clear_env() {
+    for (name, _) in std::env::vars_os() {
+        // Can't remove `PATH`, need it to locate linker and such.
+        if name == "PATH" {
+            continue;
+        }
+        std::env::remove_var(name);
+    }
+}
+
 fn main() {
     rustc_driver::install_ice_hook("https://github.com/tcdi/plrust/issues/new", |_| ());
     let handler = &EarlyErrorHandler::new(ErrorOutputType::default());
@@ -58,6 +68,9 @@ fn main() {
         let args =
             rustc_driver::args::arg_expand_all(handler, &std::env::args().collect::<Vec<_>>());
         let config = PlrustcConfig::from_env_and_args(&args);
+        if config.compiling_user_crate() {
+            clear_env();
+        }
         run_compiler(
             args,
             &mut PlrustcCallbacks {
