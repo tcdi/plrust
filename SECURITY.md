@@ -21,7 +21,4 @@ This information will help us triage your report more quickly.
 If you find a vulnerability anywhere in this project, such as the source or scripts,
 then please let the maintainers know ASAP and we will fix it as a critical priority.
 
-Alternatively send an [email][mail] to start the disclosure process.
-
 [advisory]: https://github.com/tcdi/plrust/security/advisories/new
-[mail]: mailto:secure@tcdi.com?subject=[plrust]
