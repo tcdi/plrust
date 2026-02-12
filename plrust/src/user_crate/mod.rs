@@ -1,4 +1,11 @@
 /*
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE file.
+*/
+/*
 Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
 
 All rights reserved.

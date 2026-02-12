@@ -1,10 +1,10 @@
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
-Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
 
 All rights reserved.
 
-Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE file.
 */
 
 use std::rc::Rc;
@@ -51,8 +51,8 @@ pub(crate) unsafe fn evaluate_function(
         let user_crate_loaded = if let Some(current) = loaded_symbols_handle.get_mut(&fn_oid) {
             let current_generation_number = PgProc::new(fn_oid)?.generation_number();
 
-            // `generation_number`` represents the transaction id and command id that inserted this 
-            // row (in this case into pg_catalog.pg_proc).  So if it's changed from the last time we 
+            // `generation_number`` represents the transaction id and command id that inserted this
+            // row (in this case into pg_catalog.pg_proc).  So if it's changed from the last time we
             // loaded the function then we have more work to do...
             if current.generation_number() != current_generation_number {
                 // the function, which we've previously loaded, was changed by a concurrent session.

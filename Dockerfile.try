@@ -1,3 +1,9 @@
+# Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
+#
+# All rights reserved.
+#
+# Use of this source code is governed by the PostgreSQL license that can be
+# found in the LICENSE file.
 # Example of how to build and run this Dockerfile:
 #   docker build -f Dockerfile.try -t tcdi/try-plrust . # Build the container
 #   docker run -it tcdi/try-plrust # Run the container
