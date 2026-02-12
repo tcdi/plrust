@@ -5,7 +5,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 
 ##
 ## This script requires `cargo install cargo-workspace-version` from https://crates.io/crates/cargo-workspace-version

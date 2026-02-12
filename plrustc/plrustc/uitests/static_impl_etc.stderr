@@ -3,7 +3,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 error: `impl` blocks for types containing `'static` references are not allowed in PL/Rust
   --> $DIR/static_impl_etc.rs:8:17
    |

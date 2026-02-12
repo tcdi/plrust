@@ -3,7 +3,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 error[E0603]: tuple struct constructor `std::boxed::Box` is private
   --> $DIR/tuple_struct_self_pat_box.rs:10:13
    |

@@ -3,7 +3,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 # Example of how to build and run this Dockerfile:
 #   docker build -f Dockerfile.try -t tcdi/try-plrust . # Build the container
 #   docker run -it tcdi/try-plrust # Run the container

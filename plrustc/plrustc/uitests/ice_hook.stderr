@@ -3,7 +3,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 thread 'rustc' panicked at 'Here is your ICE', plrustc/src/lints/force_ice.rs
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 

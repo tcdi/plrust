@@ -3,7 +3,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 error: the `include_str`, `include_bytes`, and `include` macros are forbidden in PL/Rust
   --> $DIR/fs_macros.rs:3:18
    |

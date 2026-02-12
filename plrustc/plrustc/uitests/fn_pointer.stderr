@@ -3,7 +3,7 @@
 # All rights reserved.
 #
 # Use of this source code is governed by the PostgreSQL license that can be
-# found in the LICENSE file.
+# found in the LICENSE.md file.
 error: Use of function pointers is forbidden in PL/Rust
   --> $DIR/fn_pointer.rs:7:15
    |
