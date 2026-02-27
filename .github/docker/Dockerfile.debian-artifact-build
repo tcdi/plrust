@@ -151,7 +151,7 @@ if ! runuser -l postgres -c 'rustup component list | grep -q "^rustc-dev-$(uname
     exit 1
 fi
 
-if ! runuser -l postgres -c 'rustup toolchain list | grep -q "^$TOOLCHAIN_VER-$(uname -m)\b.*(default)$"'; then
+if ! runuser -l postgres -c 'rustup toolchain list | grep -q "^$TOOLCHAIN_VER-$(uname -m)\b.*default)$"'; then
     echo "[!] The 'postgres' user does not have the default toolchain set to $TOOLCHAIN_VER. Please see package installation instructions on how to do this.";
     exit 1
 fi
