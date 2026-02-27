@@ -1,7 +1,7 @@
 [package]
 name = "plrust-trusted-pgrx"
 version = "1.2.8"
-authors = ["TCDI <opensource@tcdi.com>"]
+authors = ["TCDI"]
 edition = "2021"
 license = "PostgreSQL"
 description = "Minimal set of `pgrx` rexports for plrust, which the authors have deemed trusted"

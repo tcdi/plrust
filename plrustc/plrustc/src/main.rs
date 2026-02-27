@@ -1,4 +1,11 @@
 #![feature(rustc_private)]
+/*
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
 extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_errors;

@@ -61,9 +61,6 @@ is developed by [TCDI](https://www.tcdi.com).
 
 The following sections discuss PL/Rusts safety guarantees, configuration settings, and installation instructions.
 
-
-
-
 # General Safety, by Rust
 
 Quoted from the "Rustonomicon":

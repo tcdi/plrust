@@ -1,3 +1,10 @@
+/*
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
+
+All rights reserved.
+
+Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
+*/
 //! `plrust-trusted-pgrx` is a re-export crate based on [pgrx](https://crates.io/crates/pgrx) which exposes
 //! the minimal set of `pgrx` internals necessary for `plrust` function compilation.  `plrust-trusted-pgrx`
 //! also includes a number of Rust types for interoperating with Postgres types, access to Postgres'

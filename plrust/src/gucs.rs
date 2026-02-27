@@ -1,6 +1,6 @@
 /*
 Portions Copyright 2020-2021 ZomboDB, LLC.
-Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
 
 All rights reserved.
 
@@ -57,7 +57,7 @@ pub(crate) fn init() {
     );
 
     GucRegistry::define_string_guc(
-          "plrust.PATH_override", 
+          "plrust.PATH_override",
           "The $PATH setting to use for building plrust user functions",
           "It may be necessary to override $PATH in order to find compilation dependencies such as `cargo`, `cc`, etc",
           &PLRUST_PATH_OVERRIDE,

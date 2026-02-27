@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
 
 All rights reserved.
 
