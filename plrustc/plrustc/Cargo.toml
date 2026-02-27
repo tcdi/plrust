@@ -4,7 +4,7 @@ version = "1.2.8"
 edition = "2021"
 description = "`rustc_driver` wrapper for plrust"
 license = "PostgreSQL"
-authors = ["TCDI <opensource@tcdi.com>"]
+authors = ["TCDI"]
 homepage = "https://github.com/tcdi/plrust/"
 repository = "https://github.com/tcdi/plrust/"
 

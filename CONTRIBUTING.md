@@ -94,7 +94,7 @@ and that you are satisfied with the existing copyright notice as of opening your
 ```
 Portions Copyright 2020-2021 ZomboDB, LLC.
 
-Portions Copyright 2021-2023 Technology Concepts & Design, Inc. <opensource@tcdi.com>
+Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
 ```
 
 It is the latter to which copyrights for all merged code is assigned.

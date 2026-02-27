@@ -23,11 +23,6 @@ PL/Rust's [documentation](https://tcdi.github.io/plrust) can be found at https:/
 Head on over to the PL/Rust [releases page](https://github.com/tcdi/plrust/releases) to get the latest release and check out [the documentation page](https://tcdi.github.io/plrust/install-plrust-on-debian-ubuntu.html) to get started with PL/Rust.
 
 
-# Join our Community
-
-The PL/Rust team at [TCDI](https://www.tcdi.com/) manages a Discord server where we discuss PL/Rust and related technologies
-such as [`pgrx`](https://github.com/tcdi/pgrx), Rust, and Postgres.  Feel free to join:  https://discord.gg/mHKrj55zyh
-
 # Quick Example
 
 An example PL/Rust function:

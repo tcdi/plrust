@@ -23,7 +23,6 @@ licenses:
     ident: PostgreSQL
     authors:
       - name: Technology Concepts & Design, Inc.
-        email: opensource@tcdi.com
     template: |
       Portions Copyright 2021-2025 Technology Concepts & Design, Inc.
 

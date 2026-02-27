@@ -169,7 +169,7 @@ RUN TOOLCHAIN_VER=$(</tmp/.toolchain-ver) && \
     --deb-pre-depends "postgresql-${PG_VER}" \
     -d "postgresql-${PG_VER}" \
     -d "postgresql-server-dev-${PG_VER}" \
-    -m 'Technology Concepts & Design, Inc. <support@tcdi.com>' \
+    -m 'Technology Concepts & Design, Inc.' \
     --description 'PL/Rust is a loadable procedural language that enables writing PostgreSQL functions in the Rust programming language.' \
     -v ${PLRUST_VER} \
     --url 'https://github.com/tcdi/plrust' \

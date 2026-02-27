@@ -5,13 +5,6 @@ All rights reserved.
 
 Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
 */
-/*
-Copyright 2021-2023 Technology Concepts & Design, Inc. <support@tcdi.com>
-
-All rights reserved.
-
-Use of this source code is governed by the PostgreSQL license that can be found in the LICENSE.md file.
-*/
 
 use crate::target::CompilationTarget;
 use crate::user_crate::lint::LintSet;
